@@ -25,7 +25,6 @@ Authentication module dùng để:
 
 * Đăng nhập hệ thống
 * Xác thực JWT
-* Refresh access token
 * Đăng xuất hệ thống
 * Phân quyền theo role
 
@@ -43,7 +42,7 @@ Authentication module dùng để:
 # Base URL
 
 ```http id="zzszkg"
-http://localhost:5000/api/v1/auth
+http://localhost:5000
 ```
 
 ---
@@ -96,13 +95,12 @@ http://localhost:5000/api/v1/auth
   "success": true,
   "message": "Login successful",
   "data": {
-    "access_token": "JWT_ACCESS_TOKEN",
-    "refresh_token": "JWT_REFRESH_TOKEN",
+    "token": "JWT_ACCESS_TOKEN",
     "expires_in": 3600,
     "token_type": "Bearer",
     "user": {
       "id": 1,
-      "fullName": "Nguyen Van A",
+      "full_name": "Nguyen Van A",
       "email": "staff@parking.com",
       "role": "ParkingStaff"
     }
@@ -162,23 +160,6 @@ http://localhost:5000/api/v1/auth
 
 ---
 
-## Business Logic Flow
-
-```text id="p7fx3j"
-1. Validate email and password
-2. Check user existence in Users table
-3. Verify password hash
-4. Check account status:
-   - Active
-   - Inactive
-   - Locked
-5. Generate JWT Access Token
-6. Generate Refresh Token
-7. Save login session
-8. Write Audit Log
-9. Return tokens and user information
-```
-
 ---
 
 ## JWT Claims
@@ -188,7 +169,6 @@ http://localhost:5000/api/v1/auth
   "sub": "1",
   "email": "staff@parking.com",
   "role": "ParkingStaff",
-  "building_id": 1,
   "session_id": "a8d9f7",
   "exp": 1749999999
 }
@@ -197,75 +177,8 @@ http://localhost:5000/api/v1/auth
 ---
 
 ## Database Tables
-
-* `Users`
-* `UserRoles`
-* `UserSessions`
-* `RefreshTokens`
-* `AuditLogs`
-
----
-
-# 🔄 1.2 Refresh Token
-
-| Property       | Value                  |
-| -------------- | ---------------------- |
-| Method         | `POST`                 |
-| Endpoint       | `/api/v1/auth/refresh` |
-| Authentication | No                     |
-
----
-
-## Request Body
-
-```json id="ndu0w5"
-{
-  "refresh_token": "REFRESH_TOKEN_HERE"
-}
-```
-
----
-
-## Success Response (200 OK)
-
-```json id="xvwfr7"
-{
-  "success": true,
-  "message": "Token refreshed successfully",
-  "data": {
-    "access_token": "NEW_ACCESS_TOKEN",
-    "refresh_token": "NEW_REFRESH_TOKEN",
-    "expires_in": 3600,
-    "token_type": "Bearer"
-  }
-}
-```
-
----
-
-## Error Response
-
-```json id="z2f6gl"
-{
-  "success": false,
-  "error_code": "INVALID_REFRESH_TOKEN",
-  "message": "Refresh token is invalid or expired"
-}
-```
-
----
-
-## Refresh Token Flow
-
-```text id="1y0l8y"
-1. Validate refresh token
-2. Check token expiration
-3. Check revoked status
-4. Generate new access token
-5. Generate new refresh token
-6. Revoke old refresh token
-7. Return new tokens
-```
+* `USERS`
+* `ROLE`
 
 ---
 
@@ -296,132 +209,6 @@ Authorization: Bearer JWT_ACCESS_TOKEN
 }
 ```
 ---
-
-## Logout Business Flow
-
-```text id="y5kq53"
-1. Read access token from Authorization header
-2. Validate JWT token
-3. Add token to blacklist
-4. Revoke refresh token
-5. Update logout time in UserSessions
-6. Write Audit Log
-7. Return success response
-```
-
----
-
-# 🔒 Security Configuration
-
-| Property             | Value                            |
-| -------------------- | -------------------------------- |
-| JWT Algorithm        | HS256 (Production: RS256)        |
-| Access Token Expiry  | 1 hour                           |
-| Refresh Token Expiry | 7 days                           |
-| Password Hashing     | BCrypt                           |
-| Token Storage        | HttpOnly Cookie / Secure Storage |
-| Rate Limiting        | Enabled                          |
-| Token Blacklist      | Enabled                          |
-
----
-
-# 🧾 Audit Logging
-
-Every authentication action must be logged:
-
-| Action         | Description                 |
-| -------------- | --------------------------- |
-| LOGIN_SUCCESS  | User logged in successfully |
-| LOGIN_FAILED   | Failed login attempt        |
-| TOKEN_REFRESH  | Access token refreshed      |
-| LOGOUT         | User logged out             |
-| ACCOUNT_LOCKED | Account locked              |
-
----
-
-# 📦 Example ASP.NET Core Controller
-
-```csharp id="83tb0x"
-[ApiController]
-[Route("api/v1/auth")]
-public class AuthController : ControllerBase
-{
-    [HttpPost("login")]
-    public async Task<IActionResult> Login(LoginRequest request)
-    {
-        return Ok();
-    }
-
-    [HttpPost("refresh")]
-    public async Task<IActionResult> RefreshToken(RefreshTokenRequest request)
-    {
-        return Ok();
-    }
-
-    [Authorize]
-    [HttpPost("logout")]
-    public async Task<IActionResult> Logout()
-    {
-        return Ok();
-    }
-}
-```
-
----
-
-# 📄 DTO Models
-
-## LoginRequest
-
-```csharp id="0n2hyl"
-public class LoginRequest
-{
-    public string Email { get; set; }
-    public string Password { get; set; }
-}
-```
-
----
-
-## RefreshTokenRequest
-
-```csharp id="3v7sih"
-public class RefreshTokenRequest
-{
-    public string RefreshToken { get; set; }
-}
-```
-
----
-
-# ⚙️ appsettings.json
-
-```json id="r3g5s7"
-"Jwt": {
-  "Key": "THIS_IS_SECRET_KEY", //Đây là secret key để verify JWT token
-  "Issuer": "ParkingSystemAPI", //Là hệ thống phát hành token
-  "Audience": "ParkingSystemClient", //Là đối tượng được phép dùng token
-  "AccessTokenExpiryMinutes": 60, //Thời gian access token hết hạn (60 phút)
-  "RefreshTokenExpiryDays": 7 
-}
-```
-
----
-
-# 🏗 Recommended Architecture
-
-```text id="wftnmu"
-Frontend (ReactJS)
-        ↓
-ASP.NET Core Web API
-        ↓
-JWT Authentication Middleware
-        ↓
-Authorization Policies
-        ↓
-Business Modules
-```
-
 
 ## 👥 2. User Management Module
 
@@ -558,14 +345,15 @@ Business Modules
 {
   "success": true,
   "data": {
-    "name": "Trung Hòa Parking Tower",
+    "building_id": "B01",
+    "building_name": "Trung Hòa Parking Tower",
     "address": "Số 1 Trung Hòa, Cầu Giấy, Hà Nội",
     "total_floors": 8,
     "total_slots": 500,
 
     "operation_hours": {
-      "weekday": "06:00 - 22:00",
-      "weekend": "07:00 - 23:00",
+      "weekday_hours": "06:00 - 22:00",
+      "weekend_hours": "07:00 - 23:00",
       "is_24_7": false
     },
 
@@ -730,7 +518,7 @@ Business Modules
 | Property | Value |
 |----------|-------|
 | **Method** | `POST` |
-| **Endpoint** | `/api/v1/parking/slots/allocate-smart` |
+| **Endpoint** | `/api/v1/parking/slot-recommendations` |
 | **Authentication** | Required |
 | **Roles** | ParkingStaff, ParkingUser |
 
@@ -826,10 +614,10 @@ Business Modules
 ```
 
 **Database Tables**
-- `ParkingBuildings`
-- `ParkingSlots`
-- `FloorZoningConfig`
-- `ParkingSessions`
+- `PARKING_BUILDING`
+- `PARKING_SLOT`
+- `FLOOR_ZONE`
+- `PARKING_SESSION`
 
 ---
 
@@ -847,7 +635,7 @@ Business Modules
 **Request Body**
 ```json
 {
-  "license_plate": "29A-123.45",
+  "license_plate": "29A-12345",
   "vehicle_type": "car",
   "brand": "Toyota",
   "model": "Vios",
@@ -855,13 +643,12 @@ Business Modules
   "owner_name": "Nguyễn Văn A",
   "owner_phone": "0901234567",
   "owner_email": "nguyenvana@gmail.com",
-  "subscription_plan_id": "plan_monthly_car"
 }
 ```
 
 **Validation Rules**
 - License plate must be unique in system
-- Format: Vietnamese plate pattern `XXY-123.45` or `XXY-12345`
+- Format: Vietnamese plate pattern `XXY-12345`
 
 **Success Response** (201 Created)
 ```json
@@ -869,7 +656,7 @@ Business Modules
   "success": true,
   "data": {
     "vehicle_id": "veh_78901",
-    "license_plate": "29A-123.45",
+    "license_plate": "29A-12345",
     "qr_code": "https://api.parking.com/qrcode/veh_78901",
     "status": "pending_verification"
   }
@@ -891,12 +678,11 @@ Business Modules
   "success": true,
   "data": {
     "vehicle_id": "veh_78901",
-    "license_plate": "29A-123.45",
+    "license_plate": "29A-12345",
     "vehicle_type": "car",
     "is_registered": true,
     "subscription_status": "active",
     "subscription_expiry": "2024-12-31",
-    "blacklisted": false,
     "last_parking_session": {
       "session_id": "sess_12345",
       "check_in": "2024-01-15T08:15:00Z",
@@ -1075,10 +861,12 @@ Business Modules
 - Double entry: Prevent check-in if active session exists
 
 **Database Tables**
-- `ParkingSessions`
-- `ParkingTickets`
-- `EntryExitLogs`
-- `GateDevices`
+`PARKING_SESSION`
+`PARKING_SLOT`
+`VEHICLE`
+`PAYMENT`
+`BOOKING`
+`MONTHLY_PASS`
 
 ---
 
@@ -1422,55 +1210,11 @@ Business Modules
 ```json
 {
   "vehicle_type": "car",
-  "pricing_rules": [
-    {
-      "duration_minutes_start": 0,
-      "duration_minutes_end": 15,
-      "fee": 0,
-      "rule_type": "free"
-    },
-    {
-      "duration_minutes_start": 16,
-      "duration_minutes_end": 60,
-      "fee": 15000,
-      "rule_type": "flat"
-    },
-    {
-      "duration_minutes_start": 61,
-      "duration_minutes_end": 1440,
-      "fee_per_hour": 10000,
-      "max_daily_fee": 150000,
-      "rule_type": "hourly"
-    }
-  ],
-  "peak_hour_surcharge": {
-    "enabled": true,
-    "hours": ["07:00-09:00", "17:00-19:00"],
-    "surcharge_percent": 20
-  },
-  "effective_from": "2024-02-01T00:00:00Z"
+  "base_price": 15000,
+  "hourly_rate": 10000,
+  "max_daily_fee": 150000
 }
 ```
-
-### 8.3 Manage Blacklist
-
-| Property | Value |
-|----------|-------|
-| **Method** | `POST` |
-| **Endpoint** | `/api/v1/admin/blacklist` |
-| **Roles** | SystemAdmin |
-
-**Request Body**
-```json
-{
-  "license_plate": "29A-999.99",
-  "reason": "Repeated ticket loss",
-  "blacklisted_until": "2024-12-31",
-  "notes": "Customer lost ticket 5 times in 3 months"
-}
-```
-
----
 
 ## 📈 9. Reports Module
 
@@ -1608,172 +1352,7 @@ Content-Disposition: attachment; filename="revenue_report_2024_01.pdf"
 
 ---
 
-## 🔔 10. Notifications Module
-
-### 10.1 Send Notification
-
-| Property | Value |
-|----------|-------|
-| **Method** | `POST` |
-| **Endpoint** | `/api/v1/notifications/send` |
-| **Roles** | SystemAdmin |
-
-**Request Body**
-```json
-{
-  "user_id": "usr_12345",
-  "type": "payment_reminder",
-  "title": "Thanh toán gửi xe",
-  "body": "Xe của bạn đã gửi được 2 giờ. Vui lòng thanh toán trước khi ra về.",
-  "data": {
-    "session_id": "sess_12345",
-    "action_url": "/payment/sess_12345"
-  },
-  "channels": ["push", "sms", "email"]
-}
-```
-
-### 10.2 Get User Notifications
-
-| Property | Value |
-|----------|-------|
-| **Method** | `GET` |
-| **Endpoint** | `/api/v1/notifications` |
-| **Authentication** | Required |
-
-**Success Response**
-```json
-{
-  "unread_count": 3,
-  "notifications": [
-    {
-      "id": "notif_001",
-      "type": "check_in_success",
-      "title": "Xe vào bãi thành công",
-      "body": "Xe 29A-123.45 đã vào lúc 08:15",
-      "is_read": false,
-      "created_at": "2024-01-15T08:15:23Z"
-    }
-  ]
-}
-```
-
----
-
-## 📷 11. Camera Service Module
-
-### 11.1 Register Camera
-
-| Property | Value |
-|----------|-------|
-| **Method** | `POST` |
-| **Endpoint** | `/api/v1/cameras/register` |
-| **Roles** | SystemAdmin |
-
-**Request Body**
-```json
-{
-  "camera_id": "cam_gate_in_01",
-  "camera_name": "Cổng vào - Làn 1",
-  "camera_type": "entry",
-  "rtsp_url": "rtsp://192.168.1.100:554/stream1",
-  "building_id": "bld_001",
-  "lane_id": "lane_1",
-  "location": "Ground Floor - Entry Gate"
-}
-```
-
-### 11.2 Get Camera Status
-
-| Property | Value |
-|----------|-------|
-| **Method** | `GET` |
-| **Endpoint** | `/api/v1/cameras/status` |
-
-**Success Response**
-```json
-{
-  "cameras": [
-    {
-      "camera_id": "cam_gate_in_01",
-      "status": "online",
-      "last_heartbeat": "2024-01-15T10:30:00Z",
-      "last_frame_processed": "2024-01-15T10:29:58Z",
-      "fps": 15,
-      "recognition_success_rate": 94.2
-    }
-  ]
-}
-```
-
-### 11.3 Trigger Manual Capture
-
-| Property | Value |
-|----------|-------|
-| **Method** | `POST` |
-| **Endpoint** | `/api/v1/cameras/{camera_id}/capture` |
-| **Roles** | ParkingStaff |
-
-**Success Response**
-```json
-{
-  "capture_id": "cap_001",
-  "image_url": "https://api.parking.com/captures/cap_001.jpg",
-  "timestamp": "2024-01-15T10:35:22Z"
-}
-```
-
----
-
-## 🎫 12. Lost Ticket Handling Module
-
-### 12.1 Report Lost Ticket (Customer)
-
-| Property | Value |
-|----------|-------|
-| **Method** | `POST` |
-| **Endpoint** | `/api/v1/lost-ticket/report` |
-| **Authentication** | Required |
-| **Roles** | Driver |
-
-**Request Body**
-```json
-{
-  "license_plate": "29A-123.45",
-  "vehicle_type": "car",
-  "estimated_entry_time": "2024-01-15T08:00:00Z",
-  "customer_phone": "0901234567",
-  "customer_email": "customer@gmail.com"
-}
-```
-
-### 12.2 Resolve Lost Ticket (Staff)
-
-| Property | Value |
-|----------|-------|
-| **Method** | `POST` |
-| **Endpoint** | `/api/v1/lost-ticket/{lost_ticket_id}/resolve` |
-| **Roles** | ParkingStaff |
-
-**Request Body**
-```json
-{
-  "verified_license_plate": "29A-123.45",
-  "actual_check_in_time": "2024-01-15T08:15:23Z",
-  "actual_check_out_time": "2024-01-15T10:30:00Z",
-  "fee_charged": 200000,
-  "payment_reference": "pay_67890",
-  "staff_id": "usr_12345"
-}
-```
-
-**Database Tables**
-- `LostTickets`
-- `LostTicketAudit`
-
----
-
-## 💳 13. Subscription / Monthly Parking Module
+## 💳 13. Monthly Pass Module
 
 ### 13.1 Create Subscription Plan
 
@@ -1786,17 +1365,9 @@ Content-Disposition: attachment; filename="revenue_report_2024_01.pdf"
 **Request Body**
 ```json
 {
-  "plan_name": "Monthly Car - Unlimited",
   "vehicle_type": "car",
   "duration_days": 30,
   "price": 1500000,
-  "features": {
-    "unlimited_entries": true,
-    "dedicated_slot": false,
-    "priority_zone": true,
-    "free_evening_weekend": true
-  },
-  "billing_cycle": "monthly",
   "grace_period_days": 7
 }
 ```
@@ -1816,7 +1387,6 @@ Content-Disposition: attachment; filename="revenue_report_2024_01.pdf"
   "vehicle_id": "veh_78901",
   "plan_id": "plan_monthly_car",
   "start_date": "2024-02-01",
-  "auto_renew": true,
   "payment_method": "vnpay_qr"
 }
 ```
@@ -1831,112 +1401,19 @@ Content-Disposition: attachment; filename="revenue_report_2024_01.pdf"
 **Success Response**
 ```json
 {
-  "subscription_id": "sub_001",
+  "monthly_pass_id": "mp_001",
   "vehicle_id": "veh_78901",
   "license_plate": "29A-123.45",
-  "plan": "Monthly Car - Unlimited",
   "status": "active",
   "start_date": "2024-02-01",
   "end_date": "2024-02-29",
   "days_remaining": 15,
-  "auto_renew": true,
   "total_entries_this_month": 23,
   "savings_compared_to_daily": 345000
 }
 ```
 
-### 13.4 Auto-renew Webhook
-
-| Property | Value |
-|----------|-------|
-| **Method** | `POST` |
-| **Endpoint** | `/api/v1/subscription/webhook/renewal` |
-
-**Business Logic** (Cron job daily at 02:00)
-```
-1. Query subscriptions expiring in 3 days
-2. Send renewal reminder notification
-3. Process auto-renewal payment
-4. If payment fails: downgrade to daily rate, send alert
-5. Update subscription end_date
-6. Log renewal transaction
-```
-
 ---
-
-## 📝 14. Audit Logs Module
-
-### 14.1 Get Audit Logs
-
-| Property | Value |
-|----------|-------|
-| **Method** | `GET` |
-| **Endpoint** | `/api/v1/audit/logs` |
-| **Roles** | SystemAdmin, Admin |
-
-**Query Parameters**
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `user_id` | string | Filter by user |
-| `action` | string | CREATE/UPDATE/DELETE/LOGIN |
-| `entity_type` | string | User/Payment/Session/Slot |
-| `start_date` | datetime | ISO format |
-| `end_date` | datetime | ISO format |
-| `page` | int | Page number |
-
-**Success Response**
-```json
-{
-  "logs": [
-    {
-      "log_id": "log_001",
-      "timestamp": "2024-01-15T08:15:23Z",
-      "user_id": "usr_12345",
-      "username": "admin",
-      "action": "UPDATE",
-      "entity_type": "PricingRule",
-      "entity_id": "price_001",
-      "old_value": "{\"fee\":15000}",
-      "new_value": "{\"fee\":20000}",
-      "ip_address": "192.168.1.100",
-      "user_agent": "Chrome/120.0"
-    }
-  ],
-  "pagination": {
-    "page": 1,
-    "total": 2450
-  }
-}
-```
-
-### 14.2 Export Audit Logs
-
-| Property | Value |
-|----------|-------|
-| **Method** | `GET` |
-| **Endpoint** | `/api/v1/audit/export` |
-| **Roles** | SystemAdmin |
-
-**Response**: CSV/JSON file download
-
----
-
-## Error Handling & Status Codes
-
-### Standard Error Response Format
-```json
-{
-  "success": false,
-  "error": {
-    "code": "INVALID_LICENSE_PLATE",
-    "message": "License plate format is invalid",
-    "details": "Expected format: 29A-123.45 or 29A-12345",
-    "timestamp": "2024-01-15T10:30:00Z",
-    "request_id": "req_abc123",
-    "path": "/api/v1/parking/check-in"
-  }
-}
-```
 
 ### HTTP Status Codes
 
