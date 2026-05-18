@@ -1055,7 +1055,6 @@ Authorization: Bearer JWT_ACCESS_TOKEN
 4. Create lost ticket record
 5. Calculate penalty fee
 6. Process payment
-7. Update vehicle blacklist? (if frequent lost)
 ```
 
 **Success Response**
@@ -1435,7 +1434,7 @@ Content-Disposition: attachment; filename="revenue_report_2024_01.pdf"
 |------|-------------|-------------|
 | `ACTIVE_SESSION_EXISTS` | 409 | Vehicle already in parking |
 | `NO_AVAILABLE_SLOT` | 422 | Parking full for vehicle type |
-| `BLACKLISTED_VEHICLE` | 403 | Vehicle not allowed to enter |
+| `` | 403 |  |
 | `INVALID_TICKET` | 404 | Ticket not found or expired |
 | `PAYMENT_FAILED` | 422 | Transaction declined |
 | `SUBSCRIPTION_EXPIRED` | 422 | Monthly pass expired |
