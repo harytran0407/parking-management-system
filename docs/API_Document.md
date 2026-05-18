@@ -1,8 +1,7 @@
 # Parking Building Management System — API Documentation
 
-> **Phiên bản:** 1.0  
 > **Base URL:** `http://localhost:5000`  
-> **Ghi chú tương thích DB:** Tất cả kiểu dữ liệu, enum, và quan hệ khoá ngoại trong tài liệu này đã được căn chỉnh theo schema database.
+
 
 ---
 
@@ -154,7 +153,7 @@ Authorization: Bearer JWT_ACCESS_TOKEN
 | `status` | string | No | — | `ACTIVE` / `INACTIVE` / `BANNED` |
 | `search` | string | No | — | Tìm theo tên hoặc username |
 
-> `status` phải khớp với `USERS.STATUS ENUM('ACTIVE','INACTIVE','BANNED')`
+> `status` tương ứng `USERS.STATUS ENUM('ACTIVE','INACTIVE','BANNED')`
 
 **Success Response (200 OK)**
 ```json
@@ -209,7 +208,6 @@ Authorization: Bearer JWT_ACCESS_TOKEN
 }
 ```
 
-> `user_id` kiểu `VARCHAR(20)` — phải do caller cung cấp hoặc server sinh ra và trả về.
 
 **Success Response (201 Created)**
 ```json
@@ -233,7 +231,7 @@ Authorization: Bearer JWT_ACCESS_TOKEN
 | **Endpoint** | `/api/v1/admin/users/{user_id}` |
 | **Roles** | `SystemAdmin` |
 
-**Request Body** *(các field cần cập nhật)*
+**Request Body** 
 ```json
 {
   "full_name": "Trần Văn B (Updated)",
@@ -261,7 +259,6 @@ Authorization: Bearer JWT_ACCESS_TOKEN
 | **Endpoint** | `/api/v1/admin/users/{user_id}` |
 | **Roles** | `SystemAdmin` |
 
-> Soft delete: cập nhật `USERS.STATUS = 'INACTIVE'`.
 
 **Success Response (204 No Content)**
 
@@ -334,7 +331,7 @@ Authorization: Bearer JWT_ACCESS_TOKEN
 }
 ```
 
-> `status` phải khớp `PARKING_BUILDING.STATUS ENUM('ACTIVE','MAINTENANCE','CLOSED')`
+> `status` tương ứng `PARKING_BUILDING.STATUS ENUM('ACTIVE','MAINTENANCE','CLOSED')`
 
 **DB Tables:** `PARKING_BUILDING`, `PARKING_SLOT`, `FLOOR_ZONE`
 
@@ -360,7 +357,7 @@ Authorization: Bearer JWT_ACCESS_TOKEN
 | `page` | int | No | Số trang |
 | `page_size` | int | No | Số bản ghi mỗi trang |
 
-> `status` khớp với `PARKING_SLOT.STATUS ENUM('AVAILABLE','OCCUPIED','RESERVED','MAINTENANCE')`
+> `status` tương ứng `PARKING_SLOT.STATUS ENUM('AVAILABLE','OCCUPIED','RESERVED','MAINTENANCE')`
 
 **Success Response (200 OK)**
 ```json
@@ -412,7 +409,8 @@ Authorization: Bearer JWT_ACCESS_TOKEN
 }
 ```
 
-> `slot_name` tương ứng `PARKING_SLOT.SLOT_NAME`, `current_session_id` tương ứng `PARKING_SLOT.CURRENT_SESSION_ID VARCHAR(20)`
+> `slot_name` tương ứng `PARKING_SLOT.SLOT_NAME`
+> `current_session_id` tương ứng `PARKING_SLOT.CURRENT_SESSION_ID VARCHAR(20)`
 
 **DB Tables:** `PARKING_SLOT`, `FLOOR_ZONE`, `VEHICLE_TYPE`
 
@@ -435,7 +433,7 @@ Authorization: Bearer JWT_ACCESS_TOKEN
 }
 ```
 
-> `status` phải là một trong: `AVAILABLE`, `OCCUPIED`, `RESERVED`, `MAINTENANCE`
+> `status`: `AVAILABLE`, `OCCUPIED`, `RESERVED`, `MAINTENANCE`
 
 **Success Response (200 OK)**
 ```json
@@ -482,7 +480,7 @@ Authorization: Bearer JWT_ACCESS_TOKEN
 }
 ```
 
-> Các field khớp với `FLOOR_ZONE`: `ZONE_NAME`, `FLOOR_NUMBER`, `VEHICLE_TYPE_ID`, `CAPACITY`, `BUILDING_ID`
+> `FLOOR_ZONE`: `ZONE_NAME`, `FLOOR_NUMBER`, `VEHICLE_TYPE_ID`, `CAPACITY`, `BUILDING_ID`
 
 **Success Response (201 Created)**
 ```json
@@ -508,7 +506,6 @@ Authorization: Bearer JWT_ACCESS_TOKEN
 | **Authentication** | Bắt buộc |
 | **Roles** | `ParkingStaff`, `ParkingUser` |
 
-> API này đọc dữ liệu từ `PARKING_SLOT`, `FLOOR_ZONE`, `PARKING_SESSION` nhưng không ghi trực tiếp — kết quả được dùng để tạo session hoặc booking.
 
 **Request Body**
 ```json
@@ -622,7 +619,7 @@ Authorization: Bearer JWT_ACCESS_TOKEN
 }
 ```
 
-> Tất cả field khớp với bảng `VEHICLE`: `VEHICLE_PLATE_NUMBER`, `VEHICLE_TYPE_ID`, `BRAND`, `MODEL`, `COLOR`, `VEHICLE_DESCRIPTION`. `VEHICLE_USER_ID` được lấy từ JWT.
+> `VEHICLE`: `VEHICLE_PLATE_NUMBER`, `VEHICLE_TYPE_ID`, `BRAND`, `MODEL`, `COLOR`, `VEHICLE_DESCRIPTION`. `VEHICLE_USER_ID` 
 
 **Validation Rules**
 - `vehicle_plate_number` phải là duy nhất trong hệ thống (`UNIQUE` constraint)
@@ -640,7 +637,6 @@ Authorization: Bearer JWT_ACCESS_TOKEN
 }
 ```
 
-> `vehicle_id` là `INT AUTO_INCREMENT` theo DB.
 
 **DB Tables:** `VEHICLE`, `VEHICLE_TYPE`, `USERS`
 
@@ -710,7 +706,7 @@ Authorization: Bearer JWT_ACCESS_TOKEN
 }
 ```
 
-> Tất cả field khớp với `PARKING_SESSION`: `LICENSE_PLATE_IN`, `VEHICLE_TYPE_ID`, `CAMERA_IN`, `GATE_IN`, `IMAGE_URL_IN`, `STAFF_IN_ID`, `SLOT_ID`, `BOOKING_ID`
+> `PARKING_SESSION`: `LICENSE_PLATE_IN`, `VEHICLE_TYPE_ID`, `CAMERA_IN`, `GATE_IN`, `IMAGE_URL_IN`, `STAFF_IN_ID`, `SLOT_ID`, `BOOKING_ID`
 
 **Validation Rules**
 
@@ -772,7 +768,7 @@ Authorization: Bearer JWT_ACCESS_TOKEN
 }
 ```
 
-> Khớp với `PARKING_SESSION`: `LICENSE_PLATE_OUT`, `CAMERA_OUT`, `GATE_OUT`, `IMAGE_URL_OUT`, `STAFF_OUT_ID`
+> `PARKING_SESSION`: `LICENSE_PLATE_OUT`, `CAMERA_OUT`, `GATE_OUT`, `IMAGE_URL_OUT`, `STAFF_OUT_ID`
 
 **Success Response (200 OK)**
 ```json
@@ -800,7 +796,7 @@ Authorization: Bearer JWT_ACCESS_TOKEN
 | `CANCELLED` | Session bị huỷ |
 | `LOST_TICKET` | Trường hợp mất vé |
 
-> Khớp `PARKING_SESSION.STATUS ENUM('ACTIVE','COMPLETED','CANCELLED','LOST_TICKET')`
+> `PARKING_SESSION.STATUS ENUM('ACTIVE','COMPLETED','CANCELLED','LOST_TICKET')`
 
 **Payment Status Values**
 
@@ -810,7 +806,7 @@ Authorization: Bearer JWT_ACCESS_TOKEN
 | `PAID` | Đã thanh toán |
 | `FAILED` | Thanh toán thất bại |
 
-> Khớp `PARKING_SESSION.PAYMENT_STATUS ENUM('PENDING','PAID','FAILED')`
+> `PARKING_SESSION.PAYMENT_STATUS ENUM('PENDING','PAID','FAILED')`
 
 ---
 
@@ -907,8 +903,8 @@ Authorization: Bearer JWT_ACCESS_TOKEN
 }
 ```
 
-> `payment_type` khớp `PAYMENT.PAYMENT_TYPE ENUM('SESSION','MONTHLY_PASS','BOOKING','INCIDENT')`  
-> `payment_method` khớp `PAYMENT.PAYMENT_METHOD ENUM('CASH','VNPAY','SUBSCRIPTION')`
+> `payment_type` tương ứng `PAYMENT.PAYMENT_TYPE ENUM('SESSION','MONTHLY_PASS','BOOKING','INCIDENT')`  
+> `payment_method` tương ứng `PAYMENT.PAYMENT_METHOD ENUM('CASH','VNPAY','SUBSCRIPTION')`
 
 **Supported Payment Methods**
 
@@ -996,7 +992,7 @@ Authorization: Bearer JWT_ACCESS_TOKEN
 }
 ```
 
-> Các field khớp `PAYMENT`: `PAYMENT_TYPE`, `AMOUNT_DUE`, `AMOUNT_PAID`, `CHANGE_DUE`, `PAYMENT_METHOD`, `STATUS ENUM('SUCCESS','FAILED')`, `TRANSACTION_ID`, `RECEIPT_URL`
+> `PAYMENT`: `PAYMENT_TYPE`, `AMOUNT_DUE`, `AMOUNT_PAID`, `CHANGE_DUE`, `PAYMENT_METHOD`, `STATUS ENUM('SUCCESS','FAILED')`, `TRANSACTION_ID`, `RECEIPT_URL`
 
 ---
 
@@ -1138,7 +1134,7 @@ Authorization: Bearer JWT_ACCESS_TOKEN
 }
 ```
 
-> `issue_type` khớp `INCIDENT_LOG.ISSUE_TYPE ENUM('LOST_TICKET','WRONG_SLOT','SYSTEM_ERROR','OTHER')`
+> `issue_type` tương ứng `INCIDENT_LOG.ISSUE_TYPE ENUM('LOST_TICKET','WRONG_SLOT','SYSTEM_ERROR','OTHER')`
 
 **Success Response (200 OK)**
 ```json
@@ -1307,7 +1303,7 @@ Authorization: Bearer JWT_ACCESS_TOKEN
 }
 ```
 
-> Tất cả field khớp với `PRICING_POLICY`: `VEHICLE_TYPE_ID`, `BASE_PRICE`, `HOURLY_RATE`, `OVERNIGHT_FEE`, `EFFECTIVE_DATE`
+> `PRICING_POLICY`: `VEHICLE_TYPE_ID`, `BASE_PRICE`, `HOURLY_RATE`, `OVERNIGHT_FEE`, `EFFECTIVE_DATE`
 
 **Success Response (201 Created)**
 ```json
@@ -1384,7 +1380,6 @@ Authorization: Bearer JWT_ACCESS_TOKEN
 }
 ```
 
-> `revenue_by_payment_method` chỉ có 3 giá trị khớp `PAYMENT.PAYMENT_METHOD ENUM('CASH','VNPAY','SUBSCRIPTION')`
 
 **DB Tables:** `PAYMENT`, `PARKING_SESSION`, `VEHICLE_TYPE`
 
@@ -1460,7 +1455,6 @@ Authorization: Bearer JWT_ACCESS_TOKEN
 }
 ```
 
-> `by_issue_type` chỉ dùng giá trị trong `INCIDENT_LOG.ISSUE_TYPE ENUM('LOST_TICKET','WRONG_SLOT','SYSTEM_ERROR','OTHER')`
 
 **DB Tables:** `INCIDENT_LOG`, `USERS`
 
@@ -1514,7 +1508,7 @@ Content-Disposition: attachment; filename="revenue_report_2024_01.pdf"
 }
 ```
 
-> Tất cả field khớp `SUBSCRIPTION_PLAN`: `PLAN_ID VARCHAR(50)`, `VEHICLE_TYPE_ID`, `DURATION_DAYS`, `PRICE`, `GRACE_PERIOD_DAYS`
+> `SUBSCRIPTION_PLAN`: `PLAN_ID VARCHAR(50)`, `VEHICLE_TYPE_ID`, `DURATION_DAYS`, `PRICE`, `GRACE_PERIOD_DAYS`
 
 **Success Response (201 Created)**
 ```json
@@ -1570,7 +1564,6 @@ Content-Disposition: attachment; filename="revenue_report_2024_01.pdf"
 }
 ```
 
-> `monthly_pass_id` là `INT AUTO_INCREMENT`. `end_date = start_date + DURATION_DAYS`. `status` khớp `MONTHLY_PASS.STATUS ENUM('ACTIVE','EXPIRED')`. `payment_status` khớp `ENUM('PENDING','PAID')`.
 
 **DB Tables:** `MONTHLY_PASS`, `SUBSCRIPTION_PLAN`, `VEHICLE`
 
@@ -1584,7 +1577,6 @@ Content-Disposition: attachment; filename="revenue_report_2024_01.pdf"
 | **Endpoint** | `/api/v1/subscription/status/{vehicle_id}` |
 | **Authentication** | Bắt buộc |
 
-**Path Parameters:** `vehicle_id` là `INT`
 
 **Success Response (200 OK)**
 ```json
@@ -1630,7 +1622,8 @@ Content-Disposition: attachment; filename="revenue_report_2024_01.pdf"
 }
 ```
 
-> Tất cả field khớp `BOOKING`: `VEHICLE_ID INT`, `SLOT_ID VARCHAR(20)`, `EXPECTED_ARRIVAL`, `NOTES`. `VEHICLE_USER_ID` lấy từ JWT. `EXPIRED_AT` được server tính tự động.
+> `BOOKING`: `VEHICLE_ID INT`, `SLOT_ID VARCHAR(20)`, `EXPECTED_ARRIVAL`, `NOTES`. `VEHICLE_USER_ID`.
+> `EXPIRED_AT` được server tính tự động.
 
 **Success Response (201 Created)**
 ```json
@@ -1649,7 +1642,7 @@ Content-Disposition: attachment; filename="revenue_report_2024_01.pdf"
 }
 ```
 
-> `status` khớp `BOOKING.STATUS ENUM('PENDING','CONFIRMED','CANCELLED','COMPLETED')`
+> `status` tương ứng `BOOKING.STATUS ENUM('PENDING','CONFIRMED','CANCELLED','COMPLETED')`
 
 ---
 
@@ -1756,16 +1749,3 @@ GET /api/v1/parking/slots?page=2&page_size=20
 
 ---
 
-## Ghi chú tương thích Database
-
-| Điểm chú ý | Chi tiết |
-|-----------|---------|
-| `USER_ID` | `VARCHAR(20)` — không phải integer |
-| `VEHICLE_ID` | `INT AUTO_INCREMENT` — không có prefix string |
-| `MONTHLY_PASS_ID` | `INT AUTO_INCREMENT` — không có prefix string |
-| `SESSION_ID` | `VARCHAR(20)` — giữ ngắn gọn |
-| `PAYMENT_METHOD` | Chỉ `CASH`, `VNPAY`, `SUBSCRIPTION` theo ENUM |
-| `ISSUE_TYPE` | Chỉ `LOST_TICKET`, `WRONG_SLOT`, `SYSTEM_ERROR`, `OTHER` theo ENUM |
-| `PAYMENT_TYPE` | `SESSION`, `MONTHLY_PASS`, `BOOKING`, `INCIDENT` |
-| Thông tin chủ xe | Lấy từ bảng `USERS` qua FK, không lưu trùng trong `VEHICLE` |
-| `PRICING_POLICY` | Không có `max_daily_fee` riêng — cần tính ứng dụng hoặc thêm cột vào DB |
