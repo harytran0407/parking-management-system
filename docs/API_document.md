@@ -1361,10 +1361,23 @@ Content-Disposition: attachment; filename="revenue_report_2024_01.pdf"
 **Request Body**
 ```json
 {
+  "plan_id":"plan_monthly_car",
   "vehicle_type": "car",
   "duration_days": 30,
   "price": 1500000,
   "grace_period_days": 7
+}
+```
+
+**Success response** (201 Created)
+```json
+{
+  "plan_id": "plan_monthly_car",
+  "vehicle_type": "car",
+  "duration_days": 30,
+  "price": 1500000,
+  "grace_period_days": 7,
+  "created_at": "2024-02-01T08:00:00Z"
 }
 ```
 
@@ -1380,10 +1393,23 @@ Content-Disposition: attachment; filename="revenue_report_2024_01.pdf"
 **Request Body**
 ```json
 {
-  "vehicle_id": "veh_78901",
+  "vehicle_id": "78901",
+  "plan_id": "plan_monthly_car",
+  "start_date": "2024-02-01"
+}
+```
+
+**Success Response** (201 Created)
+```json
+{
+  "card_id": 1,
+  "monthly_pass_id": "mp_1"      // format "mp_" + CARD_ID
+  "vehicle_id": 78901,
   "plan_id": "plan_monthly_car",
   "start_date": "2024-02-01",
-  "payment_method": "vnpay_qr"
+  "end_date": "2024-03-02"        // start_date + 30 ngày
+  "status": "ACTIVE",
+  "payment_status": "PENDING"   // chờ module Payment xác nhận
 }
 ```
 
@@ -1397,9 +1423,9 @@ Content-Disposition: attachment; filename="revenue_report_2024_01.pdf"
 **Success Response**
 ```json
 {
-  "monthly_pass_id": "mp_001",
+  "monthly_pass_id": "mp_1",
   "vehicle_id": "veh_78901",
-  "license_plate": "29A-123.45",
+  "license_plate": "29A-12345",
   "status": "active",
   "start_date": "2024-02-01",
   "end_date": "2024-02-29",
