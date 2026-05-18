@@ -17,7 +17,7 @@
 
 ---
 
-# 🔐 Authentication Module API Documentation
+# Authentication Module API Documentation
 
 ## 1. Authentication Overview
 
@@ -47,7 +47,7 @@ http://localhost:5000
 
 ---
 
-# 🔑 1.1 User Login
+#  1.1 User Login
 
 | Property       | Value                |
 | -------------- | -------------------- |
@@ -182,7 +182,7 @@ http://localhost:5000
 
 ---
 
-# 🚪 1.3 Logout
+# 1.3 Logout
 
 | Property       | Value                 |
 | -------------- | --------------------- |
@@ -210,7 +210,7 @@ Authorization: Bearer JWT_ACCESS_TOKEN
 ```
 ---
 
-## 👥 2. User Management Module
+## 2. User Management Module
 
 ### 2.1 Get All Users (Admin)
 
@@ -330,7 +330,7 @@ Authorization: Bearer JWT_ACCESS_TOKEN
 
 ---
 
-## 🅿️ 3. Parking Management Module
+## 3. Parking Management Module
 
 ### 3.1 Get Building Information
 
@@ -712,7 +712,6 @@ Authorization: Bearer JWT_ACCESS_TOKEN
   "vehicle_type": "car",
   "camera_id": "cam_in_01",
   "gate_id": "gate_in_01",
-  "confidence_score": 0.96,
   "captured_image_url": "/uploads/plates/abc.jpg",
   "detected_at": "2026-05-17T10:00:00Z"
 }
@@ -739,7 +738,6 @@ Authorization: Bearer JWT_ACCESS_TOKEN
 |----------|-------|
 | `license_plate` | Required |
 | `vehicle_type` | car / motorcycle / electric_car |
-| `confidence_score` | Range 0 → 1 |
 | `camera_id` | Required |
 | `gate_id` | Required |
 
@@ -766,7 +764,6 @@ Authorization: Bearer JWT_ACCESS_TOKEN
   "license_plate": "51H-12345",
   "camera_id": "cam_out_01",
   "gate_id": "gate_out_01",
-  "confidence_score": 0.95,
   "detected_at": "2026-05-17T12:00:00Z"
 }
 ```
@@ -870,7 +867,7 @@ Authorization: Bearer JWT_ACCESS_TOKEN
 
 ---
 
-## 💳 6. Payment Module
+## 6. Payment Module
 
 ### 6.1 Create Payment Request
 
@@ -1029,7 +1026,7 @@ Authorization: Bearer JWT_ACCESS_TOKEN
 
 ---
 
-## 👔 7. Staff Operations Module
+## 7. Staff Operations Module
 
 ### 7.1 Handle Lost Ticket
 
@@ -1151,7 +1148,7 @@ Authorization: Bearer JWT_ACCESS_TOKEN
 
 ---
 
-## 📊 8. Admin Dashboard Module
+## 8. Admin Dashboard Module
 
 ### 8.1 Dashboard Analytics
 
@@ -1216,7 +1213,7 @@ Authorization: Bearer JWT_ACCESS_TOKEN
 }
 ```
 
-## 📈 9. Reports Module
+## 9. Reports Module
 
 ### 9.1 Revenue Report
 
@@ -1352,9 +1349,9 @@ Content-Disposition: attachment; filename="revenue_report_2024_01.pdf"
 
 ---
 
-## 💳 13. Monthly Pass Module
+## 10. Monthly Pass Module
 
-### 13.1 Create Subscription Plan
+### 10.1 Create Subscription Plan
 
 | Property | Value |
 |----------|-------|
@@ -1372,7 +1369,7 @@ Content-Disposition: attachment; filename="revenue_report_2024_01.pdf"
 }
 ```
 
-### 13.2 Register Subscription
+### 10.2 Register Subscription
 
 | Property | Value |
 |----------|-------|
@@ -1391,7 +1388,7 @@ Content-Disposition: attachment; filename="revenue_report_2024_01.pdf"
 }
 ```
 
-### 13.3 Get Subscription Status
+### 10.3 Get Subscription Status
 
 | Property | Value |
 |----------|-------|
