@@ -25,19 +25,27 @@ export function AuthProvider({ children }) {
     try {
       // Simulate API loading time (Mock API)
       await new Promise(resolve => setTimeout(resolve, 500))
-      
+        const savedUserStr = localStorage.getItem(`profile_${email}`);
+        let existingUser ={};
+        if(savedUserStr){
+           existingUser = JSON.parse(savedUserStr);
+        }
       const userData = {
-        id: '1',
-        email,
-        name: email.split('@')[0],
-        role,
-        avatar: 'https://via.placeholder.com/150'
+        id: existingUser.id || '1',
+        email:email,
+        name: existingUser.name || email.split('@')[0],
+        role:role,
+        phone: existingUser.phone || '',
+        avatar: existingUser.avatar || 'https://via.placeholder.com/150'
       }
       
       setUser(userData)
+
       localStorage.setItem('user', JSON.stringify(userData))
       localStorage.setItem('userRole', role)
+      localStorage.setItem(`profile_${email}`,JSON.stringify(userData))
       return userData
+
     } catch (error) {
       console.error('Login failed:', error)
       throw error
@@ -52,11 +60,21 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('userRole')
   }, [])
 
+  // Update user
+  const updateUser = useCallback((updateData) =>{
+    setUser((prevUser) =>{
+      const newUser = {...prevUser,...updateData};
+        localStorage.setItem('user',JSON.stringify(newUser));
+        //update mock database by email
+        localStorage.setItem(`profile_${newUser.email}`,JSON.stringify(newUser));
+        return newUser;
+    });
+  },[]);
   const isAuthenticated = !!user
 
-  return (
-    <AuthContext.Provider value={{ user, loading, login, logout, isAuthenticated }}>
+ return (
+    <AuthContext.Provider value={{ user, loading, login, logout, isAuthenticated, updateUser }}>
       {children}
     </AuthContext.Provider>
-  )
+  );
 }

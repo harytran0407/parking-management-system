@@ -1,28 +1,57 @@
 import { Routes, Route } from 'react-router-dom'
-import { Home, Calendar, CreditCard, MessageSquare } from 'lucide-react'
+import React, { useState } from 'react'
+import { Car, Home, History, CreditCard, Calendar, MessageSquare, User, CarFront } from 'lucide-react'
 import Sidebar from '../components/Sidebar'
 import Header from '../components/Header'
 import UserDashboard from '../pages/user/Dashboard'
+import BookSlot from '../pages/user/BookSlot'; 
+import Profile from '../pages/user/Profile';
+import MyBookings from '../pages/user/MyBookings'
+import FeedBack from '../pages/user/FeedBack'
 
 export default function UserLayout() {
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const navigationItems = [
-    { path: '/user', label: 'My Parking', icon: <Home size={20} /> },
-    { path: '/user/book', label: 'Book a Spot', icon: <Calendar size={20} /> },
-    { path: '/user/payment', label: 'Payment', icon: <CreditCard size={20} /> },
+    { path: '/user', label: 'Parking Info', icon: <Car size={20} /> },
+    { path: '/user/book', label: 'Book a Slot', icon: <Calendar size={20} /> },
+    { path: '/user/bookings', label: 'My Bookings', icon: <History size={20} /> },
+    { path: '/user/myvehicle', label: 'My Vehicles', icon: <CarFront size={20} /> },
     { path: '/user/feedback', label: 'Feedback', icon: <MessageSquare size={20} /> },
   ]
 
   return (
-    <div className="main-container">
-      <Sidebar navigationItems={navigationItems} />
-      <div className="content-wrapper">
-        <Header title="Driver" />
-        <main className="page-content">
+    <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
+      
+      <Sidebar 
+        navigationItems={navigationItems} 
+        isCollapsed={isSidebarCollapsed} 
+        setIsCollapsed={setIsSidebarCollapsed} 
+      />
+      
+     
+      <div className="relative flex flex-col flex-1 overflow-hidden">
+        
+        <Header 
+          title="Driver Dashboard" 
+          isSidebarCollapsed={isSidebarCollapsed} 
+          setIsCollapsed={setIsSidebarCollapsed} 
+        />
+        
+       
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 scroll-smooth transition-all duration-300 ease-in-out">
           <Routes>
             <Route path="/" element={<UserDashboard />} />
+            <Route path="/book" element={<BookSlot />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/bookings" element={<MyBookings />} />
+            <Route path="/feedback" element={<FeedBack />} />
+          
+            {/* Đưa route catch-all /* xuống dưới cùng để chuẩn logic React Router */}
             <Route path="/*" element={<UserDashboard />} />
+
           </Routes>
         </main>
+
       </div>
     </div>
   )

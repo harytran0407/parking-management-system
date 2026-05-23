@@ -10,6 +10,7 @@ export default function Register() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    phone:'',
     password: '',
     confirmPassword: '',
     role: 'Customer' 
@@ -49,6 +50,12 @@ export default function Register() {
     const nameRegex = /^[a-zA-ZÀ-ỹ\s]{5,20}$/;
     if (!nameRegex.test(formData.name)) {
       currentErrors.name = "Name must be 5-20 characters and contain only letters.";
+      isValid = false;
+    }
+    // Validate Phone Number
+    const phoneRegex = /^(0|)[3|5|7|8|9][0-9]{8}$/;
+    if(!phoneRegex.test(formData.phone)){
+      currentErrors.phone = "Invalid phone number format (e.g., 912345678 or 0912345678).";
       isValid = false;
     }
 
@@ -144,6 +151,31 @@ export default function Register() {
               placeholder="name@smartpark.com"
               className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
             />
+          </div>
+
+          {/* PHONE NUMBER INPUT*/}
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1">Phone Number</label>
+
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium select-none">
+                +84
+              </span>
+              
+              <input
+                type="tel"
+                name="phone"
+                required
+                value={formData.phone}
+                onChange={handleChange}
+                placeholder="912 345 678"
+                className={`w-full pl-12 pr-4 py-2.5 bg-slate-800 border rounded-lg text-white placeholder-slate-500 focus:outline-none transition ${
+                  errors.phone ? 'border-red-500 focus:border-red-500' : 'border-slate-700 focus:border-blue-500'
+                }`}
+              />
+            </div>
+
+            {errors.phone && <p className="text-red-400 text-xs mt-1.5 font-medium">✕ {errors.phone}</p>}
           </div>
 
           {/* PASSWORD INPUT - REAL-TIME VALIDATION */}

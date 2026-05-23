@@ -38,33 +38,45 @@ export default function ManagerDashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        {/* RECENT ACTIVITY CARD */}
         <div className="card">
           <h3 className="subsection-title">Recent Activity</h3>
           <div className="space-y-3">
-            <div className="flex items-center justify-between p-3 bg-dark-700 rounded-lg">
-              <span className="text-gray-300">Vehicle ABC-123 checked in</span>
-              <span className="text-xs text-gray-400">2 min ago</span>
+            
+         
+            <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800/60 rounded-lg transition-colors duration-200">
+              <span className="text-slate-700 dark:text-slate-300 font-medium text-sm">Vehicle ABC-123 checked in</span>
+              <span className="text-xs text-slate-400 dark:text-slate-500">2 min ago</span>
             </div>
-            <div className="flex items-center justify-between p-3 bg-dark-700 rounded-lg">
-              <span className="text-gray-300">Vehicle XYZ-789 checked out</span>
-              <span className="text-xs text-gray-400">5 min ago</span>
+            
+          
+            <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800/60 rounded-lg transition-colors duration-200">
+              <span className="text-slate-700 dark:text-slate-300 font-medium text-sm">Vehicle XYZ-789 checked out</span>
+              <span className="text-xs text-slate-400 dark:text-slate-500">5 min ago</span>
             </div>
-            <div className="flex items-center justify-between p-3 bg-dark-700 rounded-lg">
-              <span className="text-gray-300">Slot B-05 marked under maintenance</span>
-              <span className="text-xs text-gray-400">10 min ago</span>
+            
+           
+            <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800/60 rounded-lg transition-colors duration-200">
+              <span className="text-slate-700 dark:text-slate-300 font-medium text-sm">Slot B-05 marked under maintenance</span>
+              <span className="text-xs text-slate-400 dark:text-slate-500">10 min ago</span>
             </div>
+            
           </div>
         </div>
 
+        {/* QUICK ACTIONS CARD */}
         <div className="card">
           <h3 className="subsection-title">Quick Actions</h3>
           <div className="space-y-2">
-            <button className="w-full btn-primary justify-start">View Parking Slots</button>
-            <button className="w-full btn-secondary justify-start">View Reports</button>
-            <button className="w-full btn-secondary justify-start">Manage Pricing</button>
-            <button className="w-full btn-secondary justify-start">Vehicle Types</button>
+           
+            <button className="w-full btn-primary flex justify-start items-center">View Parking Slots</button>
+            <button className="w-full btn-secondary flex justify-start items-center">View Reports</button>
+            <button className="w-full btn-secondary flex justify-start items-center">Manage Pricing</button>
+            <button className="w-full btn-secondary flex justify-start items-center">Vehicle Types</button>
           </div>
         </div>
+        
       </div>
     </div>
   )

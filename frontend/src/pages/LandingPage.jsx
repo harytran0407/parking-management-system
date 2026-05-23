@@ -1,17 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  MapPin,
-  Car,
-  Clock,
-  Search,
-  ShieldCheck,
-  Zap,
-  CreditCard,
-  LayoutDashboard,
-  Check,
-  ArrowUp,
-} from "lucide-react";
+import {MapPin, Car,Clock,Search,ShieldCheck,Zap,CreditCard,LayoutDashboard,Check,ArrowUp,} from "lucide-react";
 
 export default function LandingPage() {
   const navigate = useNavigate();
@@ -34,6 +23,7 @@ export default function LandingPage() {
         setShowScrollTop(false);
       }
     };
+    
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
@@ -72,8 +62,7 @@ export default function LandingPage() {
         <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-300">
           <button
             onClick={() => scrollToSection("home")}
-            className="text-white hover:text-blue-400 transition cursor-pointer"
-          >
+            className="text-white hover:text-blue-400 transition cursor-pointer">
             Home
           </button>
           <button
@@ -124,76 +113,8 @@ export default function LandingPage() {
           automated invoicing. Start your hassle-free journey today.
         </p>
 
-        {/* 4. SEARCH WIDGET  */}
-        <div className="w-full max-w-4xl bg-slate-900/90 border border-slate-700/50 backdrop-blur-md p-4 rounded-2xl md:rounded-full shadow-2xl flex flex-col md:flex-row items-center gap-4">
-          {/*Destination/ parking area*/}
-          <div className="w-full md:w-1/3 flex items-center gap-3 px-4 py-2 border-b md:border-b-0 md:border-r border-slate-700/50">
-            <MapPin className="text-blue-400 w-5 h-5 flex-shrink-0" />
-            <div className="w-full">
-              <label className="block text-xs text-slate-400 font-medium">
-                Destination
-              </label>
-              <input
-                type="text"
-                placeholder="Zone A, Zone B..."
-                className="bg-transparent text-sm w-full focus:outline-none text-white mt-0.5 placeholder-slate-500"
-                value={searchData.location}
-                onChange={(e) =>
-                  setSearchData({ ...searchData, location: e.target.value })
-                }
-              />
-            </div>
-          </div>
-
-          {/* Vehicle Type */}
-          <div className="w-full md:w-1/4 flex items-center gap-3 px-4 py-2 border-b md:border-b-0 md:border-r border-slate-700/50">
-            <Car className="text-blue-400 w-5 h-5 flex-shrink-0" />
-            <div className="w-full">
-              <label className="block text-xs text-slate-400 font-medium">
-                Vehicle Type
-              </label>
-              <select
-                className="bg-transparent text-sm w-full focus:outline-none text-white mt-0.5 cursor-pointer"
-                value={searchData.vehicleType}
-                onChange={(e) =>
-                  setSearchData({ ...searchData, vehicleType: e.target.value })
-                }
-              >
-                <option value="car" className="bg-slate-800">
-                  Car
-                </option>
-                <option value="motorbike" className="bg-slate-800">
-                  Motorbike
-                </option>
-              </select>
-            </div>
-          </div>
-
-          {/* Durations */}
-          <div className="w-full md:w-1/4 flex items-center gap-3 px-4 py-2">
-            <Clock className="text-blue-400 w-5 h-5 flex-shrink-0" />
-            <div className="w-full">
-              <label className="block text-xs text-slate-400 font-medium">
-                Duration (Hours)
-              </label>
-              <input
-                type="number"
-                min="1"
-                className="bg-transparent text-sm w-full focus:outline-none text-white mt-0.5 placeholder-slate-500"
-                value={searchData.duration}
-                onChange={(e) =>
-                  setSearchData({ ...searchData, duration: e.target.value })
-                }
-              />
-            </div>
-          </div>
-
-          {/* Search bar*/}
-          <button className="w-full md:w-auto bg-blue-600 hover:bg-blue-500 text-white font-medium px-8 py-3 rounded-xl md:rounded-full flex items-center justify-center gap-2 transition duration-200 shadow-lg shadow-blue-600/20">
-            <Search className="w-4 h-4" />
-            <span>Search</span>
-          </button>
-        </div>
+      
+        
       </div>
       {/* ================= SECTION: ABOUT SMARTPARK ================= */}
       <div

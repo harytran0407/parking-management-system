@@ -1,10 +1,13 @@
+/** @type {import('tailwindcss').Config} */
 export default {
+  darkMode: 'class', // set theme by class
   content: [
     './index.html',
     './src/**/*.{js,jsx,ts,tsx}',
   ],
   theme: {
     extend: {
+      
       colors: {
         dark: {
           50: '#f9fafb',
@@ -20,8 +23,18 @@ export default {
           950: '#030712',
         },
       },
+      
+      keyframes: {
+        wobble: {
+          '0%, 100%': { transform: 'rotate(0deg)' },
+          '25%': { transform: 'rotate(-3deg)' },
+          '75%': { transform: 'rotate(3deg)' },
+        },
+      },
+      animation: {
+        'wobble-slow': 'wobble 1s ease-in-out infinite',
+      },
     },
   },
   plugins: [],
-  darkMode: 'class',
 }
