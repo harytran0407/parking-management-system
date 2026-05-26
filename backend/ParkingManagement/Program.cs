@@ -5,11 +5,21 @@ using ParkingManagement.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+// Nạp các biến môi trường từ file .env - sử dụng thư viện DotNetEnv
+DotNetEnv.Env.Load();
+var dbServer = Environment.GetEnvironmentVariable("DB_SERVER");
+var dbPort = Environment.GetEnvironmentVariable("DB_PORT");
+var dbName = Environment.GetEnvironmentVariable("DB_NAME");
+var dbUser = Environment.GetEnvironmentVariable("DB_USER");
+var dbPassword = Environment.GetEnvironmentVariable("DB_PASSWORD");
+
+// 1. Cấu hình kết nối MySQL tự động nhận diện phiên bản (AutoDetect)
+var connectionString = $"server={dbServer};port={dbPort};database={dbName};user={dbUser};password={dbPassword};";
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString))
 );
 
+// 2. Đăng ký các dịch vụ Controller kèm cấu hình định dạng Snake Case từ nhánh main
 builder.Services.AddControllers()
     .AddJsonOptions(opt =>
         opt.JsonSerializerOptions.PropertyNamingPolicy =
@@ -18,17 +28,30 @@ builder.Services.AddControllers()
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// 3. Đăng ký các Repository & Service (Gộp cả 2 module Building và Parking)
 builder.Services.AddScoped<IBuildingRepository, BuildingRepository>();
 builder.Services.AddScoped<IBuildingService, BuildingService>();
 
+builder.Services.AddScoped<IParkingRepository, ParkingRepository>();
+builder.Services.AddScoped<IParkingService, ParkingService>();
+
 var app = builder.Build();
 
+// 4. Bật Swagger hoạt động khi chạy ở môi trường Development
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Parking Management API V1");
+        c.RoutePrefix = "swagger"; // Đường dẫn truy cập: localhost:port/swagger
+    });
 }
 
 app.UseHttpsRedirection();
+app.UseAuthorization();
 app.MapControllers();
+
+Console.WriteLine("=== ỨNG DỤNG PARKING ĐANG CHẠY ===");
+
 app.Run();
