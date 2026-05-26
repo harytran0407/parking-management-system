@@ -19,22 +19,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString))
 );
 
-<<<<<<< HEAD
-// 2. Đăng ký các dịch vụ Controller và Swagger
-builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-
-// 3. Đăng ký các Repository & Service (đảm bảo namespace trùng khớp với project của bạn)
-builder.Services.AddScoped<IParkingRepository, ParkingRepository>();
-builder.Services.AddScoped<IParkingService, ParkingService>();
-
-var app = builder.Build();
-
-// 4. Bật Swagger hoạt động
-app.UseSwagger();
-app.UseSwaggerUI(c =>
-=======
+// 2. Đăng ký các dịch vụ Controller kèm cấu hình định dạng Snake Case từ nhánh main
 builder.Services.AddControllers()
     .AddJsonOptions(opt =>
         opt.JsonSerializerOptions.PropertyNamingPolicy =
@@ -43,25 +28,30 @@ builder.Services.AddControllers()
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// 3. Đăng ký các Repository & Service (Gộp cả 2 module Building và Parking)
 builder.Services.AddScoped<IBuildingRepository, BuildingRepository>();
 builder.Services.AddScoped<IBuildingService, BuildingService>();
 
+builder.Services.AddScoped<IParkingRepository, ParkingRepository>();
+builder.Services.AddScoped<IParkingService, ParkingService>();
+
 var app = builder.Build();
 
+// 4. Bật Swagger hoạt động khi chạy ở môi trường Development
 if (app.Environment.IsDevelopment())
->>>>>>> e072f7f91a1aa7522f7d376e1f1aed9b8f2e52d7
 {
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Parking Management API V1");
-    c.RoutePrefix = "swagger"; // Truy cập trực tiếp tại: localhost:port/swagger
-});
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Parking Management API V1");
+        c.RoutePrefix = "swagger"; // Đường dẫn truy cập: localhost:port/swagger
+    });
+}
 
-<<<<<<< HEAD
+app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
 
 Console.WriteLine("=== ỨNG DỤNG PARKING ĐANG CHẠY ===");
-=======
-app.UseHttpsRedirection();
-app.MapControllers();
->>>>>>> e072f7f91a1aa7522f7d376e1f1aed9b8f2e52d7
+
 app.Run();
