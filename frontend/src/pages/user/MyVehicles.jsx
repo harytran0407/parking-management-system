@@ -228,7 +228,7 @@ export default function MyVehicles() {
   );
 
   return (
-    <div className="flex flex-col lg:flex-row h-[calc(100vh-80px)] overflow-hidden bg-[#f8f9ff] dark:bg-slate-950 -m-6">
+    <div className=" animate-slide-in flex flex-col lg:flex-row h-[calc(100vh-80px)] overflow-hidden bg-[#f8f9ff] dark:bg-slate-950 -m-6">
       {/* ========================================================
           LEFT PANEL: DANH SÁCH XE (Width cố định, hỗ trợ cuộn dọc)
           ======================================================== */}

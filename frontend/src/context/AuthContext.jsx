@@ -70,10 +70,39 @@ export function AuthProvider({ children }) {
         return newUser;
     });
   },[]);
+
+  const loginWithGoogle = useCallback(async(googleToken) =>{
+      setLoading(true)
+      try{
+        // [API INTEGRATION]
+        await new Promise(resolve =>setTimeout(resolve,5000))
+
+          const userData = {
+        id: `G-${Math.floor(Math.random() * 10000)}`, // Tạo một ID ngẫu nhiên
+        email: "google.user@gmail.com",               // Thực tế sẽ lấy từ Google
+        name: "Google User",
+        role: "User",                                 // Mặc định gán là User khi đăng nhập qua Google
+        phone: '',
+        avatar: 'https://www.svgrepo.com/show/475656/google-color.svg'
+      }
+      setUser(userData);
+        // Save to local storage 
+        localStorage.setItem('user',JSON.stringify(userData))
+        localStorage.setItem('userRole',userData.role)
+        localStorage.setItem(`profile_${userData.email}`,JSON.stringify(userData))
+        return userData
+      }catch (error) {
+        console.error('Google login failed: ',error)
+        throw error
+      }finally{
+        setLoading(false)
+      }
+  },[])
   const isAuthenticated = !!user
 
+
  return (
-    <AuthContext.Provider value={{ user, loading, login, logout, isAuthenticated, updateUser }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, isAuthenticated, updateUser, loginWithGoogle }}>
       {children}
     </AuthContext.Provider>
   );

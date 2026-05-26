@@ -14,7 +14,7 @@ export default function Sidebar({ navigationItems = [] }) {
     logout();
   };
 
-  
+
  const checkIsActive = (path) => {
 
    if (path === "/user") {

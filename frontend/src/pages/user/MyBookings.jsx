@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
-import {
-  ArrowLeft,
+import {ArrowLeft,
   Car,
   Bike,
   QrCode,

@@ -7,7 +7,7 @@ import { useGoogleLogin } from '@react-oauth/google'
 
 export default function Login() {
   const navigate = useNavigate()
-  const { login } = useAuth()
+  const { login, loginWithGoogle } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [role, setRole] = useState('manager')
@@ -28,6 +28,27 @@ export default function Login() {
       setLoading(false)
     }
   }
+  
+  const handleGoogleLogin = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      console.log("ĐÃ LẤY ĐƯỢC TOKEN TỪ GOOGLE:", tokenResponse);
+      setError('')
+        setLoading(true)
+      try{
+        const token = tokenResponse.access_token;
+        const user = await loginWithGoogle(token);
+        const userRole = user.role.toLowerCase();
+        navigate(`/${userRole}`);
+      }catch(err){
+        setError(err.message || `Google login failed`)
+      }finally{
+        setLoading(false)
+      }
+    },
+    onError : () =>{
+      setError('Login with Google failed.Please try again')
+    }
+  });
 
   const roles = [
     { value: 'manager', label: 'Parking Manager' },
@@ -136,10 +157,12 @@ export default function Login() {
           {/* Google button */}
           <button 
             type="button" 
+            onClick={() => handleGoogleLogin()}
+            disabled={loading}
             className="w-full flex items-center justify-center gap-3 bg-white hover:bg-slate-100 text-slate-700 font-medium py-2.5 px-4 rounded-lg transition duration-200"
           >
             <img src={googleIcon} alt="Google" className="w-5 h-5" />
-            Continue with Google
+            {loading? 'Processing...' :'Continue with Google'}
           </button>
 
 

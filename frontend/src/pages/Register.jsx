@@ -4,9 +4,12 @@ import { ArrowLeft } from 'lucide-react';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import googleIcon from '../assets/google.png';
+import { useGoogleLogin } from '@react-oauth/google';
+import {useAuth} from '../hooks/useAuth';
 
 export default function Register() {
   const navigate = useNavigate();
+  const {loginWithGoogle} = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -99,6 +102,28 @@ export default function Register() {
       setLoading(false);
     }
   };
+  const handleGoogleLogin = useGoogleLogin({
+    onSuccess: async(tokenResponse) =>{
+      setLoading(true);
+      try{
+        const token = tokenResponse.access_token;
+        const user = await loginWithGoogle(token);
+        toast.success("Google sign-up successful");
+
+        setTimeout(() =>{
+          const userRole = user.role.toLowerCase();
+          navigate(`/${userRole}`);
+        },1500);
+      }catch(err){
+        toast.error(err.message || 'Google sign-up failed');
+      }finally{
+        setLoading(false);
+      }
+    },
+      onError: () =>{
+        toast.error('Google sign-up failed.Please try again.')
+      }
+  });
 
   
   return (
@@ -250,9 +275,13 @@ export default function Register() {
         </div>
 
         {/* GOOGLE SIGN UP BUTTON */}
-        <button className="w-full flex items-center justify-center gap-3 bg-white hover:bg-slate-100 text-slate-700 font-medium py-2.5 px-4 rounded-lg transition duration-200">
+        <button 
+        type="button"
+        onClick={() => handleGoogleLogin()}
+        disabled={loading}
+        className="w-full flex items-center justify-center gap-3 bg-white hover:bg-slate-100 text-slate-700 font-medium py-2.5 px-4 rounded-lg transition duration-200">
           <img src={googleIcon} alt="Google" className="w-5 h-5" />
-          Sign up with Google
+          {loading ? 'Proccessing...' : 'Sign up with Google'}
         </button>
         
         {/* LOGIN LINK */}
