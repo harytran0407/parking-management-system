@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using ParkingManagement.DTOs;
 using ParkingManagement.Services;
+using Microsoft.AspNetCore.Authorization;
 
 namespace ParkingManagement.Controllers
 {
@@ -69,6 +70,35 @@ namespace ParkingManagement.Controllers
                 var innerMessage = ex.InnerException != null ? ex.InnerException.Message : ex.Message;
 
                 // Trả về mã lỗi HTTP 500 Internal Server Error (Lỗi hệ thống phía Server) kèm theo chuỗi thông điệp "INTERNAL_SERVER_ERROR"
+                return StatusCode(500, new { success = false, message = "INTERNAL_SERVER_ERROR", error = innerMessage });
+            }
+        }
+
+        /// <summary>
+        /// Endpoint xử lý tính năng Check-out cho phương tiện rời bãi xe.
+        /// </summary>
+        [HttpPost("check-out")]
+        //[Authorize(Roles = "ParkingStaff,CameraService")] // Phân quyền bắt buộc theo tài liệu
+        public async Task<IActionResult> CheckOut([FromBody] VehicleCheckOutDto dto)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(new { success = false, message = "Dữ liệu đầu vào không hợp lệ" });
+            }
+
+            try
+            {
+                // Gọi dịch vụ xử lý check-out và hứng kết quả vào biến 'result'
+                var response = await _parkingService.ProcessCheckOutAsync(dto);
+
+
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+
+                var innerMessage = ex.InnerException != null ? ex.InnerException.Message : ex.Message;
+
                 return StatusCode(500, new { success = false, message = "INTERNAL_SERVER_ERROR", error = innerMessage });
             }
         }

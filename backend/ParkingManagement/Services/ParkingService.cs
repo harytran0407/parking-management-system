@@ -101,5 +101,82 @@ namespace ParkingManagement.Services
                 }
             };
         }
+
+        public async Task<CheckOutResponseDto> ProcessCheckOutAsync(VehicleCheckOutDto checkOutDto)
+        {
+            // 1. Kiểm tra lượt đỗ ACTIVE
+            var session = await _parkingRepository.GetActiveSessionByPlateAsync(checkOutDto.LicensePlateOut);
+            if (session == null)
+            {
+                throw new Exception("Không tìm thấy lượt đỗ ACTIVE nào cho xe này.");
+            }
+
+            // 2. Tính toán thời gian thực tế
+            // SỬA LỖI: Do CheckInTime trong DB có thể là Nullable, dùng ?? để fallback nếu null
+            var checkInTime = session.CheckInTime ?? DateTime.UtcNow;
+            var checkOutTime = DateTime.UtcNow;
+
+            var duration = checkOutTime - checkInTime;
+
+            // SỬA LỖI: Dùng .TotalMinutes trực tiếp từ biến duration (Kiểu TimeSpan không có dấu ?)
+            int durationMinutes = (int)Math.Max(0, duration.TotalMinutes);
+
+            // 3. Lấy bảng giá từ Database
+            var policy = await _parkingRepository.GetActivePricingPolicyAsync();
+            if (policy == null)
+            {
+                throw new Exception("Chính sách giá (pricing_policy) chưa được cấu hình.");
+            }
+
+            // 4. Tính tiền theo block giờ dựa trên cấu trúc bảng thực tế của bạn
+            // SỬA LỖI: Đổi BaseRateFirstHour -> BasePrice, HourlyRateAfter -> HourlyRate
+            decimal totalFee = CalculateFee(durationMinutes, policy.BasePrice, policy.HourlyRate);
+
+            // 5. Gán dữ liệu check-out vào Entity
+            session.LicensePlateOut = checkOutDto.LicensePlateOut;
+            session.CameraOut = checkOutDto.CameraOut;
+            session.GateOut = checkOutDto.GateOut;
+            session.ImageUrlOut = checkOutDto.ImageUrlOut;
+            session.StaffOutId = checkOutDto.StaffOutId;
+            session.CheckOutTime = checkOutTime;
+            session.DurationMinutes = durationMinutes;
+            session.TotalFee = totalFee;
+            session.Status = "COMPLETED";
+            session.PaymentStatus = "PAID";
+
+            // SỬA LỖI / WARNING: Ép kiểu hoặc fallback khi SlotId bị null để tránh Warning CS8604
+            string slotIdParam = session.SlotId ?? string.Empty;
+            await _parkingRepository.UpdateSessionAndSlotAsync(session, slotIdParam);
+
+            // 6. Map dữ liệu sang DTO trả về
+            // SỬA LỖI: Thêm dấu .Value hoặc ?? để ép kiểu từ dữ liệu Nullable (?, decimal?) sang kiểu dữ liệu thường
+            return new CheckOutResponseDto
+            {
+                // SỬA LỖI: Đổi session.Id -> session.SessionId theo chuẩn DB của bạn
+                SessionId = session.SessionId,
+                LicensePlateIn = session.LicensePlateIn ?? string.Empty,
+                CheckInTime = session.CheckInTime ?? checkInTime,
+                CheckOutTime = session.CheckOutTime ?? checkOutTime,
+                DurationMinutes = session.DurationMinutes ?? durationMinutes,
+                Status = session.Status ?? "COMPLETED",
+                TotalFee = session.TotalFee ?? totalFee,
+                PaymentStatus = session.PaymentStatus ?? "PAID"
+            };
+        }
+
+        // SỬA LỖI: Đồng bộ kiểu dữ liệu decimal nhận từ PRICING_POLICY
+        private decimal CalculateFee(int minutes, decimal baseRate, decimal hourlyRate)
+        {
+            if (minutes <= 0) return 0;
+
+            int hours = (int)Math.Ceiling(minutes / 60.0);
+
+            if (hours <= 1)
+            {
+                return baseRate;
+            }
+
+            return baseRate + ((hours - 1) * hourlyRate);
+        }
     }
 }
