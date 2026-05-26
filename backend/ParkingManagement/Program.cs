@@ -19,6 +19,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString))
 );
 
+<<<<<<< HEAD
 // 2. Đăng ký các dịch vụ Controller và Swagger
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -33,13 +34,34 @@ var app = builder.Build();
 // 4. Bật Swagger hoạt động
 app.UseSwagger();
 app.UseSwaggerUI(c =>
+=======
+builder.Services.AddControllers()
+    .AddJsonOptions(opt =>
+        opt.JsonSerializerOptions.PropertyNamingPolicy =
+            System.Text.Json.JsonNamingPolicy.SnakeCaseLower);
+
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+builder.Services.AddScoped<IBuildingRepository, BuildingRepository>();
+builder.Services.AddScoped<IBuildingService, BuildingService>();
+
+var app = builder.Build();
+
+if (app.Environment.IsDevelopment())
+>>>>>>> e072f7f91a1aa7522f7d376e1f1aed9b8f2e52d7
 {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "Parking Management API V1");
     c.RoutePrefix = "swagger"; // Truy cập trực tiếp tại: localhost:port/swagger
 });
 
+<<<<<<< HEAD
 app.UseAuthorization();
 app.MapControllers();
 
 Console.WriteLine("=== ỨNG DỤNG PARKING ĐANG CHẠY ===");
+=======
+app.UseHttpsRedirection();
+app.MapControllers();
+>>>>>>> e072f7f91a1aa7522f7d376e1f1aed9b8f2e52d7
 app.Run();
