@@ -1,0 +1,52 @@
+﻿====================================================================
+TÀI LIỆU GIẢI THÍCH HÀM: UpdateUsername
+====================================================================
+
+1. VAI TRÒ TRONG HỆ THỐNG (System Context)
+--------------------------------------------------------------------
+- Đây là API Giai đoạn 2 trong luồng Progressive Profiling (Đăng ký hồ sơ dần dần).
+- API này được gọi ngay sau khi người dùng Đăng ký thành công và nhận được mã UserId.
+- Mục tiêu: Chuyển đổi Username tạm thời (user_xxx) thành tên chính thức do người dùng chọn và cập nhật thêm Họ tên (FullName).
+
+2. CẤU TRÚC DỮ LIỆU ĐẦU VÀO (UpdateUsernameDto)
+--------------------------------------------------------------------
+- UserId: Mã định danh duy nhất của người dùng (Bắt buộc để tìm đối tượng trong DB).
+- NewUsername: Tên đăng nhập mới người dùng muốn thay đổi.
+- FullName: Họ và tên đầy đủ của người dùng (Giúp cột FULL_NAME không còn bị NULL).
+
+3. CHI TIẾT CÁC BƯỚC XỬ LÝ (Processing Steps)
+--------------------------------------------------------------------
+
+BƯỚC 3.1: Kiểm tra tính hợp lệ của Username (Validation)
+- Gọi hàm: ValidationUtils.IsValidUsername(request.NewUsername);
+- Quy tắc Regex: ^[a-zA-Z0-9_]{4,20}$
+- Ý nghĩa: Chỉ chấp nhận chữ không dấu, số và gạch dưới. Độ dài từ 4-20 ký tự.
+- Xử lý: Nếu sai quy tắc, trả về mã 400 (Bad Request).
+
+BƯỚC 3.2: Truy vấn tìm kiếm thực thể (Retrieval)
+- Mã C#: _context.Users.FirstOrDefault(u => u.UserId == request.UserId);
+- Ý nghĩa: Chọc xuống database tìm dòng dữ liệu có UserId khớp với yêu cầu.
+- Xử lý: Nếu không tìm thấy (userInDb == null), trả về mã 404 (Not Found).
+
+BƯỚC 3.3: Kiểm tra tính độc nhất (Uniqueness Check)
+- Mã C#: _context.Users.Any(u => u.Username == request.NewUsername);
+- Ý nghĩa: Kiểm tra xem cái tên đăng nhập mới này đã có người nào khác sử dụng chưa.
+- Xử lý: Nếu đã tồn tại (True), trả về mã 409 (Conflict) để yêu cầu người dùng chọn tên khác.
+
+BƯỚC 3.4: Cập nhật dữ liệu (State Change)
+- Gán giá trị mới cho thực thể đã tìm thấy:
+  + userInDb.Username = request.NewUsername;
+  + userInDb.FullName = request.FullName;
+- Lúc này, trạng thái đối tượng trong bộ nhớ đệm (EF Core) đã được thay đổi.
+
+BƯỚC 3.5: Lưu thay đổi xuống Database (Persistence)
+- Mã C#: _context.SaveChanges();
+- SQL tương đương: UPDATE USERS SET USERNAME = ..., FULL_NAME = ... WHERE USER_ID = ...;
+- Trả kết quả: Mã 200 (OK) báo hiệu người dùng đã hoàn thiện hồ sơ thành công.
+
+4. KẾT QUẢ NGHIỆM THU (Acceptance Result)
+--------------------------------------------------------------------
+- Cột USERNAME trong Database được cập nhật từ "user_a1b2c3d4" sang tên mới (VD: "khang_dev").
+- Cột FULL_NAME được cập nhật từ NULL sang tên thật (VD: "Huỳnh Duy Khang").
+- Người dùng đã sẵn sàng để thực hiện bước Đăng nhập (Login).
+====================================================================

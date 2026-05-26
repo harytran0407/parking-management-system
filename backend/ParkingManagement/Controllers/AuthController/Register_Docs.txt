@@ -1,0 +1,40 @@
+﻿====================================================================
+TÀI LIỆU GIẢI THÍCH HÀM: Register
+====================================================================
+
+1. CẤU TRÚC TỔNG QUAN CỦA CLASS (Class Architecture)
+--------------------------------------------------------------------
+- [ApiController]: Đánh dấu class AuthController này là một Controller chuyên dùng để làm API (trả về JSON).
+- [Route("api/[controller]")]: Quy định địa chỉ URL cơ bản để Front-end có thể định tuyến và tìm tới class này (VD: gọi vào api/auth).
+- ControllerBase: Lớp cha cung cấp sẵn các công cụ, thuộc tính và phương thức tiện ích để làm việc với môi trường Web.
+- AppDbContext _context: Đối tượng đóng vai trò trung gian để kết nối và thực thi các thao tác với Database.
+- Constructor AuthController(AppDbContext context): Thực hiện cơ chế Tiêm phụ thuộc (Dependency Injection) để tự động bơm AppDbContext vào nội bộ controller khi API khởi chạy.
+
+2. PHƯƠNG THỨC ĐĂNG KÝ TÀI KHOẢN (Register Method)
+--------------------------------------------------------------------
+- [HttpPost("register")]: Chỉ định hàm này sẽ xử lý các request POST gửi đến URL "api/auth/register".
+- IActionResult: Kiểu dữ liệu trả về linh hoạt, cho phép hàm phản hồi các mã trạng thái HTTP (HTTP Status Code) khác nhau (200, 400, 409...) tùy vào kết quả của luồng logic.
+
+BƯỚC 2.1: Kiểm tra tính hợp lệ dữ liệu (Validation)
+- Sử dụng class tĩnh ValidationUtils để lọc dữ liệu đầu vào:
+  + Xác thực Email: Nếu sai định dạng, trả về mã lỗi 400 (Bad Request) + "Email không hợp lệ!".
+  + Xác thực Số điện thoại: Nếu sai, trả về mã lỗi 400 + "Số điện thoại không hợp lệ!".
+  + Xác thực Mật khẩu: Nếu sai, trả về mã lỗi 400 + "Mật khẩu không hợp lệ!".
+
+BƯỚC 2.2: Kiểm tra trùng lặp dưới Cơ sở dữ liệu (Database)
+- Mã C# LINQ: _context.Users.Any(u => u.Email == request._email || u.Phone == request._phoneNumber);
+- SQL tương đương: SELECT EXISTS (SELECT 1 FROM Users WHERE Email = ... OR Phone = ...);
+- Xử lý xung đột: Nếu isExist = true, lập tức ngắt luồng và trả về mã 409 (Conflict) + "Email hoặc số điện thoại đã tồn tại!".
+
+BƯỚC 2.3: Khởi tạo thông tin Thực thể mới (User Entity)
+- UserId: Sinh tự động theo thời gian thực (VD: USR260525113000).
+- Username: Sinh ngẫu nhiên một chuỗi tạm thời (VD: user_a1b2c3d4) để lách qua ràng buộc NOT NULL và UNIQUE, phục vụ cho flow khách hàng tạo Username sau.
+- RoleId: Gán cứng giá trị 4 (Tương ứng với quyền Parking User mặc định).
+- Status: Mặc định là "ACTIVE".
+- CreatedAt: Ghi nhận thời gian tạo bằng thời gian thực trên máy chủ (DateTime.Now).
+
+BƯỚC 2.4: Lưu trữ dữ liệu xuống MySQL
+- _context.Users.Add(newUser): Đưa đối tượng vừa tạo vào bộ nhớ đệm (Tracking) của Entity Framework.
+- _context.SaveChanges(): Chính thức biên dịch thành lệnh INSERT INTO Users... và ghi xuống Database.
+- Trả kết quả: Trả về mã 200 (OK) cùng cờ hiệu 'requireUsernameUpdate = true' báo hiệu cho Front-end biết cần hiển thị popup tạo Username ở bước tiếp theo.
+====================================================================
