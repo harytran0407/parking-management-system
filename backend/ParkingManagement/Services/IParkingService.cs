@@ -15,5 +15,6 @@ namespace ParkingManagement.Services
         /// <param name="staffId">Mã định danh của nhân viên trực cổng thực hiện quét thẻ</param>
         /// <returns>Đối tượng CheckInResponseDto chứa kết quả phản hồi chuẩn cấu trúc JSON</returns>
         Task<CheckInResponseDto> ProcessWalkInCheckInAsync(VehicleCheckInDto dto, string staffId);
+        Task<CheckOutResponseDto> ProcessCheckOutAsync(VehicleCheckOutDto checkOutDto);
     }
 }

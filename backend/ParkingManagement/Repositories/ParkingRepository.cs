@@ -113,5 +113,49 @@ namespace ParkingManagement.Repositories
                 throw;
             }
         }
+
+        public async Task<ParkingSession?> GetActiveSessionByPlateAsync(string licensePlate)
+        {
+            // Tìm session có biển số khớp và trạng thái đang đỗ (ACTIVE)
+            return await _context.ParkingSessions
+                .FirstOrDefaultAsync(s => s.LicensePlateIn == licensePlate && s.Status == "ACTIVE");
+        }
+
+        public async Task<PricingPolicy?> GetActivePricingPolicyAsync()
+        {
+            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            return await _context.PricingPolicies
+                .Where(p => p.EffectiveDate <= today)
+                .OrderByDescending(p => p.EffectiveDate)
+                .FirstOrDefaultAsync();
+        }
+
+        public async Task<bool> UpdateSessionAndSlotAsync(ParkingSession session, string slotId)
+        {
+            // Sử dụng Database Transaction để đảm bảo an toàn dữ liệu
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                // 1. Cập nhật trạng thái Session
+                _context.ParkingSessions.Update(session);
+
+                // 2. Cập nhật trạng thái Slot thành Available (Trống)
+                var slot = await _context.ParkingSlots.FindAsync(slotId);
+                if (slot != null)
+                {
+                    slot.Status = "Available";
+                    _context.ParkingSlots.Update(slot);
+                }
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+                return true;
+            }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        }
     }
 }
