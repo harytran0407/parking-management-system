@@ -1,0 +1,94 @@
+﻿using ParkingManagement.DTOs;
+using ParkingManagement.Repositories;
+
+namespace ParkingManagement.Services;
+
+public interface IBuildingService
+{
+    Task<BuildingInfoResponse> GetBuildingInfoAsync(string buildingId);
+    Task<UpdateBuildingResponse> UpdateBuildingInfoAsync(string buildingId, UpdateBuildingRequest request);
+}
+
+public class BuildingService : IBuildingService
+{
+    private readonly IBuildingRepository _repo;
+    private readonly ILogger<BuildingService> _logger;
+
+    public BuildingService(IBuildingRepository repo, ILogger<BuildingService> logger)
+    {
+        _repo = repo;
+        _logger = logger;
+    }
+
+    // ── GET ──────────────────────────────────────────────────────────────────
+
+    public async Task<BuildingInfoResponse> GetBuildingInfoAsync(string buildingId)
+    {
+        var building = await _repo.GetByIdAsync(buildingId)
+            ?? throw new KeyNotFoundException($"Building '{buildingId}' not found");
+
+        var (occupied, available) = await _repo.GetOccupancyAsync(buildingId);
+        int total = occupied + available;
+        double rate = total > 0 ? Math.Round((double)occupied / total * 100, 1) : 0;
+
+        return new BuildingInfoResponse
+        {
+            BuildingId = building.BuildingId,
+            BuildingName = building.BuildingName,
+            Address = building.Address,
+            TotalFloors = building.TotalFloors,
+            TotalSlots = building.TotalSlots,
+            Status = building.Status,
+            OperationHours = new OperationHoursDto
+            {
+                WeekdayHours = building.WeekdayHours,
+                WeekendHours = building.WeekendHours,
+                Is247 = building.Is247 ?? false
+            },
+            CurrentOccupancy = new OccupancyDto
+            {
+                TotalOccupied = occupied,
+                TotalAvailable = available,
+                OccupancyRate = rate
+            }
+        };
+    }
+
+    // ── PUT ──────────────────────────────────────────────────────────────────
+
+    public async Task<UpdateBuildingResponse> UpdateBuildingInfoAsync(
+        string buildingId, UpdateBuildingRequest request)
+    {
+        var building = await _repo.GetByIdAsync(buildingId)
+            ?? throw new KeyNotFoundException($"Building '{buildingId}' not found");
+
+        building.BuildingName = request.BuildingName.Trim();
+        building.Address = request.Address.Trim();
+        building.Is247 = request.Is247;
+
+        if (!request.Is247)
+        {
+            building.WeekdayHours = request.WeekdayHours?.Trim();
+            building.WeekendHours = request.WeekendHours?.Trim();
+        }
+        else
+        {
+            building.WeekdayHours = null;
+            building.WeekendHours = null;
+        }
+
+        await _repo.UpdateAsync(building);
+        _logger.LogInformation("Building {Id} updated", buildingId);
+
+        return new UpdateBuildingResponse
+        {
+            BuildingId = building.BuildingId,
+            BuildingName = building.BuildingName,
+            Address = building.Address,
+            WeekdayHours = building.WeekdayHours,
+            WeekendHours = building.WeekendHours,
+            Is247 = building.Is247 ?? false,
+            UpdatedAt = DateTime.UtcNow
+        };
+    }
+}
