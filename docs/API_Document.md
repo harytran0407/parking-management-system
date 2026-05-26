@@ -131,6 +131,79 @@ Authorization: Bearer JWT_ACCESS_TOKEN
 ```
 
 ---
+## 1.3 Register
+
+| Property | Value |
+|----------|-------|
+| **Method** | `POST` |
+| **Endpoint** | `/api/v1/auth/register` |
+| **Authentication** | Không yêu cầu |
+| **Roles** | Tất cả |
+
+**Request Headers**
+```json
+{
+  "Content-Type": "application/json"
+}
+```
+
+**Request Body**
+```json
+{
+  "full_name": "Nguyen Van A",
+  "email": "user@parking.com",
+  "phone_number": "0901234567",
+  "password": "123456",
+  "confirm_password": "123456"
+}
+```
+
+**Validation Rules**
+
+| Field | Rule |
+|-------|------|
+| `full_name` | Bắt buộc, tối thiểu 2 ký tự, tối đa 100 ký tự |
+| `email` | Bắt buộc, định dạng email hợp lệ, tối đa 100 ký tự, chưa được đăng ký |
+| `phone_number` | Bắt buộc, định dạng số điện thoại hợp lệ (VD: 10 chữ số), chưa được đăng ký |
+| `password` | Bắt buộc, tối thiểu 6 ký tự, tối đa 255 ký tự |
+| `confirm_password` | Bắt buộc, phải khớp với `password` |
+
+> **Note:** Role mặc định khi đăng ký là `ParkingUser`. Tài khoản `ParkingStaff` chỉ được tạo bởi `Admin` thông qua endpoint riêng.
+
+**Success Response (201 Created)**
+```json
+{
+  "success": true,
+  "message": "Registration successful",
+  "data": {
+    "user_id": "usr_002",
+    "full_name": "Nguyen Van A",
+    "email": "user@parking.com",
+    "phone_number": "0901234567",
+    "role": "ParkingUser",
+    "created_at": "2025-01-01T00:00:00Z"
+  }
+}
+```
+
+> **DB ref:** `USERS.USER_ID VARCHAR(20)`, `USERS.FULL_NAME`, `USERS.EMAIL`, `USERS.PHONE_NUMBER`, `ROLE.ROLE_NAME`, `USERS.CREATED_AT`
+
+**Error Responses**
+```json
+// 409 — Email đã tồn tại
+{ "success": false, "error_code": "EMAIL_ALREADY_EXISTS", "message": "Email is already registered" }
+
+// 409 — Số điện thoại đã tồn tại
+{ "success": false, "error_code": "PHONE_ALREADY_EXISTS", "message": "Phone number is already registered" }
+
+// 422 — Mật khẩu không khớp
+{ "success": false, "error_code": "PASSWORD_MISMATCH", "message": "Password and confirm password do not match" }
+
+// 422 — Dữ liệu không hợp lệ
+{ "success": false, "error_code": "VALIDATION_ERROR", "message": "Invalid input data", "errors": { "email": "Invalid email format", "phone_number": "Invalid phone number format" } }
+```
+
+**DB Tables:** `USERS`, `ROLE`
 
 # 2. User Management Module
 
