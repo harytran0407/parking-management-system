@@ -30,6 +30,11 @@ export default {
           '25%': { transform: 'rotate(-3deg)' },
           '75%': { transform: 'rotate(3deg)' },
         },
+        scan: {
+          '0%': { transform: 'translateY(0%)' },
+          '50%': { transform: 'translateY(10000%)' }, // Điều chỉnh 10000% tùy độ cao luồng video
+          '100%': { transform: 'translateY(0%)' },
+        },
       },
       animation: {
         'wobble-slow': 'wobble 1s ease-in-out infinite',

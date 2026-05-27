@@ -12,13 +12,14 @@ import Header from "../components/Header";
 import StaffDashboard from "../pages/staff/Dashboard";
 
 // Import corresponding pages (you can create these files later)
-// import CheckInPage from '../pages/staff/CheckIn';
+import CheckInPage from "../pages/staff/CheckInPage";
 // import CheckOutPage from '../pages/staff/CheckOut';
 // import IncidentHandlingPage from '../pages/staff/IncidentHandling';
 // import SlotGateManagementPage from '../pages/staff/SlotGateManagement';
 
 export default function StaffLayout() {
   // Navigation mapping based on ParkingStaff capabilities defined in USER_STORIES.md
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const navigationItems = [
     {
       path: "/staff",
@@ -49,18 +50,18 @@ export default function StaffLayout() {
 
   return (
     <div className="main-container flex h-screen bg-gray-100">
-      <Sidebar navigationItems={navigationItems} />
+      <Sidebar navigationItems={navigationItems} isCollapsed={isSidebarCollapsed} setIsCollapsed={setIsSidebarCollapsed} />
 
       <div className="content-wrapper flex-1 flex flex-col overflow-hidden">
         {/* Header title tailored for Parking Staff role */}
-        <Header title="Parking Operations" />
+        <Header title="Parking Operations" isSidebarCollapsed={isSidebarCollapsed} setIsSidebarCollapsed={setIsSidebarCollapsed} />
 
         <main className="page-content flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-6">
           <Routes>
             <Route path="/" element={<StaffDashboard />} />
 
             {/* Future route configurations mapped to API & User Stories */}
-            {/* <Route path="/checkin" element={<CheckInPage />} /> */}
+            <Route path="/checkin" element={<CheckInPage />} />
             {/* <Route path="/checkout" element={<CheckOutPage />} /> */}
             {/* <Route path="/incidents" element={<IncidentHandlingPage />} /> */}
             {/* <Route path="/slots" element={<SlotGateManagementPage />} /> */}
