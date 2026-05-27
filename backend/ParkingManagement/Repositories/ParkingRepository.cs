@@ -151,8 +151,32 @@ namespace ParkingManagement.Repositories
 
         public async Task UpdateSlotAsync(ParkingSlot slot)
         {
-            _context.ParkingSlots.Update(slot);
-            await Task.CompletedTask; // Đảm bảo đúng chuẩn async
+            // Nếu Service muốn đổi trạng thái sang OCCUPIED (khi xe vào bãi)
+            if (slot.Status.ToUpper() == "OCCUPIED")
+            {
+                // Truy vấn thực thể gốc trực tiếp từ DB trong phạm vi context hiện tại
+                var dbSlot = await _context.ParkingSlots.FindAsync(slot.SlotId);
+
+                if (dbSlot == null)
+                    throw new KeyNotFoundException("Slot không tồn tại.");
+
+                // Kiểm tra ATOMIC: Nếu lúc này trạng thái trong DB đã bị thằng khác đổi thành OCCUPIED hoặc MAINTENANCE
+                if (dbSlot.Status.ToUpper() != "AVAILABLE")
+                {
+                    throw new InvalidOperationException("Race Condition Detected: Ô đỗ xe vừa bị chiếm dụng bởi một xe khác!");
+                }
+
+                // Nếu vẫn trống, cập nhật dữ liệu mới
+                dbSlot.Status = "OCCUPIED";
+                dbSlot.LastUpdated = DateTime.Now;
+            }
+            else
+            {
+                // Các trường hợp cập nhật thông thường khác
+                _context.ParkingSlots.Update(slot);
+            }
+
+            await _context.SaveChangesAsync();
         }
 
         /// <summary>
