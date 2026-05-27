@@ -162,16 +162,25 @@ namespace ParkingManagement.Controllers
             }
         }
 
+        /// <summary>
+        /// [FR-GATE-05] Cập nhật trạng thái ô đỗ
+        /// </summary>
         [HttpPut("slots/{slot_id}/status")]
-        //[Authorize(Roles = "ParkingStaff,ParkingManager")] //Sẽ mở khi hoàn thiện tích hợp Identity Server/JWT
         public async Task<IActionResult> UpdateSlotStatus(string slot_id, [FromBody] UpdateSlotStatusDto dto)
         {
             // 1. Trích xuất Staff ID từ JWT Token 
             string? staffId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
                               ?? User.FindFirst("sub")?.Value;
 
-            // 2. Cơ chế Fallback thông minh phục vụ kiểm thử môi trường Local (Bảo vệ tính toàn vẹn của Audit Log)
-            #if DEBUG
+            // 2. Cơ chế Fallback thông minh chỉ hoạt động khi chạy môi trường Local DEBUG
+#if DEBUG
+            if (string.IsNullOrEmpty(staffId))
+            {
+                staffId = "STAFF_TEST_001"; // Gán tài khoản giả lập phục vụ DEV test luồng
+            }
+#endif
+
+            // 3. Nếu kiểm tra môi trường chạy chính thức vẫn trống thông tin thì chặn lại quyền truy cập
             if (string.IsNullOrEmpty(staffId))
             {
                 return Unauthorized(new { success = false, message = "Unauthorized staff member." });
@@ -179,9 +188,9 @@ namespace ParkingManagement.Controllers
 
             try
             {
-                dto.SlotId = slot_id; 
+                dto.SlotId = slot_id;
                 var response = await _parkingService.UpdateSlotStatusAsync(dto, staffId);
-                return Ok(response); // Trả về 200 OK kèm data cấu trúc chuẩn
+                return Ok(response); // Trả về 200 OK kèm dữ liệu cấu trúc chuẩn Việt Nam
             }
             catch (ArgumentException ex)
             {
