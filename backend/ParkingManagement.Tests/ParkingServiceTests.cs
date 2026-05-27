@@ -6,22 +6,18 @@ using FluentAssertions;
 using ParkingManagement.Services;
 using ParkingManagement.Repositories;
 using ParkingManagement.DTOs;
-using ParkingManagement.Models; 
+using ParkingManagement.Models;
 
 namespace ParkingManagement.Tests
 {
     public class ParkingServiceTests
     {
-        // Khai báo các đối tượng giả lập (Mock)
         private readonly Mock<IParkingRepository> _mockRepository;
         private readonly ParkingService _parkingService;
 
         public ParkingServiceTests()
         {
-            // 1. Khởi tạo Mock cho Repository
             _mockRepository = new Mock<IParkingRepository>();
-
-            // 2. Tiêm Mock Repository vào Service thực tế cần test
             _parkingService = new ParkingService(_mockRepository.Object);
         }
 
@@ -31,17 +27,13 @@ namespace ParkingManagement.Tests
         [Fact]
         public async Task ProcessWalkInCheckInAsync_ShouldThrowException_WhenVehicleIsAlreadyActive()
         {
-            // Arrange (Chuẩn bị)
             var dto = new VehicleCheckInDto { LicensePlateIn = "51H-12345", VehicleTypeId = 1 };
 
-            // Giả lập: Kiểm tra biển số xe -> Trả về true (Xe đang ở trong bãi)
             _mockRepository.Setup(repo => repo.IsVehicleActiveInParkingAsync(dto.LicensePlateIn))
                            .ReturnsAsync(true);
 
-            // Act (Hành động)
             Func<Task> act = async () => await _parkingService.ProcessWalkInCheckInAsync(dto, "usr_001");
 
-            // Assert (Kiểm tra lỗi quăng ra)
             await act.Should().ThrowAsync<InvalidOperationException>()
                      .WithMessage("ACTIVE_SESSION_EXISTS");
         }
@@ -52,7 +44,6 @@ namespace ParkingManagement.Tests
         [Fact]
         public async Task ProcessWalkInCheckInAsync_ShouldReturnSuccessResponse_WhenDataIsValid()
         {
-            // Arrange (Chuẩn bị)
             var dto = new VehicleCheckInDto
             {
                 LicensePlateIn = "51H-12345",
@@ -60,11 +51,9 @@ namespace ParkingManagement.Tests
                 SlotId = "slt_002"
             };
 
-            // Giả lập 1: Xe chưa có trong bãi (trả về false)
             _mockRepository.Setup(repo => repo.IsVehicleActiveInParkingAsync(dto.LicensePlateIn))
                            .ReturnsAsync(false);
 
-            // Giả lập 2: Tìm thấy vị trí đỗ được chỉ định cụ thể từ client
             var fakeSlot = new ParkingSlot
             {
                 SlotId = "slt_002",
@@ -74,14 +63,11 @@ namespace ParkingManagement.Tests
             _mockRepository.Setup(repo => repo.GetSlotByIdAsync(dto.SlotId))
                            .ReturnsAsync(fakeSlot);
 
-            // Giả lập 3: Thực thi Transaction an toàn cho hàm lưu trữ (Đã fix lỗi biên dịch)
             _mockRepository.Setup(repo => repo.SaveChangesWithTransactionAsync(It.IsAny<Func<Task>>()))
                            .Returns(async (Func<Task> action) => await action());
 
-            // Act (Hành động)
             var result = await _parkingService.ProcessWalkInCheckInAsync(dto, "usr_001");
 
-            // Assert (Kiểm tra dữ liệu phản hồi)
             result.Should().NotBeNull();
             result.Success.Should().BeTrue();
             result.Data.SessionId.Should().StartWith("sess_");
@@ -100,7 +86,6 @@ namespace ParkingManagement.Tests
         [Fact]
         public async Task ProcessWalkInCheckInAsync_ShouldAllocateAutomatically_WhenSlotIdIsNullOrEmpty()
         {
-            // Arrange (Chuẩn bị DTO không truyền SlotId)
             var dto = new VehicleCheckInDto
             {
                 LicensePlateIn = "51H-12345",
@@ -108,11 +93,9 @@ namespace ParkingManagement.Tests
                 SlotId = null
             };
 
-            // Giả lập 1: Xe chưa có trong bãi
             _mockRepository.Setup(repo => repo.IsVehicleActiveInParkingAsync(dto.LicensePlateIn))
                            .ReturnsAsync(false);
 
-            // Giả lập 2: Thuật toán tự động tìm thấy slot 'slt_089' (C045) còn trống cho xe máy
             var allocatedSlot = new ParkingSlot
             {
                 SlotId = "slt_089",
@@ -122,18 +105,14 @@ namespace ParkingManagement.Tests
             _mockRepository.Setup(repo => repo.FindFirstAvailableSlotAsync(dto.VehicleTypeId))
                            .ReturnsAsync(allocatedSlot);
 
-            // Giả lập 3: Hàm nạp lại thông tin slot sau khi gán
             _mockRepository.Setup(repo => repo.GetSlotByIdAsync("slt_089"))
                            .ReturnsAsync(allocatedSlot);
 
-            // Giả lập 4: Xử lý Transaction an toàn
             _mockRepository.Setup(repo => repo.SaveChangesWithTransactionAsync(It.IsAny<Func<Task>>()))
                            .Returns(async (Func<Task> action) => await action());
 
-            // Act (Hành động)
             var result = await _parkingService.ProcessWalkInCheckInAsync(dto, "usr_001");
 
-            // Assert (Kiểm tra xem hệ thống có tự gán đúng mã 'slt_089' không)
             result.Should().NotBeNull();
             result.Success.Should().BeTrue();
             result.Data.SlotId.Should().Be("slt_089");
@@ -141,7 +120,6 @@ namespace ParkingManagement.Tests
             result.Data.Floor.Should().Be(3);
             result.Data.Zone.Should().Be("C");
 
-            // Xác thực: Đảm bảo hàm FindFirstAvailableSlotAsync thực sự được gọi kích hoạt 1 lần
             _mockRepository.Verify(repo => repo.FindFirstAvailableSlotAsync(dto.VehicleTypeId), Times.Once);
         }
 
@@ -151,21 +129,16 @@ namespace ParkingManagement.Tests
         [Fact]
         public async Task ProcessWalkInCheckInAsync_ShouldThrowException_WhenNoSlotsAreAvailable()
         {
-            // Arrange (Chuẩn bị DTO yêu cầu tự động tìm slot)
             var dto = new VehicleCheckInDto { LicensePlateIn = "51H-12345", VehicleTypeId = 1, SlotId = null };
 
-            // Giả lập 1: Xe chưa có trong bãi
             _mockRepository.Setup(repo => repo.IsVehicleActiveInParkingAsync(dto.LicensePlateIn))
                            .ReturnsAsync(false);
 
-            // Giả lập 2: Hệ thống quét bãi xe và trả về null (Đã hết vị trí đỗ phù hợp)
             _mockRepository.Setup(repo => repo.FindFirstAvailableSlotAsync(dto.VehicleTypeId))
-                           .ReturnsAsync((ParkingSlot?)null);
+                           .ReturnsAsync(default(ParkingSlot));
 
-            // Act (Hành động)
             Func<Task> act = async () => await _parkingService.ProcessWalkInCheckInAsync(dto, "usr_001");
 
-            // Assert (Kiểm tra quăng ra lỗi hết chỗ đỗ)
             await act.Should().ThrowAsync<InvalidOperationException>()
                      .WithMessage("NO_AVAILABLE_SLOT");
         }
@@ -176,7 +149,6 @@ namespace ParkingManagement.Tests
         [Fact]
         public async Task ProcessCheckOutAsync_ShouldReturnSuccessResponse_WithBasePrice_WhenDurationIsLessThanAnHour()
         {
-            // Arrange (Chuẩn bị dữ liệu check-out trong vòng 45 phút)
             var checkOutDto = new VehicleCheckOutDto
             {
                 LicensePlateOut = "51H-12345",
@@ -186,40 +158,37 @@ namespace ParkingManagement.Tests
                 StaffOutId = "usr_001"
             };
 
-            // Giả lập 1: Tìm thấy session đang ACTIVE (Xe vào cách đây 45 phút)
             var fakeSession = new ParkingSession
             {
                 SessionId = "sess_12345",
                 LicensePlateIn = "51H-12345",
-                CheckInTime = DateTime.UtcNow.AddMinutes(-45), // 45 phút trước
+                CheckInTime = DateTime.UtcNow.AddMinutes(-45),
                 SlotId = "slt_002",
-                Status = "ACTIVE"
+                Status = "ACTIVE",
+                VehicleTypeId = 1
             };
             _mockRepository.Setup(repo => repo.GetActiveSessionByPlateAsync(checkOutDto.LicensePlateOut))
                            .ReturnsAsync(fakeSession);
 
-            // Giả lập 2: Lấy bảng giá từ DB (Giá gốc: 20k, Mỗi giờ tiếp theo: 10k)
             var fakePolicy = new PricingPolicy
             {
                 BasePrice = 20000,
                 HourlyRate = 10000,
+                VehicleTypeId = 1,
                 EffectiveDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1))
             };
             _mockRepository.Setup(repo => repo.GetActivePricingPolicyAsync())
                            .ReturnsAsync(fakePolicy);
 
-            // Giả lập 3: Xử lý Transaction cập nhật DB
             _mockRepository.Setup(repo => repo.UpdateSessionAndSlotAsync(It.IsAny<ParkingSession>(), It.IsAny<string>()))
                            .ReturnsAsync(true);
 
-            // Act (Hành động)
             var result = await _parkingService.ProcessCheckOutAsync(checkOutDto);
 
-            // Assert (Kiểm tra kết quả - Dưới 1 tiếng phải tính bằng Base Price)
             result.Should().NotBeNull();
             result.SessionId.Should().Be("sess_12345");
-            result.DurationMinutes.Should().BeInRange(44, 46); // Cho phép sai lệch nhẹ mili-giây lúc chạy test
-            result.TotalFee.Should().Be(20000); // 20k tiền gốc
+            result.DurationMinutes.Should().BeInRange(44, 46);
+            result.TotalFee.Should().Be(20000);
             result.Status.Should().Be("COMPLETED");
             result.PaymentStatus.Should().Be("PAID");
         }
@@ -230,7 +199,6 @@ namespace ParkingManagement.Tests
         [Fact]
         public async Task ProcessCheckOutAsync_ShouldCalculateFeeCorrectly_WhenDurationIsOverOneHour()
         {
-            // Arrange (Chuẩn bị dữ liệu đỗ xe trong 2 tiếng 15 phút -> Tính 3 tiếng)
             var checkOutDto = new VehicleCheckOutDto
             {
                 LicensePlateOut = "51H-12345",
@@ -243,17 +211,19 @@ namespace ParkingManagement.Tests
             {
                 SessionId = "sess_99999",
                 LicensePlateIn = "51H-12345",
-                CheckInTime = DateTime.UtcNow.AddMinutes(-135), // 2 tiếng 15 phút trước
+                CheckInTime = DateTime.UtcNow.AddMinutes(-135),
                 SlotId = "slt_002",
-                Status = "ACTIVE"
+                Status = "ACTIVE",
+                VehicleTypeId = 1
             };
             _mockRepository.Setup(repo => repo.GetActiveSessionByPlateAsync(checkOutDto.LicensePlateOut))
                            .ReturnsAsync(fakeSession);
 
             var fakePolicy = new PricingPolicy
             {
-                BasePrice = 20000,   // Giờ đầu 20k
-                HourlyRate = 10000,  // Các giờ tiếp theo +10k
+                BasePrice = 20000,
+                HourlyRate = 10000,
+                VehicleTypeId = 1,
                 EffectiveDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1))
             };
             _mockRepository.Setup(repo => repo.GetActivePricingPolicyAsync())
@@ -262,10 +232,8 @@ namespace ParkingManagement.Tests
             _mockRepository.Setup(repo => repo.UpdateSessionAndSlotAsync(It.IsAny<ParkingSession>(), It.IsAny<string>()))
                            .ReturnsAsync(true);
 
-            // Act
             var result = await _parkingService.ProcessCheckOutAsync(checkOutDto);
 
-            // Assert (135 phút = 2 giờ 15 phút -> Làm tròn lên 3 giờ. Tiền = 20k + 10k + 10k = 40k)
             result.TotalFee.Should().Be(40000);
             result.DurationMinutes.Should().BeInRange(134, 136);
         }
@@ -276,17 +244,13 @@ namespace ParkingManagement.Tests
         [Fact]
         public async Task ProcessCheckOutAsync_ShouldThrowException_WhenNoActiveSessionFound()
         {
-            // Arrange
             var checkOutDto = new VehicleCheckOutDto { LicensePlateOut = "51H-INVALID", CameraOut = "cam_01", GateOut = "g_01", StaffOutId = "u_01" };
 
-            // Giả lập không tìm thấy lượt xe đỗ nào có trạng thái ACTIVE
             _mockRepository.Setup(repo => repo.GetActiveSessionByPlateAsync(checkOutDto.LicensePlateOut))
-                           .ReturnsAsync((ParkingSession?)null);
+                           .ReturnsAsync(default(ParkingSession));
 
-            // Act
             Func<Task> act = async () => await _parkingService.ProcessCheckOutAsync(checkOutDto);
 
-            // Assert
             await act.Should().ThrowAsync<Exception>()
                      .WithMessage("Không tìm thấy lượt đỗ ACTIVE nào cho xe này.");
         }
@@ -297,7 +261,6 @@ namespace ParkingManagement.Tests
         [Fact]
         public async Task ProcessCheckOutAsync_ShouldThrowException_WhenPricingPolicyIsMissing()
         {
-            // Arrange
             var checkOutDto = new VehicleCheckOutDto { LicensePlateOut = "51H-12345", CameraOut = "cam_01", GateOut = "g_01", StaffOutId = "u_01" };
 
             var fakeSession = new ParkingSession
@@ -306,21 +269,99 @@ namespace ParkingManagement.Tests
                 LicensePlateIn = "51H-12345",
                 CheckInTime = DateTime.UtcNow.AddHours(-1),
                 SlotId = "slt_002",
-                Status = "ACTIVE"
+                Status = "ACTIVE",
+                VehicleTypeId = 1
             };
             _mockRepository.Setup(repo => repo.GetActiveSessionByPlateAsync(checkOutDto.LicensePlateOut))
                            .ReturnsAsync(fakeSession);
 
-            // Giả lập DB trống, chưa được cấu hình bảng giá nào cả
             _mockRepository.Setup(repo => repo.GetActivePricingPolicyAsync())
-                           .ReturnsAsync((PricingPolicy?)null);
+                           .ReturnsAsync(default(PricingPolicy));
 
-            // Act
             Func<Task> act = async () => await _parkingService.ProcessCheckOutAsync(checkOutDto);
 
-            // Assert
             await act.Should().ThrowAsync<Exception>()
                      .WithMessage("Chính sách giá chưa được cấu hình.");
+        }
+
+        // =========================================================================
+        // CASE 9: [API 5.3] THÀNH CÔNG - TRA CỨU XE ĐANG ĐỖ BẰNG BIỂN SỐ 
+        // =========================================================================
+        [Fact]
+        public async Task CASE_1_GetActiveSessionAsync_ShouldReturnDetails_WhenSessionIsActive()
+        {
+            string licensePlate = "51H-12345";
+            var fakeSession = new ParkingSession
+            {
+                SessionId = "sess_12345",
+                LicensePlateIn = licensePlate,
+                CheckInTime = DateTime.UtcNow.AddMinutes(-45),
+                SlotId = "slt_089",
+                Status = "ACTIVE",
+                VehicleTypeId = 1
+            };
+
+            var fakePolicy = new PricingPolicy { BasePrice = 15000, HourlyRate = 10000, VehicleTypeId = 1 };
+
+            _mockRepository.Setup(repo => repo.GetActiveSessionByPlateAsync(licensePlate)).ReturnsAsync(fakeSession);
+            _mockRepository.Setup(repo => repo.GetActivePricingPolicyAsync()).ReturnsAsync(fakePolicy);
+
+            var result = await _parkingService.GetActiveSessionByLicensePlateAsync(licensePlate);
+
+            result.Should().NotBeNull();
+            result.Success.Should().BeTrue();
+            result.Data.SessionId.Should().Be("sess_12345");
+            result.Data.CurrentFee.Should().Be(15000);
+        }
+
+        // =========================================================================
+        // CASE 10: [API 5.3] THẤT BẠI - BIỂN SỐ XE KHÔNG CÓ TRONG BÃI HOẶC ĐÃ RA RỒI
+        // =========================================================================
+        [Fact]
+        public async Task CASE_2_GetActiveSessionAsync_ShouldReturnFalse_WhenNoActiveSessionFound()
+        {
+            // Arrange
+            string licensePlate = "51H-99999";
+            _mockRepository.Setup(repo => repo.GetActiveSessionByPlateAsync(licensePlate))
+                           .ReturnsAsync(default(ParkingSession));
+
+            // Act
+            Func<Task> act = async () => await _parkingService.GetActiveSessionByLicensePlateAsync(licensePlate);
+
+            // Assert: Đồng bộ hóa kỳ vọng với việc ném ngoại lệ InvalidOperationException từ Service thực tế của bạn
+            await act.Should().ThrowAsync<InvalidOperationException>()
+                     .WithMessage("ACTIVE_SESSION_NOT_FOUND");
+        }
+
+        // =========================================================================
+        // CASE 11: [API 5.4] THÀNH CÔNG - TÍNH TRƯỚC TIỀN VÀ TRẢ VỀ CHI TIẾT FEE BREAKDOWN
+        // =========================================================================
+        [Fact]
+        public async Task CASE_3_CalculateFeeAsync_ShouldReturnCorrectBreakdown_ForTwoHours()
+        {
+            // Arrange (Giả lập xe đỗ đúng 2 tiếng = 120 phút)
+            string sessionId = "sess_12345";
+            var fakeSession = new ParkingSession
+            {
+                SessionId = sessionId,
+                CheckInTime = DateTime.UtcNow.AddHours(-2),
+                VehicleTypeId = 1,
+                Status = "ACTIVE"
+            };
+            var fakePolicy = new PricingPolicy { BasePrice = 15000, HourlyRate = 10000, VehicleTypeId = 1 };
+
+            _mockRepository.Setup(repo => repo.GetActiveSessionByIdAsync(sessionId)).ReturnsAsync(fakeSession);
+            _mockRepository.Setup(repo => repo.GetActivePricingPolicyAsync()).ReturnsAsync(fakePolicy);
+
+            // Act
+            var result = await _parkingService.CalculatePreCheckOutFeeAsync(sessionId);
+
+            // Assert
+            result.Success.Should().BeTrue();
+            result.Data.CurrentFee.Should().Be(25000);
+            result.Data.FeeBreakdown.Hours.Should().Be(2);
+            result.Data.FeeBreakdown.BasePrice.Should().Be(15000);
+            result.Data.FeeBreakdown.Total.Should().Be(25000);
         }
     }
 }
