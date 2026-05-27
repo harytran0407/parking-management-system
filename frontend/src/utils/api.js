@@ -27,14 +27,14 @@ api.interceptors.response.use(
         // 401 Error : Expired token or incomplete login
         if(status === 401){
             localStorage.removeItem('accessToken');
-            localStorage.removeItem('useData');
+            localStorage.removeItem('userData');
             window.location.href='/login';
         }
         // 403 Error: no permission (wrong role)
         if(status === 403){
             window.location.href='/forbidden';
         }
-        if(statua === 429){
+        if(status === 429){
             console.warn('Rate limit exceeded');
         }
         return Promise.reject(data || error);

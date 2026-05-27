@@ -1,10 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { Bell, Sun, Moon, User, LogOut } from 'lucide-react' 
+import { Bell, Sun, Moon, User, LogOut, PanelLeftOpen } from 'lucide-react' 
 import { useTheme } from '../hooks/useTheme'
 import { useAuth } from '../hooks/useAuth' // Import để lấy thông tin user và logout
 import { useNavigate } from 'react-router-dom' // Import để chuyển trang Edit Profile
 
-export default function Header({ title = 'Dashboard' }) {
+export default function Header({ title = 'Dashboard',isSidebarCollapsed, setIsSidebarCollapsed }) {
   const { theme, toggleTheme } = useTheme()
   const { user, logout } = useAuth()
   const navigate = useNavigate()
@@ -42,21 +42,33 @@ export default function Header({ title = 'Dashboard' }) {
   }
 
   return (
-    <header className="header-wrapper flex items-center justify-between transition-colors duration-300">
-      <div className="pl-6 lg:pl-0">
-        <h1 className="text-xl font-bold text-slate-800 dark:text-white">{title}</h1>
+    <header className="header-wrapper flex items-center justify-between transition-colors duration-300 bg-white dark:bg-slate-900 p-4 lg:px-6 border-b border-slate-200 dark:border-slate-800">
+      <div className="pl-12 lg:pl-0 flex items-center gap-3">
+        {/* [THÊM MỚI]: Nút Mở lại Sidebar. Nó CHỈ HIỆN khi isSidebarCollapsed là true */}
+        {isSidebarCollapsed && (
+          <button
+            onClick={() => setIsSidebarCollapsed(false)}
+            className="hidden lg:flex p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-800 rounded-lg transition-colors"
+            title="Mở Sidebar"
+          >
+            <PanelLeftOpen size={24} />
+          </button>
+        )}
+        <h1 className="text-xl font-bold text-slate-800 dark:text-white">
+          {title}
+        </h1>
       </div>
-      
+
       <div className="flex items-center gap-3 lg:gap-4 ml-auto">
         {/* Nút đổi Theme */}
-        <button 
+        <button
           onClick={toggleTheme}
           className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full transition-colors focus:outline-none"
         >
-          {theme === 'dark' ? (
-            <Sun size={20} className="text-yellow-400" /> 
+          {theme === "dark" ? (
+            <Sun size={20} className="text-yellow-400" />
           ) : (
-            <Moon size={20} className="text-slate-600" /> 
+            <Moon size={20} className="text-slate-600" />
           )}
         </button>
 
@@ -66,16 +78,21 @@ export default function Header({ title = 'Dashboard' }) {
           {/* Chấm đỏ báo có thông báo mới (Tùy chọn) */}
           <span className="absolute top-1.5 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-900"></span>
         </button>
-        
+
         {/* AVATAR & DROPDOWN MENU */}
         <div className="relative" ref={dropdownRef}>
           {/* Nút Avatar */}
           {/* Nút Avatar ĐÃ FIX */}
-          <button 
+          <button
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            className="w-10 h-10 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center shadow-md hover:bg-blue-700 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 overflow-hidden">
+            className="w-10 h-10 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center shadow-md hover:bg-blue-700 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 overflow-hidden"
+          >
             {user?.avatar ? (
-              <img src={user.avatar} alt="User Avatar" className="w-full h-full object-cover" />
+              <img
+                src={user.avatar}
+                alt="User Avatar"
+                className="w-full h-full object-cover"
+              />
             ) : (
               initial
             )}
@@ -84,14 +101,13 @@ export default function Header({ title = 'Dashboard' }) {
           {/* Menu thả xuống */}
           {isDropdownOpen && (
             <div className="absolute right-0 mt-3 w-56 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden z-50 origin-top-right">
-              
               {/* Phần Header của Menu (Hiển thị tên & Role) */}
               <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
                 <p className="text-sm font-semibold text-slate-800 dark:text-white truncate">
-                  {user?.name || 'Tài khoản khách'}
+                  {user?.name || "Guest"}
                 </p>
                 <p className="text-xs text-slate-500 dark:text-slate-400 truncate capitalize mt-0.5">
-                  {user?.role || 'Guest'}
+                  {user?.role || "Guest"}
                 </p>
               </div>
 
@@ -104,7 +120,7 @@ export default function Header({ title = 'Dashboard' }) {
                   <User size={16} />
                   Edit Profile
                 </button>
-                
+
                 <button
                   onClick={handleLogout}
                   className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors mt-1"
@@ -113,12 +129,10 @@ export default function Header({ title = 'Dashboard' }) {
                   Logout
                 </button>
               </div>
-
             </div>
           )}
         </div>
-
       </div>
     </header>
-  )
+  );
 }

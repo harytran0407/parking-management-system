@@ -49,11 +49,11 @@ export default function UserLayout() {
         setIsCollapsed={setIsSidebarCollapsed}
       />
 
-      <div className="relative flex flex-col flex-1 overflow-hidden">
+      <div className="relative flex flex-col flex-1 overflow-hidden transition-all duration-300">
         <Header
           title="Driver Dashboard"
           isSidebarCollapsed={isSidebarCollapsed}
-          setIsCollapsed={setIsSidebarCollapsed}
+          setIsSidebarCollapsed={setIsSidebarCollapsed}
         />
 
         <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 scroll-smooth transition-all duration-300 ease-in-out">
