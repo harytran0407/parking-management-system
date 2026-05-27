@@ -102,5 +102,63 @@ namespace ParkingManagement.Controllers
                 return StatusCode(500, new { success = false, message = "INTERNAL_SERVER_ERROR", error = innerMessage });
             }
         }
+
+        /// <summary>
+        /// 5.3 Get Active Session by License Plate
+        /// Lấy thông tin lượt đỗ đang hoạt động bằng biển số xe
+        /// </summary>
+        [HttpGet("sessions/active/{license_plate}")]
+        // [Authorize] // Bật thuộc tính này lên nếu dự án của bạn đã cấu hình JWT Auth thành công
+        [ProducesResponseType(typeof(ActiveSessionResponseDto), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetActiveSessionByLicensePlate([FromRoute(Name = "license_plate")] string licensePlate)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(licensePlate))
+                {
+                    return BadRequest(new { success = false, message = "Biển số xe không được để trống" });
+                }
+
+                var response = await _parkingService.GetActiveSessionByLicensePlateAsync(licensePlate);
+                return Ok(response);
+            }
+            catch (InvalidOperationException ex) when (ex.Message == "ACTIVE_SESSION_NOT_FOUND")
+            {
+                return NotFound(new { success = false, message = "Không tìm thấy lượt gửi xe đang hoạt động cho biển số này." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = "INTERNAL_SERVER_ERROR", error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// 5.4 Pre-check-out — Calculate Fee
+        /// Tính toán chi tiết tiền gửi xe tạm tính trước khi thực hiện check-out rời bãi
+        /// </summary>
+        [HttpGet("sessions/{session_id}/calculate-fee")]
+        // [Authorize] // Bật thuộc tính này lên nếu dự án của bạn đã cấu hình JWT Auth thành công
+        [ProducesResponseType(typeof(PreCheckOutResponseDto), StatusCodes.Status200OK)]
+        public async Task<IActionResult> CalculatePreCheckOutFee([FromRoute(Name = "session_id")] string sessionId)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(sessionId))
+                {
+                    return BadRequest(new { success = false, message = "Session ID không được để trống" });
+                }
+
+                var response = await _parkingService.CalculatePreCheckOutFeeAsync(sessionId);
+                return Ok(response);
+            }
+            catch (InvalidOperationException ex) when (ex.Message == "SESSION_NOT_FOUND_OR_INACTIVE" || ex.Message == "PRICING_POLICY_NOT_CONFIGURED")
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = "INTERNAL_SERVER_ERROR", error = ex.Message });
+            }
+        }
     }
 }

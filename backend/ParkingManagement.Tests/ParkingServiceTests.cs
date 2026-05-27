@@ -320,7 +320,7 @@ namespace ParkingManagement.Tests
 
             // Assert
             await act.Should().ThrowAsync<Exception>()
-                     .WithMessage("Chính sách giá (pricing_policy) chưa được cấu hình.");
+                     .WithMessage("Chính sách giá chưa được cấu hình.");
         }
     }
 }
