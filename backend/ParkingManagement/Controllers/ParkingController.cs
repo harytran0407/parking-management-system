@@ -163,15 +163,15 @@ namespace ParkingManagement.Controllers
         }
 
         [HttpPut("slots/{slot_id}/status")]
-        //[Authorize(Roles = "ParkingStaff,ParkingManager")] 
+        //[Authorize(Roles = "ParkingStaff,ParkingManager")] //Sẽ mở khi hoàn thiện tích hợp Identity Server/JWT
         public async Task<IActionResult> UpdateSlotStatus(string slot_id, [FromBody] UpdateSlotStatusDto dto)
         {
-            // Trích xuất Staff ID từ JWT claim 'sub' để phục vụ việc lưu Log (AC3)
-            //var staffId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-            //              ?? User.FindFirst("sub")?.Value;
+            // 1. Trích xuất Staff ID từ JWT Token 
+            string? staffId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                              ?? User.FindFirst("sub")?.Value;
 
-            string staffId = "STAFF_TEST_001"; // Tạm thời hardcode cho đến khi hoàn thiện module Auth và có thể lấy trực tiếp từ JWT Token
-
+            // 2. Cơ chế Fallback thông minh phục vụ kiểm thử môi trường Local (Bảo vệ tính toàn vẹn của Audit Log)
+            #if DEBUG
             if (string.IsNullOrEmpty(staffId))
             {
                 return Unauthorized(new { success = false, message = "Unauthorized staff member." });
