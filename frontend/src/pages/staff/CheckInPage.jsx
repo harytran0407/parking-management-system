@@ -1,20 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import {
-  Camera,
-  CarFront,
-  Hash,
-  MapPin,
-  CheckCircle2,
-  Search,
-  AlertCircle,
-  RefreshCcw,
-  Ticket,
-  Video,
-  VideoOff,
-  Zap,
-  ShieldCheck,
-  Wifi,
-  ShieldAlert,
+import {Camera,CarFront,Hash,MapPin,CheckCircle2,Search,AlertCircle,RefreshCcw,Ticket,Video,VideoOff,Zap,ShieldCheck,Wifi,ShieldAlert,History,Clock,
 } from "lucide-react";
 
 export default function CheckInPage() {
@@ -24,8 +9,11 @@ export default function CheckInPage() {
   const [bookingId, setBookingId] = useState("");
   const [suggestedSlot, setSuggestedSlot] = useState(null);
 
+  // --- STATES LỊCH SỬ (HISTORY) ---
+  const [recentCheckIns, setRecentCheckIns] = useState([]);
+
   // States tính năng nâng cao (Enterprise Features)
-  const [isAutoScan, setIsAutoScan] = useState(true); // Mặc định bật quét tự động
+  const [isAutoScan, setIsAutoScan] = useState(true);
   const [vipStatus, setVipStatus] = useState(null);
   const [systemWarning, setSystemWarning] = useState("");
   const [confidenceScore, setConfidenceScore] = useState(0);
@@ -39,20 +27,44 @@ export default function CheckInPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [checkInSuccess, setCheckInSuccess] = useState(null);
 
-  // --- 1. HOTKEYS (PHÍM TẮT) ---
+  // --- 0. INITIAL LOAD (Giả lập gọi API lấy lịch sử ban đầu) ---
+  useEffect(() => {
+    // Giả lập API trả về 2 giao dịch gần nhất khi vừa mở trang
+    setRecentCheckIns([
+      {
+        session_id: "sess_0912",
+        license_plate_in: "43A-567.89",
+        slot_name: "A012",
+        check_in_time: new Date(Date.now() - 300000).toLocaleTimeString(
+          "en-US",
+          { hour: "2-digit", minute: "2-digit" },
+        ),
+      },
+      {
+        session_id: "sess_0911",
+        license_plate_in: "29C-123.45",
+        slot_name: "B045",
+        check_in_time: new Date(Date.now() - 800000).toLocaleTimeString(
+          "en-US",
+          { hour: "2-digit", minute: "2-digit" },
+        ),
+      },
+    ]);
+  }, []);
+
+  // --- 1. HOTKEYS ---
   useEffect(() => {
     const handleKeyDown = (e) => {
-      // Bỏ qua hotkey nếu đang gõ vào input
       if (document.activeElement.tagName === "INPUT") return;
 
       switch (e.key) {
         case "1":
           setVehicleTypeId(1);
-          break; // Chọn Ô tô
+          break;
         case "2":
           setVehicleTypeId(2);
-          break; // Chọn Xe máy
-        case " ": // Phím Space
+          break;
+        case " ":
           e.preventDefault();
           if (isCameraOn && !isCapturing && !checkInSuccess) manualCapture();
           break;
@@ -99,27 +111,23 @@ export default function CheckInPage() {
 
   // --- 3. AUTO-SCAN & YOLO LOGIC ---
   const processYoloFrame = async (imageBase64) => {
-    // TẠM THỜI MOCK DATA ĐỂ ĐỢI PYTHON KẾT NỐI
-    // Tỉ lệ nhận diện thành công giả lập là 30% mỗi frame để tạo cảm giác AI đang "cố gắng đọc"
     const isDetected = Math.random() > 0.7;
 
     if (isDetected) {
-      // Có âm thanh "Ting" nhẹ khi AI bắt được (Mock)
       const audio = new Audio(
         "data:audio/mp3;base64,//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq",
       );
       audio
         .play()
         .catch(() => {})
-        .catch(() => {}); // Bỏ qua lỗi play() nếu browser chặn auto-play
+        .catch(() => {});
 
       const detectedPlate = `51H-${Math.floor(10000 + Math.random() * 90000)}`;
       setPlateNumber(detectedPlate);
-      setConfidenceScore(Math.floor(85 + Math.random() * 14)); // Mock score 85% - 99%
+      setConfidenceScore(Math.floor(85 + Math.random() * 14));
 
-      // MOCK BUSINESS LOGIC (Kiểm tra Thẻ tháng & Trùng lặp)
-      const isVip = Math.random() > 0.8; // 20% khả năng là VIP (MONTHLY_PASS)
-      const isDuplicate = Math.random() > 0.95; // 5% khả năng xe đang ở trong bãi (ACTIVE_SESSION_EXISTS)
+      const isVip = Math.random() > 0.8;
+      const isDuplicate = Math.random() > 0.95;
 
       if (isDuplicate) {
         setSystemWarning(
@@ -131,11 +139,11 @@ export default function CheckInPage() {
       } else {
         setVipStatus(null);
         setSystemWarning("");
-        setSuggestedSlot({ slot_name: "C045", floor: 3, zone: "C" }); // Cấp slot cho xe khách lẻ
+        setSuggestedSlot({ slot_name: "C045", floor: 3, zone: "C" });
       }
-      return true; // Stop scanning
+      return true;
     }
-    return false; // Keep scanning
+    return false;
   };
 
   const manualCapture = async () => {
@@ -152,11 +160,10 @@ export default function CheckInPage() {
     canvas.getContext("2d").drawImage(videoRef.current, 0, 0);
     const base64 = canvas.toDataURL("image/jpeg", 0.8);
 
-    await processYoloFrame(base64); // Chụp thủ công thì ép gọi 1 lần
+    await processYoloFrame(base64);
     setIsCapturing(false);
   };
 
-  // Vòng lặp Auto-Scan (Chạy mỗi 1 giây nếu bật Auto-Scan và chưa có kết quả)
   useEffect(() => {
     let intervalId;
     if (
@@ -172,29 +179,40 @@ export default function CheckInPage() {
         canvas.width = videoRef.current.videoWidth;
         canvas.height = videoRef.current.videoHeight;
         canvas.getContext("2d").drawImage(videoRef.current, 0, 0);
-        const base64 = canvas.toDataURL("image/jpeg", 0.5); // Giảm quality xuống để gửi nhanh hơn
+        const base64 = canvas.toDataURL("image/jpeg", 0.5);
 
         setIsCapturing(true);
         const found = await processYoloFrame(base64);
         setIsCapturing(false);
-        if (found) clearInterval(intervalId); // Tắt quét nếu tìm thấy
+        if (found) clearInterval(intervalId);
       }, 1000);
     }
     return () => clearInterval(intervalId);
   }, [isCameraOn, isAutoScan, plateNumber, isCapturing, checkInSuccess]);
 
-  // --- 4. SUBMIT CHECK-IN ---
+  // --- 4. SUBMIT CHECK-IN (Tích hợp cập nhật Lịch sử) ---
   const handleCheckIn = (e) => {
     e.preventDefault();
     if (!plateNumber || systemWarning) return;
     setIsSubmitting(true);
+
     setTimeout(() => {
-      setCheckInSuccess({
+      // Dữ liệu Session mới được tạo
+      const newSessionData = {
         session_id: `sess_${Math.floor(1000 + Math.random() * 9000)}`,
         license_plate_in: plateNumber,
         slot_name: vipStatus ? "VIP Zone" : suggestedSlot?.slot_name || "Any",
-        check_in_time: new Date().toLocaleString("en-US"),
-      });
+        check_in_time: new Date().toLocaleTimeString("en-US", {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      };
+
+      setCheckInSuccess(newSessionData);
+
+      // OPTIMISTIC UI UPDATE: Nạp dữ liệu mới lên đầu mảng lịch sử (giữ tối đa 5 phần tử)
+      setRecentCheckIns((prev) => [newSessionData, ...prev].slice(0, 5));
+
       setIsSubmitting(false);
     }, 600);
   };
@@ -260,14 +278,12 @@ export default function CheckInPage() {
 
             {isCameraOn && (
               <>
-                {/* Lưới quét (Radar UI Effect) */}
                 <div
                   className={`absolute inset-0 border-blue-500/20 pointer-events-none transition-opacity duration-500 ${isAutoScan && !plateNumber ? "opacity-100" : "opacity-0"}`}
                 >
                   <div className="w-full h-1 bg-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.6)] animate-[scan_2s_ease-in-out_infinite]"></div>
                 </div>
 
-                {/* Bounding Box khi đã chốt biển số */}
                 {plateNumber && (
                   <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-24 border-2 border-emerald-400 bg-emerald-400/10 rounded-lg flex items-end justify-center pb-2 transition-all">
                     <span className="bg-emerald-500 text-white text-xs font-bold px-2 py-0.5 rounded uppercase tracking-wider shadow-md">
@@ -276,7 +292,6 @@ export default function CheckInPage() {
                   </div>
                 )}
 
-                {/* Camera Controls Overlay */}
                 <div className="absolute top-4 left-4 right-4 flex justify-between">
                   <label className="flex items-center gap-2 bg-slate-900/70 backdrop-blur-md px-3 py-1.5 rounded-lg text-white text-xs font-semibold cursor-pointer border border-slate-700">
                     <div className="relative inline-flex items-center cursor-pointer">
@@ -348,142 +363,196 @@ export default function CheckInPage() {
           )}
         </div>
 
-        {/* RIGHT COLUMN: FORM & ACTIONS */}
-        <div className="lg:col-span-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm flex flex-col">
-          {checkInSuccess ? (
-            <div className="flex-1 flex flex-col items-center justify-center text-center space-y-4 animate-in zoom-in-95">
-              <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center">
-                <CheckCircle2 size={32} />
-              </div>
-              <div>
-                <h3 className="text-xl font-bold text-slate-800 dark:text-white">
-                  Check-In Successful
-                </h3>
-                <p className="text-sm text-slate-500 mt-1">
-                  Session:{" "}
-                  <span className="font-mono">{checkInSuccess.session_id}</span>
-                </p>
-              </div>
-
-              <div className="w-full bg-slate-50 dark:bg-slate-800 rounded-xl p-4 border border-slate-100 dark:border-slate-700 text-left space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-slate-500 text-sm">Plate:</span>
-                  <span className="font-bold">
-                    {checkInSuccess.license_plate_in}
-                  </span>
+        {/* RIGHT COLUMN: FORM & HISTORY */}
+        <div className="lg:col-span-5 flex flex-col gap-6">
+          {/* 1. FORM CHECK-IN CHÍNH */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm flex flex-col min-h-[400px]">
+            {checkInSuccess ? (
+              <div className="flex-1 flex flex-col items-center justify-center text-center space-y-4 animate-in zoom-in-95">
+                <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center">
+                  <CheckCircle2 size={32} />
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500 text-sm">Slot:</span>
-                  <span className="font-bold text-blue-600">
-                    {checkInSuccess.slot_name}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500 text-sm">Time In:</span>
-                  <span className="font-medium text-sm">
-                    {checkInSuccess.check_in_time}
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex gap-2 w-full pt-4">
-                <button className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2.5 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 text-sm">
-                  <Ticket size={16} /> Print
-                </button>
-                <button
-                  onClick={resetForm}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg font-medium transition-colors text-sm"
-                >
-                  Next (Space)
-                </button>
-              </div>
-            </div>
-          ) : (
-            <form
-              onSubmit={handleCheckIn}
-              className="flex-1 flex flex-col justify-between"
-            >
-              <div className="space-y-5">
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex justify-between">
-                    License Plate{" "}
-                    <span className="text-xs font-normal text-slate-400">
-                      Confidence: {confidenceScore}%
+                  <h3 className="text-xl font-bold text-slate-800 dark:text-white">
+                    Check-In Successful
+                  </h3>
+                  <p className="text-sm text-slate-500 mt-1">
+                    Session:{" "}
+                    <span className="font-mono">
+                      {checkInSuccess.session_id}
                     </span>
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Hash className="h-5 w-5 text-slate-400" />
-                    </div>
-                    <input
-                      type="text"
-                      required
-                      value={plateNumber}
-                      onChange={(e) =>
-                        setPlateNumber(e.target.value.toUpperCase())
-                      }
-                      className="block w-full pl-10 pr-3 py-3 border border-slate-300 dark:border-slate-600 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-black text-xl uppercase tracking-wider focus:ring-2 focus:ring-blue-500"
-                      placeholder="SCANNING..."
-                    />
+                  </p>
+                </div>
+
+                <div className="w-full bg-slate-50 dark:bg-slate-800 rounded-xl p-4 border border-slate-100 dark:border-slate-700 text-left space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-slate-500 text-sm">Plate:</span>
+                    {/* Đã thêm text-slate-800 cho nền sáng và dark:text-white cho nền tối */}
+                    <span className="font-bold text-slate-800 dark:text-white text-lg">
+                      {checkInSuccess.license_plate_in}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between">
+                    <span className="text-slate-500 text-sm">Slot:</span>
+                    <span className="font-bold text-blue-600 dark:text-blue-400 text-lg">
+                      {checkInSuccess.slot_name}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between">
+                    <span className="text-slate-500 text-sm">Time In:</span>
+                    {/* Đã thêm text-slate-700 cho nền sáng và dark:text-slate-300 cho nền tối */}
+                    <span className="font-medium text-slate-700 dark:text-slate-300 text-sm">
+                      {checkInSuccess.check_in_time}
+                    </span>
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                    Vehicle Type{" "}
-                    <span className="text-xs font-normal text-slate-400">
-                      (Hotkeys: 1, 2)
-                    </span>
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setVehicleTypeId(1)}
-                      className={`py-2.5 border rounded-lg font-medium text-sm transition-all flex items-center justify-center gap-2 ${vehicleTypeId === 1 ? "border-blue-600 bg-blue-50 text-blue-700" : "text-slate-600 hover:bg-slate-50"}`}
-                    >
-                      <CarFront size={16} /> Car
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setVehicleTypeId(2)}
-                      className={`py-2.5 border rounded-lg font-medium text-sm transition-all flex items-center justify-center gap-2 ${vehicleTypeId === 2 ? "border-blue-600 bg-blue-50 text-blue-700" : "text-slate-600 hover:bg-slate-50"}`}
-                    >
-                      Motorbike
-                    </button>
-                  </div>
+                <div className="flex gap-2 w-full pt-4">
+                  <button className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2.5 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 text-sm">
+                    <Ticket size={16} /> Print
+                  </button>
+                  <button
+                    onClick={resetForm}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg font-medium transition-colors text-sm"
+                  >
+                    Next (Space)
+                  </button>
                 </div>
-
-                {/* AI Suggestion */}
-                {suggestedSlot && (
-                  <div className="bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 rounded-lg p-3 flex gap-3 mt-4">
-                    <MapPin className="text-blue-500 mt-0.5" size={18} />
-                    <div>
-                      <span className="text-xs font-bold text-blue-800 uppercase block">
-                        AI Recommended Slot
-                      </span>
-                      <span className="text-sm font-medium text-blue-600">
-                        {suggestedSlot.slot_name} (Zone {suggestedSlot.zone})
-                      </span>
-                    </div>
-                  </div>
-                )}
               </div>
-
-              <button
-                id="btn-submit-checkin"
-                type="submit"
-                disabled={!plateNumber || isSubmitting || !!systemWarning}
-                className="mt-8 w-full bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 text-white py-3.5 rounded-xl font-bold text-base transition-colors flex items-center justify-center gap-2 shadow-lg"
+            ) : (
+              <form
+                onSubmit={handleCheckIn}
+                className="flex-1 flex flex-col justify-between"
               >
-                {isSubmitting ? (
-                  <RefreshCcw size={18} className="animate-spin" />
-                ) : (
-                  <CheckCircle2 size={18} />
-                )}
-                {isSubmitting ? "Processing..." : "Confirm Entry (Enter)"}
-              </button>
-            </form>
-          )}
+                <div className="space-y-5">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex justify-between">
+                      License Plate{" "}
+                      <span className="text-xs font-normal text-slate-400">
+                        Confidence: {confidenceScore}%
+                      </span>
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Hash className="h-5 w-5 text-slate-400" />
+                      </div>
+                      <input
+                        type="text"
+                        required
+                        value={plateNumber}
+                        onChange={(e) =>
+                          setPlateNumber(e.target.value.toUpperCase())
+                        }
+                        className="block w-full pl-10 pr-3 py-3 border border-slate-300 dark:border-slate-600 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-black text-xl uppercase tracking-wider focus:ring-2 focus:ring-blue-500"
+                        placeholder="SCANNING..."
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                      Vehicle Type{" "}
+                      <span className="text-xs font-normal text-slate-400">
+                        (Hotkeys: 1, 2)
+                      </span>
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setVehicleTypeId(1)}
+                        className={`py-2.5 border rounded-lg font-medium text-sm transition-all flex items-center justify-center gap-2 ${vehicleTypeId === 1 ? "border-blue-600 bg-blue-50 text-blue-700" : "text-slate-600 hover:bg-slate-50"}`}
+                      >
+                        <CarFront size={16} /> Car
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setVehicleTypeId(2)}
+                        className={`py-2.5 border rounded-lg font-medium text-sm transition-all flex items-center justify-center gap-2 ${vehicleTypeId === 2 ? "border-blue-600 bg-blue-50 text-blue-700" : "text-slate-600 hover:bg-slate-50"}`}
+                      >
+                        Motorbike
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* AI Suggestion */}
+                  {suggestedSlot && (
+                    <div className="bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 rounded-lg p-3 flex gap-3 mt-4">
+                      <MapPin className="text-blue-500 mt-0.5" size={18} />
+                      <div>
+                        <span className="text-xs font-bold text-blue-800 uppercase block">
+                          AI Recommended Slot
+                        </span>
+                        <span className="text-sm font-medium text-blue-600">
+                          {suggestedSlot.slot_name} (Zone {suggestedSlot.zone})
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  id="btn-submit-checkin"
+                  type="submit"
+                  disabled={!plateNumber || isSubmitting || !!systemWarning}
+                  className="mt-8 w-full bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 text-white py-3.5 rounded-xl font-bold text-base transition-colors flex items-center justify-center gap-2 shadow-lg"
+                >
+                  {isSubmitting ? (
+                    <RefreshCcw size={18} className="animate-spin" />
+                  ) : (
+                    <CheckCircle2 size={18} />
+                  )}
+                  {isSubmitting ? "Processing..." : "Confirm Entry (Enter)"}
+                </button>
+              </form>
+            )}
+          </div>
+
+          {/* 2. HISTORY LIST (Lịch sử Check-in gần đây) */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm flex-1">
+            <h3 className="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-2 mb-4">
+              <History size={16} className="text-blue-500" />
+              Recent Check-Ins
+            </h3>
+
+            <div className="space-y-3">
+              {recentCheckIns.length > 0 ? (
+                recentCheckIns.map((session, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between p-3 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 flex items-center justify-center">
+                        <CarFront size={14} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-slate-800 dark:text-white">
+                          {session.license_plate_in}
+                        </p>
+                        <p className="text-xs text-slate-500 font-mono mt-0.5">
+                          {session.session_id}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs font-semibold text-blue-600 dark:text-blue-400">
+                        {session.slot_name}
+                      </p>
+                      <p className="text-xs text-slate-400 flex items-center justify-end gap-1 mt-0.5">
+                        <Clock size={10} /> {session.check_in_time}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-6 text-sm text-slate-400">
+                  No recent check-ins yet.
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>
