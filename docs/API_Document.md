@@ -774,7 +774,7 @@ Authorization: Bearer JWT_ACCESS_TOKEN
   "gate_in": "gate_in_01",
   "image_url_in": "/uploads/plates/abc.jpg",
   "staff_in_id": "usr_001",
-  "slot_id": "slt_089",
+  "slot_id": null,
   "booking_id": null
 }
 ```
