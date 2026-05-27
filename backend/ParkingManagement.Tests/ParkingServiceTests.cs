@@ -87,12 +87,15 @@ namespace ParkingManagement.Tests.Services
         {
             // Arrange
             var dto = new VehicleCheckInDto { LicensePlateIn = "51G-12345", SlotId = "INVALID-ID" };
+            string staffId = "STAFF-01"; // Khai báo rõ ràng staffId phục vụ bài test
+
             _parkingRepositoryMock.Setup(r => r.IsVehicleActiveInParkingAsync(dto.LicensePlateIn)).ReturnsAsync(false);
             _parkingRepositoryMock.Setup(r => r.GetSlotByIdAsync(dto.SlotId)).ReturnsAsync((ParkingSlot?)null);
 
             // Act & Assert
-            var ex = await Assert.ThrowsAsync<Exception>(() =>
-                _parkingService.ProcessWalkInCheckInAsync(dto, "STAFF-01"));
+            var ex = await Assert.ThrowsAsync<KeyNotFoundException>(() =>
+                _parkingService.ProcessWalkInCheckInAsync(dto, staffId));
+
             Assert.Equal("SLOT_NOT_FOUND", ex.Message);
         }
 
@@ -105,12 +108,15 @@ namespace ParkingManagement.Tests.Services
             var slot = new ParkingSlot { SlotId = "SLOT-BUSY", Status = "OCCUPIED" };
 
             _parkingRepositoryMock.Setup(r => r.IsVehicleActiveInParkingAsync(dto.LicensePlateIn)).ReturnsAsync(false);
+
+            // Đảm bảo hàm GetSlotByIdAsync được cấu hình trả về thông tin slot phục vụ cả luồng check ngoài và trong transaction
             _parkingRepositoryMock.Setup(r => r.GetSlotByIdAsync(dto.SlotId)).ReturnsAsync(slot);
 
-            // Act & Assert
+            // Act & Assert           
             var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
                 _parkingService.ProcessWalkInCheckInAsync(dto, "STAFF-01"));
-            Assert.Contains("Slot đang ở trạng thái OCCUPIED", ex.Message);
+
+            Assert.Contains("Không thể đỗ xe: Slot vừa bị chiếm dụng", ex.Message);
         }
 
         // TC-06: Thất bại khi tự động điều phối slot nhưng bãi đã hết sạch vị trí trống cho loại xe đó
@@ -351,16 +357,29 @@ namespace ParkingManagement.Tests.Services
 
         #region PHẦN 5: UPDATE SLOT STATUS (3 TEST CASES)
 
-        // TC-18: Cập nhật trạng thái vị trí thành công sang MAINTENANCE (Bảo trì)
+        // TC-18: Cập nhật trạng thái vị trí thành công sang MAINTENANCE 
         [Fact]
         public async Task UpdateSlotStatus_ValidPayload_UpdatesStatusAndLogsSuccessfully()
         {
             // Arrange
-            var dto = new UpdateSlotStatusDto { SlotId = "SLOT-01", Status = "MAINTENANCE", Reason = "Hỏng cảm biến" };
+            var dto = new UpdateSlotStatusDto
+            {
+                SlotId = "SLOT-01",
+                Status = "MAINTENANCE",
+                Reason = "Hỏng cảm biến",
+                EstimatedDurationMinutes = 60 
+            };
             var slot = new ParkingSlot { SlotId = "SLOT-01", Status = "AVAILABLE", SlotName = "Slot 1" };
 
             _parkingRepositoryMock.Setup(r => r.GetSlotByIdAsync(dto.SlotId)).ReturnsAsync(slot);
-            _parkingRepositoryMock.Setup(r => r.UpdateSlotStatusWithLogAsync(dto.SlotId, "MAINTENANCE", "STAFF-01", dto.Reason)).ReturnsAsync(true);
+
+            _parkingRepositoryMock.Setup(r => r.UpdateSlotStatusWithLogAsync(
+                dto.SlotId,
+                "MAINTENANCE",
+                "STAFF-01",
+                dto.Reason,
+                dto.EstimatedDurationMinutes 
+            )).ReturnsAsync(true);
 
             // Act
             var result = await _parkingService.UpdateSlotStatusAsync(dto, "STAFF-01");
