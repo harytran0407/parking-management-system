@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using ParkingManagement.Data;
 using ParkingManagement.Repositories;
 using ParkingManagement.Services.BuildingServices;
+using ParkingManagement.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,6 +21,10 @@ builder.Services.AddControllers()
 // ── Swagger ───────────────────────────────────────────────────────────────────
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+// ── Parking module ───────────────────────────────────────────────────────────────────────
+builder.Services.AddScoped<IParkingRepository, ParkingRepository>();
+builder.Services.AddScoped<IParkingService, ParkingService>();
 
 // ── Building module ───────────────────────────────────────────────────────────
 builder.Services.AddScoped<IBuildingRepository, BuildingRepository>();

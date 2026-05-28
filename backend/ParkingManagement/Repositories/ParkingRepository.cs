@@ -97,7 +97,7 @@ namespace ParkingManagement.Repositories
                 var slot = await _context.ParkingSlots.FindAsync(slotId);
                 if (slot != null)
                 {
-                    slot.Status = "Available";
+                    slot.Status = "AVAILABLE";
                     _context.ParkingSlots.Update(slot);
                 }
 
@@ -146,42 +146,42 @@ namespace ParkingManagement.Repositories
         public async Task UpdateSessionAsync(ParkingSession session)
         {
             _context.ParkingSessions.Update(session);
-            await Task.CompletedTask; // Đảm bảo đúng chuẩn async
+            await Task.CompletedTask; 
         }
 
         public async Task UpdateSlotAsync(ParkingSlot slot)
         {
-            // Nếu Service muốn đổi trạng thái sang OCCUPIED (khi xe vào bãi)
-            if (slot.Status.ToUpper() == "OCCUPIED")
+            if (slot.Status.Equals("OCCUPIED", StringComparison.OrdinalIgnoreCase))
             {
-                // Truy vấn thực thể gốc trực tiếp từ DB trong phạm vi context hiện tại
-                var dbSlot = await _context.ParkingSlots.FindAsync(slot.SlotId);
+                var currentDbStatus = await _context.ParkingSlots
+                    .AsNoTracking()
+                    .Where(s => s.SlotId == slot.SlotId)
+                    .Select(s => s.Status)
+                    .FirstOrDefaultAsync();
 
-                if (dbSlot == null)
+                if (currentDbStatus == null)
                     throw new KeyNotFoundException("Slot không tồn tại.");
 
-                // Kiểm tra ATOMIC: Nếu lúc này trạng thái trong DB đã bị thằng khác đổi thành OCCUPIED hoặc MAINTENANCE
-                if (dbSlot.Status.ToUpper() != "AVAILABLE")
+                if (!currentDbStatus.Equals("AVAILABLE", StringComparison.OrdinalIgnoreCase))
                 {
                     throw new InvalidOperationException("Race Condition Detected: Ô đỗ xe vừa bị chiếm dụng bởi một xe khác!");
                 }
 
-                // Nếu vẫn trống, cập nhật dữ liệu mới
-                dbSlot.Status = "OCCUPIED";
-                dbSlot.LastUpdated = DateTime.Now;
+                var dbSlot = await _context.ParkingSlots.FindAsync(slot.SlotId);
+                if (dbSlot != null)
+                {
+                    dbSlot.Status = "OCCUPIED"; 
+                    dbSlot.LastUpdated = DateTime.Now;
+                }
             }
             else
             {
-                // Các trường hợp cập nhật thông thường khác
                 _context.ParkingSlots.Update(slot);
             }
 
             await _context.SaveChangesAsync();
         }
 
-        /// <summary>
-        /// BỔ SUNG: Triển khai hàm bị thiếu để giải quyết triệt để lỗi build CS0535
-        /// </summary>
         public async Task<PricingPolicy?> GetActivePricingPolicyByVehicleTypeAsync(int vehicleTypeId)
         {
             var today = DateOnly.FromDateTime(DateTime.Now);
