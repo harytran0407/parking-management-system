@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using ParkingManagement.DTOs;
-using ParkingManagement.Services;
+using ParkingManagement.DTOs.Building;
+using ParkingManagement.Services.BuildingServices;
 
 namespace ParkingManagement.Controllers;
 
