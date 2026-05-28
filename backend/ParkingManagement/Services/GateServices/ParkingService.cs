@@ -31,7 +31,7 @@ namespace ParkingManagement.Services
 
             // Bổ sung: Lấy trước thông tin slot (chỉ dùng để map dữ liệu trả về DTO ở cuối)
             var initialSlotInfo = await _parkingRepository.GetSlotByIdAsync(selectedSlotId);
-            if (initialSlotInfo == null) throw new KeyNotFoundException("SLOT_NOT_FOUND");
+            if (initialSlotInfo == null) throw new KeyNotFoundException("SLOT_NOT_AVAILABLE");
 
             string sessionId = GenerateSessionId();
             DateTime checkInTime = DateTime.Now;
@@ -41,12 +41,12 @@ namespace ParkingManagement.Services
             {
                 // Đọc lại trạng thái slot trực tiếp bên trong Transaction block để đảm bảo dữ liệu mới nhất
                 var slotToUpdate = await _parkingRepository.GetSlotByIdAsync(selectedSlotId);
-                if (slotToUpdate == null) throw new KeyNotFoundException("SLOT_NOT_FOUND");
+                if (slotToUpdate == null) throw new KeyNotFoundException("SLOT_NOT_AVAILABLE");
 
                 // KIỂM TRA TRẠNG THÁI NGAY TRONG TRANSACTION (Ngăn chặn Race Condition)
-                if (slotToUpdate.Status.ToUpper() != "AVAILABLE")
+                if (slotToUpdate.Status?.ToUpper() != "AVAILABLE")
                 {
-                    throw new InvalidOperationException($"Không thể đỗ xe: Slot vừa bị chiếm dụng bởi người khác, trạng thái hiện tại: {slotToUpdate.Status}");
+                    throw new InvalidOperationException("CONCURRENCY_CONFLICT");
                 }
 
                 // Khởi tạo và lưu phiên đỗ xe mới
@@ -85,15 +85,15 @@ namespace ParkingManagement.Services
             var session = await _parkingRepository.GetActiveSessionByPlateAsync(checkOutDto.LicensePlateOut);
             if (session == null)
             {
-                throw new Exception("Không tìm thấy lượt đỗ ACTIVE nào cho xe này.");
+                throw new Exception("INVALID_TICKET");
             }
 
-            // 2. Tính toán thời gian và chi phí
+            // 2. Tính toán thời gian và chi phí trực tiếp (Không còn ép Kind thủ công)
             var checkOutTime = DateTime.Now;
             int durationMinutes = ParkingCalculationHelper.CalculateDurationMinutes(session.CheckInTime, checkOutTime);
 
             var policy = await _parkingRepository.GetActivePricingPolicyByVehicleTypeAsync(session.VehicleTypeId)
-                         ?? throw new Exception("Chính sách giá chưa được cấu hình.");
+                         ?? throw new Exception("PRICING_POLICY_NOT_CONFIGURED");
 
             decimal totalFee = ParkingCalculationHelper.CalculateParkingFee(durationMinutes, policy.BasePrice, policy.HourlyRate);
 
@@ -119,15 +119,15 @@ namespace ParkingManagement.Services
                 }
             });
 
-            // 4. Trả kết quả dữ liệu đầu ra
             return MapToCheckOutResponseDto(session, totalFee, durationMinutes, checkOutTime);
         }
 
         public async Task<ActiveSessionResponseDto> GetActiveSessionByLicensePlateAsync(string licensePlate)
         {
             var session = await _parkingRepository.GetActiveSessionByPlateAsync(licensePlate)
-                          ?? throw new InvalidOperationException("ACTIVE_SESSION_NOT_FOUND");
+                          ?? throw new InvalidOperationException("INVALID_TICKET");
 
+            // Tính toán thời gian thực tế trực tiếp với DateTime.Now
             var currentTime = DateTime.Now;
             int durationMinutes = ParkingCalculationHelper.CalculateDurationMinutes(session.CheckInTime, currentTime);
 
@@ -144,9 +144,12 @@ namespace ParkingManagement.Services
         public async Task<PreCheckOutResponseDto> CalculatePreCheckOutFeeAsync(string sessionId)
         {
             var session = await _parkingRepository.GetActiveSessionByIdAsync(sessionId)
-                          ?? throw new InvalidOperationException("SESSION_NOT_FOUND_OR_INACTIVE");
+                          ?? throw new InvalidOperationException("INVALID_TICKET");
 
-            int durationMinutes = ParkingCalculationHelper.CalculateDurationMinutes(session.CheckInTime, DateTime.Now);
+            // Tính toán trực tiếp cực kỳ ngắn gọn
+            var currentTime = DateTime.Now;
+            int durationMinutes = ParkingCalculationHelper.CalculateDurationMinutes(session.CheckInTime, currentTime);
+
             int hours = ParkingCalculationHelper.ConvertMinutesToBillingHours(durationMinutes);
 
             var policy = await _parkingRepository.GetActivePricingPolicyByVehicleTypeAsync(session.VehicleTypeId)
@@ -172,7 +175,7 @@ namespace ParkingManagement.Services
             var slot = await _parkingRepository.GetSlotByIdAsync(dto.SlotId);
             if (slot == null)
             {
-                throw new KeyNotFoundException("SLOT_NOT_FOUND");
+                throw new KeyNotFoundException("SLOT_NOT_AVAILABLE");
             }
 
             // --- KIỂM TRA RÀNG BUỘC LOGIC BUSINESS ---

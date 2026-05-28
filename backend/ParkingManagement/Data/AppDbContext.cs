@@ -694,11 +694,39 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.SlotId).HasColumnName("slot_id").HasMaxLength(50);
             entity.Property(e => e.OldStatus).HasColumnName("old_status").HasMaxLength(20);
             entity.Property(e => e.NewStatus).HasColumnName("new_status").HasMaxLength(20);
-            entity.Property(e => e.ChangedByStaffId).HasColumnName("changed_by_staff_id").HasMaxLength(50);
+            entity.Property(e => e.ChangedBy).HasColumnName("changed_by").HasMaxLength(50);
             entity.Property(e => e.ChangedAt).HasColumnName("changed_at").HasColumnType("datetime");
             entity.Property(e => e.Reason).HasColumnName("reason").HasMaxLength(255);
             entity.Property(e => e.EstimatedDurationMinutes).HasColumnName("estimated_duration_minutes");
         });
+
+        var dateTimeConverter = new Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<DateTime, DateTime>(
+            v => v,
+            v => DateTime.SpecifyKind(v, DateTimeKind.Unspecified)
+        );
+
+        var nullableDateTimeConverter = new Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<DateTime?, DateTime?>(
+            v => v,
+            v => v.HasValue ? DateTime.SpecifyKind(v.Value, DateTimeKind.Unspecified) : null
+        );
+
+        // 2. Quét qua toàn bộ Database Schema được khai báo trong DbContext
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            foreach (var property in entityType.GetProperties())
+            {
+                // Nếu thuộc tính đó là DateTime (Bắt buộc)
+                if (property.ClrType == typeof(DateTime))
+                {
+                    property.SetValueConverter(dateTimeConverter);
+                }
+                // Nếu thuộc tính đó là DateTime? (Cho phép Null)
+                else if (property.ClrType == typeof(DateTime?))
+                {
+                    property.SetValueConverter(nullableDateTimeConverter);
+                }
+            }
+        }
 
         OnModelCreatingPartial(modelBuilder);
     }

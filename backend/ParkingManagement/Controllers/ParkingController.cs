@@ -176,7 +176,7 @@ namespace ParkingManagement.Controllers
 #if DEBUG
             if (string.IsNullOrEmpty(staffId))
             {
-                staffId = "STAFF_TEST_001"; // Gán tài khoản giả lập phục vụ DEV test luồng
+                staffId = "usr_001"; // Gán tài khoản giả lập phục vụ DEV test luồng
             }
 #endif
 
