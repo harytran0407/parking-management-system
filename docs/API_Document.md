@@ -184,26 +184,75 @@ Authorization: Bearer JWT_ACCESS_TOKEN
     "created_at": "2025-01-01T00:00:00Z"
   }
 }
+
 ```
 
-> **DB ref:** `USERS.USER_ID VARCHAR(20)`, `USERS.FULL_NAME`, `USERS.EMAIL`, `USERS.PHONE_NUMBER`, `ROLE.ROLE_NAME`, `USERS.CREATED_AT`
+## 1.4 Update Username (Gmail Login)
+
+| Property | Value |
+|----------|-------|
+| **Method** | `PUT` |
+| **Endpoint** | `/api/v1/auth/update-username` |
+| **Authentication** | Không yêu cầu |
+| **Roles** | Tất cả |
+
+**Request Headers**
+```json
+{
+  "Content-Type": "application/json",
+  "Authorization": "Bearer JWT_ACCESS_TOKEN"
+}
+```
+
+**Request Body**
+```json
+{
+  "username": "nguyenvana"
+}
+```
+
+**Validation Rules**
+
+| Field | Rule |
+|-------|------|
+| `username` | Bắt buộc, tối thiểu 3 ký tự, tối đa 30 ký tự, chỉ chứa chữ cái, chữ số, dấu gạch dưới (_) hoặc gạch ngang (-), không chứa khoảng trắng, chưa được sử dụng |
+
+> **Note:** Role mặc định khi đăng ký là `ParkingUser`. Tài khoản `ParkingStaff` chỉ được tạo bởi `Admin` thông qua endpoint riêng.
+
+**Success Response (201 Created)**
+```json
+{
+  "success": true,
+  "message": "Username updated successfully",
+  "data": {
+    "user_id": "usr_003",
+    "username": "nguyenvana",
+    "email": "vanannguyen@gmail.com",
+    "role": "ParkingUser"
+  }
+}
+```
 
 **Error Responses**
 ```json
-// 409 — Email đã tồn tại
-{ "success": false, "error_code": "EMAIL_ALREADY_EXISTS", "message": "Email is already registered" }
+// 400 — Username sai định dạng
+{ "success": false, "error_code": "INVALID_USERNAME_FORMAT", "message": "Username can only contain alphanumeric characters, underscores, or hyphens" }
 
-// 409 — Số điện thoại đã tồn tại
-{ "success": false, "error_code": "PHONE_ALREADY_EXISTS", "message": "Phone number is already registered" }
+// 401 — Token không hợp lệ hoặc hết hạn
+{ "success": false, "error_code": "UNAUTHORIZED", "message": "Unauthorized access" }
 
-// 422 — Mật khẩu không khớp
-{ "success": false, "error_code": "PASSWORD_MISMATCH", "message": "Password and confirm password do not match" }
+// 409 — Username đã tồn tại
+{ "success": false, "error_code": "USERNAME_ALREADY_EXISTS", "message": "This username is already taken" }
 
-// 422 — Dữ liệu không hợp lệ
-{ "success": false, "error_code": "VALIDATION_ERROR", "message": "Invalid input data", "errors": { "email": "Invalid email format", "phone_number": "Invalid phone number format" } }
+// 422 — Tài khoản đã có username trước đó
+{ "success": false, "error_code": "USERNAME_ALREADY_SET", "message": "Account already has a username set" }
 ```
 
-**DB Tables:** `USERS`, `ROLE`
+> **DB ref:** `USERS.USER_ID VARCHAR(20)`, `USERS.USERNAME VARCHAR(50)`, `USERS.EMAIL`, `ROLE.ROLE_NAME`
+
+**DB Tables:** `USERS`
+
+
 
 # 2. User Management Module
 
