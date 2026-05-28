@@ -218,6 +218,64 @@ namespace ParkingManagement.Services
             };
         }
 
+        public async Task<ParkingSlotsResponseDto> GetRealtimeSlotsAsync(SlotQueryFilterDto filter)
+        {
+            // 1. Gọi Repository lấy dữ liệu thô từ Database
+            var (slots, totalCount, statusCounts) = await _parkingRepository.GetPagedSlotsWithStatusAsync(filter);
+
+            var response = new ParkingSlotsResponseDto();
+
+            // 2. Thiết lập khối Summary số lượng ô đỗ theo đúng định dạng API yêu cầu
+            response.Data.Summary = new SlotSummaryDto
+            {
+                TotalSlots = statusCounts["TOTAL"],
+                Available = statusCounts["AVAILABLE"],
+                Occupied = statusCounts["OCCUPIED"],
+                Reserved = statusCounts["RESERVED"],
+                Maintenance = statusCounts["MAINTENANCE"]
+            };
+
+            // 3. Thiết lập khối thông tin phân trang (Pagination)
+            int totalPages = (int)Math.Ceiling((double)totalCount / filter.PageSize);
+            response.Data.Pagination = new PaginationDto
+            {
+                Page = filter.Page,
+                PageSize = filter.PageSize,
+                TotalItems = totalCount,
+                TotalPages = totalPages == 0 ? 1 : totalPages
+            };
+
+            // 4. Ánh xạ danh sách chi tiết ô đỗ xe (Mapping sang DTO)
+            foreach (var slot in slots)
+            {
+                // Tìm phiên làm việc đang hoạt động (ACTIVE) khớp với ô đỗ hiện tại
+                var activeSession = slot.ParkingSessions?
+                    .FirstOrDefault(ps => ps.Status == "ACTIVE" || ps.SessionId == slot.CurrentSessionId);
+
+                var slotDetail = new SlotDetailDto
+                {
+                    SlotId = slot.SlotId,
+                    SlotName = slot.SlotName,
+                    Floor = slot.Zone?.FloorNumber ?? 0,
+                    Zone = slot.Zone?.ZoneName ?? "N/A",
+                    VehicleTypeId = slot.Zone?.VehicleTypeId ?? 0,
+                    Status = slot.Status ?? "AVAILABLE",
+                    IsHandicap = slot.IsHandicap ?? false,
+                    IsElectricCharging = slot.IsElectricCharging ?? false,
+                    CurrentSessionId = slot.CurrentSessionId,
+                    LastUpdated = slot.LastUpdated,
+
+                    // Đã Sửa: Ánh xạ chuẩn theo trường LICENSE_PLATE_IN và CHECK_IN_TIME từ schema của bạn
+                    OccupiedByPlate = slot.Status == "OCCUPIED" ? activeSession?.LicensePlateIn : null,
+                    OccupiedSince = slot.Status == "OCCUPIED" ? activeSession?.CheckInTime : null
+                };
+
+                response.Data.Slots.Add(slotDetail);
+            }
+
+            return response;
+        }
+
         #region Private Sub-Functions (Các hàm phụ trợ nội bộ giúp code gọn gàng)
 
         private async Task<string> ResolveSlotIdAsync(string? inputSlotId, int vehicleTypeId)
