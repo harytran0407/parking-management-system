@@ -32,7 +32,6 @@ export default function Issues() {
   const [hoverRating, setHoverRating] = useState(0);
   const [status, setStatus] = useState("idle"); // 'idle' | 'submitting' | 'success'
 
-  // Nhãn chữ động phản hồi số sao tương tác thời gian thực
   const ratingLabel = useMemo(() => {
     const currentRating = hoverRating || formData.rating;
     switch (currentRating) {
@@ -161,13 +160,12 @@ export default function Issues() {
   return (
     <div className="animate-slide-in max-w-6xl w-full mx-auto pb-12">
       {/* HEADER PAGE */}
-      <div className="mb-8">
-        <h2 className="text-3xl font-bold text-slate-800 dark:text-white mb-2">
+      <div className="mb-6">
+        <h2 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">
           Support Center
         </h2>
-        <p className="text-slate-500 dark:text-slate-400 max-w-3xl text-sm md:text-base">
-          Report an issue or suggest a feature. Every ticket submitted goes
-          directly to our operations and technical support team.
+        <p className="text-sm font-medium text-slate-400 dark:text-slate-500 mt-1">
+          Submit a ticket directly to our technical support team.
         </p>
       </div>
 
