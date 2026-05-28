@@ -17,7 +17,7 @@ import BookSlot from "../pages/user/BookSlot";
 import Profile from "../pages/user/Profile";
 import MyBookings from "../pages/user/MyBookings";
 import MyVehicles from "../pages/user/MyVehicles";
-import FeedBack from "../pages/user/FeedBack";
+import Issues from "../pages/user/Issues";
 
 export default function UserLayout() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -35,8 +35,8 @@ export default function UserLayout() {
       icon: <CarFront size={20} />,
     },
     {
-      path: "/user/feedback",
-      label: "Feedback",
+      path: "/user/issues",
+      label: "Issues",
       icon: <MessageSquare size={20} />,
     },
   ];
@@ -63,7 +63,7 @@ export default function UserLayout() {
             <Route path="/profile" element={<Profile />} />
             <Route path="/bookings" element={<MyBookings />} />
             <Route path="myvehicle" element={<MyVehicles />} />
-            <Route path="/feedback" element={<FeedBack />} />
+            <Route path="/issues" element={<Issues />} />
 
             {/* Đưa route catch-all /* xuống dưới cùng để chuẩn logic React Router */}
             <Route path="/*" element={<UserDashboard />} />

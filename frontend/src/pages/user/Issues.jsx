@@ -6,7 +6,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth'; 
 
-export default function Feedback() {
+export default function Issues() {
   const navigate = useNavigate();
   const { user } = useAuth(); 
 
