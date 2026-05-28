@@ -1815,17 +1815,24 @@ Content-Disposition: attachment; filename="revenue_report_2024_01.pdf"
 
 ## Business Error Codes
 
-| Code | HTTP Status | Mô tả |
-|------|-------------|-------|
-| `ACTIVE_SESSION_EXISTS` | 409 | Xe đang trong bãi |
-| `NO_AVAILABLE_SLOT` | 422 | Bãi đầy cho loại xe này |
-| `INVALID_TICKET` | 404 | Vé không tồn tại hoặc đã hết hạn |
-| `PAYMENT_FAILED` | 422 | Giao dịch bị từ chối |
-| `SUBSCRIPTION_EXPIRED` | 422 | Thẻ tháng đã hết hạn |
-| `GATE_OFFLINE` | 503 | Cổng ra không phản hồi |
-| `AI_SERVICE_TIMEOUT` | 504 | Nhận diện biển số timeout |
-| `INVALID_VEHICLE_TYPE` | 400 | `vehicle_type_id` không tồn tại |
-| `BOOKING_EXPIRED` | 422 | Booking đã quá `EXPIRED_AT` |
+| Error Code | HTTP Status | Module / Feature | Description (Mô tả kỹ thuật) | Suggested Frontend Message (Tiếng Việt) |
+| :--- | :---: | :---: | :--- | :--- |
+| **`UNAUTHORIZED_ACCESS`** | 401 | AUTH / Toàn hệ thống | Token JWT không hợp lệ, thiếu trong Header hoặc đã hết hạn. | Phiên làm việc đã hết hạn, vui lòng đăng nhập lại. |
+| **`FORBIDDEN_ACTION`** | 403 | AUTH / Phân quyền | Tài khoản không có quyền thực hiện hành động này (Vi phạm ràng buộc RBAC). | Bạn không có quyền thực hiện chức năng này. |
+| **`ACTIVE_SESSION_EXISTS`** | 409 | CHECK-IN / Vehicle | Biển số xe này hiện đang có một phiên gửi ở trạng thái `ACTIVE` trong bãi (Chưa check-out). | Xe hiện đang ở trong bãi, vui lòng kiểm tra lại biển số. |
+| **`NO_AVAILABLE_SLOT`** | 422 | CHECK-IN / Allocation | Toàn bộ bãi xe hoặc khu vực (Zone) dành cho loại xe này đã hết ô đỗ trống khả dụng. | Bãi xe đã đầy chỗ cho loại phương tiện này. |
+| **`CONCURRENCY_CONFLICT`** | 409 | SLOT / Check-in | Lỗi tranh chấp đồng thời. Ô đỗ vừa bị một luồng hoặc cổng khác chiếm dụng trước. | Thao tác thất bại do xung đột dữ liệu đồng thời. Vui lòng thử lại. |
+| **`SLOT_NOT_AVAILABLE`** | 400 | SLOT / Management | Ô đỗ được chỉ định không tồn tại trong hệ thống. | Ô đỗ không tồn tại, vui lòng kiểm tra lại. |
+| **`CANNOT_MAINTAIN_OCCUPIED_SLOT`** | 422 | SLOT / Management | Nhân viên cố tình hoặc hệ thống yêu cầu bảo trì một ô đỗ đang có xe (`OCCUPIED`). | Không thể bảo trì ô đỗ đang có xe gửi. |
+| **`CANNOT_MAINTAIN_RESERVED_SLOT`** | 422 | SLOT / Management | Nhân viên cố tình hoặc hệ thống yêu cầu bảo trì một ô đỗ đã được khách đặt trước (`RESERVED`). | Không thể bảo trì ô đỗ đã được khách đặt trước. |
+| **`INVALID_VEHICLE_TYPE`** | 400 | VEHICLE / Check-in | Mã loại phương tiện (`vehicle_type_id`) truyền lên Client không tồn tại trong cơ sở dữ liệu. | Loại phương tiện không hợp lệ. |
+| **`INVALID_TICKET`** | 404 | CHECK-OUT / Payment | Mã phiên (`SESSION_ID`) hoặc biển số xe không khớp với bất kỳ lượt xe `ACTIVE` nào trong bãi. | Không tìm thấy thông tin lượt gửi xe này (Mã phiên/Vé không hợp lệ). |
+| **`PRICING_POLICY_NOT_CONFIGURED`** | 422 | CHECK-OUT / Fee | Hệ thống chưa cấu hình bảng giá hoặc chính sách tính phí áp dụng cho loại phương tiện hiện tại. | Chưa cấu hình chính sách giá cho loại phương tiện này. |
+| **`BOOKING_EXPIRED`** | 422 | BOOKING / Check-in | Khách đặt chỗ trước nhưng đến check-in muộn quá thời gian giữ chỗ quy định (`EXPIRED_AT`). | Lượt đặt chỗ trước của bạn đã quá hạn và bị hủy tự động. |
+| **`SUBSCRIPTION_EXPIRED`** | 422 | MONTHLY_PASS | Thẻ tháng hoặc gói thành viên liên kết với phương tiện này đã hết hạn định. | Thẻ tháng đã hết hạn, vui lòng gia hạn hoặc dùng vé lượt. |
+| **`PAYMENT_FAILED`** | 422 | PAYMENT | Giao dịch qua cổng thanh toán điện tử hoặc thẻ bị đối tác từ chối. | Thanh toán thất bại, vui lòng kiểm tra lại tài khoản. |
+| **`DATABASE_UPDATE_FAILED`** | 500 | SYSTEM / Repository | Lỗi hệ thống khi thực thi lưu dữ liệu hoặc lỗi ràng buộc cứng từ DB Transaction. | Lỗi kết nối cơ sở dữ liệu, hành động chưa được ghi nhận. |
+| **`AI_SERVICE_TIMEOUT`** | 504 | HARDWARE / AI | API nhận diện biển số của module YOLO không phản hồi hoặc phản hồi quá thời gian timeout (3-5s). | Hệ thống AI nhận diện quá lâu, vui lòng nhập tay biển số. |
 
 ---
 
