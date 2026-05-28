@@ -237,7 +237,7 @@ CREATE TABLE SLOT_STATUS_LOGS (
     slot_id VARCHAR(50) NOT NULL,
     old_status VARCHAR(20) NOT NULL,
     new_status VARCHAR(20) NOT NULL,
-    changed_by_staff_id VARCHAR(50) NOT NULL,
+    changed_by VARCHAR(50) NOT NULL,
     changed_at DATETIME NOT NULL,
     reason NVARCHAR(255) NULL,
     estimated_duration_minutes INT NULL,
