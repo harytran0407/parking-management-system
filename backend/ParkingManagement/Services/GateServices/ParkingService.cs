@@ -179,6 +179,11 @@ namespace ParkingManagement.Services
             }
 
             // --- KIỂM TRA RÀNG BUỘC LOGIC BUSINESS ---
+            if (slot.Status == "OCCUPIED" && (upperStatus == "AVAILABLE" || upperStatus == "RESERVED"))
+            {
+                throw new InvalidOperationException("CANNOT_MANUALLY_FREE_AN_OCCUPIED_SLOT");
+            }
+
             if (upperStatus == "MAINTENANCE" && slot.Status == "OCCUPIED")
             {
                 throw new InvalidOperationException("CANNOT_MAINTAIN_OCCUPIED_SLOT");
