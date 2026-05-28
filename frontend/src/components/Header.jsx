@@ -1,21 +1,35 @@
 import React, { useState, useRef, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Bell, Sun, Moon, User, LogOut, PanelLeftOpen } from "lucide-react";
 import { useTheme } from "../hooks/useTheme";
 import { useAuth } from "../hooks/useAuth";
-import { useNavigate } from "react-router-dom";
 
-export default function Header({
-  title = "Dashboard",
-  isSidebarCollapsed,
-  setIsSidebarCollapsed,
-}) {
+export default function Header({ isSidebarCollapsed, setIsSidebarCollapsed }) {
   const { theme, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
+  // State management for user profile dropdown popover
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  // Reference area to handle click-outside event trigger
   const dropdownRef = useRef(null);
 
+  // Dynamic Page Title Mapping according to FUNCTIONAL_REQUIREMENT_85.md modules
+  const pageTitles = {
+    "/user": "Driver Dashboard",
+    "/user/book": "Book a Parking Slot",
+    "/user/bookings": "My Booking Sessions",
+    "/user/vehicles": "My Registered Vehicles",
+    "/user/issues": "Support Center",
+    "/user/profile": "Edit My Profile",
+  };
+
+  // Fallback title default configuration if path context does not match exactly
+  const currentTitle = pageTitles[location.pathname] || "Driver Dashboard";
+
+  // Hook to detect click transaction outside the dropdown component boundary
   useEffect(() => {
     function handleClickOutside(event) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -26,23 +40,26 @@ export default function Header({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Extract initial character from USERS.FULL_NAME field context as safe fallback
   const initial = user?.name ? user.name.charAt(0).toUpperCase() : "U";
 
+  // Execution flow handler for UC-02: Logout event sequence
   const handleLogout = () => {
     setIsDropdownOpen(false);
     logout();
   };
 
+  // Execution flow handler for UC-01: Navigate to edit profile interface
   const handleEditProfile = () => {
     setIsDropdownOpen(false);
     navigate("/user/profile");
   };
 
   return (
-    /* 🚀 ĐÃ NÂNG CẤP: Thêm sticky top-0, kính mờ backdrop-blur-md, hạ độ đục bg-white/80 và cố định chiều cao h-20 */
+    /* Glassmorphism architecture container with strict fixed layout dimensions (h-20) */
     <header className="sticky top-0 z-40 w-full h-20 flex items-center justify-between transition-all duration-300 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md px-4 lg:px-6 border-b border-slate-200 dark:border-slate-800 shadow-sm">
-      {/* Cụm Tiêu Đề Trái */}
-      <div className="pl-12 lg:pl-0 flex items-center gap-3">
+      {/* LEFT AREA: Context-aware dynamic page header title group */}
+      <div className="pl-12 lg:pl-0 flex items-center gap-3 transition-all duration-300">
         {isSidebarCollapsed && (
           <button
             onClick={() => setIsSidebarCollapsed(false)}
@@ -52,14 +69,14 @@ export default function Header({
             <PanelLeftOpen size={20} />
           </button>
         )}
-        <h1 className="text-xl font-black text-slate-800 dark:text-white tracking-tight">
-          {title}
+        <h1 className="text-xl font-black text-slate-800 dark:text-white tracking-tight transition-all duration-300">
+          {currentTitle}
         </h1>
       </div>
 
-      {/* Cụm Control Phải */}
+      {/* RIGHT AREA: Utility operational controls & RBAC Profile Popover */}
       <div className="flex items-center gap-3 lg:gap-3.5 ml-auto">
-        {/* Nút đổi Theme (Bo góc hình hộp mềm mại rounded-xl thay vì tròn xoe) */}
+        {/* Toggle Theme Configuration Button */}
         <button
           onClick={toggleTheme}
           className="p-2.5 bg-slate-50 border border-slate-200 text-slate-500 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-all focus:outline-none"
@@ -71,7 +88,7 @@ export default function Header({
           )}
         </button>
 
-        {/* 🚀 ĐÃ NÂNG CẤP: Nút Thông báo tích hợp hiệu ứng Live Ping nhấp nháy real-time */}
+        {/* Real-time Notification System Center (Integrated with micro-animation live ping loop) */}
         <button className="p-2.5 bg-slate-50 border border-slate-200 text-slate-500 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-all focus:outline-none relative">
           <Bell size={18} />
           <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-900">
@@ -79,12 +96,12 @@ export default function Header({
           </span>
         </button>
 
-        {/* Thanh chia vách tinh tế ngăn cách avatar */}
+        {/* Visual vertical separation axis separator */}
         <div className="w-[1px] h-6 bg-slate-200 dark:bg-slate-800 mx-0.5"></div>
 
-        {/* AVATAR & DROPDOWN MENU POPOVER */}
+        {/* AVATAR & DROPDOWN MENU POPOVER COUPLING */}
         <div className="relative" ref={dropdownRef}>
-          {/* Nút Avatar bọc viền nhẹ cao cấp */}
+          {/* Main User Avatar controller with active blue ring indicator constraints */}
           <button
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
             className={`w-10 h-10 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center shadow-md hover:bg-blue-700 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 overflow-hidden ${
@@ -104,10 +121,10 @@ export default function Header({
             )}
           </button>
 
-          {/* Menu thả xuống thiết kế lại mượt mà, bo góc đồng đều rounded-2xl */}
+          {/* Dropdown Menu Popover System */}
           {isDropdownOpen && (
             <div className="absolute right-0 mt-3.5 w-60 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200/80 dark:border-slate-800 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200 origin-top-right">
-              {/* Header của Dropdown: Làm Pill Badge cho Role nhìn chuyên nghiệp hẳn */}
+              {/* Dropdown Meta Header View: Render user credentials based on USERS table criteria */}
               <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/40">
                 <p className="text-sm font-black text-slate-800 dark:text-white truncate leading-tight">
                   {user?.name || "Guest User"}
@@ -119,7 +136,7 @@ export default function Header({
                 </div>
               </div>
 
-              {/* Danh sách hành động Actions */}
+              {/* Action Operations Task List (Integrated with unified rounded-xl criteria) */}
               <div className="p-1.5 space-y-0.5 font-bold text-xs text-slate-600 dark:text-slate-400">
                 <button
                   onClick={handleEditProfile}
