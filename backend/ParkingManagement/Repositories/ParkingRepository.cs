@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using ParkingManagement.Data;
 using ParkingManagement.Models;
@@ -8,7 +9,8 @@ using ParkingManagement.Models;
 namespace ParkingManagement.Repositories
 {
     /// <summary>
-    /// Thực thi các truy vấn dữ liệu thực tế bằng Entity Framework Core.
+    /// Thực thi các truy vấn dữ liệu bãi xe bằng Entity Framework Core.
+    /// Tuân thủ quy định thiết kế hệ thống PMS, tối ưu hiệu suất chống Race Condition.
     /// </summary>
     public class ParkingRepository : IParkingRepository
     {
@@ -16,21 +18,19 @@ namespace ParkingManagement.Repositories
 
         public ParkingRepository(AppDbContext context)
         {
-            _context = context;
+            _context = context ?? throw new ArgumentNullException(nameof(context));
         }
 
         public async Task<bool> IsVehicleActiveInParkingAsync(string licensePlate)
         {
+            if (string.IsNullOrWhiteSpace(licensePlate)) return false;
+
             return await _context.ParkingSessions
                 .AnyAsync(s => s.LicensePlateIn == licensePlate && s.Status == "ACTIVE");
         }
 
-        /// <summary>
-        /// SỬA ĐỔI: Đổi kiểu trả về từ dynamic? sang ParkingSlot? để khớp Interface
-        /// </summary>
         public async Task<ParkingSlot?> FindFirstAvailableSlotAsync(int vehicleTypeId)
         {
-            // Truy vấn trực tiếp thực thể ParkingSlot và nạp kèm (Include) FloorZone để lọc loại xe
             return await _context.ParkingSlots
                 .Include(s => s.Zone)
                 .Where(slot => slot.Status == "AVAILABLE"
@@ -44,11 +44,25 @@ namespace ParkingManagement.Repositories
 
         public async Task CreateSessionAsync(ParkingSession session)
         {
+            if (session == null) throw new ArgumentNullException(nameof(session));
+
             await _context.ParkingSessions.AddAsync(session);
+            // Thực hiện lưu thay đổi (khi dùng trong Transaction, lệnh này đóng vai trò gửi State Stage lên DB)
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task UpdateSessionAsync(ParkingSession session)
+        {
+            if (session == null) throw new ArgumentNullException(nameof(session));
+
+            _context.ParkingSessions.Update(session);
+            await _context.SaveChangesAsync();
         }
 
         public async Task<ParkingSlot?> GetSlotByIdAsync(string slotId)
         {
+            if (string.IsNullOrWhiteSpace(slotId)) return null;
+
             return await _context.ParkingSlots
                 .Include(s => s.Zone)
                 .FirstOrDefaultAsync(s => s.SlotId == slotId);
@@ -56,14 +70,24 @@ namespace ParkingManagement.Repositories
 
         public async Task SaveChangesWithTransactionAsync(Func<Task> action)
         {
+            if (action == null) throw new ArgumentNullException(nameof(action));
+
+            // Sử dụng Isolated Transaction cấp độ cao để đảm bảo an toàn dữ liệu đồng thời
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
                 await action();
+
+                // Gom tất cả các thay đổi còn lại và Commit toàn cục
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
             }
-            catch
+            catch (DbUpdateConcurrencyException)
+            {
+                await transaction.RollbackAsync();
+                throw new InvalidOperationException("CONCURRENCY_CONFLICT");
+            }
+            catch (Exception)
             {
                 await transaction.RollbackAsync();
                 throw;
@@ -72,6 +96,8 @@ namespace ParkingManagement.Repositories
 
         public async Task<ParkingSession?> GetActiveSessionByPlateAsync(string licensePlate)
         {
+            if (string.IsNullOrWhiteSpace(licensePlate)) return null;
+
             return await _context.ParkingSessions
                 .Include(s => s.Slot)
                     .ThenInclude(sl => sl!.Zone)
@@ -80,7 +106,8 @@ namespace ParkingManagement.Repositories
 
         public async Task<PricingPolicy?> GetActivePricingPolicyAsync()
         {
-            var today = DateOnly.FromDateTime(DateTime.Now);
+            var today = DateOnly.FromDateTime(DateTime.Today);
+
             return await _context.PricingPolicies
                 .Where(p => p.EffectiveDate <= today)
                 .OrderByDescending(p => p.EffectiveDate)
@@ -89,6 +116,8 @@ namespace ParkingManagement.Repositories
 
         public async Task<bool> UpdateSessionAndSlotAsync(ParkingSession session, string slotId)
         {
+            if (session == null || string.IsNullOrWhiteSpace(slotId)) return false;
+
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
@@ -98,6 +127,7 @@ namespace ParkingManagement.Repositories
                 if (slot != null)
                 {
                     slot.Status = "AVAILABLE";
+                    slot.LastUpdated = DateTime.Now;
                     _context.ParkingSlots.Update(slot);
                 }
 
@@ -114,6 +144,8 @@ namespace ParkingManagement.Repositories
 
         public async Task<ParkingSession?> GetActiveSessionByIdAsync(string sessionId)
         {
+            if (string.IsNullOrWhiteSpace(sessionId)) return null;
+
             return await _context.ParkingSessions
                 .Include(s => s.Slot)
                     .ThenInclude(sl => sl!.Zone)
@@ -125,17 +157,19 @@ namespace ParkingManagement.Repositories
             var slot = await _context.ParkingSlots.FindAsync(slotId);
             if (slot == null) return false;
 
+            string oldStatus = slot.Status ?? "UNKNOWN";
             slot.Status = status.ToUpper();
             slot.LastUpdated = DateTime.Now;
 
             var statusLog = new SlotStatusLog
             {
-                LogId = "log_" + Guid.NewGuid().ToString("N").Substring(0, 10),
+                LogId = "SLG-" + Guid.NewGuid().ToString("N").Substring(0, 15).ToUpper(),
                 SlotId = slotId,
+                OldStatus = oldStatus,
                 NewStatus = status.ToUpper(),
-                ChangedByStaffId = staffId,
+                ChangedBy = staffId ?? "SYSTEM",
                 ChangedAt = DateTime.Now,
-                Reason = reason,
+                Reason = string.IsNullOrWhiteSpace(reason) ? "No reason provided" : reason,
                 EstimatedDurationMinutes = estimatedDuration
             };
 
@@ -143,52 +177,21 @@ namespace ParkingManagement.Repositories
             return await _context.SaveChangesAsync() > 0;
         }
 
-        public async Task UpdateSessionAsync(ParkingSession session)
-        {
-            _context.ParkingSessions.Update(session);
-            await Task.CompletedTask; 
-        }
-
         public async Task UpdateSlotAsync(ParkingSlot slot)
         {
-            if (slot.Status.Equals("OCCUPIED", StringComparison.OrdinalIgnoreCase))
-            {
-                var currentDbStatus = await _context.ParkingSlots
-                    .AsNoTracking()
-                    .Where(s => s.SlotId == slot.SlotId)
-                    .Select(s => s.Status)
-                    .FirstOrDefaultAsync();
+            if (slot == null) throw new ArgumentNullException(nameof(slot));
 
-                if (currentDbStatus == null)
-                    throw new KeyNotFoundException("Slot không tồn tại.");
 
-                if (!currentDbStatus.Equals("AVAILABLE", StringComparison.OrdinalIgnoreCase))
-                {
-                    throw new InvalidOperationException("Race Condition Detected: Ô đỗ xe vừa bị chiếm dụng bởi một xe khác!");
-                }
-
-                var dbSlot = await _context.ParkingSlots.FindAsync(slot.SlotId);
-                if (dbSlot != null)
-                {
-                    dbSlot.Status = "OCCUPIED"; 
-                    dbSlot.LastUpdated = DateTime.Now;
-                }
-            }
-            else
-            {
-                _context.ParkingSlots.Update(slot);
-            }
-
+            _context.ParkingSlots.Update(slot);
             await _context.SaveChangesAsync();
         }
 
         public async Task<PricingPolicy?> GetActivePricingPolicyByVehicleTypeAsync(int vehicleTypeId)
         {
-            var today = DateOnly.FromDateTime(DateTime.Now);
+            var today = DateOnly.FromDateTime(DateTime.Today);
 
             return await _context.PricingPolicies
-                .Where(p => p.VehicleTypeId == vehicleTypeId
-                            && p.EffectiveDate <= today)
+                .Where(p => p.VehicleTypeId == vehicleTypeId && p.EffectiveDate <= today)
                 .OrderByDescending(p => p.EffectiveDate)
                 .FirstOrDefaultAsync();
         }

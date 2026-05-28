@@ -5,23 +5,14 @@ namespace ParkingManagement.Services.Helpers
     public static class ParkingCalculationHelper
     {
         /// <summary>
-        /// Tính toán tổng số phút đỗ xe thực tế dựa vào thời điểm check-in
+        /// Tính toán tổng số phút đỗ xe thực tế dựa vào thời điểm check-in (Làm tròn lên)
         /// </summary>
         public static int CalculateDurationMinutes(DateTime? checkInTime, DateTime currentTime)
         {
             if (!checkInTime.HasValue) return 0;
-
-            // Đảm bảo đưa về UTC
-            DateTime checkInUtc = (checkInTime.Value.Kind == DateTimeKind.Unspecified)
-                                  ? DateTime.SpecifyKind(checkInTime.Value, DateTimeKind.Utc)
-                                  : checkInTime.Value.ToUniversalTime();
-
-            DateTime currentUtc = currentTime.ToUniversalTime();
-
-            var duration = currentUtc - checkInUtc;
-
-            // Nếu duration là số âm (do lỗi dữ liệu), trả về 0 hoặc 1 phút
-            return (int)Math.Max(0, duration.TotalMinutes);
+            TimeSpan duration = currentTime - checkInTime.Value;
+            int totalMinutes = (int)Math.Ceiling(duration.TotalMinutes);
+            return totalMinutes > 0 ? totalMinutes : 0;
         }
 
         /// <summary>
@@ -30,7 +21,8 @@ namespace ParkingManagement.Services.Helpers
         public static int ConvertMinutesToBillingHours(int minutes)
         {
             if (minutes <= 0) return 0;
-            int hours = (int)Math.Ceiling(minutes / 60.0);
+
+            int hours = (minutes + 59) / 60;
             return hours <= 0 ? 1 : hours;
         }
 
