@@ -1,21 +1,5 @@
 import React, { useState, useEffect } from "react";
-import {ArrowLeft,
-  Car,
-  Bike,
-  QrCode,
-  Clock,
-  Edit,
-  Ban,
-  CreditCard,
-  AlertTriangle,
-  CheckCircle2,
-  Info,
-  Calendar,
-  MapPin,
-  CheckCircle,
-  X,
-  Search,
-  Filter,
+import {ArrowLeft,Car,Bike,QrCode,Clock,Edit, Ban,CreditCard,AlertTriangle,CheckCircle2, Info,Calendar,MapPin,CheckCircle, X,Search,Filter,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
