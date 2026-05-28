@@ -1,57 +1,59 @@
 using Microsoft.EntityFrameworkCore;
 using ParkingManagement.Data;
 using ParkingManagement.Repositories;
-using ParkingManagement.Services;
+using ParkingManagement.Services.BuildingServices;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Nạp các biến môi trường từ file .env - sử dụng thư viện DotNetEnv
-DotNetEnv.Env.Load();
-var dbServer = Environment.GetEnvironmentVariable("DB_SERVER");
-var dbPort = Environment.GetEnvironmentVariable("DB_PORT");
-var dbName = Environment.GetEnvironmentVariable("DB_NAME");
-var dbUser = Environment.GetEnvironmentVariable("DB_USER");
-var dbPassword = Environment.GetEnvironmentVariable("DB_PASSWORD");
-
-// 1. Cấu hình kết nối MySQL tự động nhận diện phiên bản (AutoDetect)
-var connectionString = $"server={dbServer};port={dbPort};database={dbName};user={dbUser};password={dbPassword};";
+// ── Database ──────────────────────────────────────────────────────────────────
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString))
 );
 
-// 2. Đăng ký các dịch vụ Controller kèm cấu hình định dạng Snake Case từ nhánh main
+// ── Controllers + JSON snake_case ─────────────────────────────────────────────
 builder.Services.AddControllers()
     .AddJsonOptions(opt =>
         opt.JsonSerializerOptions.PropertyNamingPolicy =
             System.Text.Json.JsonNamingPolicy.SnakeCaseLower);
 
+// ── Swagger ───────────────────────────────────────────────────────────────────
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// 3. Đăng ký các Repository & Service (Gộp cả 2 module Building và Parking)
+// ── Building module ───────────────────────────────────────────────────────────
 builder.Services.AddScoped<IBuildingRepository, BuildingRepository>();
 builder.Services.AddScoped<IBuildingService, BuildingService>();
 
-builder.Services.AddScoped<IParkingRepository, ParkingRepository>();
-builder.Services.AddScoped<IParkingService, ParkingService>();
+// ── VehicleType module ────────────────────────────────────────────────────────
+builder.Services.AddScoped<IVehicleTypeRepository, VehicleTypeRepository>();
+builder.Services.AddScoped<IVehicleTypeService, VehicleTypeService>();
 
 var app = builder.Build();
 
-// 4. Bật Swagger hoạt động khi chạy ở môi trường Development
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Parking Management API V1");
-        c.RoutePrefix = "swagger"; // Đường dẫn truy cập: localhost:port/swagger
-    });
+    app.UseSwaggerUI();
 }
 
+// ── Global exception handler ──────────────────────────────────────────────────
+app.UseExceptionHandler(errApp => errApp.Run(async ctx =>
+{
+    var ex = ctx.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>()?.Error;
+    var (status, message) = ex switch
+    {
+        KeyNotFoundException => (404, ex.Message),
+        InvalidOperationException => (422, ex.Message),
+        ArgumentException => (400, ex.Message),
+        _ => (500, "An unexpected error occurred")
+    };
+    ctx.Response.StatusCode = status;
+    ctx.Response.ContentType = "application/json";
+    var body = System.Text.Json.JsonSerializer.Serialize(new { success = false, message });
+    await ctx.Response.WriteAsync(body);
+}));
+
 app.UseHttpsRedirection();
-app.UseAuthorization();
 app.MapControllers();
-
-Console.WriteLine("=== ỨNG DỤNG PARKING ĐANG CHẠY ===");
-
 app.Run();

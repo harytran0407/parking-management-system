@@ -1,8 +1,7 @@
-﻿using ParkingManagement.DTOs;
+﻿using ParkingManagement.DTOs.Building;
 using ParkingManagement.Repositories;
 
-namespace ParkingManagement.Services;
-
+namespace ParkingManagement.Services.BuildingServices;
 public interface IBuildingService
 {
     Task<BuildingInfoResponse> GetBuildingInfoAsync(string buildingId);

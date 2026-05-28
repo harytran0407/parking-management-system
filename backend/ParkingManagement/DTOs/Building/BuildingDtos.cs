@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 
-namespace ParkingManagement.DTOs;
+namespace ParkingManagement.DTOs.Building;
 
 // ─── GET /api/v1/parking/buildings/info ──────────────────────────────────────
 
