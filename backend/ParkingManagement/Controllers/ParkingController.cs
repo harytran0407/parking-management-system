@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using ParkingManagement.DTOs;
 using ParkingManagement.Services;
 using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace ParkingManagement.Controllers
 {
@@ -158,6 +159,50 @@ namespace ParkingManagement.Controllers
             catch (Exception ex)
             {
                 return StatusCode(500, new { success = false, message = "INTERNAL_SERVER_ERROR", error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// [FR-GATE-05] Cập nhật trạng thái ô đỗ
+        /// </summary>
+        [HttpPut("slots/{slot_id}/status")]
+        public async Task<IActionResult> UpdateSlotStatus(string slot_id, [FromBody] UpdateSlotStatusDto dto)
+        {
+            // 1. Trích xuất Staff ID từ JWT Token 
+            string? staffId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                              ?? User.FindFirst("sub")?.Value;
+
+            // 2. Cơ chế Fallback thông minh chỉ hoạt động khi chạy môi trường Local DEBUG
+#if DEBUG
+            if (string.IsNullOrEmpty(staffId))
+            {
+                staffId = "STAFF_TEST_001"; // Gán tài khoản giả lập phục vụ DEV test luồng
+            }
+#endif
+
+            // 3. Nếu kiểm tra môi trường chạy chính thức vẫn trống thông tin thì chặn lại quyền truy cập
+            if (string.IsNullOrEmpty(staffId))
+            {
+                return Unauthorized(new { success = false, message = "Unauthorized staff member." });
+            }
+
+            try
+            {
+                dto.SlotId = slot_id;
+                var response = await _parkingService.UpdateSlotStatusAsync(dto, staffId);
+                return Ok(response); // Trả về 200 OK kèm dữ liệu cấu trúc chuẩn Việt Nam
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { success = false, error_code = "VALIDATION_ERROR", message = ex.Message });
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound(new { success = false, error_code = "SLOT_NOT_FOUND", message = "Slot identity not found." });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new { success = false, error_code = "INTERNAL_ERROR", message = "An error occurred." });
             }
         }
     }

@@ -21,7 +21,7 @@ namespace ParkingManagement.Repositories
         /// </summary>
         /// <param name="vehicleTypeId">Mã định danh loại xe (Xe máy, Ô tô...)</param>
         /// <returns>Đối tượng slot đỗ xe tìm thấy hoặc null nếu hệ thống đã hết chỗ</returns>
-        Task<dynamic?> FindFirstAvailableSlotAsync(int vehicleTypeId);
+        Task<ParkingSlot?> FindFirstAvailableSlotAsync(int vehicleTypeId); // Đã sửa từ dynamic? sang ParkingSlot?
 
         /// <summary>
         /// Thêm mới một bản ghi phiên gửi xe (ParkingSession) vào cơ sở dữ liệu.
@@ -69,5 +69,34 @@ namespace ParkingManagement.Repositories
         /// <param name="sessionId">Mã định danh duy nhất của phiên gửi xe cần truy vấn</param>
         /// <returns>Thực thể ParkingSession tìm thấy kèm thông tin Slot/Zone liên kết, hoặc null nếu phiên không tồn tại/đã kết thúc</returns>
         Task<ParkingSession?> GetActiveSessionByIdAsync(string sessionId);
+
+        /// <summary>
+        /// Cập nhật trạng thái ô đỗ và ghi lại lịch sử log hệ thống.
+        /// </summary>
+        /// <param name="slotId">ID của ô đỗ xe cần cập nhật</param>
+        /// <param name="status">Trạng thái mới (AVAILABLE, OCCUPIED, RESERVED, MAINTENANCE)</param>
+        /// <param name="staffId">ID của nhân viên thực hiện thao tác</param>
+        /// <param name="reason">Lý do thay đổi trạng thái</param>
+        /// <param name="estimatedDuration">Thời gian bảo trì dự kiến (phút)</param>
+        Task<bool> UpdateSlotStatusWithLogAsync(string slotId, string status, string staffId, string reason, int estimatedDuration);
+
+        /// <summary>
+        /// Cập nhật bất đồng bộ các thông tin thay đổi của một thực thể phiên gửi xe (ParkingSession) vào Database.
+        /// </summary>
+        /// <param name="session">Thực thể phiên gửi xe chứa dữ liệu mới</param>
+        Task UpdateSessionAsync(ParkingSession session);
+
+        /// <summary>
+        /// Cập nhật bất đồng bộ các thông tin thay đổi của một ô đỗ xe (ParkingSlot) vào Database.
+        /// </summary>
+        /// <param name="slot">Thực thể ô đỗ xe chứa dữ liệu mới</param>
+        Task UpdateSlotAsync(ParkingSlot slot);
+
+        /// <summary>
+        /// Truy vấn bất đồng bộ chính sách giá đang có hiệu lực (Active) áp dụng riêng cho một loại phương tiện cụ thể.
+        /// </summary>
+        /// <param name="vehicleTypeId">Mã định danh duy nhất của loại xe cần lấy biểu phí (1: Xe máy, 2: Ô tô...)</param>
+        /// <returns>Thực thể PricingPolicy tương ứng hoặc null nếu chưa cấu hình chính sách giá cho loại xe này</returns>
+        Task<PricingPolicy?> GetActivePricingPolicyByVehicleTypeAsync(int vehicleTypeId);
     }
 }

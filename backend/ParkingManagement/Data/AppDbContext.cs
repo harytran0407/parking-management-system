@@ -45,6 +45,8 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<VehicleType> VehicleTypes { get; set; }
 
+    public virtual DbSet<SlotStatusLog> SlotStatusLogs { get; set; }
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
 
@@ -677,6 +679,25 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.VehicleTypeName)
                 .HasMaxLength(100)
                 .HasColumnName("VEHICLE_TYPE_NAME");
+        });
+
+        modelBuilder.Entity<SlotStatusLog>(entity =>
+        {
+            // Map với bảng tên viết hoa và có gạch dưới
+            entity.ToTable("SLOT_STATUS_LOGS");
+
+            // Chỉ định khóa chính
+            entity.HasKey(e => e.LogId);
+
+            // Map các thuộc tính của Class sang tên cột Snake Case
+            entity.Property(e => e.LogId).HasColumnName("log_id").HasMaxLength(50);
+            entity.Property(e => e.SlotId).HasColumnName("slot_id").HasMaxLength(50);
+            entity.Property(e => e.OldStatus).HasColumnName("old_status").HasMaxLength(20);
+            entity.Property(e => e.NewStatus).HasColumnName("new_status").HasMaxLength(20);
+            entity.Property(e => e.ChangedByStaffId).HasColumnName("changed_by_staff_id").HasMaxLength(50);
+            entity.Property(e => e.ChangedAt).HasColumnName("changed_at").HasColumnType("datetime");
+            entity.Property(e => e.Reason).HasColumnName("reason").HasMaxLength(255);
+            entity.Property(e => e.EstimatedDurationMinutes).HasColumnName("estimated_duration_minutes");
         });
 
         OnModelCreatingPartial(modelBuilder);

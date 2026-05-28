@@ -1,9 +1,11 @@
 using System;
+using System.Linq;
 using System.Threading.Tasks;
+using System.Collections.Generic;
 using ParkingManagement.DTOs;
 using ParkingManagement.Models;
 using ParkingManagement.Repositories;
-using ParkingManagement.Services.Helpers; 
+using ParkingManagement.Services.Helpers;
 
 namespace ParkingManagement.Services
 {
@@ -18,25 +20,63 @@ namespace ParkingManagement.Services
 
         public async Task<CheckInResponseDto> ProcessWalkInCheckInAsync(VehicleCheckInDto dto, string staffId)
         {
-            // 1. Kiểm tra điều kiện tiên quyết
+            // 1. Kiểm tra xe đã có phiên hoạt động chưa
             if (await _parkingRepository.IsVehicleActiveInParkingAsync(dto.LicensePlateIn))
             {
                 throw new InvalidOperationException("ACTIVE_SESSION_EXISTS");
             }
 
-            // 2. Định vị vị trí đỗ (Điều hướng Allocation)
+            // 2. Định vị vị trí đỗ
             string selectedSlotId = await ResolveSlotIdAsync(dto.SlotId, dto.VehicleTypeId);
 
-            // 3. Khởi tạo phiên
+            // Bổ sung: Lấy trước thông tin slot (chỉ dùng để map dữ liệu trả về DTO ở cuối)
+            var initialSlotInfo = await _parkingRepository.GetSlotByIdAsync(selectedSlotId);
+            if (initialSlotInfo == null) throw new KeyNotFoundException("SLOT_NOT_FOUND");
+
             string sessionId = GenerateSessionId();
             DateTime checkInTime = DateTime.Now;
 
-            // 4. Lưu dữ liệu đồng bộ qua Transaction
-            await ExecuteCheckInTransactionAsync(sessionId, checkInTime, dto, selectedSlotId, staffId);
+            // 3. THỰC THI ATOMIC TRANSACTION (Kiểm tra và chiếm slot đồng thời)
+            await _parkingRepository.SaveChangesWithTransactionAsync(async () =>
+            {
+                // Đọc lại trạng thái slot trực tiếp bên trong Transaction block để đảm bảo dữ liệu mới nhất
+                var slotToUpdate = await _parkingRepository.GetSlotByIdAsync(selectedSlotId);
+                if (slotToUpdate == null) throw new KeyNotFoundException("SLOT_NOT_FOUND");
 
-            // 5. Lấy thông tin bổ sung & Map dữ liệu đầu ra
-            var slotInfo = await _parkingRepository.GetSlotByIdAsync(selectedSlotId);
-            return MapToCheckInResponseDto(sessionId, checkInTime, dto.LicensePlateIn, selectedSlotId, slotInfo);
+                // KIỂM TRA TRẠNG THÁI NGAY TRONG TRANSACTION (Ngăn chặn Race Condition)
+                if (slotToUpdate.Status.ToUpper() != "AVAILABLE")
+                {
+                    throw new InvalidOperationException($"Không thể đỗ xe: Slot vừa bị chiếm dụng bởi người khác, trạng thái hiện tại: {slotToUpdate.Status}");
+                }
+
+                // Khởi tạo và lưu phiên đỗ xe mới
+                var session = new ParkingSession
+                {
+                    SessionId = sessionId,
+                    CheckInTime = checkInTime,
+                    LicensePlateIn = dto.LicensePlateIn,
+                    VehicleTypeId = dto.VehicleTypeId,
+                    CameraIn = dto.CameraIn,
+                    GateIn = dto.GateIn,
+                    ImageUrlIn = dto.ImageUrlIn,
+                    StaffInId = staffId,
+                    SlotId = selectedSlotId,
+                    BookingId = dto.BookingId,
+                    Status = "ACTIVE",
+                    PaymentStatus = "PENDING"
+                };
+                await _parkingRepository.CreateSessionAsync(session);
+
+                // Cập nhật trạng thái slot sang OCCUPIED ngay tại đây
+                slotToUpdate.Status = "OCCUPIED";
+                slotToUpdate.CurrentSessionId = sessionId;
+                slotToUpdate.LastUpdated = checkInTime;
+
+                await _parkingRepository.UpdateSlotAsync(slotToUpdate);
+            });
+
+            // 4. Trả kết quả dữ liệu đầu ra an toàn
+            return MapToCheckInResponseDto(sessionId, checkInTime, dto.LicensePlateIn, selectedSlotId, initialSlotInfo);
         }
 
         public async Task<CheckOutResponseDto> ProcessCheckOutAsync(VehicleCheckOutDto checkOutDto)
@@ -48,18 +88,36 @@ namespace ParkingManagement.Services
                 throw new Exception("Không tìm thấy lượt đỗ ACTIVE nào cho xe này.");
             }
 
-            // 2. Tính toán thời gian và chi phí thông qua Helper (Đã tách SOLID)
-            var checkOutTime = DateTime.UtcNow;
+            // 2. Tính toán thời gian và chi phí
+            var checkOutTime = DateTime.Now;
             int durationMinutes = ParkingCalculationHelper.CalculateDurationMinutes(session.CheckInTime, checkOutTime);
 
-            var policy = await _parkingRepository.GetActivePricingPolicyAsync()
+            var policy = await _parkingRepository.GetActivePricingPolicyByVehicleTypeAsync(session.VehicleTypeId)
                          ?? throw new Exception("Chính sách giá chưa được cấu hình.");
 
             decimal totalFee = ParkingCalculationHelper.CalculateParkingFee(durationMinutes, policy.BasePrice, policy.HourlyRate);
 
-            // 3. Cập nhật dữ liệu Entity
-            UpdateSessionForCheckOut(session, checkOutDto, checkOutTime, durationMinutes, totalFee);
-            await _parkingRepository.UpdateSessionAndSlotAsync(session, session.SlotId ?? string.Empty);
+            // 3. Thực hiện cập nhật đồng bộ (Session + Slot) trong một Transaction
+            await _parkingRepository.SaveChangesWithTransactionAsync(async () =>
+            {
+                // A. Cập nhật thông tin session
+                UpdateSessionForCheckOut(session, checkOutDto, checkOutTime, durationMinutes, totalFee);
+                await _parkingRepository.UpdateSessionAsync(session);
+
+                // B. Giải phóng slot 
+                if (!string.IsNullOrEmpty(session.SlotId))
+                {
+                    var slot = await _parkingRepository.GetSlotByIdAsync(session.SlotId);
+                    if (slot != null)
+                    {
+                        slot.Status = "AVAILABLE";         // Đưa về trạng thái khả dụng
+                        slot.CurrentSessionId = null;      // Xóa ID phiên đã kết thúc
+                        slot.LastUpdated = checkOutTime;
+
+                        await _parkingRepository.UpdateSlotAsync(slot);
+                    }
+                }
+            });
 
             // 4. Trả kết quả dữ liệu đầu ra
             return MapToCheckOutResponseDto(session, totalFee, durationMinutes, checkOutTime);
@@ -70,11 +128,11 @@ namespace ParkingManagement.Services
             var session = await _parkingRepository.GetActiveSessionByPlateAsync(licensePlate)
                           ?? throw new InvalidOperationException("ACTIVE_SESSION_NOT_FOUND");
 
-            var currentTime = DateTime.UtcNow;
+            var currentTime = DateTime.Now;
             int durationMinutes = ParkingCalculationHelper.CalculateDurationMinutes(session.CheckInTime, currentTime);
 
             decimal currentFee = 0;
-            var policy = await _parkingRepository.GetActivePricingPolicyAsync();
+            var policy = await _parkingRepository.GetActivePricingPolicyByVehicleTypeAsync(session.VehicleTypeId);
             if (policy != null)
             {
                 currentFee = ParkingCalculationHelper.CalculateParkingFee(durationMinutes, policy.BasePrice, policy.HourlyRate);
@@ -88,15 +146,68 @@ namespace ParkingManagement.Services
             var session = await _parkingRepository.GetActiveSessionByIdAsync(sessionId)
                           ?? throw new InvalidOperationException("SESSION_NOT_FOUND_OR_INACTIVE");
 
-            int durationMinutes = ParkingCalculationHelper.CalculateDurationMinutes(session.CheckInTime, DateTime.UtcNow);
+            int durationMinutes = ParkingCalculationHelper.CalculateDurationMinutes(session.CheckInTime, DateTime.Now);
             int hours = ParkingCalculationHelper.ConvertMinutesToBillingHours(durationMinutes);
 
-            var policy = await _parkingRepository.GetActivePricingPolicyAsync()
+            var policy = await _parkingRepository.GetActivePricingPolicyByVehicleTypeAsync(session.VehicleTypeId)
                          ?? throw new InvalidOperationException("PRICING_POLICY_NOT_CONFIGURED");
 
             decimal totalFee = ParkingCalculationHelper.CalculateParkingFee(durationMinutes, policy.BasePrice, policy.HourlyRate);
 
             return MapToPreCheckOutResponseDto(session, totalFee, policy, hours);
+        }
+
+        public async Task<SlotStatusResponseDto> UpdateSlotStatusAsync(UpdateSlotStatusDto dto, string staffId)
+        {
+            // 1. Validate trạng thái đầu vào hợp lệ
+            var validStatuses = new[] { "AVAILABLE", "OCCUPIED", "RESERVED", "MAINTENANCE" };
+            string upperStatus = dto.Status.ToUpper();
+
+            if (!validStatuses.Contains(upperStatus))
+            {
+                throw new ArgumentException("INVALID_SLOT_STATUS");
+            }
+
+            // 2. Kiểm tra sự tồn tại của Slot
+            var slot = await _parkingRepository.GetSlotByIdAsync(dto.SlotId);
+            if (slot == null)
+            {
+                throw new KeyNotFoundException("SLOT_NOT_FOUND");
+            }
+
+            // --- KIỂM TRA RÀNG BUỘC LOGIC BUSINESS ---
+            if (upperStatus == "MAINTENANCE" && slot.Status == "OCCUPIED")
+            {
+                throw new InvalidOperationException("CANNOT_MAINTAIN_OCCUPIED_SLOT");
+            }
+
+            if (upperStatus == "MAINTENANCE" && slot.Status == "RESERVED")
+            {
+                throw new InvalidOperationException("CANNOT_MAINTAIN_RESERVED_SLOT");
+            }
+            // ---------------------------------------------------------
+
+            // 3. Tiến hành cập nhật Database & Ghi Log
+            bool isUpdated = await _parkingRepository.UpdateSlotStatusWithLogAsync(dto.SlotId, upperStatus, staffId, dto.Reason, dto.EstimatedDurationMinutes);
+
+            if (!isUpdated)
+            {
+                throw new InvalidOperationException("DATABASE_UPDATE_FAILED");
+            }
+
+            // 4. Định dạng dữ liệu trả về...
+            return new SlotStatusResponseDto
+            {
+                Success = true,
+                Message = "Slot status updated successfully.",
+                Data = new SlotStatusResponseData
+                {
+                    SlotId = slot.SlotId,
+                    SlotName = slot.SlotName ?? "Unknown",
+                    Status = upperStatus,
+                    LastUpdated = DateTime.Now
+                }
+            };
         }
 
         #region Private Sub-Functions (Các hàm phụ trợ nội bộ giúp code gọn gàng)
@@ -111,37 +222,6 @@ namespace ParkingManagement.Services
         }
 
         private string GenerateSessionId() => "sess_" + Guid.NewGuid().ToString("N").Substring(0, 10).ToLower();
-
-        private async Task ExecuteCheckInTransactionAsync(string sessionId, DateTime checkInTime, VehicleCheckInDto dto, string slotId, string staffId)
-        {
-            await _parkingRepository.SaveChangesWithTransactionAsync(async () =>
-            {
-                var session = new ParkingSession
-                {
-                    SessionId = sessionId,
-                    CheckInTime = checkInTime,
-                    LicensePlateIn = dto.LicensePlateIn,
-                    VehicleTypeId = dto.VehicleTypeId,
-                    CameraIn = dto.CameraIn,
-                    GateIn = dto.GateIn,
-                    ImageUrlIn = dto.ImageUrlIn,
-                    StaffInId = staffId,
-                    SlotId = slotId,
-                    BookingId = dto.BookingId,
-                    Status = "ACTIVE",
-                    PaymentStatus = "PENDING"
-                };
-                await _parkingRepository.CreateSessionAsync(session);
-
-                var slotToUpdate = await _parkingRepository.GetSlotByIdAsync(slotId);
-                if (slotToUpdate != null)
-                {
-                    slotToUpdate.Status = "OCCUPIED";
-                    slotToUpdate.CurrentSessionId = sessionId;
-                    slotToUpdate.LastUpdated = checkInTime;
-                }
-            });
-        }
 
         private void UpdateSessionForCheckOut(ParkingSession session, VehicleCheckOutDto dto, DateTime checkOutTime, int duration, decimal fee)
         {
@@ -187,11 +267,11 @@ namespace ParkingManagement.Services
             {
                 SessionId = session.SessionId,
                 LicensePlateIn = session.LicensePlateIn ?? string.Empty,
-                CheckInTime = session.CheckInTime ?? DateTime.UtcNow,
-                CheckOutTime = session.CheckOutTime ?? checkOutTime,
-                DurationMinutes = session.DurationMinutes ?? duration,
+                CheckInTime = session.CheckInTime ?? DateTime.Now,
+                CheckOutTime = checkOutTime,
+                DurationMinutes = duration,
                 Status = session.Status ?? "COMPLETED",
-                TotalFee = session.TotalFee ?? fee,
+                TotalFee = fee,
                 PaymentStatus = session.PaymentStatus ?? "PAID"
             };
         }
@@ -205,7 +285,7 @@ namespace ParkingManagement.Services
                 {
                     SessionId = session.SessionId,
                     LicensePlateIn = session.LicensePlateIn ?? string.Empty,
-                    CheckInTime = session.CheckInTime ?? DateTime.UtcNow,
+                    CheckInTime = session.CheckInTime ?? DateTime.Now,
                     DurationMinutes = duration,
                     SlotId = session.SlotId ?? string.Empty,
                     SlotName = session.Slot?.SlotName ?? "N/A",

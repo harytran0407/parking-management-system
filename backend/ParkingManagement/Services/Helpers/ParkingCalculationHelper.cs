@@ -9,8 +9,18 @@ namespace ParkingManagement.Services.Helpers
         /// </summary>
         public static int CalculateDurationMinutes(DateTime? checkInTime, DateTime currentTime)
         {
-            if (checkInTime == null) return 0;
-            var duration = currentTime - checkInTime.Value;
+            if (!checkInTime.HasValue) return 0;
+
+            // Đảm bảo đưa về UTC
+            DateTime checkInUtc = (checkInTime.Value.Kind == DateTimeKind.Unspecified)
+                                  ? DateTime.SpecifyKind(checkInTime.Value, DateTimeKind.Utc)
+                                  : checkInTime.Value.ToUniversalTime();
+
+            DateTime currentUtc = currentTime.ToUniversalTime();
+
+            var duration = currentUtc - checkInUtc;
+
+            // Nếu duration là số âm (do lỗi dữ liệu), trả về 0 hoặc 1 phút
             return (int)Math.Max(0, duration.TotalMinutes);
         }
 

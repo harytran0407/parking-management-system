@@ -36,5 +36,14 @@ namespace ParkingManagement.Services
         /// <param name="sessionId">Mã định danh duy nhất của phiên gửi xe đang hoạt động cần tính tiền</param>
         /// <returns>Đối tượng PreCheckOutResponseDto chứa chi tiết breakdown giá (giá gốc, block giờ) và thời gian gia hạn rời bãi</returns>
         Task<PreCheckOutResponseDto> CalculatePreCheckOutFeeAsync(string sessionId);
+
+        /// <summary>
+        /// Asynchronously updates the status of a slot based on the provided update information.
+        /// </summary>
+        /// <param name="dto">An object containing the details required to update the slot status. Cannot be null.</param>
+        /// <param name="staffId">The unique identifier of the staff member performing the update. Cannot be null or empty.</param>
+        /// <returns>A task that represents the asynchronous operation. The task result contains a SlotStatusResponseDto with the
+        /// updated slot status information.</returns>
+        Task<SlotStatusResponseDto> UpdateSlotStatusAsync(UpdateSlotStatusDto dto, string staffId);
     }
 }
