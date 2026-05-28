@@ -10,21 +10,21 @@ import {
   CreditCard,
   CheckCircle2,
   Info,
+  PlusCircle,
+  RotateCcw,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 // ==========================================
-// CENTRALIZED HIGH-CONTRAST COLOR MAPPING
-// Đã fix toàn bộ màu sắc chuẩn 100% theo đặc tả FR-BK-02 và tối ưu đa giao diện
+// CENTRALIZED HIGH-CONTRAST COLOR MAPPING (FR-BK-02)
 // ==========================================
 const slotStyles = {
   available: {
-    card: "bg-emerald-50/90 border-emerald-500 text-emerald-800 dark:bg-emerald-950/20 dark:border-emerald-500 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 cursor-pointer",
+    card: "bg-emerald-50/80 border-emerald-500 text-emerald-800 dark:bg-emerald-950/20 dark:border-emerald-500 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 cursor-pointer",
     badge: "bg-emerald-500 border-emerald-600 dark:border-emerald-400",
     text: "text-emerald-600 dark:text-emerald-400",
   },
   occupied: {
-    // Đang dùng (Màu Đỏ) - Tăng mạnh độ bão hòa màu viền và chữ để phân biệt tuyệt đối với các màu khác
     card: "bg-red-50/90 border-red-500 text-red-700 dark:bg-red-950/40 dark:border-red-500 dark:text-red-400 cursor-not-allowed font-black opacity-90 shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)]",
     badge: "bg-red-500 border-red-600 dark:border-red-400",
     text: "text-red-600 dark:text-red-400",
@@ -53,33 +53,33 @@ export default function BookSlot() {
   // BOOKING FLOW STATE
   // ==========================================
   const [step, setStep] = useState(1);
+  const [userVehicles, setUserVehicles] = useState([]);
+
   const [bookingData, setBookingData] = useState({
-    vehicleType: null,
+    vehicleType: null, // 'car' hoặc 'motorbike'
+    vehicleId: "",
     floorId: null,
     slotId: null,
     slotName: null,
   });
 
+  const [isAddingNewVehicle, setIsAddingNewVehicle] = useState(false);
+  const [newPlateNumber, setNewPlateNumber] = useState("");
+
   const [selectedFloor, setSelectedFloor] = useState(1);
   const [slots, setSlots] = useState([]);
 
-  // MODAL STATE FOR BOOKING PHASES
+  // MODAL STATES
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalPhase, setModalPhase] = useState("form");
+  const [qrCodeData, setQrCodeData] = useState("");
 
   // TIME AND PRICING STATE
-  const [timeData, setTimeData] = useState({
-    startTime: "",
-    endTime: "",
-  });
+  const [timeData, setTimeData] = useState({ startTime: "", endTime: "" });
   const [totalPrice, setTotalPrice] = useState(0);
   const DEPOSIT_FEE = 10000;
 
-  // ==========================================
-  // MEMORY CACHE FOR MOCK DATA
-  // ==========================================
   const gridCache = useRef({});
-
   const availableSlotsOverview = { car: 12, motorbike: 45 };
   const mockFloors = [
     { id: 1, name: "Basement B2" },
@@ -88,9 +88,42 @@ export default function BookSlot() {
   ];
 
   // ==========================================
-  // [API INTEGRATION] - FETCH & GENERATE MAP GRID
+  // 🚀 API VỊ TRÍ 1: TẢI DANH SÁCH XE CỦA USER
   // ==========================================
   useEffect(() => {
+    const fetchVehicles = async () => {
+      try {
+        /* [AXIOS API INTEGRATION]: ĐỔI SANG CALL API THẬT NƠI ĐÂY
+        const token = localStorage.getItem('token');
+        const response = await axios.get('http://localhost:8080/api/v1/vehicles', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setUserVehicles(response.data.data);
+        return;
+        */
+        setUserVehicles([
+          { id: 101, plate_number: "51H-123.45", vehicle_type: "car" },
+          { id: 102, plate_number: "29A-888.88", vehicle_type: "car" },
+          { id: 205, plate_number: "43A-567.89", vehicle_type: "motorbike" },
+        ]);
+      } catch (error) {
+        console.error("Lỗi lấy danh sách xe:", error);
+      }
+    };
+    fetchVehicles();
+  }, []);
+
+  const filteredVehicles = useMemo(() => {
+    return userVehicles.filter(
+      (v) => v.vehicle_type === bookingData.vehicleType,
+    );
+  }, [userVehicles, bookingData.vehicleType]);
+
+  // ==========================================
+  // 🚀 API VỊ TRÍ 2: LẤY SƠ ĐỒ LƯỚI SLOT THEO TẦNG
+  // ==========================================
+  useEffect(() => {
+    if (!bookingData.vehicleType) return;
     const cacheKey = `${selectedFloor}_${bookingData.vehicleType}`;
 
     if (gridCache.current[cacheKey]) {
@@ -98,37 +131,47 @@ export default function BookSlot() {
       return;
     }
 
-    const grid = [];
-    for (let i = 1; i <= 60; i++) {
-      const rand = Math.random();
-      let status = "available";
-      if (rand > 0.5 && rand <= 0.7) status = "occupied";
-      else if (rand > 0.7 && rand <= 0.8) status = "reserved";
-      else if (rand > 0.8 && rand <= 0.9) status = "maintenance";
-      else if (rand > 0.9) status = "staff";
+    const fetchFloorGrid = async () => {
+      try {
+        /* [AXIOS API INTEGRATION]: CALL API LẤY SƠ ĐỒ REAL-TIME CỦA TẦNG
+        const response = await axios.get(`http://localhost:8080/api/v1/floors/${selectedFloor}/slots?type=${bookingData.vehicleType}`);
+        setSlots(response.data.slots);
+        gridCache.current[cacheKey] = response.data.slots;
+        return;
+        */
+        const grid = [];
+        for (let i = 1; i <= 60; i++) {
+          const rand = Math.random();
+          let status = "available";
+          if (rand > 0.5 && rand <= 0.7) status = "occupied";
+          else if (rand > 0.7 && rand <= 0.8) status = "reserved";
+          else if (rand > 0.8 && rand <= 0.9) status = "maintenance";
+          else if (rand > 0.9) status = "staff";
 
-      grid.push({ id: `S${i}`, name: `${i}`, status: status });
-    }
-
-    gridCache.current[cacheKey] = grid;
-    setSlots(grid);
+          grid.push({ id: `S${i}`, name: `${i}`, status: status });
+        }
+        gridCache.current[cacheKey] = grid;
+        setSlots(grid);
+      } catch (error) {
+        console.error("Lỗi lấy sơ đồ tầng:", error);
+      }
+    };
+    fetchFloorGrid();
   }, [selectedFloor, bookingData.vehicleType]);
 
   // ==========================================
-  // DYNAMIC STATS & OCCUPANCY RATE CALCULATION
+  // DYNAMIC STATS & OCCUPANCY RATE
   // ==========================================
   const stats = useMemo(() => {
     return slots.reduce(
       (acc, slot) => {
         let effectiveStatus = slot.status;
-
         if (
           bookingData.slotId === slot.id &&
           selectedFloor === bookingData.floorId
         ) {
           effectiveStatus = "reserved";
         }
-
         acc[effectiveStatus] = (acc[effectiveStatus] || 0) + 1;
         acc.total++;
         return acc;
@@ -144,18 +187,22 @@ export default function BookSlot() {
     );
   }, [slots, bookingData.slotId, bookingData.floorId, selectedFloor]);
 
-  // ==========================================
-  // DYNAMIC PRICING LOGIC
-  // ==========================================
+  // FIX LỖI FREEZE: Tránh chia cho số 0 gây lỗi đứng luồng render giao diện
+  const occupancyRatePercentage = useMemo(() => {
+    if (!stats.total || stats.total === 0) return 0;
+    return Math.round(((stats.total - stats.available) / stats.total) * 100);
+  }, [stats.total, stats.available]);
+
+  // DYNAMIC PRICING
   useEffect(() => {
     if (timeData.startTime && timeData.endTime) {
       const start = new Date(timeData.startTime).getTime();
       const end = new Date(timeData.endTime).getTime();
-
       if (end > start) {
         const hours = (end - start) / (1000 * 60 * 60);
-        const ratePerHour = bookingData.vehicleType === "car" ? 20000 : 5000;
-        setTotalPrice(Math.ceil(hours) * ratePerHour);
+        setTotalPrice(
+          Math.ceil(hours) * (bookingData.vehicleType === "car" ? 20000 : 5000),
+        );
       } else {
         setTotalPrice(0);
       }
@@ -163,32 +210,99 @@ export default function BookSlot() {
   }, [timeData.startTime, timeData.endTime, bookingData.vehicleType]);
 
   // ==========================================
-  // EVENT HANDLERS
+  // 🚀 API VỊ TRÍ 3: KHÁCH BẤM NÚT "PAY DEPOSIT"
   // ==========================================
-  const handleSelectVehicle = (type) => {
-    setBookingData({
-      vehicleType: type,
-      floorId: null,
-      slotId: null,
-      slotName: null,
-    });
-    setStep(2);
+  const handleInitiatePayment = async () => {
+    try {
+      let finalVehicleId = bookingData.vehicleId;
+      /* [AXIOS API INTEGRATION]: NẾU THÊM XE MỚI, POST XE TRƯỚC ĐỂ LẤY ID CHÍNH THỨC
+      if (isAddingNewVehicle) {
+        const token = localStorage.getItem('token');
+        const vehicleRes = await axios.post('http://localhost:8080/api/v1/vehicles', {
+          plate_number: newPlateNumber.toUpperCase(),
+          vehicle_type: bookingData.vehicleType
+        }, { headers: { Authorization: `Bearer ${token}` } });
+        finalVehicleId = vehicleRes.data.data.id;
+      }
+      */
+      /* [AXIOS API INTEGRATION]: GỌI API TẠO BOOKING ĐỂ BACKEND TRẢ VỀ CHUỖI MÃ HOẶC LINK QR VNPAY
+      const token = localStorage.getItem('token');
+      const response = await axios.post('http://localhost:8080/api/v1/payments/create', {
+        payment_type: "BOOKING",
+        vehicle_id: finalVehicleId,
+        parking_slot_id: bookingData.slotId,
+        expected_arrival: timeData.startTime,
+        amount: DEPOSIT_FEE
+      }, { headers: { Authorization: `Bearer ${token}` } });
+      setQrCodeData(response.data.qr_code_string);
+      */
+      const mockQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=Deposit_${DEPOSIT_FEE}_Slot_${bookingData.slotId}_Vehicle_${finalVehicleId || "NEW"}`;
+      setQrCodeData(mockQrUrl);
+      setModalPhase("payment");
+    } catch (error) {
+      console.error("Lỗi tạo hóa đơn:", error);
+    }
   };
 
+  // ==========================================
+  // 🚀 API VỊ TRÍ 4: KHÁCH XÁC NHẬN ĐÃ CHUYỂN TIỀN CỌC
+  // ==========================================
+  const handlePaymentSuccess = async () => {
+    try {
+      /* [AXIOS API INTEGRATION]: GỌI API KIỂM TRA TRẠNG THÁI GIAO DỊCH XEM ĐÃ 'PAID' CHƯA
+      const response = await axios.get(`http://localhost:8080/api/v1/bookings/verify/${bookingData.slotId}`);
+      if(response.data.status !== 'PAID') {
+         alert("Hệ thống chưa nhận được tiền, vui lòng thử lại sau!");
+         return;
+      }
+      */
+      if (isAddingNewVehicle && newPlateNumber) {
+        const mockNewId = Math.floor(300 + Math.random() * 100);
+        setUserVehicles((prev) => [
+          ...prev,
+          {
+            id: mockNewId,
+            plate_number: newPlateNumber.toUpperCase(),
+            vehicle_type: bookingData.vehicleType,
+          },
+        ]);
+        setBookingData((prev) => ({ ...prev, vehicleId: mockNewId }));
+      }
+      setModalPhase("success");
+    } catch (error) {
+      console.error("Lỗi xác minh thanh toán:", error);
+    }
+  };
+
+  // ==========================================
+  // XỬ LÝ SỰ KIỆN CLICK VÀO Ô ĐỖ XE (HÀM ĐÃ THÊM LOG DEBUG)
+  // ==========================================
   const handleSelectSlot = (slot) => {
-    if (slot.status !== "available") return;
+    console.log("👉 Đã kích hoạt hàm chọn ô. Dữ liệu ô vừa click:", slot);
+
+    // Kiểm tra xem trạng thái chữ thường/chữ hoa có đồng bộ không
+    if (slot.status.toLowerCase() !== "available") {
+      console.log(
+        "⛔ Chặn kích hoạt: Ô này không ở trạng thái trống. Trạng thái thực tế:",
+        slot.status,
+      );
+      return;
+    }
 
     if (
       bookingData.slotId === slot.id &&
       selectedFloor === bookingData.floorId
     ) {
+      console.log("🔄 Người dùng bấm lại ô cũ -> Tiến hành bỏ chọn vị trí.");
       setBookingData({
         ...bookingData,
         slotId: null,
         slotName: null,
         floorId: null,
+        vehicleId: "",
       });
     } else {
+      console.log("✅ Ô hợp lệ -> Nạp dữ liệu vào State và ra lệnh mở Modal.");
       setBookingData({
         ...bookingData,
         slotId: slot.id,
@@ -198,9 +312,35 @@ export default function BookSlot() {
       setModalPhase("form");
       setTimeData({ startTime: "", endTime: "" });
       setTotalPrice(0);
-      setIsModalOpen(true);
+      setIsAddingNewVehicle(false);
+      setNewPlateNumber("");
+      setIsModalOpen(true); // 👈 Gọi lệnh mở Modal
     }
   };
+
+  // --- LOGIC HỖ TRỢ HIỂN THỊ CHUẨN UX ---
+  const selectedVehiclePlate = useMemo(() => {
+    if (isAddingNewVehicle && newPlateNumber)
+      return newPlateNumber.toUpperCase();
+    return (
+      userVehicles.find((v) => v.id === Number(bookingData.vehicleId))
+        ?.plate_number || "N/A"
+    );
+  }, [userVehicles, bookingData.vehicleId, isAddingNewVehicle, newPlateNumber]);
+
+  const isFormValid = useMemo(() => {
+    const isTimeFilled =
+      timeData.startTime && timeData.endTime && totalPrice > 0;
+    return isAddingNewVehicle
+      ? newPlateNumber.trim().length >= 5 && isTimeFilled
+      : bookingData.vehicleId !== "" && isTimeFilled;
+  }, [
+    isAddingNewVehicle,
+    bookingData.vehicleId,
+    newPlateNumber,
+    timeData,
+    totalPrice,
+  ]);
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
@@ -209,15 +349,25 @@ export default function BookSlot() {
       slotId: null,
       slotName: null,
       floorId: null,
+      vehicleId: "",
     });
+    setIsAddingNewVehicle(false);
+    setNewPlateNumber("");
   };
 
-  const handlePaymentSuccess = () => {
-    setModalPhase("success");
+  const handleSelectVehicleType = (type) => {
+    setBookingData({
+      vehicleType: type,
+      vehicleId: "",
+      floorId: null,
+      slotId: null,
+      slotName: null,
+    });
+    setStep(2);
   };
 
   // ==========================================
-  // RENDER STEP 1: CHOOSE VEHICLE
+  // RENDER STEP 1: CHOOSE VEHICLE TYPE
   // ==========================================
   if (step === 1) {
     return (
@@ -235,7 +385,7 @@ export default function BookSlot() {
         </div>
         <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6 pb-6">
           <button
-            onClick={() => handleSelectVehicle("motorbike")}
+            onClick={() => handleSelectVehicleType("motorbike")}
             className="group relative rounded-3xl overflow-hidden border-2 border-transparent hover:border-blue-500 transition-all shadow-sm flex flex-col"
           >
             <div className="absolute inset-0 z-0">
@@ -258,8 +408,9 @@ export default function BookSlot() {
               </div>
             </div>
           </button>
+
           <button
-            onClick={() => handleSelectVehicle("car")}
+            onClick={() => handleSelectVehicleType("car")}
             className="group relative rounded-3xl overflow-hidden border-2 border-transparent hover:border-blue-500 transition-all shadow-sm flex flex-col"
           >
             <div className="absolute inset-0 z-0">
@@ -288,7 +439,7 @@ export default function BookSlot() {
   }
 
   // ==========================================
-  // RENDER STEP 2: INTERACTIVE MAP
+  // RENDER STEP 2: SƠ ĐỒ LƯỚI VỊ TRÍ SLOT
   // ==========================================
   return (
     <div className="animate-fade-in h-[calc(100vh-8rem)] flex flex-col relative">
@@ -308,7 +459,7 @@ export default function BookSlot() {
       </div>
 
       <div className="flex-1 flex flex-col lg:flex-row gap-6 overflow-hidden">
-        {/* LEFT COLUMN: MAP GRID */}
+        {/* SƠ ĐỒ LƯỚI CHỌN Ô */}
         <div className="flex-1 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden shadow-sm">
           <div className="flex gap-3 p-4 border-b border-slate-100 dark:border-slate-800 overflow-x-auto custom-scrollbar">
             {mockFloors.map((floor) => (
@@ -328,7 +479,6 @@ export default function BookSlot() {
                 const isSelected =
                   bookingData.slotId === slot.id &&
                   selectedFloor === bookingData.floorId;
-
                 let colorClasses = isSelected
                   ? "bg-blue-600 text-white ring-4 ring-blue-500/30 scale-105 shadow-lg z-10 border-blue-600 dark:bg-blue-600 dark:border-blue-400 dark:text-white cursor-pointer"
                   : slotStyles[slot.status]?.card || slotStyles.available.card;
@@ -353,13 +503,12 @@ export default function BookSlot() {
           </div>
         </div>
 
-        {/* RIGHT COLUMN: LEGEND & STATS */}
+        {/* CỘT PHẢI: BẢNG CHÚ THÍCH */}
         <div className="w-full lg:w-80 flex flex-col gap-6">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 shadow-sm rounded-3xl">
             <h3 className="font-bold text-slate-800 dark:text-white mb-4 uppercase text-sm tracking-wider">
               Legend
             </h3>
-
             <ul className="space-y-4">
               {[
                 {
@@ -383,7 +532,6 @@ export default function BookSlot() {
                     className="flex items-center justify-between font-semibold text-sm"
                   >
                     <div className="flex items-center gap-3">
-                      {/* Badge màu vuông đồng bộ với thiết kế sơ đồ hình vuông */}
                       <span
                         className={`w-3.5 h-3.5 rounded-md border ${currentStyle.badge}`}
                       ></span>
@@ -391,7 +539,6 @@ export default function BookSlot() {
                         {item.label}
                       </span>
                     </div>
-                    {/* Số lượng tiệp màu tracking theo trạng thái */}
                     <span
                       className={`font-bold font-mono text-base ${currentStyle.text}`}
                     >
@@ -403,36 +550,31 @@ export default function BookSlot() {
             </ul>
           </div>
 
-          <div className="bg-gradient-to-br from-blue-600 to-blue-800 dark:from-slate-800 dark:to-slate-900 rounded-3xl p-6 text-white relative overflow-hidden shadow-sm transition-colors duration-300">
-            <div className="relative z-10">
-              <p className="text-blue-200 dark:text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">
-                Occupancy Rate
-              </p>
-              <p className="text-4xl font-black text-white mb-1">
-                {Math.round(
-                  ((stats.total - (stats.available || 0)) / stats.total) * 100,
-                )}
-                %
-              </p>
-              <p className="text-sm text-blue-100 dark:text-slate-300">
-                {stats.available || 0} slots remaining
-              </p>
-            </div>
+          <div className="bg-gradient-to-br from-blue-600 to-blue-800 dark:from-slate-800 dark:to-slate-900 rounded-3xl p-6 text-white relative overflow-hidden shadow-sm">
+            <p className="text-blue-200 dark:text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">
+              Occupancy Rate
+            </p>
+            <p className="text-4xl font-black text-white mb-1">
+              {occupancyRatePercentage}%
+            </p>
+            <p className="text-sm text-blue-100 dark:text-slate-300">
+              {stats.available} slots remaining
+            </p>
             <MapPin className="absolute -right-4 -bottom-4 text-white/10 dark:text-white/5 w-32 h-32" />
           </div>
         </div>
       </div>
 
       {/* ==========================================
-          MODAL: BOOKING & PAYMENT PHASES
+          MODAL ĐẶT CHỖ (ĐÃ NÂNG CẤP SIÊU CẤP ĐỘ HIỂN THỊ Z-[99999])
           ========================================== */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in">
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-fade-in">
           <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden relative flex flex-col">
             <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
               <h2 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                <MapPin size={20} className="text-blue-600" />
-                Slot {bookingData.slotName} - Floor {bookingData.floorId}
+                <MapPin size={20} className="text-blue-600" /> Slot{" "}
+                {bookingData.slotName} - Floor {bookingData.floorId}
               </h2>
               {modalPhase === "form" && (
                 <button
@@ -446,37 +588,104 @@ export default function BookSlot() {
 
             <div className="p-6">
               {modalPhase === "form" && (
-                <div className="space-y-5 animate-fade-in">
-                  <div className="space-y-4">
-                    <div>
-                      <label className="text-sm font-semibold text-slate-600 dark:text-slate-300 mb-1.5 block flex items-center gap-2">
-                        <Clock size={16} /> Entry Time:
+                <div className="space-y-4 animate-fade-in">
+                  <div>
+                    <div className="flex justify-between items-center mb-1.5">
+                      <label className="text-sm font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-2">
+                        {bookingData.vehicleType === "car" ? (
+                          <Car size={16} />
+                        ) : (
+                          <Bike size={16} />
+                        )}{" "}
+                        Vehicle Information:
                       </label>
-                      <input
-                        type="datetime-local"
-                        value={timeData.startTime}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsAddingNewVehicle(!isAddingNewVehicle);
+                          setBookingData({ ...bookingData, vehicleId: "" });
+                          setNewPlateNumber("");
+                        }}
+                        className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                      >
+                        {isAddingNewVehicle ? (
+                          <>
+                            <RotateCcw size={12} /> Saved Vehicle
+                          </>
+                        ) : (
+                          <>
+                            <PlusCircle size={12} /> + New Vehicle
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    {!isAddingNewVehicle ? (
+                      <select
+                        required
+                        value={bookingData.vehicleId}
                         onChange={(e) =>
-                          setTimeData({
-                            ...timeData,
-                            startTime: e.target.value,
+                          setBookingData({
+                            ...bookingData,
+                            vehicleId: e.target.value,
                           })
                         }
-                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm font-semibold text-slate-600 dark:text-slate-300 mb-1.5 block flex items-center gap-2">
-                        <Clock size={16} /> Expected Exit Time:
-                      </label>
+                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-800 dark:text-white font-mono font-bold focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="" disabled>
+                          -- CHOOSE BIỂN SỐ XE --
+                        </option>
+                        {filteredVehicles.map((v) => (
+                          <option key={v.id} value={v.id}>
+                            {v.plate_number}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
                       <input
-                        type="datetime-local"
-                        value={timeData.endTime}
+                        type="text"
+                        required
+                        placeholder="ENTER NEW PLATE (e.g., 51H-999.99)"
+                        value={newPlateNumber}
                         onChange={(e) =>
-                          setTimeData({ ...timeData, endTime: e.target.value })
+                          setNewPlateNumber(e.target.value.toUpperCase())
                         }
-                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-dashed border-blue-400 rounded-xl px-4 py-3 text-slate-800 dark:text-white font-mono font-black placeholder:font-sans text-base focus:outline-none tracking-wider"
                       />
-                    </div>
+                    )}
+                    {!isAddingNewVehicle && filteredVehicles.length === 0 && (
+                      <p className="text-[11px] text-amber-500 mt-1 font-medium">
+                        💡 No saved vehicles found. Click "+ New Vehicle" above
+                        to register!
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-semibold text-slate-600 dark:text-slate-300 mb-1.5 block flex items-center gap-2">
+                      <Clock size={16} /> Entry Time:
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={timeData.startTime}
+                      onChange={(e) =>
+                        setTimeData({ ...timeData, startTime: e.target.value })
+                      }
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-800 dark:text-white focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-semibold text-slate-600 dark:text-slate-300 mb-1.5 block flex items-center gap-2">
+                      <Clock size={16} /> Expected Exit Time:
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={timeData.endTime}
+                      onChange={(e) =>
+                        setTimeData({ ...timeData, endTime: e.target.value })
+                      }
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-800 dark:text-white focus:outline-none"
+                    />
                   </div>
 
                   <div className="bg-blue-50 dark:bg-blue-500/10 rounded-2xl p-4 border border-blue-100 dark:border-blue-500/20">
@@ -496,25 +705,19 @@ export default function BookSlot() {
                         {DEPOSIT_FEE.toLocaleString()} VND
                       </span>
                     </div>
-                    <p className="text-xs text-blue-600/70 dark:text-blue-300/70 mt-2 italic text-right">
-                      *Remaining balance is paid upon exit
-                    </p>
                   </div>
 
                   <button
-                    disabled={
-                      !timeData.startTime ||
-                      !timeData.endTime ||
-                      totalPrice <= 0
-                    }
-                    onClick={() => setModalPhase("payment")}
-                    className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-transform active:scale-95 mt-4"
+                    disabled={!isFormValid}
+                    onClick={handleInitiatePayment}
+                    className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 dark:disabled:bg-slate-800 disabled:text-slate-400 py-3.5 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-all font-bold mt-2"
                   >
                     <CreditCard size={20} /> PAY DEPOSIT
                   </button>
                 </div>
               )}
 
+              {/* QR PAYMENT */}
               {modalPhase === "payment" && (
                 <div className="text-center animate-fade-in">
                   <h3 className="font-bold text-slate-800 dark:text-white text-lg mb-2">
@@ -524,15 +727,13 @@ export default function BookSlot() {
                     Please transfer the exact amount below for automatic
                     confirmation.
                   </p>
-
                   <div className="bg-white p-4 rounded-2xl inline-block border-2 border-slate-200 mb-6 shadow-sm">
                     <img
-                      src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=Deposit_${DEPOSIT_FEE}_Slot_${bookingData.slotId}`}
+                      src={qrCodeData}
                       alt="Banking QR"
                       className="w-48 h-48"
                     />
                   </div>
-
                   <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-3 mb-6">
                     <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
                       Amount:{" "}
@@ -541,16 +742,16 @@ export default function BookSlot() {
                       </span>
                     </p>
                   </div>
-
                   <button
                     onClick={handlePaymentSuccess}
-                    className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-emerald-500/30"
+                    className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3.5 rounded-xl shadow-lg"
                   >
                     I Have Transferred Successfully
                   </button>
                 </div>
               )}
 
+              {/* SUCCESS E-TICKET */}
               {modalPhase === "success" && (
                 <div className="text-center animate-fade-in">
                   <div className="w-16 h-16 bg-emerald-100 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -560,35 +761,36 @@ export default function BookSlot() {
                     Booking Successful!
                   </h3>
                   <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">
-                    Here is your e-ticket. Please save it.
+                    Here is your e-ticket for vehicle{" "}
+                    <span className="font-mono font-bold text-slate-700 dark:text-slate-300">
+                      {selectedVehiclePlate}
+                    </span>
+                    .
                   </p>
-
                   <div className="bg-white p-4 rounded-2xl inline-block border-4 border-emerald-500 mb-4 shadow-xl">
                     <img
-                      src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=Ticket_Valid_${bookingData.slotId}`}
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=Ticket_Valid_Slot_${bookingData.slotName}_Plate_${selectedVehiclePlate}`}
                       alt="Ticket QR"
                       className="w-48 h-48"
                     />
                   </div>
-
                   <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-xl p-3 mb-6 text-left flex gap-3 items-start">
                     <Info
                       className="text-amber-500 shrink-0 mt-0.5"
                       size={18}
                     />
                     <p className="text-xs font-medium text-amber-700 dark:text-amber-400 leading-relaxed">
-                      Important Note: Please show this QR code to the security
-                      staff when entering and exiting the parking lot to
-                      calculate your final fee.
+                      Important Note: Security camera will scan your plate at
+                      the gate. If failure occurs, present this QR ticket to the
+                      staff.
                     </p>
                   </div>
-
                   <button
                     onClick={() => {
                       handleCloseModal();
                       navigate("/user");
                     }}
-                    className="w-full bg-slate-800 hover:bg-slate-900 dark:bg-blue-600 dark:hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg"
+                    className="w-full bg-slate-800 hover:bg-slate-900 dark:bg-blue-600 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg"
                   >
                     OK, Return to Dashboard
                   </button>
