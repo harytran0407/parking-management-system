@@ -30,7 +30,7 @@ export default function Sidebar({
 
   return (
     <>
-      {/* 📱 MOBILE NAVIGATION BAR TOGGLE CONTROLLER BUTTON */}
+      
       <button
         onClick={() => setIsMobileOpen(!isMobileOpen)}
         className="lg:hidden fixed top-4 left-4 z-50 p-2.5 bg-white border border-slate-200 text-slate-700 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 rounded-xl shadow-sm transition-all focus:outline-none"
@@ -38,14 +38,14 @@ export default function Sidebar({
         {isMobileOpen ? <X size={20} /> : <Menu size={20} />}
       </button>
 
-      {/* 💎 COMPONENT ASIDE SIDEBAR */}
+     
       <aside
         className={`fixed lg:relative h-screen transition-all duration-300 ease-in-out z-40 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col shrink-0 shadow-sm
           ${isMobileOpen ? "translate-x-0 w-64" : "-translate-x-full lg:translate-x-0"}
           ${isCollapsed ? "lg:w-20" : "lg:w-64"}
         `}
       >
-        {/* ⚡ BRAND LOGO & TOGGLE CONTROL AREA */}
+        {/*  BRAND LOGO & TOGGLE CONTROL AREA */}
         <div
           className={`h-20 border-b border-slate-200 dark:border-slate-800 flex items-center shrink-0 transition-all duration-300 px-6
           ${isCollapsed ? "lg:px-0 lg:justify-center" : "lg:justify-between"}

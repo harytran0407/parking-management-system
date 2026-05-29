@@ -316,16 +316,17 @@ export default function CheckInPage() {
 
                 <div className="absolute bottom-4 right-4">
                   <button
-                    onClick={manualCapture}
-                    disabled={isCapturing || checkInSuccess}
-                    className="bg-white/10 hover:bg-white/20 border border-white/20 backdrop-blur-md text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 text-sm"
+                    id="btn-submit-checkin"
+                    type="submit"
+                    disabled={!plateNumber || isSubmitting || !!systemWarning}
+                    className="mt-6 w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:bg-slate-300 dark:disabled:bg-slate-800 text-white dark:disabled:text-slate-600 py-3.5 rounded-xl font-bold text-base transition-colors flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 dark:shadow-none"
                   >
-                    {isCapturing ? (
-                      <RefreshCcw size={16} className="animate-spin" />
+                    {isSubmitting ? (
+                      <RefreshCcw size={18} className="animate-spin" />
                     ) : (
-                      <Zap size={16} />
+                      <CheckCircle2 size={18} />
                     )}
-                    Capture (Space)
+                    {isSubmitting ? "Processing..." : "Confirm Entry (Enter)"}
                   </button>
                 </div>
               </>
@@ -459,17 +460,29 @@ export default function CheckInPage() {
                       </span>
                     </label>
                     <div className="grid grid-cols-2 gap-2">
+                     
                       <button
                         type="button"
-                        onClick={() => setVehicleTypeId(1)}
-                        className={`py-2.5 border rounded-lg font-medium text-sm transition-all flex items-center justify-center gap-2 ${vehicleTypeId === 1 ? "border-blue-600 bg-blue-50 text-blue-700" : "text-slate-600 hover:bg-slate-50"}`}
+                        onClick={() => setVehicleTypeId(1)} 
+                        
+                        className={`py-2.5 border rounded-lg font-bold text-sm transition-all flex items-center justify-center gap-2 outline-none ${
+                          vehicleTypeId === 1
+                            ? "border-blue-600 bg-blue-50 text-blue-700 dark:border-blue-500 dark:bg-blue-500/10 dark:text-blue-400 shadow-sm"
+                            : "border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800/50"
+                        }`}
                       >
                         <CarFront size={16} /> Car
                       </button>
+
+                     
                       <button
                         type="button"
-                        onClick={() => setVehicleTypeId(2)}
-                        className={`py-2.5 border rounded-lg font-medium text-sm transition-all flex items-center justify-center gap-2 ${vehicleTypeId === 2 ? "border-blue-600 bg-blue-50 text-blue-700" : "text-slate-600 hover:bg-slate-50"}`}
+                        onClick={() => setVehicleTypeId(2)} 
+                        className={`py-2.5 border rounded-lg font-bold text-sm transition-all flex items-center justify-center gap-2 outline-none ${
+                          vehicleTypeId === 2
+                            ? "border-blue-600 bg-blue-50 text-blue-700 dark:border-blue-500 dark:bg-blue-500/10 dark:text-blue-400 shadow-sm"
+                            : "border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800/50"
+                        }`}
                       >
                         Motorbike
                       </button>

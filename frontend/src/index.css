@@ -148,3 +148,46 @@ body {
 .divider {
   @apply border-t border-slate-200 dark:border-slate-800;
 }
+
+/* ============================================================
+   SIÊU CẤP ĐÈ HỦY THANH CÔNG CỤ GOOGLE TRANSLATE
+   ============================================================ */
+
+/* 1. Ép ẩn hoàn toàn tất cả các loại iframe và class thanh công cụ của Google */
+iframe.goog-te-banner-frame,
+.goog-te-banner-frame,
+.goog-te-banner-frame.skiptranslate,
+#goog-gt-tt,
+.goog-te-balloon-frame {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  height: 0 !important;
+  width: 0 !important;
+}
+
+/* 2. Triệt tiêu tuyệt đối khoảng trống 40px mà Google chèn vào cả thẻ HTML và BODY */
+html {
+  top: 0px !important;
+  margin-top: 0px !important;
+}
+
+body {
+  top: 0px !important;
+  margin-top: 0px !important;
+  position: static !important;
+}
+
+/* 3. Khóa toàn bộ hộp thoại pop-up text gốc khi di chuột vào chữ đã dịch */
+.goog-tooltip,
+.goog-tooltip:hover,
+#goog-gt-box {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+.goog-text-highlight {
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}

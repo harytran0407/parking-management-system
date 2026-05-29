@@ -9,7 +9,7 @@ import StaffDashboard from "../pages/staff/Dashboard";
 import CheckInPage from "../pages/staff/CheckInPage";
 import CheckOutPage from "../pages/staff/CheckOutPage";
 import IncidentHandlingPage from '../pages/staff/IncidentHandling';
-// import SlotGateManagementPage from '../pages/staff/SlotGateManagement';
+import SlotGateManagementPage from '../pages/staff/SlotGateManagement';
 
 export default function StaffLayout() {
   // Navigation mapping based on ParkingStaff capabilities defined in USER_STORIES.md
@@ -58,7 +58,7 @@ export default function StaffLayout() {
             <Route path="/checkin" element={<CheckInPage />} />
             <Route path="/checkout" element={<CheckOutPage />} />
             <Route path="/incidents" element={<IncidentHandlingPage />} />
-            {/* <Route path="/slots" element={<SlotGateManagementPage />} /> */}
+            <Route path="/slots" element={<SlotGateManagementPage />} />
 
             {/* Fallback route */}
             <Route path="/*" element={<StaffDashboard />} />
