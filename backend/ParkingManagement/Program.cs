@@ -27,6 +27,7 @@ builder.Services.AddControllers()
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddMemoryCache(); // Thêm bộ nhớ đệm (cache) dùng cho rate limiting.
 
 // 3. Đăng ký các Repository & Service (Gộp cả 2 module Building và Parking)
 builder.Services.AddScoped<IBuildingRepository, BuildingRepository>();
