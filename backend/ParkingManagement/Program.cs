@@ -34,6 +34,10 @@ builder.Services.AddScoped<IBuildingService, BuildingService>();
 builder.Services.AddScoped<IVehicleTypeRepository, VehicleTypeRepository>();
 builder.Services.AddScoped<IVehicleTypeService, VehicleTypeService>();
 
+// ── VehicleFloor module ────────────────────────────────────────────────────────
+builder.Services.AddScoped<IFloorAllocationRepository, FloorAllocationRepository>();
+builder.Services.AddScoped<IFloorAllocationService, FloorAllocationService>();
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
