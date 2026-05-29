@@ -51,10 +51,8 @@ CSV_FIELDS = [
 ]
 
 VEHICLE_TYPE_MAP = {
-    'Car': 1,
-    'Motorbike': 2,
-    'Bus': 3,
-    'Truck': 4,
+    'Motorbike': 1,
+    'Car': 2,
     'Vehicle': 0
 }
 
