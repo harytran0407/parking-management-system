@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using ParkingManagement.Data;
 using ParkingManagement.Models;
+using ParkingManagement.DTOs;
 
 namespace ParkingManagement.Repositories
 {
@@ -29,6 +30,7 @@ namespace ParkingManagement.Repositories
                 .AnyAsync(s => s.LicensePlateIn == licensePlate && s.Status == "ACTIVE");
         }
 
+        // TẠM THỜI
         public async Task<ParkingSlot?> FindFirstAvailableSlotAsync(int vehicleTypeId)
         {
             return await _context.ParkingSlots
@@ -47,7 +49,6 @@ namespace ParkingManagement.Repositories
             if (session == null) throw new ArgumentNullException(nameof(session));
 
             await _context.ParkingSessions.AddAsync(session);
-            // Thực hiện lưu thay đổi (khi dùng trong Transaction, lệnh này đóng vai trò gửi State Stage lên DB)
             await _context.SaveChangesAsync();
         }
 
@@ -102,16 +103,6 @@ namespace ParkingManagement.Repositories
                 .Include(s => s.Slot)
                     .ThenInclude(sl => sl!.Zone)
                 .FirstOrDefaultAsync(s => s.LicensePlateIn == licensePlate && s.Status == "ACTIVE");
-        }
-
-        public async Task<PricingPolicy?> GetActivePricingPolicyAsync()
-        {
-            var today = DateOnly.FromDateTime(DateTime.Today);
-
-            return await _context.PricingPolicies
-                .Where(p => p.EffectiveDate <= today)
-                .OrderByDescending(p => p.EffectiveDate)
-                .FirstOrDefaultAsync();
         }
 
         public async Task<bool> UpdateSessionAndSlotAsync(ParkingSession session, string slotId)
@@ -194,6 +185,60 @@ namespace ParkingManagement.Repositories
                 .Where(p => p.VehicleTypeId == vehicleTypeId && p.EffectiveDate <= today)
                 .OrderByDescending(p => p.EffectiveDate)
                 .FirstOrDefaultAsync();
+        }
+
+        public async Task<(List<ParkingSlot> Slots, int TotalCount, Dictionary<string, int> StatusCounts)> GetPagedSlotsWithStatusAsync(SlotQueryFilterDto filter)
+        {
+            // 1. Tạo Query gốc bao gồm cả bảng liên kết Khu Vực (Zone) để lọc tầng và tên khu
+            var query = _context.ParkingSlots
+                .Include(s => s.Zone)
+                // Cần Include thêm ParkingSessions đang Active để lấy Biển số xe (LicensePlate) và Giờ vào (CheckInTime) nếu Slot đang bị chiếm chỗ (OCCUPIED)
+                .Include(s => s.ParkingSessions)
+                .AsQueryable();
+
+            // 2. Áp dụng các bộ lọc động (Dynamic Filters)
+            if (filter.Floor.HasValue)
+            {
+                query = query.Where(s => s.Zone.FloorNumber == filter.Floor.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(filter.Zone))
+            {
+                query = query.Where(s => s.Zone.ZoneName == filter.Zone.Trim());
+            }
+
+            if (filter.VehicleTypeId.HasValue)
+            {
+                query = query.Where(s => s.Zone.VehicleTypeId == filter.VehicleTypeId.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(filter.Status))
+            {
+                query = query.Where(s => s.Status == filter.Status.Trim().ToUpper());
+            }
+
+            // 3. Tính toán Thống kê Tổng số lượng theo từng Status trước khi Phân trang (Pagination)
+            var allFilteredSlots = await query.Select(s => new { s.Status }).ToListAsync();
+
+            var statusCounts = new Dictionary<string, int>
+            {
+                { "TOTAL", allFilteredSlots.Count },
+                { "AVAILABLE", allFilteredSlots.Count(s => s.Status == "AVAILABLE") },
+                { "OCCUPIED", allFilteredSlots.Count(s => s.Status == "OCCUPIED") },
+                { "RESERVED", allFilteredSlots.Count(s => s.Status == "RESERVED") },
+                { "MAINTENANCE", allFilteredSlots.Count(s => s.Status == "MAINTENANCE") }
+            };
+
+            int totalCount = allFilteredSlots.Count;
+
+            // 4. Thực hiện Phân trang và sắp xếp mặc định theo Tên ô đỗ
+            var pagedSlots = await query
+                .OrderBy(s => s.SlotName)
+                .Skip((filter.Page - 1) * filter.PageSize)
+                .Take(filter.PageSize)
+                .ToListAsync();
+
+            return (pagedSlots, totalCount, statusCounts);
         }
     }
 }

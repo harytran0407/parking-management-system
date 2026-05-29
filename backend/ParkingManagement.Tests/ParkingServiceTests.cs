@@ -410,6 +410,148 @@ namespace ParkingManagement.Tests.Services
             Assert.Equal("CANNOT_MAINTAIN_OCCUPIED_SLOT", ex.Message);
         }
 
+        // TC-21: Ràng buộc nghiệp vụ nâng cao - Manager cố tình sửa ô đỗ đang có xe (OCCUPIED) sang trạng thái Bảo trì (MAINTENANCE) -> Hệ thống phải chặn lại
+        [Fact]
+        public async Task UpdateSlotStatus_ManagerTriesToSetOccupiedSlotToMaintenance_ThrowsInvalidOperationException()
+        {
+            // Arrange
+            var dto = new UpdateSlotStatusDto
+            {
+                SlotId = "SLOT-VIP-01",
+                Status = "MAINTENANCE",
+                Reason = "Quản lý yêu cầu ngắt điện bảo trì định kỳ",
+                EstimatedDurationMinutes = 120
+            };
+
+            // Giả lập ô đỗ đang có trạng thái OCCUPIED (Đang có xe đỗ bên trong)
+            var occupiedSlot = new ParkingSlot
+            {
+                SlotId = "SLOT-VIP-01",
+                Status = "OCCUPIED",
+                SlotName = "VIP-01"
+            };
+
+            _parkingRepositoryMock.Setup(r => r.GetSlotByIdAsync(dto.SlotId)).ReturnsAsync(occupiedSlot);
+
+            // Act & Assert
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                _parkingService.UpdateSlotStatusAsync(dto, "MANAGER-01")); // Thực hiện bởi Manager
+
+            // Xác thực mã lỗi nghiệp vụ ném ra phải chính xác để Controller bắt và map về HTTP 422
+            Assert.Equal("CANNOT_MAINTAIN_OCCUPIED_SLOT", ex.Message);
+
+            // Đảm bảo hàm cập nhật thô dưới Repository hoàn toàn không được phép gọi trúng
+            _parkingRepositoryMock.Verify(r => r.UpdateSlotStatusWithLogAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>()),
+                Times.Never);
+        }
+
+        #endregion
+
+        #region PHẦN 6: GET PAGED SLOTS REAL-TIME (3 TEST CASES)
+
+        // TC-22: Lấy danh sách ô đỗ thời gian thực thành công với bộ lọc hợp lệ (Phân trang chuẩn UI)
+        [Fact]
+        public async Task GetPagedSlotsWithStatus_ValidFilter_ReturnsPagedDataAndStats()
+        {
+            // Arrange
+            var filterDto = new SlotQueryFilterDto
+            {
+                Page = 1,
+                PageSize = 2,
+                Floor = 1,
+                Status = "AVAILABLE"
+            };
+
+            var mockSlots = new List<ParkingSlot>
+            {
+                new ParkingSlot { SlotId = "SLOT-B1", SlotName = "B1", Status = "AVAILABLE" },
+                new ParkingSlot { SlotId = "SLOT-B2", SlotName = "B2", Status = "AVAILABLE" }
+            };
+
+            var mockStatusCounts = new Dictionary<string, int>
+            {
+                { "TOTAL", 10 },
+                { "AVAILABLE", 5 },
+                { "OCCUPIED", 3 },
+                { "RESERVED", 1 },
+                { "MAINTENANCE", 1 }
+            };
+
+            _parkingRepositoryMock
+                .Setup(r => r.GetPagedSlotsWithStatusAsync(filterDto))
+                .ReturnsAsync((mockSlots, 10, mockStatusCounts));
+
+            // Act - Đổi từ GetPagedSlotsWithStatusAsync sang GetRealtimeSlotsAsync theo Service thật
+            var result = await _parkingService.GetRealtimeSlotsAsync(filterDto);
+
+            // Assert - Ánh xạ chuẩn theo cấu trúc Response DTO trong file Service của bạn
+            Assert.NotNull(result);
+            Assert.NotNull(result.Data);
+            Assert.Equal(2, result.Data.Slots.Count);
+            Assert.Equal(10, result.Data.Pagination.TotalItems);
+            Assert.Equal(5, result.Data.Summary.Available);
+            Assert.Equal("B1", result.Data.Slots[0].SlotName);
+        }
+
+        // TC-23: Lọc dữ liệu thời gian thực với điều kiện không tồn tại
+        [Fact]
+        public async Task GetPagedSlotsWithStatus_CriteriaNotFound_ReturnsEmptyListWithZeroTotal()
+        {
+            // Arrange
+            var filterDto = new SlotQueryFilterDto { Page = 1, PageSize = 10, Zone = "ZONE-Z" };
+
+            var emptySlots = new List<ParkingSlot>();
+            var zeroStatusCounts = new Dictionary<string, int>
+            {
+                { "TOTAL", 0 }, { "AVAILABLE", 0 }, { "OCCUPIED", 0 }, { "RESERVED", 0 }, { "MAINTENANCE", 0 }
+            };
+
+            _parkingRepositoryMock
+                .Setup(r => r.GetPagedSlotsWithStatusAsync(filterDto))
+                .ReturnsAsync((emptySlots, 0, zeroStatusCounts));
+
+            // Act
+            var result = await _parkingService.GetRealtimeSlotsAsync(filterDto);
+
+            // Assert
+            Assert.NotNull(result.Data);
+            Assert.Empty(result.Data.Slots);
+            Assert.Equal(0, result.Data.Pagination.TotalItems);
+            Assert.Equal(0, result.Data.Summary.TotalSlots);
+        }
+
+        // TC-24: Biên - Tham số phân trang đầu vào không hợp lệ -> Hệ thống tự động thiết lập Fallback mặc định an toàn
+        [Fact]
+        public async Task GetPagedSlotsWithStatus_InvalidPaginationValues_AppliesFallbackValuesGracefully()
+        {
+            // Arrange
+            var invalidFilterDto = new SlotQueryFilterDto { Page = 0, PageSize = -5 };
+
+            var fallbackSlots = new List<ParkingSlot> { new ParkingSlot { SlotId = "SLOT-01", SlotName = "A1" } };
+
+            // ĐÃ SỬA: Bổ sung đầy đủ 5 key trạng thái để không bị bẻ gãy luồng mapping tại dòng 229 trong Service
+            var mockStats = new Dictionary<string, int>
+            {
+                { "TOTAL", 1 },
+                { "AVAILABLE", 1 },
+                { "OCCUPIED", 0 },
+                { "RESERVED", 0 },
+                { "MAINTENANCE", 0 }
+            };
+
+            _parkingRepositoryMock
+                .Setup(r => r.GetPagedSlotsWithStatusAsync(invalidFilterDto))
+                .ReturnsAsync((fallbackSlots, 1, mockStats));
+
+            // Act
+            var result = await _parkingService.GetRealtimeSlotsAsync(invalidFilterDto);
+
+            // Assert
+            Assert.NotNull(result);
+            _parkingRepositoryMock.Verify(r => r.GetPagedSlotsWithStatusAsync(invalidFilterDto), Times.Once);
+        }
+
         #endregion
     }
 }

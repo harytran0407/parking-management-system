@@ -45,5 +45,7 @@ namespace ParkingManagement.Services
         /// <returns>A task that represents the asynchronous operation. The task result contains a SlotStatusResponseDto with the
         /// updated slot status information.</returns>
         Task<SlotStatusResponseDto> UpdateSlotStatusAsync(UpdateSlotStatusDto dto, string staffId);
+
+        Task<ParkingSlotsResponseDto> GetRealtimeSlotsAsync(SlotQueryFilterDto filter);
     }
 }
