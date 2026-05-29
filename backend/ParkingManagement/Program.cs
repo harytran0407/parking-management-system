@@ -21,6 +21,7 @@ builder.Services.AddControllers()
 // ── Swagger ───────────────────────────────────────────────────────────────────
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddMemoryCache(); // Thêm bộ nhớ đệm (cache) dùng cho rate limiting.
 
 // ── Parking module ───────────────────────────────────────────────────────────────────────
 builder.Services.AddScoped<IParkingRepository, ParkingRepository>();
@@ -33,6 +34,10 @@ builder.Services.AddScoped<IBuildingService, BuildingService>();
 // ── VehicleType module ────────────────────────────────────────────────────────
 builder.Services.AddScoped<IVehicleTypeRepository, VehicleTypeRepository>();
 builder.Services.AddScoped<IVehicleTypeService, VehicleTypeService>();
+
+// ── VehicleFloor module ────────────────────────────────────────────────────────
+builder.Services.AddScoped<IFloorAllocationRepository, FloorAllocationRepository>();
+builder.Services.AddScoped<IFloorAllocationService, FloorAllocationService>();
 
 var app = builder.Build();
 
