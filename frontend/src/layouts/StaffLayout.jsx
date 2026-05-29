@@ -1,15 +1,14 @@
 import { Routes, Route } from "react-router-dom";
 import {useState} from 'react';
-import {LayoutDashboard,LogIn,LogOut,AlertTriangle,Map,
-} from "lucide-react";
+import {LayoutDashboard,LogIn,LogOut,AlertTriangle,Map,} from "lucide-react";
 import Sidebar from "../components/Sidebar";
 import Header from "../components/Header";
 import StaffDashboard from "../pages/staff/Dashboard";
 
-// Import corresponding pages (you can create these files later)
+// Import corresponding pages 
 import CheckInPage from "../pages/staff/CheckInPage";
 import CheckOutPage from "../pages/staff/CheckOutPage";
-// import IncidentHandlingPage from '../pages/staff/IncidentHandling';
+import IncidentHandlingPage from '../pages/staff/IncidentHandling';
 // import SlotGateManagementPage from '../pages/staff/SlotGateManagement';
 
 export default function StaffLayout() {
@@ -58,7 +57,7 @@ export default function StaffLayout() {
             {/* Future route configurations mapped to API & User Stories */}
             <Route path="/checkin" element={<CheckInPage />} />
             <Route path="/checkout" element={<CheckOutPage />} />
-            {/* <Route path="/incidents" element={<IncidentHandlingPage />} /> */}
+            <Route path="/incidents" element={<IncidentHandlingPage />} />
             {/* <Route path="/slots" element={<SlotGateManagementPage />} /> */}
 
             {/* Fallback route */}

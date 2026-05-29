@@ -228,7 +228,7 @@ export default function CheckInPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
+    <div className=" animate-slide-in max-w-7xl mx-auto space-y-6">
       {/* HEADER TÍCH HỢP TRẠNG THÁI HARDWARE */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
         <div>

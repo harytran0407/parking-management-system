@@ -1,29 +1,14 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import {
-  Camera,
-  CarFront,
-  Hash,
-  CheckCircle2,
-  AlertCircle,
-  RefreshCcw,
-  Video,
-  VideoOff,
-  Zap,
-  Clock,
-  Banknote,
-  QrCode,
-  Receipt,
-  CreditCard,
-  ShieldAlert,
+import {Camera,CarFront,Hash,CheckCircle2,AlertCircle,RefreshCcw,Video,VideoOff,Zap,Clock,Banknote,QrCode,Receipt,CreditCard,ShieldAlert,
   ArrowRight,
 } from "lucide-react";
 
 export default function CheckOutPage() {
   // --- STATES NGHIỆP VỤ ---
   const [plateNumber, setPlateNumber] = useState("");
-  const [activeSession, setActiveSession] = useState(null); // Thông tin xe lúc vào
-  const [billingInfo, setBillingInfo] = useState(null); // Thông tin tính tiền
-  const [paymentMethod, setPaymentMethod] = useState("CASH"); // 'CASH' hoặc 'VNPAY'
+  const [activeSession, setActiveSession] = useState(null); 
+  const [billingInfo, setBillingInfo] = useState(null); 
+  const [paymentMethod, setPaymentMethod] = useState("CASH"); 
 
   // --- STATES CAMERA & UI ---
   const videoRef = useRef(null);
@@ -53,12 +38,8 @@ export default function CheckOutPage() {
           if (isCameraOn && !isCapturing && !checkoutSuccess) manualCapture();
           break;
         case "Enter":
-          if (
-            plateNumber &&
-            activeSession &&
-            !isSubmitting &&
-            !checkoutSuccess
-          ) {
+          if (plateNumber && ctiveSession && !isSubmitting && !checkoutSuccess) 
+            {
             document.getElementById("btn-submit-checkout")?.click();
           }
           break;
@@ -238,7 +219,7 @@ export default function CheckOutPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
+    <div className=" animate-slide-in max-w-7xl mx-auto space-y-6">
       {/* HEADER */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
         <div>
@@ -364,7 +345,8 @@ export default function CheckOutPage() {
                   <p className="text-slate-500 text-xs uppercase font-bold">
                     Session ID
                   </p>
-                  <p className="font-mono font-medium dark:text-white mt-0.5">
+                
+                  <p className="font-mono font-medium text-slate-900 dark:text-white mt-0.5">
                     {activeSession.session_id}
                   </p>
                 </div>
@@ -380,7 +362,7 @@ export default function CheckOutPage() {
                   <p className="text-slate-500 text-xs uppercase font-bold">
                     Time In
                   </p>
-                  <p className="font-medium dark:text-white mt-0.5">
+                  <p className="font-medium text-slate-900 dark:text-white mt-0.5">
                     {activeSession.time_in}
                   </p>
                 </div>
@@ -388,7 +370,8 @@ export default function CheckOutPage() {
                   <p className="text-slate-500 text-xs uppercase font-bold">
                     Date In
                   </p>
-                  <p className="font-medium dark:text-white mt-0.5">
+                  
+                  <p className="font-medium text-slate-900 dark:text-white mt-0.5">
                     {activeSession.date_in}
                   </p>
                 </div>
@@ -397,7 +380,7 @@ export default function CheckOutPage() {
           )}
         </div>
 
-        {/* CỘT PHẢI: HÓA ĐƠN & THANH TOÁN */}
+        {/* PAYMENT AND RECEIPT*/}
         <div className="lg:col-span-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm flex flex-col min-h-[500px]">
           {checkoutSuccess ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center space-y-4 animate-in zoom-in-95">
@@ -414,7 +397,7 @@ export default function CheckOutPage() {
               </div>
 
               <div className="w-full max-w-sm bg-slate-50 dark:bg-slate-800 rounded-xl p-5 border border-slate-100 dark:border-slate-700 text-left space-y-3 my-4 relative overflow-hidden">
-                {/* Họa tiết răng cưa giả hóa đơn */}
+              
                 <div className="absolute top-0 left-0 right-0 h-1 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjQiPjxwb2x5Z29uIHBvaW50cz0iMCAwLCA0IDQsIDggMCIgZmlsbD0iI2Y4ZmFmYyIvPjwvc3ZnPg==')]"></div>
 
                 <div className="flex justify-between items-center pb-3 border-b border-dashed border-slate-200 dark:border-slate-600">
@@ -491,7 +474,7 @@ export default function CheckOutPage() {
                   </div>
                 </div>
 
-                {/* BILLING SECTION (Mờ đi nếu chưa có xe) */}
+                {/* BILLING SECTION */}
                 <div
                   className={`transition-opacity duration-300 ${activeSession ? "opacity-100" : "opacity-40 pointer-events-none"}`}
                 >
