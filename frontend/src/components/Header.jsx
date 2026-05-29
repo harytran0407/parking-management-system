@@ -1,10 +1,10 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Bell, Sun, Moon, User, LogOut, PanelLeftOpen } from "lucide-react";
+import { Bell, Sun, Moon, User, LogOut } from "lucide-react";
 import { useTheme } from "../hooks/useTheme";
 import { useAuth } from "../hooks/useAuth";
 
-export default function Header({ isSidebarCollapsed, setIsSidebarCollapsed }) {
+export default function Header() {
   const { theme, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -16,12 +16,12 @@ export default function Header({ isSidebarCollapsed, setIsSidebarCollapsed }) {
   // Reference area to handle click-outside event trigger
   const dropdownRef = useRef(null);
 
-  // Dynamic Page Title Mapping according to FUNCTIONAL_REQUIREMENT_85.md modules
+  // Dynamic Page Title Mapping according to FUNCTIONAL_REQUIREMENT modules
   const pageTitles = {
-    "/user": "Driver Dashboard",
-    "/user/book": "Book a Parking Slot",
-    "/user/bookings": "My Booking Sessions",
-    "/user/vehicles": "My Registered Vehicles",
+    "/user": "Dashboard",
+    "/user/book": "Booking Slot",
+    "/user/bookings": "Booking Sessions",
+    "/user/vehicles": "My Vehicles",
     "/user/issues": "Support Center",
     "/user/profile": "Edit My Profile",
   };
@@ -58,18 +58,9 @@ export default function Header({ isSidebarCollapsed, setIsSidebarCollapsed }) {
   return (
     /* Glassmorphism architecture container with strict fixed layout dimensions (h-20) */
     <header className="sticky top-0 z-40 w-full h-20 flex items-center justify-between transition-all duration-300 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md px-4 lg:px-6 border-b border-slate-200 dark:border-slate-800 shadow-sm">
-      {/* LEFT AREA: Context-aware dynamic page header title group */}
-      <div className="pl-12 lg:pl-0 flex items-center gap-3 transition-all duration-300">
-        {isSidebarCollapsed && (
-          <button
-            onClick={() => setIsSidebarCollapsed(false)}
-            className="hidden lg:flex p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:text-slate-400 dark:hover:bg-slate-800 rounded-xl transition-all"
-            title="Open Sidebar"
-          >
-            <PanelLeftOpen size={20} />
-          </button>
-        )}
-        <h1 className="text-xl font-black text-slate-800 dark:text-white tracking-tight transition-all duration-300">
+      {/* LEFT AREA: Clean dynamic page title group without layout-breaking button elements */}
+      <div className="pl-20 lg:pl-0 flex items-center transition-all duration-300 min-w-0">
+        <h1 className="text-lg md:text-xl font-black text-slate-800 dark:text-white tracking-tight transition-all duration-300 truncate">
           {currentTitle}
         </h1>
       </div>

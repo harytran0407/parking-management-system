@@ -80,7 +80,7 @@ export default function UserDashboard() {
       setCurrentImgIndex(
         (prevIndex) => (prevIndex + 1) % buildingInfo.image_urls.length,
       );
-    }, 2000); 
+    }, 10000); 
 
     // CRITICAL CLEANUP: Hàm này vô cùng quan trọng để xóa bỏ bộ timer cũ
     // Giúp app không bị lỗi chạy dồn dập nhiều timer cùng lúc khi user click nút thủ công
