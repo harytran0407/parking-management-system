@@ -4,7 +4,7 @@ import {LayoutDashboard,LogIn,LogOut,AlertTriangle,Map,} from "lucide-react";
 import Sidebar from "../components/Sidebar";
 import Header from "../components/Header";
 import StaffDashboard from "../pages/staff/Dashboard";
-
+import Profile from '../pages/user/Profile'; 
 // Import corresponding pages 
 import CheckInPage from "../pages/staff/CheckInPage";
 import CheckOutPage from "../pages/staff/CheckOutPage";
@@ -44,11 +44,19 @@ export default function StaffLayout() {
 
   return (
     <div className="main-container flex h-screen bg-gray-100">
-      <Sidebar navigationItems={navigationItems} isCollapsed={isSidebarCollapsed} setIsCollapsed={setIsSidebarCollapsed} />
+      <Sidebar
+        navigationItems={navigationItems}
+        isCollapsed={isSidebarCollapsed}
+        setIsCollapsed={setIsSidebarCollapsed}
+      />
 
       <div className="content-wrapper flex-1 flex flex-col overflow-hidden">
         {/* Header title tailored for Parking Staff role */}
-        <Header title="Parking Operations" isSidebarCollapsed={isSidebarCollapsed} setIsSidebarCollapsed={setIsSidebarCollapsed} />
+        <Header
+          title="Parking Operations"
+          isSidebarCollapsed={isSidebarCollapsed}
+          setIsSidebarCollapsed={setIsSidebarCollapsed}
+        />
 
         <main className="page-content flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-6">
           <Routes>
@@ -59,7 +67,7 @@ export default function StaffLayout() {
             <Route path="/checkout" element={<CheckOutPage />} />
             <Route path="/incidents" element={<IncidentHandlingPage />} />
             <Route path="/slots" element={<SlotGateManagementPage />} />
-
+            <Route path="profile" element={<Profile />} />
             {/* Fallback route */}
             <Route path="/*" element={<StaffDashboard />} />
           </Routes>

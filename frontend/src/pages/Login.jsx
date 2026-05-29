@@ -127,7 +127,7 @@ export default function Login() {
                 <label className="block text-sm font-medium text-slate-300">
                   Password
                 </label>
-                {/* Liên kết phục vụ chức năng Quên mật khẩu (FR-AUTH-04) */}
+                
                 <Link
                   to="/forgot-password"
                   className="text-xs font-semibold text-blue-500 hover:text-blue-400 hover:underline transition-colors"

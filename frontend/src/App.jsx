@@ -1,36 +1,74 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
-import { AuthProvider } from './context/AuthContext'
-import ProtectedRoute from './components/ProtectedRoute'
-import Login from './pages/Login'
-import ManagerLayout from './layouts/ManagerLayout'
-import StaffLayout from './layouts/StaffLayout'
-import UserLayout from './layouts/UserLayout'
-import AdminLayout from './layouts/AdminLayout'
-import ManagerDashboard from './pages/manager/Dashboard'
-import StaffDashboard from './pages/staff/Dashboard'
-import UserDashboard from './pages/user/Dashboard'
-import AdminDashboard from './pages/admin/Dashboard'
-import Register from './pages/Register';
-import LandingPage from './pages/LandingPage';
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "./context/AuthContext";
+import ProtectedRoute from "./components/ProtectedRoute";
+
+import LandingPage from "./pages/LandingPage";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import ForgotPassword from "./pages/ForgotPassword"; 
+
+
+import ManagerLayout from "./layouts/ManagerLayout";
+import StaffLayout from "./layouts/StaffLayout";
+import UserLayout from "./layouts/UserLayout";
+import AdminLayout from "./layouts/AdminLayout";
+
 function App() {
   return (
     <Router>
       <AuthProvider>
         <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />}/>
-          // login base on role
-          <Route path="/manager/*" element={<ProtectedRoute role="manager"><ManagerLayout /></ProtectedRoute>} />
-          <Route path="/staff/*" element={<ProtectedRoute role="staff"><StaffLayout /></ProtectedRoute>} />
-          <Route path="/user/*" element={<ProtectedRoute role="user"><UserLayout /></ProtectedRoute>} />
-          <Route path="/admin/*" element={<ProtectedRoute role="admin"><AdminLayout /></ProtectedRoute>} />
-          //default Landing page 
+          {/* ============================================================
+              PUBLIC ROUTES (Tuyến đường công khai)
+             ============================================================ */}
           <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
 
+          
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+
+          {/* ============================================================
+              PROTECTED ROUTES 
+             ============================================================ */}
+          <Route
+            path="/manager/*"
+            element={
+              <ProtectedRoute allowedRoles={["ParkingManager"]}>
+                <ManagerLayout />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/staff/*"
+            element={
+              <ProtectedRoute allowedRoles={["ParkingStaff"]}>
+                <StaffLayout />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/user/*"
+            element={
+              <ProtectedRoute allowedRoles={["ParkingUser"]}>
+                <UserLayout />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/*"
+            element={
+              <ProtectedRoute allowedRoles={["SystemAdmin"]}>
+                <AdminLayout />
+              </ProtectedRoute>
+            }
+          />
         </Routes>
       </AuthProvider>
     </Router>
-  )
+  );
 }
 
-export default App
+export default App;
