@@ -73,6 +73,10 @@ builder.Services.AddScoped<IFloorAllocationService, FloorAllocationService>();
 // ── Auth & JWT ─────────────────────────────────────────-────────────────────────
 builder.Services.AddJwtAuthentication(builder.Configuration);
 
+// ── Slot management module ────────────────────────────────────────────────────
+builder.Services.AddScoped<ISlotManagementRepository, SlotManagementRepository>();
+builder.Services.AddScoped<ISlotManagementService, SlotManagementService>();
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
