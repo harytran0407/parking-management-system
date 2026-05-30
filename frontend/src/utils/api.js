@@ -8,6 +8,7 @@ const api = axios.create({
     timeout: 10000, 
 });
 
+    let isRedirecting = false; 
 
 api.interceptors.request.use(
     (config) => {
@@ -26,34 +27,45 @@ api.interceptors.request.use(
 api.interceptors.response.use(
     (response) => response,
     (error) => {
+
+        //Case 1: Mất mạng hoàn toàn và server không phản hồi
+        if(!error.response){
+            window.dispatchEvent(new CustomEvent('pbms-network-error',{
+                detail:{message:'Cannot connect to server . Please check your internet connection'}
+            }));
+            return Promise.reject(error);
+        }
         const status = error.response?.status;
         const serverData = error.response?.data;
 
-        // Xử lý lỗi 401: Hết hạn phiên làm việc hoặc Token không hợp lệ
+        // Case 2: Xử lý lỗi 401 Hết hạn phiên làm việc hoặc Token không hợp lệ
         if (status === 401) {
             localStorage.removeItem('accessToken');
             localStorage.removeItem('userData');
 
-            // Thay vì dùng window.location.href, thường phát một Event ra toàn hệ thống
-            // hoặc điều hướng mượt mà để các component Toast kịp hiển thị lời chào/thông báo lỗi
-            const authErrorEvent = new CustomEvent('pbms-unauthorized');
-            window.dispatchEvent(authErrorEvent);
-
-            // Fallback an toàn nếu hệ thống không bắt Event
-            setTimeout(() => {
-                window.location.href = '/login';
-            }, 500);
+            if(!isRedirecting){
+                isRedirecting=true;
+                // Delegate toàn bộ toast + navigate sang GlobalHttpListener
+                window.dispatchEvent(new CustomEvent('pbms-unauthorized',{
+                    detail:{message:serverData?.message || 'Session expired . Please login in again'}
+                }));
+                setTimeout(() =>{isRedirecting = false;},2500);
+            }
+           
         }
 
-        // Xử lý lỗi 403: Đăng nhập đúng nhưng sai vai trò truy cập (Vi phạm RBAC)
+        // Case 3 Xử lý lỗi 403 Đăng nhập đúng nhưng sai vai trò truy cập (Vi phạm RBAC)
         if (status === 403) {
-            window.location.href = '/forbidden';
+            window.dispatchEvent(new CustomEvent('pbms-forbidden',{
+                detail:{message:serverData?.message || 'Access denied.You do not have permission'}
+            }))
         }
 
         // Xử lý lỗi 429: Vượt quá giới hạn lượt gọi API (Rate Limits)
         if (status === 429) {
-            // Đẩy trực tiếp một custom key vào object error để tầng UI (Toast) có thể bắt được và hiển thị
-            console.error('PBMS Rate Limit Security Triggered:', serverData?.message);
+           window.dispatchEvent(new CustomEvent('pbms-rate-limited',{
+                detail:{message: serverData?.message || 'Too many requests.Please try again later'}
+           }))
         }
 
         // Đồng bộ hóa cấu trúc trả về: Luôn ưu tiên data chi tiết từ server gửi về (chứa error_code)

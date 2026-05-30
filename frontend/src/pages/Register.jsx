@@ -7,7 +7,7 @@ import { useAuth } from "../hooks/useAuth";
 
 // ─── Reusable Alert Banner Component ───────────────────────────────────────
 // Dùng để hiển thị thông báo cấp form (success / error / info)
-// Thay thế hoàn toàn cho Toast trong ngữ cảnh Auth page
+
 function AlertBanner({ type, message }) {
   if (!message) return null;
 
