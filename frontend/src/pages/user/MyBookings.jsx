@@ -1,24 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
-import {
-  ArrowLeft,
-  Car,
-  Bike,
-  QrCode,
-  Clock,
-  Edit,
-  Ban,
-  CreditCard,
-  AlertTriangle,
-  CheckCircle2,
-  Info,
-  Calendar,
-  MapPin,
-  CheckCircle,
-  X,
-  Search,
-  Filter,
-  Hash,
-} from "lucide-react";
+import {ArrowLeft,Car,Bike,QrCode,Clock,Edit,Ban,CreditCard,AlertTriangle,CheckCircle2,Info,Calendar,MapPin,CheckCircle,X,Search,Filter,
+Hash,} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 export default function MyBookings() {
@@ -79,7 +61,7 @@ export default function MyBookings() {
       slotId: "S15",
       floorName: "Basement B1",
       vehicleType: "car",
-      plate_number: "51H-123.45", // 🚀 ĐÃ THÊM: Biển số xe để khớp luồng quét AI Camera ở cổng vào
+      plate_number: "51H-123.45", //  ĐÃ THÊM: Biển số xe để khớp luồng quét AI Camera ở cổng vào
       startTime: "2026-05-28T08:00",
       endTime: "2026-05-28T17:00",
       totalPrice: 180000,
@@ -93,7 +75,7 @@ export default function MyBookings() {
       slotId: "S42",
       floorName: "Floor 1 (VIP)",
       vehicleType: "motorbike",
-      plate_number: "43A-567.89", // 🚀 ĐÃ THÊM: Biển số xe để định danh lượt gửi xe
+      plate_number: "43A-567.89", 
       startTime: "2026-05-29T09:00",
       endTime: "2026-05-29T12:00",
       totalPrice: 15000,
@@ -216,7 +198,7 @@ export default function MyBookings() {
 
   const handleConfirmCancel = async () => {
     try {
-      /* 🚀 [AXIOS API INTEGRATION]: GỌI API HUỶ LƯỢT ĐẶT CHỖ
+      /*  [AXIOS API INTEGRATION]: GỌI API HUỶ LƯỢT ĐẶT CHỖ
       const token = localStorage.getItem('token');
       await axios.post(`http://localhost:5000/api/v1/bookings/${selectedBooking.id}/cancel`, {}, {
         headers: { Authorization: `Bearer ${token}` }
@@ -235,7 +217,7 @@ export default function MyBookings() {
 
   const handleConfirmAdjust = async () => {
     try {
-      /* 🚀 [AXIOS API INTEGRATION]: GỌI API THAY ĐỔI KHUNG GIỜ ĐẶT CHỖ (CẬP NHẬT CỘT EXPECTED_ARRIVAL TRONG DB)
+      /*  [AXIOS API INTEGRATION]: GỌI API THAY ĐỔI KHUNG GIỜ ĐẶT CHỖ (CẬP NHẬT CỘT EXPECTED_ARRIVAL TRONG DB)
       const token = localStorage.getItem('token');
       await axios.put(`http://localhost:5000/api/v1/bookings/${selectedBooking.id}`, {
         start_time: adjustTimeData.startTime,

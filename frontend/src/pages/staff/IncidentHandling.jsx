@@ -1,11 +1,24 @@
 import React, { useState, useEffect } from "react";
-import {CheckCircle2,Clock,Hash,ShieldAlert,History,RefreshCw,Search,Phone,HelpCircle,} from "lucide-react";
+import {
+  CheckCircle2,
+  Clock,
+  Hash,
+  ShieldAlert,
+  History,
+  RefreshCw,
+  Search,
+  Phone,
+  HelpCircle,
+  Laptop,
+  AlertCircle,
+} from "lucide-react";
+// import axios from 'axios'; // 🚀 MỞ COMMENT DÒNG NÀY KHI KẾT NỐI API BACKEND THỰC TẾ
 
 export default function IncidentHandlingPage() {
   // ==========================================
   // CORE STATE MANAGEMENT (Maps to DB ENUMs)
   // ==========================================
-  // DB ref: INCIDENT_LOG.ISSUE_TYPE ENUM('LOST_TICKET','WRONG_SLOT','SYSTEM_ERROR','OTHER')
+  // 🚀 ĐÃ ĐỒNG BỘ: Hỗ trợ đầy đủ 4 nhóm quyền lỗi thuộc danh mục hệ thống bãi xe
   const [issueType, setIssueType] = useState("LOST_TICKET");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [actionSuccess, setActionSuccess] = useState(null);
@@ -23,29 +36,37 @@ export default function IncidentHandlingPage() {
   const [originalPlate, setOriginalPlate] = useState("");
   const [mismatchReason, setMismatchReason] = useState("");
 
-  // --- Incident Tracking History (Sidebar Feed) ---
+  // --- Form State BỔ SUNG: System Error & Other Exception ('SYSTEM_ERROR', 'OTHER') ---
+  const [affectedDevice, setAffectedDevice] = useState("GATE_CAMERA_01"); // Mã thiết bị lỗi
+  const [generalDescription, setGeneralDescription] = useState("");
+
+  // --- Incident Tracking History ---
   const [recentIncidents, setRecentIncidents] = useState([]);
 
   // ==========================================
-  // INITIAL DATA MOUNT: Fetch Open Incidents
+  // AXIOS API: TẢI DANH SÁCH SỰ CỐ ĐANG MỞ KHI VÀO TRANG
   // ==========================================
   useEffect(() => {
-    /**
-     * BACKEND API INTEGRATION PLACEHOLDER:
-     * Target Endpoint: GET /api/v1/reports/exceptions (or GET /api/v1/staff/dashboard for live shift alerts)
-     * Documentation Ref: Section 9.3 (Exception / Incident Report) & Section 7.4 (Staff Dashboard)
-     * Request Headers: { "Authorization": "Bearer JWT_ACCESS_TOKEN" }
-     * * Axios Integration Example:
-     * axios.get('http://localhost:5000/api/v1/reports/exceptions', { headers })
-     * .then(res => setRecentIncidents(res.data.data.by_status_or_raw_logs))
-     */
+    /* const fetchActiveExceptions = async () => {
+      try {
+        const response = await axios.get('/api/v1/reports/exceptions');
+        if (response.data.success) {
+          setRecentIncidents(response.data.data);
+        }
+      } catch (err) {
+        console.error("Failed to load active exceptions log", err);
+      }
+    };
+    fetchActiveExceptions();
+    */
+
+    // Dữ liệu Mock phục vụ chạy giao diện thử nghiệm
     setRecentIncidents([
       {
         log_id: 1024,
         issue_type: "WRONG_SLOT",
         session_id: "sess_4812",
-        description:
-          "OCR read error: Misidentified the ending character '5' as '6'",
+        description: "OCR read error: Misidentified character '5' as '6'",
         report_time: "10:15 AM",
         status: "OPEN",
       },
@@ -54,8 +75,16 @@ export default function IncidentHandlingPage() {
         issue_type: "LOST_TICKET",
         session_id: "sess_9861",
         description:
-          "Customer misplaced the physical parking ticket near Floor 2 elevator",
+          "Customer misplaced physical parking ticket near Floor 2 elevator",
         report_time: "09:30 AM",
+        status: "RESOLVED",
+      },
+      {
+        log_id: 1022,
+        issue_type: "SYSTEM_ERROR",
+        session_id: "N/A",
+        description: "Barie Smartgate B2 connection timeout timeout",
+        report_time: "07:45 AM",
         status: "RESOLVED",
       },
     ]);
@@ -68,11 +97,6 @@ export default function IncidentHandlingPage() {
     e.preventDefault();
     setIsSubmitting(true);
 
-    /**
-     *  BACKEND API INTEGRATION BLUEPRINT
-     * This handler branches into two distinct POST endpoints depending on 'issueType'.
-     * Both endpoints require Bearer Token authentication derived from user login claims.
-     */
     setTimeout(() => {
       let mockResult = {
         log_id: Math.floor(1000 + Math.random() * 9000),
@@ -83,51 +107,65 @@ export default function IncidentHandlingPage() {
         }),
       };
 
+      /* // 🛠️ ===== KHUNG CẤU TRÚC KẾT NỐI AXIOS API THỰC TẾ =====
+      try {
+        let endpoint = '/api/v1/staff/lost-ticket';
+        let payload = {};
+
+        if (issueType === "LOST_TICKET") {
+          payload = {
+            license_plate: lostPlate,
+            vehicle_type_id: lostVehicleType,
+            check_in_time_estimated: estCheckIn,
+            lost_reason: lostReason,
+            customer_phone: customerPhone
+          };
+        } else if (issueType === "WRONG_SLOT") {
+          endpoint = '/api/v1/staff/correct-mismatch';
+          payload = {
+            session_id: sessionId,
+            corrected_license_plate: correctedPlate,
+            original_license_plate: originalPlate,
+            reason: mismatchReason
+          };
+        } else {
+          endpoint = '/api/v1/staff/log-system-issue';
+          payload = {
+            issue_type: issueType, // 'SYSTEM_ERROR' hoặc 'OTHER'
+            device_code: affectedDevice,
+            description: generalDescription
+          };
+        }
+
+        const response = await axios.post(endpoint, payload);
+        if (response.data.success) {
+          setActionSuccess({ type: issueType, data: response.data.data });
+          // Reload or append table state here
+        }
+      } catch (err) {
+         console.error("API error recording log", err);
+      }
+      */
+
+      // --- MOCK RESPONSE FLOW (Xóa cụm này khi dùng Axios thực tế) ---
       if (issueType === "LOST_TICKET") {
-        /**
-         *  CASE 1: LOST TICKET EXCEPTION
-         * Target Endpoint: POST /api/v1/staff/lost-ticket
-         * Documentation Ref: Section 7.1 (Handle Lost Ticket)
-         * Content-Type: application/json
-         * * Expected Request Body:
-         * {
-         * "license_plate": lostPlate,                    // Maps to INCIDENT_LOG.CUSTOMER_PLATE
-         * "vehicle_type_id": lostVehicleType,            // Linked to VEHICLE_TYPE table
-         * "check_in_time_estimated": estCheckIn,         // User estimated input
-         * "lost_reason": lostReason,                      // Maps to INCIDENT_LOG.DESCRIPTION
-         * "staff_id": "usr_001"                          // Extracted from JWT Claims (sub)
-         * }
-         * * Expected Response Data Mapping (200 OK):
-         * res.data.data -> { session_id, calculated_fee, breakdown: { max_daily_rate, handling_fee } }
-         */
         mockResult = {
           ...mockResult,
           session_id: `sess_lost_${Math.floor(100 + Math.random() * 900)}`,
           calculated_fee: 200000,
           breakdown: { max_daily_rate: 150000, handling_fee: 50000 },
         };
-      } else {
-        /**
-         *  CASE 2: PLATE/SLOT MISMATCH CORRECTION
-         * Target Endpoint: POST /api/v1/staff/correct-mismatch
-         * Documentation Ref: Section 7.2 (Handle Plate/Slot Mismatch)
-         * Content-Type: application/json
-         * * Expected Request Body:
-         * {
-         * "session_id": sessionId,                       // Foreign Key pointing to PARKING_SESSION
-         * "issue_type": "WRONG_SLOT",                    // INCIDENT_LOG.ISSUE_TYPE ENUM value
-         * "corrected_license_plate": correctedPlate,     // Saved as new LICENSE_PLATE_IN value
-         * "original_license_plate": originalPlate,       // Logged inside incident description
-         * "reason": mismatchReason,                      // Maps to INCIDENT_LOG.DESCRIPTION
-         * "staff_id": "usr_001"                          // Captured via current logged-in user context
-         * }
-         * * Expected Response Data Mapping (200 OK):
-         * res.data.data -> { incident_log_id, session_id, status: "RESOLVED" }
-         */
+      } else if (issueType === "WRONG_SLOT") {
         mockResult = {
           ...mockResult,
           session_id: sessionId,
           message: "Mismatch corrected successfully.",
+        };
+      } else {
+        mockResult = {
+          ...mockResult,
+          session_id: "N/A",
+          message: "System exception logged for maintenance audit.",
         };
       }
 
@@ -139,7 +177,11 @@ export default function IncidentHandlingPage() {
           issue_type: issueType,
           session_id: mockResult.session_id || "N/A",
           description:
-            issueType === "LOST_TICKET" ? lostReason : mismatchReason,
+            issueType === "LOST_TICKET"
+              ? lostReason
+              : issueType === "WRONG_SLOT"
+                ? mismatchReason
+                : generalDescription,
           report_time: mockResult.execution_time,
           status: issueType === "LOST_TICKET" ? "OPEN" : "RESOLVED",
         },
@@ -158,58 +200,60 @@ export default function IncidentHandlingPage() {
     setCorrectedPlate("");
     setOriginalPlate("");
     setMismatchReason("");
+    setGeneralDescription("");
   };
 
   return (
-    <div className="animate-slide-in w-full h-auto pb-12 space-y-4 font-sans antialiased text-slate-800 dark:text-slate-200">
+    // 🚀 ĐÃ ĐỒNG BỘ FONT: Ép toàn cục phông chữ hệ thống thống nhất, dọn dẹp các class rác font chữ
+    <div className="w-full h-auto pb-12 space-y-4 text-slate-800 dark:text-slate-200 font-sans tracking-tight">
       {/* SECTION 1: TOP CONTROL BAR */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
         <div className="flex items-center gap-3">
-          <h2 className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
             <ShieldAlert className="text-red-500" size={22} />
             Incident & Exception Handling
           </h2>
         </div>
 
-        <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
-          <button
-            type="button"
-            onClick={() => {
-              setIssueType("LOST_TICKET");
-              setActionSuccess(null);
-            }}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wide transition-all ${issueType === "LOST_TICKET" ? "bg-white dark:bg-slate-900 text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
-          >
-            Lost Ticket
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setIssueType("WRONG_SLOT");
-              setActionSuccess(null);
-            }}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wide transition-all ${issueType === "WRONG_SLOT" ? "bg-white dark:bg-slate-900 text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
-          >
-            Plate/Slot Mismatch
-          </button>
+        {/* 🚀 ĐÃ SỬA: Mở rộng thanh chọn từ 2 lên thành 4 quyền lỗi khớp khít cấu trúc cơ sở dữ liệu ENUM */}
+        <div className="flex flex-wrap bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 gap-1 sm:gap-0">
+          {["LOST_TICKET", "WRONG_SLOT", "SYSTEM_ERROR", "OTHER"].map(
+            (type) => (
+              <button
+                key={type}
+                type="button"
+                onClick={() => {
+                  setIssueType(type);
+                  setActionSuccess(null);
+                }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all ${
+                  issueType === type
+                    ? "bg-white dark:bg-slate-900 text-blue-600 shadow-sm font-bold"
+                    : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                }`}
+              >
+                {type.replace("_", " ")}
+              </button>
+            ),
+          )}
         </div>
       </div>
 
-      {/* SECTION 2: SYMMETRICAL TWO-COLUMN WORKSPACE GRID (50/50 Layout) */}
+      {/* SECTION 2: TWO-COLUMN WORKSPACE GRID */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-stretch">
         {/* LEFT PANEL: INTERACTIVE LOGGING FORM */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm flex flex-col justify-between min-h-[460px]">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm flex flex-col justify-between min-h-[480px]">
           {actionSuccess ? (
-            <div className="flex-1 flex flex-col items-center justify-center text-center space-y-4 animate-in zoom-in-95 duration-200">
+            <div className="flex-1 flex flex-col items-center justify-center text-center space-y-4">
               <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-500 border border-emerald-100 dark:border-emerald-900/30 rounded-full flex items-center justify-center">
                 <CheckCircle2 size={24} />
               </div>
               <div>
-                <h3 className="text-base font-black tracking-tight text-slate-900 dark:text-white">
+                <h3 className="text-base font-bold tracking-tight text-slate-900 dark:text-white">
                   Incident Processed Successfully
                 </h3>
                 <p className="text-[10px] text-slate-400 font-mono mt-0.5">
-                  LOG_ID: {actionSuccess.data.log_id}
+                  LOG_ID: #{actionSuccess.data.log_id}
                 </p>
               </div>
 
@@ -223,7 +267,7 @@ export default function IncidentHandlingPage() {
                   </div>
                   <div className="flex justify-between border-b border-slate-200/40 dark:border-slate-700/50 pb-1.5">
                     <span className="text-slate-400">Max Daily Rate Fee:</span>
-                    <span className="font-medium text-slate-900 dark:text-white">
+                    <span className="font-bold text-slate-900 dark:text-white">
                       {actionSuccess.data.breakdown.max_daily_rate.toLocaleString()}{" "}
                       VND
                     </span>
@@ -232,13 +276,13 @@ export default function IncidentHandlingPage() {
                     <span className="text-slate-400">
                       Lost Card Penalty Fee:
                     </span>
-                    <span className="font-medium text-slate-900 dark:text-white">
+                    <span className="font-bold text-slate-900 dark:text-white">
                       {actionSuccess.data.breakdown.handling_fee.toLocaleString()}{" "}
                       VND
                     </span>
                   </div>
                   <div className="flex justify-between pt-1">
-                    <span className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
                       Total Penalty Fee:
                     </span>
                     <span className="text-base font-black text-red-600 dark:text-red-400 font-mono">
@@ -249,15 +293,15 @@ export default function IncidentHandlingPage() {
               ) : (
                 <div className="w-full bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 rounded-xl p-4 text-left text-xs space-y-2">
                   <div className="flex justify-between">
-                    <span className="text-slate-400">Parking Session ID:</span>
+                    <span className="text-slate-400">Target Session ID:</span>
                     <span className="font-bold font-mono text-slate-900 dark:text-white">
                       {actionSuccess.data.session_id}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-400">System Status:</span>
-                    <span className="font-bold text-emerald-600">
-                      RESOLVED (Data Synchronized)
+                    <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                      RESOLVED & SYNCHRONIZED
                     </span>
                   </div>
                 </div>
@@ -277,6 +321,7 @@ export default function IncidentHandlingPage() {
               className="flex-1 flex flex-col justify-between space-y-4"
             >
               <div className="space-y-4">
+                {/* FORM LOẠI 1: LOST TICKET */}
                 {issueType === "LOST_TICKET" && (
                   <>
                     <div className="grid grid-cols-2 gap-3">
@@ -293,8 +338,8 @@ export default function IncidentHandlingPage() {
                             onChange={(e) =>
                               setLostPlate(e.target.value.toUpperCase())
                             }
-                            className="block w-full pl-8 pr-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800/40 font-extrabold text-sm uppercase tracking-wide text-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white"
-                            placeholder="e.g., 29A-123.45"
+                            className="block w-full pl-8 pr-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800/40 font-mono font-bold text-sm tracking-wide text-slate-900 dark:text-white outline-none focus:border-blue-500"
+                            placeholder="29A-123.45"
                           />
                         </div>
                       </div>
@@ -309,8 +354,8 @@ export default function IncidentHandlingPage() {
                             required
                             value={customerPhone}
                             onChange={(e) => setCustomerPhone(e.target.value)}
-                            className="block w-full pl-8 pr-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800/40 text-sm text-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white"
-                            placeholder="e.g., 0901234567"
+                            className="block w-full pl-8 pr-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800/40 text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500"
+                            placeholder="0901234567"
                           />
                         </div>
                       </div>
@@ -326,7 +371,7 @@ export default function IncidentHandlingPage() {
                           onChange={(e) =>
                             setLostVehicleType(Number(e.target.value))
                           }
-                          className="block w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800/40 text-sm text-slate-900 dark:text-white font-semibold outline-none focus:ring-1 focus:ring-blue-500"
+                          className="block w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800/40 text-sm text-slate-900 dark:text-white font-semibold outline-none focus:border-blue-500 cursor-pointer"
                         >
                           <option value={1}>Automobile (Car)</option>
                           <option value={2}>Motorbike</option>
@@ -341,7 +386,7 @@ export default function IncidentHandlingPage() {
                           required
                           value={estCheckIn}
                           onChange={(e) => setEstCheckIn(e.target.value)}
-                          className="block w-full px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800/40 text-sm text-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-blue-500"
+                          className="block w-full px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800/40 text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500"
                         />
                       </div>
                     </div>
@@ -355,13 +400,14 @@ export default function IncidentHandlingPage() {
                         rows={3}
                         value={lostReason}
                         onChange={(e) => setLostReason(e.target.value)}
-                        className="block w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800/40 text-sm text-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white resize-none"
-                        placeholder="Provide deep description of the issue or locations where the customer claims the token was dropped..."
+                        className="block w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800/40 text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500 resize-none"
+                        placeholder="Provide description of the issue..."
                       />
                     </div>
                   </>
                 )}
 
+                {/* FORM LOẠI 2: PLATE/SLOT MISMATCH */}
                 {issueType === "WRONG_SLOT" && (
                   <>
                     <div className="grid grid-cols-2 gap-3">
@@ -376,8 +422,8 @@ export default function IncidentHandlingPage() {
                             required
                             value={sessionId}
                             onChange={(e) => setSessionId(e.target.value)}
-                            className="block w-full pl-8 pr-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800/40 text-sm font-mono text-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white"
-                            placeholder="e.g., sess_12345"
+                            className="block w-full pl-8 pr-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800/40 text-sm font-mono text-slate-900 dark:text-white outline-none focus:border-blue-500"
+                            placeholder="sess_12345"
                           />
                         </div>
                       </div>
@@ -392,8 +438,8 @@ export default function IncidentHandlingPage() {
                           onChange={(e) =>
                             setOriginalPlate(e.target.value.toUpperCase())
                           }
-                          className="block w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800/40 text-sm font-semibold uppercase text-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-blue-500"
-                          placeholder="Faulty license plate read"
+                          className="block w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800/40 text-sm font-mono font-bold text-slate-900 dark:text-white outline-none focus:border-blue-500"
+                          placeholder="e.g., 29A-111.11"
                         />
                       </div>
                     </div>
@@ -411,8 +457,8 @@ export default function IncidentHandlingPage() {
                           onChange={(e) =>
                             setCorrectedPlate(e.target.value.toUpperCase())
                           }
-                          className="block w-full pl-8 pr-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800/40 text-base font-extrabold tracking-wider uppercase text-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white"
-                          placeholder="Enter physical verified license plate number"
+                          className="block w-full pl-8 pr-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800/40 text-sm font-mono font-bold text-slate-900 dark:text-white outline-none focus:border-blue-500"
+                          placeholder="Enter physically verified plate"
                         />
                       </div>
                     </div>
@@ -426,8 +472,58 @@ export default function IncidentHandlingPage() {
                         rows={3}
                         value={mismatchReason}
                         onChange={(e) => setMismatchReason(e.target.value)}
-                        className="block w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800/40 text-sm text-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white resize-none"
-                        placeholder="Explain reason (e.g., Camera lens glare caused OCR error, Driver parked in unassigned bay)..."
+                        className="block w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800/40 text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500 resize-none"
+                        placeholder="Explain reason (e.g., Camera lens glare caused OCR error)..."
+                      />
+                    </div>
+                  </>
+                )}
+
+                {/* 🚀 FORM LOẠI 3 & 4 BỔ SUNG: SYSTEM_ERROR & OTHER SỰ CỐ KHÁC */}
+                {(issueType === "SYSTEM_ERROR" || issueType === "OTHER") && (
+                  <>
+                    <div className="grid grid-cols-1 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                          {issueType === "SYSTEM_ERROR"
+                            ? "Affected Hardware Device"
+                            : "Reference Node / Session"}
+                        </label>
+                        <div className="relative">
+                          <Laptop className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
+                          <input
+                            type="text"
+                            required
+                            value={affectedDevice}
+                            onChange={(e) =>
+                              setAffectedDevice(e.target.value.toUpperCase())
+                            }
+                            className="block w-full pl-8 pr-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800/40 text-sm font-mono text-slate-900 dark:text-white outline-none focus:border-blue-500"
+                            placeholder={
+                              issueType === "SYSTEM_ERROR"
+                                ? "e.g., BARIE_GATE_B1"
+                                : "e.g., CUSTOMER_CLAIM_TICKET"
+                            }
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                        Detailed Log Description
+                      </label>
+                      <textarea
+                        required
+                        rows={5}
+                        value={generalDescription}
+                        onChange={(e) => setGeneralDescription(e.target.value)}
+                        className="block w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800/40 text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500 resize-none"
+                        placeholder={
+                          issueType === "SYSTEM_ERROR"
+                            ? "Describe hardware malfunction or link breakdown..."
+                            : "Describe any miscellaneous issue that requires logging..."
+                        }
                       />
                     </div>
                   </>
@@ -437,7 +533,7 @@ export default function IncidentHandlingPage() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full bg-slate-900 hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-700 text-white py-3 rounded-xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-sm"
+                className="w-full bg-slate-900 hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-700 text-white py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-sm"
               >
                 {isSubmitting ? (
                   <RefreshCw size={13} className="animate-spin" />
@@ -446,7 +542,7 @@ export default function IncidentHandlingPage() {
                 )}
                 {isSubmitting
                   ? "Processing Request..."
-                  : "Confirm Exception Resolution (Enter)"}
+                  : "Confirm Exception Resolution"}
               </button>
             </form>
           )}
@@ -455,22 +551,28 @@ export default function IncidentHandlingPage() {
         {/* RIGHT PANEL: LIVE SYSTEM INCIDENT FEED */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm flex flex-col transition-all h-full justify-between">
           <div className="space-y-4">
-            <h3 className="text-base font-black text-slate-800 dark:text-white flex items-center gap-2 pb-1.5 tracking-tight border-b border-slate-100 dark:border-slate-800">
+            <h3 className="text-base font-bold text-slate-800 dark:text-white flex items-center gap-2 pb-1.5 tracking-tight border-b border-slate-100 dark:border-slate-800">
               <History size={16} className="text-blue-500" />
               Active Shift Exceptions & Incident Logs
             </h3>
 
-            <div className="space-y-3">
+            <div className="space-y-3 max-h-[360px] overflow-y-auto custom-scrollbar pr-1">
               {recentIncidents.length > 0 ? (
                 recentIncidents.map((incident, idx) => (
                   <div
                     key={idx}
-                    className="p-4 rounded-xl border border-slate-200/60 dark:border-slate-800/80 bg-slate-50/70 dark:bg-slate-800/40 flex flex-col space-y-2.5 shadow-sm transition-all"
+                    className="p-4 rounded-xl border border-slate-200/60 dark:border-slate-800/80 bg-slate-50/70 dark:bg-slate-800/40 flex flex-col space-y-2.5 shadow-sm"
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2.5">
                         <span
-                          className={`px-2.5 py-1 rounded-md text-xs font-black tracking-wide font-mono ${incident.issue_type === "LOST_TICKET" ? "bg-red-50 text-red-600 border border-red-100" : "bg-amber-50 text-amber-600 border border-amber-100"}`}
+                          className={`px-2.5 py-1 rounded-md text-[10px] font-bold tracking-wider font-mono border ${
+                            incident.issue_type === "LOST_TICKET"
+                              ? "bg-red-50 text-red-600 border-red-100 dark:bg-red-950/20 dark:border-red-900/30"
+                              : incident.issue_type === "WRONG_SLOT"
+                                ? "bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/20 dark:border-amber-900/30"
+                                : "bg-purple-50 text-purple-600 border-purple-100 dark:bg-purple-950/20 dark:border-purple-900/30"
+                          }`}
                         >
                           {incident.issue_type}
                         </span>
@@ -479,13 +581,13 @@ export default function IncidentHandlingPage() {
                         </span>
                       </div>
                       <span
-                        className={`text-xs font-extrabold tracking-wide uppercase ${incident.status === "OPEN" ? "text-red-500 animate-pulse" : "text-emerald-500"}`}
+                        className={`text-xs font-bold tracking-wide uppercase ${incident.status === "OPEN" ? "text-red-500 animate-pulse" : "text-emerald-500"}`}
                       >
                         {incident.status}
                       </span>
                     </div>
 
-                    <p className="text-sm font-bold text-slate-900 dark:text-slate-300 leading-relaxed font-sans">
+                    <p className="text-sm font-semibold text-slate-900 dark:text-slate-300 leading-relaxed">
                       {incident.description}
                     </p>
 
@@ -507,11 +609,11 @@ export default function IncidentHandlingPage() {
             </div>
           </div>
 
-          <div className="mt-5 bg-blue-50/40 dark:bg-blue-950/10 border border-blue-100/60 dark:border-blue-900/30 rounded-xl p-3 flex items-center gap-2.5 text-xs font-semibold text-blue-600 dark:text-blue-400">
+          <div className="mt-5 bg-blue-50/40 dark:bg-blue-950/10 border border-blue-100/60 dark:border-blue-900/30 rounded-xl p-3 flex items-center gap-2.5 text-xs font-medium text-blue-600 dark:text-blue-400">
             <HelpCircle size={15} className="shrink-0" />
             <span>
               All manual data corrections are strictly logged into system audit
-              files for backend audit trail compliance.
+              files for backend compliance.
             </span>
           </div>
         </div>

@@ -1,15 +1,6 @@
 import { Routes, Route } from "react-router-dom";
 import React, { useState } from "react";
-import {
-  Car,
-  Home,
-  History,
-  CreditCard,
-  Calendar,
-  MessageSquare,
-  User,
-  CarFront,
-} from "lucide-react";
+import {Car,Home,History,CreditCard,Calendar,MessageSquare,User,CarFront,} from "lucide-react";
 import Sidebar from "../components/Sidebar";
 import Header from "../components/Header";
 import UserDashboard from "../pages/user/Dashboard";
@@ -30,7 +21,7 @@ export default function UserLayout() {
       icon: <History size={20} />,
     },
     {
-      path: "/user/myvehicle",
+      path: "/user/vehicle",
       label: "My Vehicles",
       icon: <CarFront size={20} />,
     },
@@ -62,7 +53,7 @@ export default function UserLayout() {
             <Route path="/book" element={<BookSlot />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/bookings" element={<MyBookings />} />
-            <Route path="myvehicle" element={<MyVehicles />} />
+            <Route path="/vehicle" element={<MyVehicles />} />
             <Route path="/issues" element={<Issues />} />
 
             {/* Đưa route catch-all /* xuống dưới cùng để chuẩn logic React Router */}

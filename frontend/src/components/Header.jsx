@@ -20,7 +20,7 @@ export default function Header() {
     "/user": "Parking Info",
     "/user/book": "Booking Slot",
     "/user/bookings": "Booking Sessions",
-    "/user/vehicles": "My Vehicles",
+    "/user/vehicle": "My Vehicles",
     "/user/issues": "Reports",
     "/user/profile": "Edit My Profile",
 
@@ -56,7 +56,7 @@ export default function Header() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // 🛠️ ĐÃ SỬA: Đổi từ user?.name sang user?.full_name theo đúng cấu trúc API kết quả đăng nhập
+
   const initial = user?.full_name
     ? user.full_name.charAt(0).toUpperCase()
     : "U";
@@ -73,7 +73,7 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-40 w-full h-20 flex items-center justify-between transition-all duration-300 bg-white dark:bg-slate-900 px-4 lg:px-6 border-b border-slate-200 dark:border-slate-800 shadow-sm">
-      {/* LEFT AREA: Tiêu đề động tự động cập nhật theo tính năng thực tế đang chạy */}
+      
       <div className="pl-20 lg:pl-0 flex items-center transition-all duration-300 min-w-0">
         <h1 className="text-lg md:text-xl font-black text-slate-900 dark:text-white tracking-tight transition-all duration-300 truncate">
           {currentTitle}
@@ -128,7 +128,6 @@ export default function Header() {
           {isDropdownOpen && (
             <div className="absolute right-0 mt-3.5 w-60 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200/80 dark:border-slate-800 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200 origin-top-right">
               <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/40">
-                {/* 🛠️ ĐÃ SỬA: Đồng bộ hiển thị từ user?.name sang user?.full_name */}
                 <p className="text-sm font-black text-slate-900 dark:text-white truncate leading-tight">
                   {user?.full_name || "Guest User"}
                 </p>
