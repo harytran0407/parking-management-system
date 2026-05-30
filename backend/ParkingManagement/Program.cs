@@ -3,6 +3,7 @@ using ParkingManagement.Data;
 using ParkingManagement.Repositories;
 using ParkingManagement.Services.BuildingServices;
 using ParkingManagement.Services;
+using ParkingManagement.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,8 +21,38 @@ builder.Services.AddControllers()
 
 // ── Swagger ───────────────────────────────────────────────────────────────────
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-builder.Services.AddMemoryCache(); // Thêm bộ nhớ đệm (cache) dùng cho rate limiting.
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo { Title = "ParkingManagement API", Version = "v1" });
+
+    // Cấu hình nút Authorize trên Swagger
+    c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    {
+        Description = "Nhập chữ 'Bearer' [khoảng trắng] [chuỗi_token_của_bạn].\r\n\r\nVí dụ: Bearer eyJhbGciOiJIUzI1Ni...",
+        Name = "Authorization",
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
+    });
+
+    c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement()
+    {
+        {
+            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+            {
+                Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                {
+                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                },
+                Scheme = "oauth2",
+                Name = "Bearer",
+                In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+            },
+            new System.Collections.Generic.List<string>()
+        }
+    });
+}); builder.Services.AddMemoryCache(); // Thêm bộ nhớ đệm (cache) dùng cho rate limiting.
 
 // ── Parking module ───────────────────────────────────────────────────────────────────────
 builder.Services.AddScoped<IParkingRepository, ParkingRepository>();
@@ -38,6 +69,9 @@ builder.Services.AddScoped<IVehicleTypeService, VehicleTypeService>();
 // ── VehicleFloor module ────────────────────────────────────────────────────────
 builder.Services.AddScoped<IFloorAllocationRepository, FloorAllocationRepository>();
 builder.Services.AddScoped<IFloorAllocationService, FloorAllocationService>();
+
+// ── Auth & JWT ─────────────────────────────────────────-────────────────────────
+builder.Services.AddJwtAuthentication(builder.Configuration);
 
 var app = builder.Build();
 
@@ -65,5 +99,10 @@ app.UseExceptionHandler(errApp => errApp.Run(async ctx =>
 }));
 
 app.UseHttpsRedirection();
+// Security
+app.UseMiddleware<ParkingManagement.Middlewares.TokenBlacklistMiddleware>(); // Check blacklist
+app.UseAuthentication(); // Read JWT token
+app.UseAuthorization(); // Check role/permission
+
 app.MapControllers();
 app.Run();

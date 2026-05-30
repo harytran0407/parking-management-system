@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.IdentityModel.Tokens;
 using ParkingManagement.Data;
@@ -314,6 +315,14 @@ namespace ParkingManagement.Controllers.AuthController
         {
             //Hệ thống sẽ truy soát _cache để tìm xem có phiếu yêu cầu cấp lại mật khẩu nào có đứng tên Email/SĐT
             if (!_cache.TryGetValue($"OTP_{request.EmailOrPhone}", out string? savedOtp))
+        [HttpPost("logout")]
+        [Authorize]
+        public IActionResult Logout()
+        {
+            // Lấy token từ header Authorization mà Frontend gửi lên
+            var authorizationHeader = Request.Headers["Authorization"].FirstOrDefault();
+
+            if (string.IsNullOrEmpty(authorizationHeader) || !authorizationHeader.StartsWith("Bearer "))
             {
                 return BadRequest(new
                 {
@@ -347,6 +356,16 @@ namespace ParkingManagement.Controllers.AuthController
             userInDb.Password = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
             _context.SaveChanges();
             _cache.Remove($"OTP_{request.EmailOrPhone}"); //Dù mã có hạn trong vòng 5 phút nhưng nếu user đã cập nhật mật khẩu thành công thì sẽ hủy mã OTP đó
+                    error_code = "INVALID_TOKEN",
+                    message = "Invalid token format"
+                });
+            }
+
+            var token = authorizationHeader.Substring("Bearer ".Length).Trim(); //Cắt bỏ "Bearer " để lấy token thuần túy
+
+            // Đưa token vào Blacklist trong cache với thời gian hết hạn 1 giờ. Sau 1h, Token sẽ tự hết hạn, Cache sẽ tự động xóa cho nhẹ bộ nhớ
+            var cacheOptions = new MemoryCacheEntryOptions().SetAbsoluteExpiration(TimeSpan.FromHours(1));
+            _cache.Set($"Blacklist_{token}", true, cacheOptions);
 
             return Ok(new
             {
@@ -354,5 +373,9 @@ namespace ParkingManagement.Controllers.AuthController
                 message = "Password updated succesfully. Please log in again."
             });
         }
+                message = "Logged out successfully"
+            });
+        }
+
     }
 }
