@@ -1,12 +1,14 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using ParkingManagement.DTOs;
+using ParkingManagement.DTOs.Building;
 using ParkingManagement.Services;
-using Microsoft.AspNetCore.Authorization;
-using System.Security.Claims;
-using Microsoft.AspNetCore.Http;
+using ParkingManagement.Services.BuildingServices;
 using System;
-using System.Threading.Tasks;
 using System.Collections.Generic;
+using System.Security.Claims;
+using System.Threading.Tasks;
 
 namespace ParkingManagement.Controllers
 {
@@ -19,10 +21,12 @@ namespace ParkingManagement.Controllers
     public class ParkingController : ControllerBase
     {
         private readonly IParkingService _parkingService;
+        private readonly ISlotManagementService _slotManagementService;
 
-        public ParkingController(IParkingService parkingService)
+        public ParkingController(IParkingService parkingService, ISlotManagementService slotManagementService)
         {
             _parkingService = parkingService;
+            _slotManagementService = slotManagementService;
         }
 
         /// <summary>
@@ -325,6 +329,61 @@ namespace ParkingManagement.Controllers
                     details = ex.Message
                 });
             }
+        }
+        /// <summary>
+        /// Bulk create slots for a zone
+        /// </summary>
+        [HttpPost("slots/bulk-create")]
+        [AllowAnonymous]
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> BulkCreateSlots([FromBody] BulkCreateSlotsRequest request)
+        {
+            if (!ModelState.IsValid)
+            {
+                var errors = ModelState.Values
+                    .SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage);
+                return BadRequest(new { success = false, message = string.Join("; ", errors) });
+            }
+
+            var data = await _slotManagementService.BulkCreateSlotsAsync(request);
+            return StatusCode(201, new { success = true, data });
+        }
+
+        /// <summary>
+        /// Edit slot: is_handicap, is_electric_charging, clear session
+        /// </summary>
+        [HttpPut("slots/{slotId}/edit")]
+        [AllowAnonymous]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> EditSlot(string slotId, [FromBody] EditSlotRequest request)
+        {
+            if (!ModelState.IsValid)
+            {
+                var errors = ModelState.Values
+                    .SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage);
+                return BadRequest(new { success = false, message = string.Join("; ", errors) });
+            }
+
+            var data = await _slotManagementService.EditSlotAsync(slotId, request);
+            return Ok(new { success = true, message = "Slot updated successfully.", data });
+        }
+
+        /// <summary>
+        /// Delete slot — cannot delete if status != AVAILABLE
+        /// </summary>
+        [HttpDelete("slots/{slotId}")]
+        [AllowAnonymous]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+        public async Task<IActionResult> DeleteSlot(string slotId)
+        {
+            await _slotManagementService.DeleteSlotAsync(slotId);
+            return NoContent();
         }
     }
 }
