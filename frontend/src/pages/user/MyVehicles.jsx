@@ -12,7 +12,7 @@ import {
   CalendarDays,
   X,
 } from "lucide-react";
-// import axios from 'axios'; // 🚀 UNCOMMENT THIS LINE WHEN CONNECTING TO REAL BACKEND
+// import axios from 'axios'; // 
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
@@ -227,9 +227,9 @@ export default function MyVehicles() {
     "w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm rounded-xl text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-blue-500 transition";
 
   return (
-    /* 🚀 ĐÃ SỬA: Bổ sung max-h-[calc(100vh-80px)] và max-w-[calc(100%+48px)] để triệt tiêu vĩnh viễn thanh cuộn trình duyệt bị vỡ */
+   
     <div className="animate-slide-in flex flex-col lg:flex-row h-[calc(100vh-80px)] max-h-[calc(100vh-80px)] max-w-[calc(100%+48px)] overflow-hidden bg-[#f8f9ff] dark:bg-slate-950 -m-6">
-      {/* LEFT PANEL (🚀 ĐÃ SỬA: Thêm h-full bảo toàn tỷ lệ cuộn cục bộ) */}
+      {/* LEFT PANEL */}
       <div className="w-full lg:w-80 bg-white dark:bg-slate-900 border-b lg:border-b-0 lg:border-r border-slate-200 dark:border-slate-800 flex flex-col flex-shrink-0 h-full">
         <div className="p-4 border-b border-slate-100 dark:border-slate-800 space-y-3">
           <div>
@@ -297,7 +297,7 @@ export default function MyVehicles() {
         </div>
       </div>
 
-      {/* RIGHT PANEL (🚀 ĐÃ SỬA: Thêm h-full cố định vùng cuộn độc lập) */}
+      {/* RIGHT PANEL  */}
       <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar h-full">
         {/* WORKSPACE HEADER CARD */}
         <div className="bg-white dark:bg-slate-900 rounded-[2rem] p-6 shadow-sm border border-slate-100 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-5">
