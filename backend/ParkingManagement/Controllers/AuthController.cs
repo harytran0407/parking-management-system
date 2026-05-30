@@ -170,7 +170,7 @@ namespace ParkingManagement.Controllers.AuthController
         }
 
         [HttpPost("login")]
-        public IActionResult Login([FromBody]LoginRequestDto request)
+        public IActionResult Login([FromBody] LoginRequestDto request)
         {
             // Kiểm tra số lần thử trong cache
             string cacheKey = $"LoginAttempts_{request.EmailOrPhone}";
@@ -186,8 +186,8 @@ namespace ParkingManagement.Controllers.AuthController
                 });
             }
 
-                // Tìm Tài Khoản theo Email hoặc Số Điện Thoại
-                var userInDb = _context.Users.FirstOrDefault(u => u.Email == request.EmailOrPhone || u.Phone == request.EmailOrPhone);
+            // Tìm Tài Khoản theo Email hoặc Số Điện Thoại
+            var userInDb = _context.Users.FirstOrDefault(u => u.Email == request.EmailOrPhone || u.Phone == request.EmailOrPhone);
 
             // Kiểm tra tồn tại và xác thực mật khẩu
             if (userInDb == null || !BCrypt.Net.BCrypt.Verify(request.Password, userInDb.Password))
@@ -274,7 +274,7 @@ namespace ParkingManagement.Controllers.AuthController
                     expires_in = 3600,
                     token_type = "Bearer",
                     user = new
-                    { 
+                    {
                         user_id = userInDb.UserId,
                         full_name = userInDb.FullName,
                         email = userInDb.Email,
@@ -283,6 +283,76 @@ namespace ParkingManagement.Controllers.AuthController
                 }
             });
 
+        }
+
+        [HttpPost("forgot-password")]
+        public IActionResult ForgotPassword([FromBody] ForgotPasswordRequestDto request)
+        {
+            var userInDb = _context.Users.FirstOrDefault(u => u.Email == request.EmailOrPhone || u.Phone == request.EmailOrPhone);
+
+            if (userInDb == null)
+            {
+                return BadRequest(new { success = false, message = "Email or phone number not found" });
+            }
+
+            string otp = new Random().Next(100000, 999999).ToString();
+
+            var cacheOptions = new MemoryCacheEntryOptions().SetAbsoluteExpiration(TimeSpan.FromMinutes(5));
+            _cache.Set($"OTP_{request.EmailOrPhone}", otp, cacheOptions);
+
+            return Ok(new
+            {
+                success = true,
+                message = "OTP has been sent to your Email or phone number",
+                mock_otp = otp // Chỉ dùng để test, trong thực tế sẽ gửi OTP qua Email hoặc SMS
+            });
+        }
+
+
+        [HttpPost("reset-password")]
+        public IActionResult ResetPassword([FromBody] ResetPasswordRequestDto request)
+        {
+            //Hệ thống sẽ truy soát _cache để tìm xem có phiếu yêu cầu cấp lại mật khẩu nào có đứng tên Email/SĐT
+            if (!_cache.TryGetValue($"OTP_{request.EmailOrPhone}", out string? savedOtp))
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message = "OTP has expired (over 5 minutes) or has not been requested."
+                });
+            }
+
+            //Nếu hệ thống tìm thấy phiếu yêu cầu cấp lại mật khẩu, hệ thống sẽ so sánh mã OTP trên phiếu yêu cầu rồi so sánh với OTP người dùng nhập vào
+            if(savedOtp != request.Otp)
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message = "Invalid OTP"
+                });
+            }
+
+            //Hệ thống sẽ truy soát Database để tìm xem có tài khoản nào đứng tên Email/SĐT hay không
+            var userInDb = _context.Users.FirstOrDefault(u => u.Email == request.EmailOrPhone || u.Phone == request.EmailOrPhone);
+            if (userInDb == null)
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message = "Account does not exist."
+                });
+            }
+
+            //Nếu hệ thống tìm thấy tài khoản đứng tên Email/SĐT, hệ thống sẽ cập nhật mật khẩu mới cho tài khoản đó rồi lưu vào Database
+            userInDb.Password = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+            _context.SaveChanges();
+            _cache.Remove($"OTP_{request.EmailOrPhone}"); //Dù mã có hạn trong vòng 5 phút nhưng nếu user đã cập nhật mật khẩu thành công thì sẽ hủy mã OTP đó
+
+            return Ok(new
+            {
+                success = true,
+                message = "Password updated succesfully. Please log in again."
+            });
         }
     }
 }
