@@ -1,59 +1,89 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
-import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import { ArrowLeft, CheckCircle, XCircle, AlertCircle } from "lucide-react";
 import googleIcon from "../assets/google.png";
 import { useGoogleLogin } from "@react-oauth/google";
 import { useAuth } from "../hooks/useAuth";
 
+// ─── Reusable Alert Banner Component ───────────────────────────────────────
+// Dùng để hiển thị thông báo cấp form (success / error / info)
+// Thay thế hoàn toàn cho Toast trong ngữ cảnh Auth page
+function AlertBanner({ type, message }) {
+  if (!message) return null;
+
+  const styles = {
+    success: {
+      wrapper: "bg-green-500/10 border border-green-500/30 text-green-400",
+      icon: <CheckCircle className="w-4 h-4 shrink-0 mt-0.5" />,
+    },
+    error: {
+      wrapper: "bg-red-500/10 border border-red-500/30 text-red-400",
+      icon: <XCircle className="w-4 h-4 shrink-0 mt-0.5" />,
+    },
+    warning: {
+      wrapper: "bg-yellow-500/10 border border-yellow-500/30 text-yellow-400",
+      icon: <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />,
+    },
+  };
+
+  const { wrapper, icon } = styles[type] || styles.error;
+
+  return (
+    <div
+      className={`flex items-start gap-2.5 rounded-lg px-4 py-3 text-sm font-medium ${wrapper}`}
+    >
+      {icon}
+      <span>{message}</span>
+    </div>
+  );
+}
+
+// ─── Main Register Component ────────────────────────────────────────────────
 export default function Register() {
   const navigate = useNavigate();
   const { loginWithGoogle } = useAuth();
 
-  // 🚀 ĐÃ SỬA: Đồng bộ 100% tên thuộc tính với Request Body mục 1.3 trong Update_API_Document.md
   const [formData, setFormData] = useState({
     full_name: "",
     email: "",
     phone_number: "",
     password: "",
     confirm_password: "",
-    role: "ParkingUser", // Chuẩn hóa Role danh mục hệ thống
+    role: "ParkingUser",
   });
 
-  const [errors, setErrors] = useState({});
+  const [fieldErrors, setFieldErrors] = useState({}); // Lỗi từng field (inline)
+  const [banner, setBanner] = useState(null); // { type, message } — banner cấp form
   const [loading, setLoading] = useState(false);
 
-  const handleChange = (e) => {
-    setErrors({ ...errors, [e.target.name]: "" });
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  // ----- REAL-TIME VALIDATION LOGIC -----
-  // Chuẩn mật khẩu: tối thiểu 8 ký tự, chứa chữ hoa, chữ thường, số và ký tự đặc biệt
+  // ─── Real-time validation state ─────────────────────────────────────────
   const passwordRegex =
     /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 
   const isPasswordTyped = formData.password.length > 0;
   const isPasswordValid = passwordRegex.test(formData.password);
-
   const isConfirmTyped = formData.confirm_password.length > 0;
   const isPasswordMatch = formData.password === formData.confirm_password;
-  // --------------------------------------
+
+  // ─── Handlers ───────────────────────────────────────────────────────────
+  const handleChange = (e) => {
+    // Xóa lỗi field khi user bắt đầu sửa + xóa banner server error
+    setFieldErrors((prev) => ({ ...prev, [e.target.name]: "" }));
+    setBanner(null);
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
 
   const validateForm = () => {
-    let currentErrors = {};
+    const currentErrors = {};
     let isValid = true;
 
-    // Validate Full Name: Khớp quy định API (Tối thiểu 2 ký tự, tối đa 100 ký tự)
     const nameRegex = /^[a-zA-ZÀ-ỹ\s]{2,100}$/;
     if (!nameRegex.test(formData.full_name)) {
       currentErrors.full_name =
-        "Name must be 2-100 characters and contain only letters.";
+        "Name must be 2–100 characters and contain only letters.";
       isValid = false;
     }
 
-    // Validate Phone Number: Khớp cấu hình định dạng chuỗi số Việt Nam
     const phoneRegex = /^(0|)[3|5|7|8|9][0-9]{8}$/;
     if (!phoneRegex.test(formData.phone_number)) {
       currentErrors.phone_number =
@@ -61,40 +91,37 @@ export default function Register() {
       isValid = false;
     }
 
-    // Chặn gửi dữ liệu lên server nếu kiểm tra mật khẩu realtime bị thất bại
     if (!isPasswordValid || !isPasswordMatch) {
       isValid = false;
     }
 
-    setErrors(currentErrors);
+    setFieldErrors(currentErrors);
     return isValid;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setBanner(null);
 
-    if (!validateForm()) {
-      toast.error("Please check the requirements in the red text.");
-      return;
-    }
+    // Validation thất bại → chỉ highlight field, không cần banner
+    if (!validateForm()) return;
 
     setLoading(true);
-
     try {
-      // Giả lập xử lý kết nối kiểm thử Endpoint hệ thống (/api/v1/auth/register)
+      // TODO: Thay bằng API call thực — authService.register(formData)
       await new Promise((resolve) => setTimeout(resolve, 800));
 
-      toast.success(
-        "Account registration successful! Please return to the Login page.",
-      );
-      console.log("User registered data payload:", formData);
-
-      setTimeout(() => {
-        navigate("/login");
-      }, 1500);
+      // Đăng ký thành công → hiển thị banner success rồi redirect
+      setBanner({
+        type: "success",
+        message: "Account created! Redirecting to login...",
+      });
+      setTimeout(() => navigate("/login"), 1500);
     } catch (error) {
-      toast.error("An error occurred during the registration process.");
-      console.error(error);
+      // Lỗi từ server → hiển thị message cụ thể từ API hoặc fallback
+      const serverMessage =
+        error?.message || "Registration failed. Please try again.";
+      setBanner({ type: "error", message: serverMessage });
     } finally {
       setLoading(false);
     }
@@ -103,29 +130,43 @@ export default function Register() {
   const handleGoogleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
       setLoading(true);
+      setBanner(null);
       try {
-        const token = tokenResponse.access_token;
-        const user = await loginWithGoogle(token);
-        toast.success("Google sign-up successful");
-
-        setTimeout(() => {
-          const userRole = user.role.toLowerCase();
-          navigate(`/${userRole}`);
-        }, 1500);
+        const user = await loginWithGoogle(tokenResponse.access_token);
+        setBanner({
+          type: "success",
+          message: "Google sign-up successful! Redirecting...",
+        });
+        setTimeout(() => navigate(`/${user.role.toLowerCase()}`), 1500);
       } catch (err) {
-        toast.error(err.message || "Google sign-up failed");
+        setBanner({
+          type: "error",
+          message: err.message || "Google sign-up failed.",
+        });
       } finally {
         setLoading(false);
       }
     },
     onError: () => {
-      toast.error("Google sign-up failed. Please try again.");
+      setBanner({
+        type: "error",
+        message: "Google sign-up failed. Please try again.",
+      });
     },
   });
 
+  // ─── Input class helper ─────────────────────────────────────────────────
+  const inputClass = (fieldName) =>
+    `w-full px-4 py-2.5 bg-slate-800 border rounded-lg text-white placeholder-slate-500 focus:outline-none transition ${
+      fieldErrors[fieldName]
+        ? "border-red-500 focus:border-red-500"
+        : "border-slate-700 focus:border-blue-500"
+    }`;
+
+  // ─── Render ─────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-[#0f172a] flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Background Layer */}
+      {/* Background */}
       <div
         className="absolute inset-0 bg-cover bg-center z-0 opacity-25"
         style={{
@@ -134,7 +175,7 @@ export default function Register() {
       />
       <div className="absolute inset-0 bg-gradient-to-b from-slate-900/70 via-dark-900/80 to-dark-900 z-0" />
 
-      {/* Back to Home Button */}
+      {/* Back to Home */}
       <Link
         to="/"
         className="absolute top-6 left-6 flex items-center gap-1.5 text-base font-semibold text-gray-400 hover:text-white transition duration-200 z-10"
@@ -151,29 +192,34 @@ export default function Register() {
           <p className="text-slate-400 mt-1">Create your account</p>
         </div>
 
+        {/* ── Alert Banner (success / error từ server) ── */}
+        <div className="mb-4">
+          <AlertBanner type={banner?.type} message={banner?.message} />
+        </div>
+
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* FULL NAME INPUT */}
+          {/* Full Name */}
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-1">
               Full Name
             </label>
             <input
               type="text"
-              name="full_name" // 🚀 ĐÃ SỬA
+              name="full_name"
               required
               value={formData.full_name}
               onChange={handleChange}
               placeholder="Enter your name"
-              className={`w-full px-4 py-2.5 bg-slate-800 border rounded-lg text-white placeholder-slate-500 focus:outline-none transition ${errors.full_name ? "border-red-500 focus:border-red-500" : "border-slate-700 focus:border-blue-500"}`}
+              className={inputClass("full_name")}
             />
-            {errors.full_name && (
+            {fieldErrors.full_name && (
               <p className="text-red-400 text-xs mt-1.5 font-medium">
-                ✕ {errors.full_name}
+                ✕ {fieldErrors.full_name}
               </p>
             )}
           </div>
 
-          {/* EMAIL INPUT */}
+          {/* Email */}
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-1">
               Email
@@ -185,11 +231,11 @@ export default function Register() {
               value={formData.email}
               onChange={handleChange}
               placeholder="name@smartpark.com"
-              className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
+              className={inputClass("email")}
             />
           </div>
 
-          {/* PHONE NUMBER INPUT */}
+          {/* Phone Number */}
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-1">
               Phone Number
@@ -200,26 +246,26 @@ export default function Register() {
               </span>
               <input
                 type="tel"
-                name="phone_number" // 🚀 ĐÃ SỬA
+                name="phone_number"
                 required
                 value={formData.phone_number}
                 onChange={handleChange}
                 placeholder="912 345 678"
                 className={`w-full pl-12 pr-4 py-2.5 bg-slate-800 border rounded-lg text-white placeholder-slate-500 focus:outline-none transition ${
-                  errors.phone_number
+                  fieldErrors.phone_number
                     ? "border-red-500 focus:border-red-500"
                     : "border-slate-700 focus:border-blue-500"
                 }`}
               />
             </div>
-            {errors.phone_number && (
+            {fieldErrors.phone_number && (
               <p className="text-red-400 text-xs mt-1.5 font-medium">
-                ✕ {errors.phone_number}
+                ✕ {fieldErrors.phone_number}
               </p>
             )}
           </div>
 
-          {/* PASSWORD INPUT - REAL-TIME VALIDATION */}
+          {/* Password */}
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-1">
               Password
@@ -245,19 +291,19 @@ export default function Register() {
               >
                 {isPasswordValid
                   ? "✓ Password is strong and secure."
-                  : "✕ Password must be at least 8 characters, including uppercase, lowercase, numbers, and special characters."}
+                  : "✕ Must be 8+ characters with uppercase, lowercase, numbers, and special characters."}
               </p>
             )}
           </div>
 
-          {/* CONFIRM PASSWORD INPUT - REAL-TIME VALIDATION */}
+          {/* Confirm Password */}
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-1">
               Confirm Password
             </label>
             <input
               type="password"
-              name="confirm_password" // 🚀 ĐÃ SỬA
+              name="confirm_password"
               required
               value={formData.confirm_password}
               onChange={handleChange}
@@ -281,7 +327,7 @@ export default function Register() {
             )}
           </div>
 
-          {/* SUBMIT BUTTON */}
+          {/* Submit */}
           <button
             type="submit"
             disabled={loading}
@@ -291,14 +337,14 @@ export default function Register() {
           </button>
         </form>
 
-        {/* DIVIDER */}
+        {/* Divider */}
         <div className="relative flex py-4 items-center">
-          <div className="flex-grow border-t border-slate-700"></div>
+          <div className="flex-grow border-t border-slate-700" />
           <span className="flex-shrink mx-4 text-slate-500 text-sm">or</span>
-          <div className="flex-grow border-t border-slate-700"></div>
+          <div className="flex-grow border-t border-slate-700" />
         </div>
 
-        {/* GOOGLE SIGN UP BUTTON */}
+        {/* Google Sign Up */}
         <button
           type="button"
           onClick={() => handleGoogleLogin()}
@@ -309,7 +355,7 @@ export default function Register() {
           {loading ? "Processing..." : "Sign up with Google"}
         </button>
 
-        {/* LOGIN LINK */}
+        {/* Login Link */}
         <p className="text-center text-sm text-slate-400 mt-6">
           Already have an account?{" "}
           <Link
@@ -320,9 +366,6 @@ export default function Register() {
           </Link>
         </p>
       </div>
-
-      {/* TOAST CONTAINER FOR GLOBAL MESSAGES */}
-      <ToastContainer position="top-right" autoClose={3000} theme="dark" />
     </div>
   );
 }
