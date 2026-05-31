@@ -45,9 +45,12 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<VehicleType> VehicleTypes { get; set; }
 
+    public virtual DbSet<SlotStatusLog> SlotStatusLogs { get; set; }
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-        => optionsBuilder.UseMySql("server=localhost;port=3306;database=parking_db;user=root;password=123456", Microsoft.EntityFrameworkCore.ServerVersion.Parse("8.0.46-mysql"));
+    {
+
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -677,6 +680,53 @@ public partial class AppDbContext : DbContext
                 .HasMaxLength(100)
                 .HasColumnName("VEHICLE_TYPE_NAME");
         });
+
+        modelBuilder.Entity<SlotStatusLog>(entity =>
+        {
+            // Map với bảng tên viết hoa và có gạch dưới
+            entity.ToTable("SLOT_STATUS_LOGS");
+
+            // Chỉ định khóa chính
+            entity.HasKey(e => e.LogId);
+
+            // Map các thuộc tính của Class sang tên cột Snake Case
+            entity.Property(e => e.LogId).HasColumnName("log_id").HasMaxLength(50);
+            entity.Property(e => e.SlotId).HasColumnName("slot_id").HasMaxLength(50);
+            entity.Property(e => e.OldStatus).HasColumnName("old_status").HasMaxLength(20);
+            entity.Property(e => e.NewStatus).HasColumnName("new_status").HasMaxLength(20);
+            entity.Property(e => e.ChangedBy).HasColumnName("changed_by").HasMaxLength(50);
+            entity.Property(e => e.ChangedAt).HasColumnName("changed_at").HasColumnType("datetime");
+            entity.Property(e => e.Reason).HasColumnName("reason").HasMaxLength(255);
+            entity.Property(e => e.EstimatedDurationMinutes).HasColumnName("estimated_duration_minutes");
+        });
+
+        var dateTimeConverter = new Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<DateTime, DateTime>(
+            v => v,
+            v => DateTime.SpecifyKind(v, DateTimeKind.Unspecified)
+        );
+
+        var nullableDateTimeConverter = new Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<DateTime?, DateTime?>(
+            v => v,
+            v => v.HasValue ? DateTime.SpecifyKind(v.Value, DateTimeKind.Unspecified) : null
+        );
+
+        // 2. Quét qua toàn bộ Database Schema được khai báo trong DbContext
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            foreach (var property in entityType.GetProperties())
+            {
+                // Nếu thuộc tính đó là DateTime (Bắt buộc)
+                if (property.ClrType == typeof(DateTime))
+                {
+                    property.SetValueConverter(dateTimeConverter);
+                }
+                // Nếu thuộc tính đó là DateTime? (Cho phép Null)
+                else if (property.ClrType == typeof(DateTime?))
+                {
+                    property.SetValueConverter(nullableDateTimeConverter);
+                }
+            }
+        }
 
         OnModelCreatingPartial(modelBuilder);
     }
