@@ -194,7 +194,8 @@ export default function IncidentHandlingPage() {
         </div>
 
         {/* Dynamic Toggles based on DB ENUM */}
-        <div className="flex bg-slate-100 dark:bg-slate-800/80 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 overflow-x-auto">
+        {/* Dynamic Toggles based on DB ENUM */}
+        <div className="flex bg-slate-100 dark:bg-slate-800/80 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 overflow-x-auto w-full sm:w-auto max-w-full scrollbar-none snap-x select-none">
           {["LOST_TICKET", "WRONG_SLOT", "SYSTEM_ERROR", "OTHER"].map((type) => (
             <button
               key={type}
@@ -204,7 +205,8 @@ export default function IncidentHandlingPage() {
                 setActionSuccess(null);
                 setApiError("");
               }}
-              className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap ${
+              // Thêm class snap-center để trải nghiệm vuốt trên mobile mượt hơn
+              className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap snap-center ${
                 issueType === type
                   ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm"
                   : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
