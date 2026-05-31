@@ -14,6 +14,7 @@ import {useNavigate} from 'react-router-dom';
 export default function GlobalHttpListener() {
     const navigate = useNavigate();
     useEffect(() =>{
+        
         //Case 1 :Mất mạng/server không phản hồi
         const handleNetworkError = (e) =>{
             toast.error(e.detail?.message || 'Cannot connect to server.',{
@@ -61,6 +62,6 @@ export default function GlobalHttpListener() {
             window.removeEventListener('pbms-rate-limited',   handleRateLimited);
             };
     },[navigate]);
-    
+
     return null;
 }

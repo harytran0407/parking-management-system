@@ -19,7 +19,7 @@ export default function Profile() {
   const fileInputRef = useRef(null);
   const { user, updateUser } = useAuth();
 
-  // 1. STATE LƯU THÔNG TIN USER (🚀 ĐÃ SỬA: Đồng bộ name -> full_name)
+  // 1. STATE LƯU THÔNG TIN USER 
   const [profile, setProfile] = useState({
     full_name: user?.full_name || "",
     email: user?.email || "",
@@ -27,7 +27,7 @@ export default function Profile() {
     avatar: user?.avatar || "",
   });
 
-  // update continuously user info (🚀 ĐÃ SỬA: Đồng bộ name -> full_name khi nạp dữ liệu từ Context)
+  // update continuously user info 
   useEffect(() => {
     if (user) {
       setProfile({
@@ -39,7 +39,7 @@ export default function Profile() {
     }
   }, [user]);
 
-  // 2. ON/OF edit information (🚀 ĐÃ SỬA: Đổi key name -> full_name cho đồng bộ trạng thái bật/tắt sửa)
+  // 2. ON/OF edit information 
   const [isEditing, setIsEditing] = useState({
     full_name: false,
     email: false,

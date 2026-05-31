@@ -4,6 +4,8 @@ import { ArrowLeft, CheckCircle, XCircle, AlertCircle } from "lucide-react";
 import googleIcon from "../assets/google.png";
 import { useGoogleLogin } from "@react-oauth/google";
 import { useAuth } from "../hooks/useAuth";
+import {toast} from "sonner";
+import api from "../utils/api";
 
 // ─── Reusable Alert Banner Component ───────────────────────────────────────
 // Dùng để hiển thị thông báo cấp form (success / error / info)
@@ -103,29 +105,39 @@ export default function Register() {
     e.preventDefault();
     setBanner(null);
 
+
     // Validation thất bại → chỉ highlight field, không cần banner
     if (!validateForm()) return;
-
     setLoading(true);
-    try {
-      // TODO: Thay bằng API call thực — authService.register(formData)
-      await new Promise((resolve) => setTimeout(resolve, 800));
-
-      // Đăng ký thành công → hiển thị banner success rồi redirect
+    try{
+    // CALL API 
+    const response = await api.post("auth/register",{
+      full_name:formData.full_name,
+      email:formData.email,
+      phone_number:formData.phone_number,
+      password: formData.password,
+      confirm_password:formData.confirm_password
+    });
+    // nếu tiếp nhận dữ liệu hợp lệ (200 OK/201)
+    if(response.data){
       setBanner({
-        type: "success",
-        message: "Account created! Redirecting to login...",
+        type:"success",
+        message:"Account created! Redirecting to login...",
       });
-      setTimeout(() => navigate("/login"), 1500);
-    } catch (error) {
-      // Lỗi từ server → hiển thị message cụ thể từ API hoặc fallback
-      const serverMessage =
-        error?.message || "Registration failed. Please try again.";
-      setBanner({ type: "error", message: serverMessage });
-    } finally {
-      setLoading(false);
+      toast.success("Account registered successfully!",{
+        description:"Welcome to Parking Management System node."
+      });
+      setTimeout(() => navigate("/login"),1500);
     }
+  }catch (error){
+    const serverMessage = error?.message || "Registered failed.Please check your inputs.";
+    setBanner({type:"error",message:serverMessage});
+  }finally{
+    setLoading(false);
+  }
   };
+
+
 
   const handleGoogleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse) => {

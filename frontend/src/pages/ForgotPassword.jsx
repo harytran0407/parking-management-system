@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, Mail, Phone, KeyRound, CheckCircle2 } from "lucide-react";
-import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import { toast } from "sonner";
+
 // import axios from 'axios'; //
 
 export default function ForgotPassword() {
@@ -363,7 +363,7 @@ export default function ForgotPassword() {
           )}
         </div>
       </div>
-      <ToastContainer position="top-right" autoClose={3000} theme="dark" />
+    
     </div>
   );
 }

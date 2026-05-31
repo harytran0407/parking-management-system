@@ -228,9 +228,9 @@ export default function MyVehicles() {
 
   return (
    
-    <div className="animate-slide-in flex flex-col lg:flex-row h-[calc(100vh-80px)] max-h-[calc(100vh-80px)] max-w-[calc(100%+48px)] overflow-hidden bg-[#f8f9ff] dark:bg-slate-950 -m-6">
+    <div className="animate-slide-in flex flex-col lg:flex-row lg:h-[calc(100vh-80px)] lg:max-h-[calc(100vh-80px)] max-w-[calc(100%+48px)] lg:overflow-hidden bg-[#f8f9ff] dark:bg-slate-950 -m-6">
       {/* LEFT PANEL */}
-      <div className="w-full lg:w-80 bg-white dark:bg-slate-900 border-b lg:border-b-0 lg:border-r border-slate-200 dark:border-slate-800 flex flex-col flex-shrink-0 h-full">
+      <div className="w-full lg:w-80 bg-white dark:bg-slate-900 border-b lg:border-b-0 lg:border-r border-slate-200 dark:border-slate-800 flex flex-col flex-shrink-0 h-auto lg:h-full">
         <div className="p-4 border-b border-slate-100 dark:border-slate-800 space-y-3">
           <div>
             <h2 className="text-lg font-bold text-slate-900 dark:text-white">
@@ -252,7 +252,7 @@ export default function MyVehicles() {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-4 max-h-[320px] lg:max-h-none space-y-3 custom-scrollbar">
           {filteredVehicles.map((vehicle) => {
             const isSelected = vehicle.id === selectedVehicleId;
             return (
@@ -298,7 +298,7 @@ export default function MyVehicles() {
       </div>
 
       {/* RIGHT PANEL  */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar h-full">
+      <div className="flex-1 h-auto lg:h-full overflow-visible lg:overflow-y-auto p-6 space-y-6 custom-scrollbar">
         {/* WORKSPACE HEADER CARD */}
         <div className="bg-white dark:bg-slate-900 rounded-[2rem] p-6 shadow-sm border border-slate-100 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-5">
           <div className="flex items-center gap-4 min-w-0">
