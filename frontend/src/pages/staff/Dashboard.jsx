@@ -1,19 +1,13 @@
 import React, { useState, useEffect } from "react";
 import {
-  Car,
-  LogIn,
-  LogOut,
-  DollarSign,
-  AlertTriangle,
-  Ticket,
-  TrendingUp,
-  RefreshCw,
+  Car, LogIn, LogOut, DollarSign,
+  AlertTriangle, Ticket, TrendingUp, RefreshCw, Clock,
 } from "lucide-react";
+// TODO: Bỏ comment dòng dưới khi kết nối API thật
+// import api from "../utils/api";
 
 export default function StaffDashboard() {
-  // ==========================================
-  // STATE MANAGEMENT (Parking Staff Metrics context)
-  // ==========================================
+
   const [dashboardData, setDashboardData] = useState({
     current_occupancy: {
       total: 500,
@@ -31,236 +25,259 @@ export default function StaffDashboard() {
     active_sessions_count: 320,
     pending_payments: 12,
     alerts: [
-      {
-        type: "full_floor",
-        floor: 1,
-        message: "Floor 1 at 95% capacity",
-      },
-      {
-        type: "system_error",
-        floor: null,
-        message: "Gate In 02 camera connection unstable",
-      },
+      { type: "full_floor", floor: 1, message: "Floor 1 at 95% capacity" },
+      { type: "system_error", floor: null, message: "Gate In 02 camera connection unstable" },
     ],
   });
 
-  // ==========================================
-  // [AXIOS API INTEGRATION]: LIVE BACKGROUND SYNC POLLING
-  // ==========================================
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [loading, setLoading] = useState(false);
+
+  // ── Đồng hồ thời gian thực ──────────────────────────────────────────────
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // ── [AXIOS] Polling tự động mỗi 30 giây ─────────────────────────────────
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        /* const response = await axios.get('http://localhost:5000/api/v1/staff/dashboard');
-        if (response.data.success) {
-          setDashboardData(response.data.data);
-        }
-        */
+        // [AXIOS] Bỏ comment block dưới khi backend sẵn sàng
+        // Endpoint: GET /api/v1/staff/dashboard
+        // const response = await api.get("/staff/dashboard");
+        // if (response.data?.success) {
+        //   setDashboardData(response.data.data);
+        // }
       } catch (error) {
-        console.error("Failed to sync realtime operational metrics:", error);
+        // Lỗi network/server sẽ được bắt bởi GlobalHttpListener
+        // Không cần xử lý thêm ở đây
+        console.error("Dashboard polling error:", error);
       }
     };
 
     fetchDashboardData();
-    // Realtime polling loop setup: Refresh background data metrics every 30 seconds
     const syncInterval = setInterval(fetchDashboardData, 30000);
     return () => clearInterval(syncInterval);
   }, []);
 
-  const { current_occupancy, today_stats, pending_payments, alerts } =
-    dashboardData;
+  // ── [AXIOS] Manual refresh khi nhấn nút ─────────────────────────────────
+  const handleRefresh = async () => {
+    setLoading(true);
+    try {
+      // [AXIOS] Bỏ comment block dưới khi backend sẵn sàng
+      // Endpoint: GET /api/v1/staff/dashboard
+      // const response = await api.get("/staff/dashboard");
+      // if (response.data?.success) {
+      //   setDashboardData(response.data.data);
+      // }
 
-  // Compute absolute lot utilization percentage securely
+      // Xóa dòng mock delay dưới khi đã có API thật
+      await new Promise((r) => setTimeout(r, 600));
+    } catch (error) {
+      console.error("Manual refresh error:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const {
+    current_occupancy,
+    today_stats,
+    pending_payments,
+    alerts,
+    active_sessions_count,
+  } = dashboardData;
+
   const occupancyRate = (
-    (current_occupancy.occupied / current_occupancy.total) *
-    100
+    (current_occupancy.occupied / current_occupancy.total) * 100
   ).toFixed(1);
 
+  const progressColor =
+    parseFloat(occupancyRate) > 85 ? "#E24B4A"
+    : parseFloat(occupancyRate) > 60 ? "#BA7517"
+    : "#185FA5";
+
+  const formatTime = (date) =>
+    date.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+
+  const formatDate = (date) =>
+    date.toLocaleDateString("en-US", {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+
   return (
-   
-    <div className="animate-slide-in w-full h-full space-y-6">
-      {/* SECTION 1: HEADER OPERATIONS META CAPTION */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="w-full space-y-4 animate-slide-in pb-0">
+
+      {/* ── HEADER ──────────────────────────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
-          <h2 className="text-xl font-black text-slate-800 dark:text-white tracking-tight">
-            Operational Overview
+          <h2 className="text-lg font-semibold text-slate-800 dark:text-white tracking-tight">
+            Operational overview
           </h2>
-          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
-            Real-time parking statistics for the current system shift session.
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+            {formatDate(currentTime)} — {formatTime(currentTime)}
           </p>
         </div>
-        <div className="flex items-center gap-2 self-start sm:self-center px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold rounded-full border border-emerald-200 dark:border-emerald-900/40 shadow-sm">
-          <span className="w-2 h-2 bg-emerald-500 rounded-full animate-ping"></span>
-          Live Monitoring Active
-        </div>
-      </div>
-
-      {/* SECTION 2: SHIFT PERFORMANCE COUNTERS GRID */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-        {/* Metric 1: Today's Gate Entry Check-Ins */}
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between transition-colors duration-300">
-          <div className="space-y-1.5">
-            <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
-              Today's Check-Ins
-            </span>
-            <h3 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">
-              {today_stats.check_ins}
-            </h3>
-          </div>
-          <div className="p-3 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 rounded-xl shadow-inner">
-            <LogIn size={22} />
-          </div>
-        </div>
-
-        {/* Metric 2: Today's Gate Terminal Check-Outs */}
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between transition-colors duration-300">
-          <div className="space-y-1.5">
-            <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
-              Today's Check-Outs
-            </span>
-            <h3 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">
-              {today_stats.check_outs}
-            </h3>
-          </div>
-          <div className="p-3 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 rounded-xl shadow-inner">
-            <LogOut size={22} />
-          </div>
-        </div>
-
-        {/* Metric 3: Shift Cumulative Cash Financial Revenue */}
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between transition-colors duration-300">
-          <div className="space-y-1.5">
-            <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
-              Today's Revenue
-            </span>
-            <h3 className="text-2xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight">
-              {today_stats.revenue_vnd.toLocaleString("vi-VN")}{" "}
-              <span className="text-xs font-bold text-slate-400 uppercase">
-                đ
-              </span>
-            </h3>
-          </div>
-          <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 rounded-xl shadow-inner">
-            <DollarSign size={22} />
-          </div>
-        </div>
-
-        {/* Metric 4: Pending Unsettled Counter Transactions */}
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between transition-colors duration-300">
-          <div className="space-y-1.5">
-            <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
-              Pending Payments
-            </span>
-            <h3 className="text-2xl font-black text-amber-600 dark:text-amber-400 tracking-tight">
-              {pending_payments}
-            </h3>
-          </div>
-          <div className="p-3 bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 rounded-xl shadow-inner">
-            <RefreshCw size={22} />
+        <div className="flex items-center gap-3 self-start sm:self-center">
+          <button
+            onClick={handleRefresh}
+            disabled={loading}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+            Refresh
+          </button>
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 text-xs font-medium rounded-full border border-emerald-200 dark:border-emerald-900/40">
+            <span className="w-2 h-2 bg-emerald-500 rounded-full animate-ping" />
+            Live monitoring
           </div>
         </div>
       </div>
 
-      {/* SECTION 3: REAL-TIME TRAFFIC VISUALIZATION & CRITICAL MONITORING LOGS */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Layout Column Block 1 & 2: Dynamic Occupancy Meter Card */}
-        <div className="lg:col-span-2 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between transition-colors duration-300">
+      {/* ── 5 METRIC CARDS ──────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        {[
+          {
+            label: "Check-ins",
+            // [AXIOS] today_stats.check_ins → response.data.data.today_stats.check_ins
+            value: today_stats.check_ins,
+            icon: <LogIn size={18} />,
+            color: "text-blue-600 dark:text-blue-400",
+            bg: "bg-blue-50 dark:bg-blue-950/40",
+          },
+          {
+            label: "Check-outs",
+            // [AXIOS] today_stats.check_outs → response.data.data.today_stats.check_outs
+            value: today_stats.check_outs,
+            icon: <LogOut size={18} />,
+            color: "text-indigo-600 dark:text-indigo-400",
+            bg: "bg-indigo-50 dark:bg-indigo-950/40",
+          },
+          {
+            label: "Revenue",
+            // [AXIOS] today_stats.revenue_vnd → response.data.data.today_stats.revenue_vnd
+            value: today_stats.revenue_vnd.toLocaleString("vi-VN") + " đ",
+            icon: <DollarSign size={18} />,
+            color: "text-emerald-600 dark:text-emerald-400",
+            bg: "bg-emerald-50 dark:bg-emerald-950/40",
+            small: true,
+          },
+          {
+            label: "Active sessions",
+            // [AXIOS] active_sessions_count → response.data.data.active_sessions_count
+            value: active_sessions_count,
+            icon: <Car size={18} />,
+            color: "text-blue-600 dark:text-blue-400",
+            bg: "bg-blue-50 dark:bg-blue-950/40",
+          },
+          {
+            label: "Pending payments",
+            // [AXIOS] pending_payments → response.data.data.pending_payments
+            value: pending_payments,
+            icon: <Clock size={18} />,
+            color: "text-amber-600 dark:text-amber-400",
+            bg: "bg-amber-50 dark:bg-amber-950/40",
+          },
+        ].map((m, i) => (
+          <div
+            key={i}
+            className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3"
+          >
+            <div>
+              <p className="text-[11px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">
+                {m.label}
+              </p>
+              <p className={`font-semibold text-slate-800 dark:text-white ${m.small ? "text-base" : "text-xl"}`}>
+                {m.value}
+              </p>
+            </div>
+            <div className={`p-2.5 rounded-lg ${m.bg} ${m.color} shrink-0`}>
+              {m.icon}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── OCCUPANCY + ALERTS ──────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+        {/* Occupancy card */}
+        <div className="lg:col-span-2 bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-5">
-              <h4 className="font-black text-slate-800 dark:text-white flex items-center gap-2 tracking-tight text-base">
-                <Car size={18} className="text-blue-500" />
-                Current Lot Occupancy Status
+              <h4 className="text-sm font-semibold text-slate-800 dark:text-white flex items-center gap-2">
+                <Car size={16} className="text-blue-500" />
+                Lot occupancy status
               </h4>
               {current_occupancy.trend === "increasing" && (
-                <span className="flex items-center gap-1 text-[11px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-500/10 dark:text-blue-400 px-2 py-0.5 rounded-md uppercase tracking-wide">
-                  <TrendingUp size={12} /> Traffic Rising
+                <span className="flex items-center gap-1 text-[11px] font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 px-2 py-0.5 rounded-md">
+                  <TrendingUp size={11} /> Traffic rising
                 </span>
               )}
             </div>
 
-            {/* Hardware accelerated dynamic fluid utilization progress layout indicator */}
-            <div className="space-y-3 mt-6">
-              <div className="w-full bg-slate-100 dark:bg-slate-800 h-3.5 rounded-full overflow-hidden border border-slate-200/20 shadow-inner">
-                <div
-                  className={`h-full rounded-full transition-all duration-700 ease-out ${
-                    parseFloat(occupancyRate) > 85
-                      ? "bg-red-500 shadow-lg shadow-red-500/20"
-                      : parseFloat(occupancyRate) > 60
-                        ? "bg-amber-500 shadow-lg shadow-amber-500/20"
-                        : "bg-blue-600 shadow-lg shadow-blue-500/20"
-                  }`}
-                  style={{ width: `${occupancyRate}%` }}
-                ></div>
-              </div>
-              <div className="flex justify-between text-[11px] text-slate-400 font-bold uppercase tracking-wider">
-                <span>0% Empty</span>
-                <span
-                  className={
-                    parseFloat(occupancyRate) > 85
-                      ? "text-red-500"
-                      : parseFloat(occupancyRate) > 60
-                        ? "text-amber-500"
-                        : "text-blue-600"
-                  }
-                >
-                  {occupancyRate}% Capacity Filled
-                </span>
-                <span>100% Full</span>
-              </div>
+            {/* Progress bar — màu thay đổi theo ngưỡng occupancy */}
+            <div className="w-full bg-slate-100 dark:bg-slate-800 h-3 rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-700 ease-out"
+                style={{ width: `${occupancyRate}%`, backgroundColor: progressColor }}
+              />
+            </div>
+            <div className="flex justify-between text-[11px] text-slate-400 font-medium mt-1.5">
+              <span>0% empty</span>
+              <span style={{ color: progressColor }}>{occupancyRate}% filled</span>
+              <span>100% full</span>
             </div>
           </div>
 
-          {/* Infrastructure Allocation Matrix Footprints */}
-          <div className="grid grid-cols-3 gap-4 border-t border-slate-100 dark:border-slate-800/80 pt-5 mt-6 font-mono text-center">
-            <div className="space-y-1">
-              <span className="text-[10px] text-slate-400 dark:text-slate-500 font-sans font-bold uppercase tracking-wider block">
-                Total Capacity
-              </span>
-              <span className="text-lg font-black text-slate-700 dark:text-slate-400">
-                {current_occupancy.total}
-              </span>
-            </div>
-            <div className="space-y-1 border-x border-slate-100 dark:border-slate-800/80">
-              <span className="text-[10px] text-slate-400 dark:text-slate-500 font-sans font-bold uppercase tracking-wider block">
-                Occupied Slots
-              </span>
-              <span className="text-lg font-black text-slate-800 dark:text-white">
-                {current_occupancy.occupied}
-              </span>
-            </div>
-            <div className="space-y-1">
-              <span className="text-[10px] text-slate-400 dark:text-slate-500 font-sans font-bold uppercase tracking-wider block">
-                Available Empty
-              </span>
-              <span className="text-lg font-black text-blue-600 dark:text-blue-400">
-                {current_occupancy.available}
-              </span>
-            </div>
+          {/* [AXIOS] current_occupancy → response.data.data.current_occupancy */}
+          <div className="grid grid-cols-3 gap-4 border-t border-slate-100 dark:border-slate-800 pt-4 mt-4 text-center">
+            {[
+              { label: "Total capacity", value: current_occupancy.total,    color: "text-slate-700 dark:text-slate-300" },
+              { label: "Occupied",       value: current_occupancy.occupied,  color: "text-slate-800 dark:text-white" },
+              { label: "Available",      value: current_occupancy.available, color: "text-blue-600 dark:text-blue-400" },
+            ].map((o, i) => (
+              <div key={i} className={i === 1 ? "border-x border-slate-100 dark:border-slate-800" : ""}>
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium uppercase tracking-wider">
+                  {o.label}
+                </p>
+                <p className={`text-lg font-semibold mt-1 ${o.color}`}>{o.value}</p>
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* Layout Column Block 3: Hardware Exceptions & Live Infrastructure System Alerts */}
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between transition-colors duration-300">
+        {/* Alerts card */}
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 flex flex-col justify-between">
           <div>
-            <h4 className="font-black text-slate-800 dark:text-white flex items-center gap-2 mb-4 tracking-tight text-base">
-              <AlertTriangle size={18} className="text-amber-500" />
-              Live System Anomalies
+            <h4 className="text-sm font-semibold text-slate-800 dark:text-white flex items-center gap-2 mb-4">
+              <AlertTriangle size={16} className="text-amber-500" />
+              Live anomalies
             </h4>
 
-            {/* Container for scrollable exceptions with custom styling layout masks */}
-            <div className="space-y-2.5 overflow-y-auto max-h-[190px] pr-0.5 custom-scrollbar">
+            {/* [AXIOS] alerts → response.data.data.alerts */}
+            <div className="space-y-2 overflow-y-auto max-h-[160px]">
               {alerts.length > 0 ? (
-                alerts.map((alert, index) => (
+                alerts.map((alert, i) => (
                   <div
-                    key={index}
-                    className={`p-3 rounded-xl border flex items-start gap-2.5 text-xs font-medium leading-normal ${
+                    key={i}
+                    className={`p-3 rounded-lg border flex items-start gap-2 text-xs font-medium ${
                       alert.type === "full_floor"
-                        ? "bg-red-50/40 border-red-100 dark:bg-red-950/10 dark:border-red-900/40 text-red-700 dark:text-red-400"
-                        : "bg-amber-50/40 border-amber-100 dark:bg-amber-950/10 dark:border-amber-900/40 text-amber-700 dark:text-amber-400"
+                        ? "bg-red-50/60 border-red-100 dark:bg-red-950/10 dark:border-red-900/40 text-red-700 dark:text-red-400"
+                        : "bg-amber-50/60 border-amber-100 dark:bg-amber-950/10 dark:border-amber-900/40 text-amber-700 dark:text-amber-400"
                     }`}
                   >
-                    <AlertTriangle size={15} className="shrink-0 mt-0.5" />
+                    <AlertTriangle size={13} className="shrink-0 mt-0.5" />
                     <div>
-                      <span className="font-extrabold block capitalize tracking-wide text-[11px] mb-0.5">
+                      <span className="font-semibold text-[10px] uppercase tracking-wide block mb-0.5">
                         {alert.type.replace("_", " ")}
                       </span>
                       {alert.message}
@@ -268,31 +285,27 @@ export default function StaffDashboard() {
                   </div>
                 ))
               ) : (
-                <div className="h-full flex flex-col items-center justify-center text-slate-400 py-8">
-                  <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                    No anomalies active
-                  </span>
+                <div className="text-center py-6 text-xs text-slate-400 dark:text-slate-500">
+                  No anomalies detected
                 </div>
               )}
             </div>
           </div>
 
-          {/* Operational Shift Exception Metrics Footer Nodes */}
-          <div className="grid grid-cols-2 gap-3 border-t border-slate-100 dark:border-slate-800/80 pt-4 mt-5 text-[11px] font-bold uppercase tracking-wide">
-            <div className="flex items-center gap-1.5 text-slate-500">
-              <Ticket size={14} className="text-slate-400" />
-              Lost Cards:{" "}
-              <span className="font-black text-slate-800 dark:text-slate-300">
+          {/* [AXIOS] today_stats.lost_tickets / open_incidents → response.data.data.today_stats */}
+          <div className="flex justify-between border-t border-slate-100 dark:border-slate-800 pt-3 mt-3 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+            <span className="flex items-center gap-1">
+              <Ticket size={13} className="text-slate-400" />
+              Lost tickets:
+              <strong className="text-slate-700 dark:text-slate-300 ml-1">
                 {today_stats.lost_tickets}
-              </span>
-            </div>
-            <div className="flex items-center gap-1.5 text-slate-500 justify-end">
-              <AlertTriangle size={14} className="text-amber-500" />
-              Incidents:{" "}
-              <span className="font-black text-amber-600 dark:text-amber-400">
-                {today_stats.open_incidents}
-              </span>
-            </div>
+              </strong>
+            </span>
+            <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
+              <AlertTriangle size={13} />
+              Incidents:
+              <strong className="ml-1">{today_stats.open_incidents}</strong>
+            </span>
           </div>
         </div>
       </div>

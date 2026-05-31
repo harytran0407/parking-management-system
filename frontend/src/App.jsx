@@ -1,12 +1,11 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
-import {toast,Toaster} from "sonner";
+import { toast, Toaster } from "sonner";
 import LandingPage from "./pages/LandingPage";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import ForgotPassword from "./pages/ForgotPassword"; 
-
+import ForgotPassword from "./pages/ForgotPassword";
 
 import ManagerLayout from "./layouts/ManagerLayout";
 import StaffLayout from "./layouts/StaffLayout";
@@ -40,7 +39,6 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
 
-          
           <Route path="/forgot-password" element={<ForgotPassword />} />
 
           {/* ============================================================

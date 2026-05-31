@@ -39,11 +39,9 @@ export function AuthProvider({ children }) {
 
       // ĐỒNG BỘ 100% VỚI BẢNG USERS TRONG Database_PMS.sql VÀ Update_API_Document.md
       const userData = {
-        user_id:
-          existingUser.user_id || `usr_${Math.floor(Math.random() * 1000)}`, // Khớp USERS.USER_ID
+        user_id: existingUser.user_id || `usr_${Math.floor(Math.random() * 1000)}`, // Khớp USERS.USER_ID
         username: existingUser.username || email.split("@")[0], // Khớp USERS.USERNAME
-        full_name:
-          existingUser.full_name || existingUser.name || "Nguyen Van A", // Khớp USERS.FULL_NAME
+        full_name: existingUser.full_name || existingUser.name || "Nguyen Van A", // Khớp USERS.FULL_NAME
         email: email, // Khớp USERS.EMAIL
         phone: existingUser.phone || "", // Khớp USERS.PHONE
         role: role, // Khớp ROLE.ROLE_NAME ('ParkingStaff', 'ParkingUser'...)
@@ -104,7 +102,7 @@ export function AuthProvider({ children }) {
         username: "google_user",
         full_name: "Google User",
         email: "google.user@gmail.com",
-        role: "ParkingUser", 
+        role: "ParkingUser",
         phone: "",
         avatar: "https://www.svgrepo.com/show/475656/google-color.svg",
       };
@@ -112,10 +110,7 @@ export function AuthProvider({ children }) {
       setUser(userData);
       localStorage.setItem("user", JSON.stringify(userData));
       localStorage.setItem("userRole", userData.role);
-      localStorage.setItem(
-        `profile_${userData.email}`,
-        JSON.stringify(userData),
-      );
+      localStorage.setItem(`profile_${userData.email}`, JSON.stringify(userData));
       return userData;
     } catch (error) {
       console.error("Google login failed: ", error);
@@ -137,8 +132,7 @@ export function AuthProvider({ children }) {
         isAuthenticated,
         updateUser,
         loginWithGoogle,
-      }}
-    >
+      }}>
       {children}
     </AuthContext.Provider>
   );

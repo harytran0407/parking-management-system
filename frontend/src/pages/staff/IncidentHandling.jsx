@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from "react";
-import {CheckCircle2,Clock,Hash,ShieldAlert,History,RefreshCw,Search,Phone,HelpCircle,Laptop,AlertCircle,X,} from "lucide-react";
-// import axios from "axios"; // 
+import { CheckCircle2, Clock, Hash, ShieldAlert, History, RefreshCw, Search, Phone, HelpCircle, Laptop, AlertCircle, X } from "lucide-react";
+// import axios from "axios"; //
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 export default function IncidentHandlingPage() {
   // ==========================================
@@ -63,8 +62,7 @@ export default function IncidentHandlingPage() {
             log_id: 1023,
             issue_type: "LOST_TICKET",
             session_id: "sess_9861",
-            description:
-              "Customer misplaced physical parking ticket near Floor 2 elevator",
+            description: "Customer misplaced physical parking ticket near Floor 2 elevator",
             report_time: "09:30 AM",
             status: "RESOLVED",
           },
@@ -164,18 +162,14 @@ export default function IncidentHandlingPage() {
           log_id: mockResult.log_id,
           issue_type: issueType,
           session_id: mockResult.session_id || "N/A",
-          description:
-            issueType === "LOST_TICKET" ? lostReason : mismatchReason,
+          description: issueType === "LOST_TICKET" ? lostReason : mismatchReason,
           report_time: mockResult.execution_time,
           status: issueType === "LOST_TICKET" ? "OPEN" : "RESOLVED",
         },
         ...prev,
       ]);
     } catch (err) {
-      setApiError(
-        err.response?.data?.message ||
-          "Business process logic restriction failed.",
-      );
+      setApiError(err.response?.data?.message || "Business process logic restriction failed.");
     } finally {
       setIsSubmitting(false);
     }
@@ -205,22 +199,19 @@ export default function IncidentHandlingPage() {
         </div>
 
         <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
-          {["LOST_TICKET", "WRONG_SLOT", "SYSTEM_ERROR", "OTHER"].map(
-            (type) => (
-              <button
-                key={type}
-                type="button"
-                onClick={() => {
-                  setIssueType(type);
-                  setActionSuccess(null);
-                  setApiError("");
-                }}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${issueType === type ? "bg-white dark:bg-slate-900 text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700 dark:text-slate-400"}`}
-              >
-                {type.replace("_", " ")}
-              </button>
-            ),
-          )}
+          {["LOST_TICKET", "WRONG_SLOT", "SYSTEM_ERROR", "OTHER"].map((type) => (
+            <button
+              key={type}
+              type="button"
+              onClick={() => {
+                setIssueType(type);
+                setActionSuccess(null);
+                setApiError("");
+              }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${issueType === type ? "bg-white dark:bg-slate-900 text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700 dark:text-slate-400"}`}>
+              {type.replace("_", " ")}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -232,108 +223,74 @@ export default function IncidentHandlingPage() {
                 <CheckCircle2 size={24} />
               </div>
               <div>
-                <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                  Exception Request Processed
-                </h3>
-                <p className="text-[10px] text-slate-400 font-mono mt-0.5">
-                  LOG_ID: #{actionSuccess.data.log_id}
-                </p>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">Exception Request Processed</h3>
+                <p className="text-[10px] text-slate-400 font-mono mt-0.5">LOG_ID: #{actionSuccess.data.log_id}</p>
               </div>
 
               {actionSuccess.type === "LOST_TICKET" ? (
                 <div className="w-full bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 rounded-xl p-4 text-left text-xs space-y-2">
                   <div className="flex justify-between border-b pb-1.5 dark:border-slate-700">
                     <span className="text-slate-400">Lost Ticket Session:</span>
-                    <span className="font-bold font-mono">
-                      {actionSuccess.data.session_id}
-                    </span>
+                    <span className="font-bold font-mono">{actionSuccess.data.session_id}</span>
                   </div>
                   <div className="flex justify-between border-b pb-1.5 dark:border-slate-700">
                     <span className="text-slate-400">Max Daily Rate Fee:</span>
-                    <span className="font-bold">
-                      {actionSuccess.data.breakdown.max_daily_rate.toLocaleString()}{" "}
-                      VND
-                    </span>
+                    <span className="font-bold">{actionSuccess.data.breakdown.max_daily_rate.toLocaleString()} VND</span>
                   </div>
                   <div className="flex justify-between border-b pb-1.5 dark:border-slate-700">
-                    <span className="text-slate-400">
-                      Lost Card Penalty Fee:
-                    </span>
-                    <span className="font-bold">
-                      {actionSuccess.data.breakdown.handling_fee.toLocaleString()}{" "}
-                      VND
-                    </span>
+                    <span className="text-slate-400">Lost Card Penalty Fee:</span>
+                    <span className="font-bold">{actionSuccess.data.breakdown.handling_fee.toLocaleString()} VND</span>
                   </div>
                   <div className="flex justify-between pt-1">
-                    <span className="font-bold text-slate-700 dark:text-slate-300">
-                      Total Penalty Fee:
-                    </span>
-                    <span className="text-base font-black text-red-600 dark:text-red-400 font-mono">
-                      {actionSuccess.data.calculated_fee.toLocaleString()} VND
-                    </span>
+                    <span className="font-bold text-slate-700 dark:text-slate-300">Total Penalty Fee:</span>
+                    <span className="text-base font-black text-red-600 dark:text-red-400 font-mono">{actionSuccess.data.calculated_fee.toLocaleString()} VND</span>
                   </div>
                 </div>
               ) : (
                 <div className="w-full bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 rounded-xl p-4 text-left text-xs space-y-2">
                   <div className="flex justify-between">
                     <span className="text-slate-400">Session ID:</span>
-                    <span className="font-bold font-mono">
-                      {actionSuccess.data.session_id}
-                    </span>
+                    <span className="font-bold font-mono">{actionSuccess.data.session_id}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-400">System Status:</span>
-                    <span className="font-bold text-emerald-500">
-                      RESOLVED & SYNCHRONIZED
-                    </span>
+                    <span className="font-bold text-emerald-500">RESOLVED & SYNCHRONIZED</span>
                   </div>
                 </div>
               )}
               <button
                 type="button"
                 onClick={resetIncidentForm}
-                className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-all"
-              >
+                className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-all">
                 Log Another Incident
               </button>
             </div>
           ) : (
-            <form
-              onSubmit={handleIncidentSubmit}
-              className="flex-1 flex flex-col justify-between h-full"
-            >
+            <form onSubmit={handleIncidentSubmit} className="flex-1 flex flex-col justify-between h-full">
               <div className="space-y-4">
                 {apiError && (
-                  <div className="p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 text-xs font-semibold text-red-600 dark:text-red-400 rounded-xl">
-                    ✕ {apiError}
-                  </div>
+                  <div className="p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 text-xs font-semibold text-red-600 dark:text-red-400 rounded-xl">✕ {apiError}</div>
                 )}
 
                 {issueType === "LOST_TICKET" && (
                   <>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                          Declared License Plate
-                        </label>
+                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Declared License Plate</label>
                         <div className="relative">
                           <Hash className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
                           <input
                             type="text"
                             required
                             value={lostPlate}
-                            onChange={(e) =>
-                              setLostPlate(e.target.value.toUpperCase())
-                            }
+                            onChange={(e) => setLostPlate(e.target.value.toUpperCase())}
                             className="block w-full pl-8 pr-3 py-2 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-lg bg-slate-50 dark:bg-slate-800/40 font-mono font-bold text-sm focus:bg-white focus:outline-none"
                             placeholder="29A-123.45"
                           />
                         </div>
                       </div>
                       <div>
-                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                          Customer Phone Number
-                        </label>
+                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Customer Phone Number</label>
                         <div className="relative">
                           <Phone className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
                           <input
@@ -349,24 +306,17 @@ export default function IncidentHandlingPage() {
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                          Vehicle Classification
-                        </label>
+                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Vehicle Classification</label>
                         <select
                           value={lostVehicleType}
-                          onChange={(e) =>
-                            setLostVehicleType(Number(e.target.value))
-                          }
-                          className="block w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800/40 text-sm text-slate-900 dark:text-white font-semibold focus:outline-none cursor-pointer"
-                        >
+                          onChange={(e) => setLostVehicleType(Number(e.target.value))}
+                          className="block w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800/40 text-sm text-slate-900 dark:text-white font-semibold focus:outline-none cursor-pointer">
                           <option value={1}>Automobile (Car)</option>
                           <option value={2}>Motorbike</option>
                         </select>
                       </div>
                       <div>
-                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                          Estimated Check-In Time
-                        </label>
+                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Estimated Check-In Time</label>
                         <input
                           type="datetime-local"
                           required
@@ -377,9 +327,7 @@ export default function IncidentHandlingPage() {
                       </div>
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                        Lost Reason & Operational Notes
-                      </label>
+                      <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Lost Reason & Operational Notes</label>
                       <textarea
                         required
                         rows={3}
@@ -396,9 +344,7 @@ export default function IncidentHandlingPage() {
                   <>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                          Current Session ID
-                        </label>
+                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Current Session ID</label>
                         <div className="relative">
                           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
                           <input
@@ -412,40 +358,30 @@ export default function IncidentHandlingPage() {
                         </div>
                       </div>
                       <div>
-                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                          Original System-Read Plate
-                        </label>
+                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Original System-Read Plate</label>
                         <input
                           type="text"
                           required
                           value={originalPlate}
-                          onChange={(e) =>
-                            setOriginalPlate(e.target.value.toUpperCase())
-                          }
+                          onChange={(e) => setOriginalPlate(e.target.value.toUpperCase())}
                           className="block w-full px-3 py-2 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-800/40 rounded-lg placeholder-slate-400 dark:placeholder-slate-500 text-sm font-mono font-bold focus:outline-none"
                           placeholder="e.g., 29A-111.11"
                         />
                       </div>
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                        Corrected License Plate
-                      </label>
+                      <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Corrected License Plate</label>
                       <input
                         type="text"
                         required
                         value={correctedPlate}
-                        onChange={(e) =>
-                          setCorrectedPlate(e.target.value.toUpperCase())
-                        }
+                        onChange={(e) => setCorrectedPlate(e.target.value.toUpperCase())}
                         className="block w-full px-3 py-2 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-800/40 rounded-lg placeholder-slate-400 dark:placeholder-slate-500 text-sm font-mono font-bold focus:outline-none"
                         placeholder="Enter physically verified plate"
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                        Data Correction Reason
-                      </label>
+                      <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Data Correction Reason</label>
                       <textarea
                         required
                         rows={3}
@@ -462,24 +398,18 @@ export default function IncidentHandlingPage() {
                   <>
                     <div>
                       <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                        {issueType === "SYSTEM_ERROR"
-                          ? "Affected Hardware Code"
-                          : "Reference Audit Node"}
+                        {issueType === "SYSTEM_ERROR" ? "Affected Hardware Code" : "Reference Audit Node"}
                       </label>
                       <input
                         type="text"
                         required
                         value={affectedDevice}
-                        onChange={(e) =>
-                          setAffectedDevice(e.target.value.toUpperCase())
-                        }
+                        onChange={(e) => setAffectedDevice(e.target.value.toUpperCase())}
                         className="block w-full px-3 py-2 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-800/40 rounded-lg placeholder-slate-400 dark:placeholder-slate-500 text-sm font-mono focus:outline-none"
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                        Detailed Log Description
-                      </label>
+                      <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Detailed Log Description</label>
                       <textarea
                         type="text"
                         required
@@ -497,16 +427,9 @@ export default function IncidentHandlingPage() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full mt-4 bg-slate-900 hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-500 text-white py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-sm shrink-0"
-              >
-                {isSubmitting ? (
-                  <RefreshCw size={13} className="animate-spin" />
-                ) : (
-                  <CheckCircle2 size={13} />
-                )}
-                {isSubmitting
-                  ? "Processing Request..."
-                  : "Confirm Exception Resolution"}
+                className="w-full mt-4 bg-slate-900 hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-500 text-white py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-sm shrink-0">
+                {isSubmitting ? <RefreshCw size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
+                {isSubmitting ? "Processing Request..." : "Confirm"}
               </button>
             </form>
           )}
@@ -524,8 +447,7 @@ export default function IncidentHandlingPage() {
                 recentIncidents.map((incident, idx) => (
                   <div
                     key={idx}
-                    className="p-4 rounded-xl border border-slate-200/60 dark:border-slate-800/80 bg-slate-50/70 dark:bg-slate-800/40 flex flex-col space-y-2.5 shadow-sm"
-                  >
+                    className="p-4 rounded-xl border border-slate-200/60 dark:border-slate-800/80 bg-slate-50/70 dark:bg-slate-800/40 flex flex-col space-y-2.5 shadow-sm">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2.5">
                         <span
@@ -535,23 +457,16 @@ export default function IncidentHandlingPage() {
                               : incident.issue_type === "WRONG_SLOT"
                                 ? "bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/20 dark:border-amber-900/30"
                                 : "bg-purple-50 text-purple-600 border-purple-100 dark:bg-purple-950/20 dark:border-purple-900/30"
-                          }`}
-                        >
+                          }`}>
                           {incident.issue_type}
                         </span>
-                        <span className="text-xs font-bold text-slate-400 font-mono">
-                          ID: #{incident.log_id}
-                        </span>
+                        <span className="text-xs font-bold text-slate-400 font-mono">ID: #{incident.log_id}</span>
                       </div>
-                      <span
-                        className={`text-xs font-bold tracking-wide uppercase ${incident.status === "OPEN" ? "text-red-500 animate-pulse" : "text-emerald-500"}`}
-                      >
+                      <span className={`text-xs font-bold tracking-wide uppercase ${incident.status === "OPEN" ? "text-red-500 animate-pulse" : "text-emerald-500"}`}>
                         {incident.status}
                       </span>
                     </div>
-                    <p className="text-sm font-semibold text-slate-900 dark:text-slate-300 leading-relaxed">
-                      {incident.description}
-                    </p>
+                    <p className="text-sm font-semibold text-slate-900 dark:text-slate-300 leading-relaxed">{incident.description}</p>
                     <div className="flex justify-between items-center pt-2 border-t border-slate-200/60 dark:border-slate-700/40 text-xs font-bold text-slate-400 font-mono">
                       <span className="flex items-center gap-1">
                         <Hash size={13} /> Session: {incident.session_id}
@@ -563,19 +478,14 @@ export default function IncidentHandlingPage() {
                   </div>
                 ))
               ) : (
-                <div className="text-center py-8 text-xs font-bold text-slate-400 uppercase tracking-widest">
-                  No system exceptions logged for this shift.
-                </div>
+                <div className="text-center py-8 text-xs font-bold text-slate-400 uppercase tracking-widest">No system exceptions logged for this shift.</div>
               )}
             </div>
           </div>
 
           <div className="flex-shrink-0 mt-4 bg-blue-50/40 dark:bg-blue-950/10 border border-blue-100/60 dark:border-blue-900/30 rounded-xl p-3 flex items-center gap-2.5 text-xs font-medium text-blue-600 dark:text-blue-400">
             <HelpCircle size={15} className="shrink-0" />
-            <span>
-              All manual data corrections are strictly logged into system audit
-              files for backend compliance.
-            </span>
+            <span>All manual data corrections are strictly logged into system audit files for backend compliance.</span>
           </div>
         </div>
       </div>

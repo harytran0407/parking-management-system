@@ -57,17 +57,12 @@ export default function ForgotPassword() {
         toast.success("A password reset link has been sent to your email!");
         setStep("reset");
       } else {
-        toast.success(
-          "An OTP verification code has been sent to your phone number!",
-        );
+        toast.success("An OTP verification code has been sent to your phone number!");
         setStep("otp");
       }
       // ---------------------------------------------------------------------------------
     } catch (err) {
-      toast.error(
-        err.response?.data?.message ||
-          "Account verification failed. Please try again.",
-      );
+      toast.error(err.response?.data?.message || "Account verification failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -106,9 +101,7 @@ export default function ForgotPassword() {
       setStep("reset");
       // ---------------------------------------------------------------------------------
     } catch (err) {
-      toast.error(
-        err.response?.data?.message || "Invalid or expired OTP code.",
-      );
+      toast.error(err.response?.data?.message || "Invalid or expired OTP code.");
     } finally {
       setLoading(false);
     }
@@ -121,12 +114,9 @@ export default function ForgotPassword() {
     e.preventDefault();
 
     // Kiểm tra định dạng Regex bảo mật mật khẩu
-    const passwordRegex =
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
     if (!passwordRegex.test(newPassword)) {
-      toast.error(
-        "Password must be at least 8 characters, including uppercase, lowercase, numbers, and special characters.",
-      );
+      toast.error("Password must be at least 8 characters, including uppercase, lowercase, numbers, and special characters.");
       return;
     }
 
@@ -177,10 +167,7 @@ export default function ForgotPassword() {
       <div className="absolute inset-0 bg-gradient-to-b from-slate-900/70 via-slate-900/80 to-slate-950 z-0" />
 
       {/* Back to Login Button */}
-      <Link
-        to="/login"
-        className="absolute top-6 left-6 flex items-center gap-1.5 text-base font-semibold text-gray-400 hover:text-white transition duration-200 z-10"
-      >
+      <Link to="/login" className="absolute top-6 left-6 flex items-center gap-1.5 text-base font-semibold text-gray-400 hover:text-white transition duration-200 z-10">
         <ArrowLeft className="w-3.5 h-3.5" />
         <span>Back to login</span>
       </Link>
@@ -188,9 +175,7 @@ export default function ForgotPassword() {
       <div className="w-full max-w-md relative z-10">
         <div className="backdrop-blur-md bg-[#1e293b]/70 border border-slate-700/50 shadow-2xl rounded-xl p-8">
           <div className="text-center mb-6">
-            <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">
-              Smartpark
-            </h1>
+            <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">Smartpark</h1>
             <p className="text-slate-400 text-sm">Forgot Password Recovery</p>
           </div>
 
@@ -207,8 +192,7 @@ export default function ForgotPassword() {
                     setMethod("email");
                     setInputValue("");
                   }}
-                  className={`flex-1 py-2 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1.5 ${method === "email" ? "bg-blue-600 text-white shadow" : "text-slate-400 hover:text-slate-200"}`}
-                >
+                  className={`flex-1 py-2 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1.5 ${method === "email" ? "bg-blue-600 text-white shadow" : "text-slate-400 hover:text-slate-200"}`}>
                   <Mail size={14} /> Email Address
                 </button>
                 <button
@@ -217,18 +201,13 @@ export default function ForgotPassword() {
                     setMethod("phone");
                     setInputValue("");
                   }}
-                  className={`flex-1 py-2 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1.5 ${method === "phone" ? "bg-blue-600 text-white shadow" : "text-slate-400 hover:text-slate-200"}`}
-                >
+                  className={`flex-1 py-2 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1.5 ${method === "phone" ? "bg-blue-600 text-white shadow" : "text-slate-400 hover:text-slate-200"}`}>
                   <Phone size={14} /> Phone Number
                 </button>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">
-                  {method === "email"
-                    ? "Registered Email"
-                    : "Registered Phone Number"}
-                </label>
+                <label className="block text-sm font-medium text-slate-300 mb-1">{method === "email" ? "Registered Email" : "Registered Phone Number"}</label>
                 <div className="relative">
                   {method === "email" ? (
                     <>
@@ -261,8 +240,7 @@ export default function ForgotPassword() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 px-4 rounded-lg transition duration-200 disabled:opacity-50"
-              >
+                className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 px-4 rounded-lg transition duration-200 disabled:opacity-50">
                 {loading ? "Processing..." : "Send Recovery Request"}
               </button>
             </form>
@@ -274,8 +252,7 @@ export default function ForgotPassword() {
           {step === "otp" && (
             <form onSubmit={handleVerifyOtp} className="space-y-4">
               <div className="text-center text-sm text-slate-300 mb-2">
-                Please enter the 4-digit verification code sent to{" "}
-                <span className="text-blue-400 font-mono">{inputValue}</span>
+                Please enter the 4-digit verification code sent to <span className="text-blue-400 font-mono">{inputValue}</span>
               </div>
               <div className="relative">
                 <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
@@ -284,9 +261,7 @@ export default function ForgotPassword() {
                   maxLength={4}
                   required
                   value={otpCode}
-                  onChange={(e) =>
-                    setOtpCode(e.target.value.replace(/\D/g, ""))
-                  } // Chặn không cho nhập chữ
+                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))} // Chặn không cho nhập chữ
                   placeholder="Enter 4-digit OTP"
                   className="w-full pl-10 pr-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white text-center font-bold tracking-[0.5em] placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
                 />
@@ -294,8 +269,7 @@ export default function ForgotPassword() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 px-4 rounded-lg transition duration-200 disabled:opacity-50"
-              >
+                className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 px-4 rounded-lg transition duration-200 disabled:opacity-50">
                 {loading ? "Verifying..." : "Verify OTP Code"}
               </button>
             </form>
@@ -307,9 +281,7 @@ export default function ForgotPassword() {
           {step === "reset" && (
             <form onSubmit={handleResetPassword} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">
-                  New Password
-                </label>
+                <label className="block text-sm font-medium text-slate-300 mb-1">New Password</label>
                 <input
                   type="password"
                   required
@@ -320,9 +292,7 @@ export default function ForgotPassword() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">
-                  Confirm New Password
-                </label>
+                <label className="block text-sm font-medium text-slate-300 mb-1">Confirm New Password</label>
                 <input
                   type="password"
                   required
@@ -335,8 +305,7 @@ export default function ForgotPassword() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 px-4 rounded-lg transition duration-200 disabled:opacity-50"
-              >
+                className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 px-4 rounded-lg transition duration-200 disabled:opacity-50">
                 {loading ? "Updating..." : "Reset My Password"}
               </button>
             </form>
@@ -350,20 +319,14 @@ export default function ForgotPassword() {
               <div className="flex justify-center text-green-500">
                 <CheckCircle2 size={56} className="animate-bounce" />
               </div>
-              <p className="text-slate-200 font-medium">
-                Your password has been reset successfully!
-              </p>
-              <button
-                onClick={() => navigate("/login")}
-                className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 px-4 rounded-lg transition duration-200"
-              >
+              <p className="text-slate-200 font-medium">Your password has been reset successfully!</p>
+              <button onClick={() => navigate("/login")} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 px-4 rounded-lg transition duration-200">
                 Return to Login Page
               </button>
             </div>
           )}
         </div>
       </div>
-    
     </div>
   );
 }

@@ -1,21 +1,8 @@
 import React, { useState, useEffect } from "react";
-import {
-  Car,
-  Trash2,
-  Edit3,
-  Plus,
-  Search,
-  FileText,
-  RefreshCw,
-  MapPin,
-  Info,
-  CalendarDays,
-  X,
-} from "lucide-react";
-// import axios from 'axios'; // 
+import { Car, Trash2, Edit3, Plus, Search, FileText, RefreshCw, MapPin, Info, CalendarDays, X } from "lucide-react";
+// import axios from 'axios'; //
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 const INITIAL_VEHICLES = [
   {
@@ -113,8 +100,7 @@ export default function MyVehicles() {
     vehicle_description: "",
   });
 
-  const selectedVehicle =
-    vehicles.find((v) => v.id === selectedVehicleId) || vehicles[0];
+  const selectedVehicle = vehicles.find((v) => v.id === selectedVehicleId) || vehicles[0];
 
   const openEditModal = () => {
     setApiError("");
@@ -147,8 +133,7 @@ export default function MyVehicles() {
               plate_number: editVehicle.vehicle_plate_number,
               brand: editVehicle.brand,
               model: editVehicle.model,
-              vehicle_type:
-                editVehicle.vehicle_type_id == 1 ? "SUV" : "Motorbike",
+              vehicle_type: editVehicle.vehicle_type_id == 1 ? "SUV" : "Motorbike",
               colorName: editVehicle.color,
             };
           }
@@ -227,18 +212,13 @@ export default function MyVehicles() {
     "w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm rounded-xl text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-blue-500 transition";
 
   return (
-   
     <div className="animate-slide-in flex flex-col lg:flex-row lg:h-[calc(100vh-80px)] lg:max-h-[calc(100vh-80px)] max-w-[calc(100%+48px)] lg:overflow-hidden bg-[#f8f9ff] dark:bg-slate-950 -m-6">
       {/* LEFT PANEL */}
       <div className="w-full lg:w-80 bg-white dark:bg-slate-900 border-b lg:border-b-0 lg:border-r border-slate-200 dark:border-slate-800 flex flex-col flex-shrink-0 h-auto lg:h-full">
         <div className="p-4 border-b border-slate-100 dark:border-slate-800 space-y-3">
           <div>
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-              My Vehicles
-            </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              {vehicles.length} Units Connected
-            </p>
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white">My Vehicles</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400">{vehicles.length} Units Connected</p>
           </div>
           <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl">
             <Search size={16} className="text-slate-400" />
@@ -259,24 +239,16 @@ export default function MyVehicles() {
               <div
                 key={vehicle.id}
                 onClick={() => setSelectedVehicleId(vehicle.id)}
-                className={`group relative p-4 rounded-2xl border cursor-pointer transition-all duration-300 ${isSelected ? "bg-blue-50/70 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800 shadow-sm" : "bg-transparent border-slate-100 dark:border-slate-800/60 hover:bg-slate-50 dark:hover:bg-slate-800/40"}`}
-              >
-                {isSelected && (
-                  <div className="absolute left-0 top-4 bottom-4 w-1 bg-blue-600 dark:bg-blue-500 rounded-r-md" />
-                )}
+                className={`group relative p-4 rounded-2xl border cursor-pointer transition-all duration-300 ${isSelected ? "bg-blue-50/70 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800 shadow-sm" : "bg-transparent border-slate-100 dark:border-slate-800/60 hover:bg-slate-50 dark:hover:bg-slate-800/40"}`}>
+                {isSelected && <div className="absolute left-0 top-4 bottom-4 w-1 bg-blue-600 dark:bg-blue-500 rounded-r-md" />}
                 <div className="flex items-start gap-3">
                   <div
-                    className={`p-2.5 rounded-xl ${isSelected ? "bg-blue-600 text-white shadow-md shadow-blue-500/10" : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"}`}
-                  >
+                    className={`p-2.5 rounded-xl ${isSelected ? "bg-blue-600 text-white shadow-md shadow-blue-500/10" : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"}`}>
                     <Car size={20} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-semibold text-slate-900 dark:text-white truncate">
-                      {vehicle.name}
-                    </h3>
-                    <p className="text-xs text-slate-400 mt-0.5">
-                      {vehicle.model}
-                    </p>
+                    <h3 className="text-sm font-semibold text-slate-900 dark:text-white truncate">{vehicle.name}</h3>
+                    <p className="text-xs text-slate-400 mt-0.5">{vehicle.model}</p>
                     <div className="flex items-center justify-between mt-2.5">
                       <span className="text-xs font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded border border-slate-200/50 dark:border-slate-700">
                         {vehicle.plate_number}
@@ -289,8 +261,7 @@ export default function MyVehicles() {
           })}
           <button
             onClick={() => setIsAddModalOpen(true)}
-            className="w-full p-4 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 flex items-center justify-center gap-2 transform active:scale-95 transition-all"
-          >
+            className="w-full p-4 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 flex items-center justify-center gap-2 transform active:scale-95 transition-all">
             <Plus size={18} />
             Add New Vehicle
           </button>
@@ -307,9 +278,7 @@ export default function MyVehicles() {
             </div>
             <div className="space-y-2 min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight truncate">
-                  {selectedVehicle.name}
-                </h1>
+                <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight truncate">{selectedVehicle.name}</h1>
                 <span className="px-2.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold rounded-lg border border-slate-200 dark:border-slate-700">
                   {selectedVehicle.brand} {selectedVehicle.model}
                 </span>
@@ -320,28 +289,20 @@ export default function MyVehicles() {
               <p className="text-sm text-slate-500 dark:text-slate-400 flex items-center gap-1.5 font-medium">
                 <span>Asset Profile</span>
                 <span className="text-slate-300 dark:text-slate-700">•</span>
-                <span className="text-blue-600 dark:text-blue-400 font-semibold">
-                  {selectedVehicle.vehicle_type}
-                </span>
-                <span className="text-slate-300 dark:text-slate-700">
-                  ({selectedVehicle.size})
-                </span>
+                <span className="text-blue-600 dark:text-blue-400 font-semibold">{selectedVehicle.vehicle_type}</span>
+                <span className="text-slate-300 dark:text-slate-700">({selectedVehicle.size})</span>
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2.5 self-end md:self-center flex-shrink-0">
             <button
-              onClick={() =>
-                handleDeleteVehicle(selectedVehicle.id, selectedVehicle.name)
-              }
-              className="p-3 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-950/10 dark:text-red-400 rounded-xl transition-all border border-red-100/30"
-            >
+              onClick={() => handleDeleteVehicle(selectedVehicle.id, selectedVehicle.name)}
+              className="p-3 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-950/10 dark:text-red-400 rounded-xl transition-all border border-red-100/30">
               <Trash2 size={18} />
             </button>
             <button
               onClick={openEditModal}
-              className="flex items-center gap-2 px-5 py-3 bg-slate-900 hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-500 text-white text-sm font-bold rounded-xl transition-all shadow-sm"
-            >
+              className="flex items-center gap-2 px-5 py-3 bg-slate-900 hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-500 text-white text-sm font-bold rounded-xl transition-all shadow-sm">
               <Edit3 size={16} /> Edit Details
             </button>
           </div>
@@ -355,19 +316,11 @@ export default function MyVehicles() {
                 <FileText size={20} />
               </div>
               <div>
-                <p className="text-xs text-slate-400 dark:text-slate-500 uppercase tracking-wider font-semibold">
-                  Verification
-                </p>
-                <p className="text-sm font-bold text-slate-800 dark:text-white mt-0.5">
-                  {selectedVehicle.isDocumentsValidated
-                    ? "Approved & Valid"
-                    : "Under Verification"}
-                </p>
+                <p className="text-xs text-slate-400 dark:text-slate-500 uppercase tracking-wider font-semibold">Verification</p>
+                <p className="text-sm font-bold text-slate-800 dark:text-white mt-0.5">{selectedVehicle.isDocumentsValidated ? "Approved & Valid" : "Under Verification"}</p>
               </div>
             </div>
-            {!selectedVehicle.isDocumentsValidated && (
-              <span className="w-2.5 h-2.5 bg-amber-500 rounded-full animate-pulse mr-2" />
-            )}
+            {!selectedVehicle.isDocumentsValidated && <span className="w-2.5 h-2.5 bg-amber-500 rounded-full animate-pulse mr-2" />}
           </div>
           <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-100 dark:border-slate-800 flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -375,12 +328,8 @@ export default function MyVehicles() {
                 <CalendarDays size={20} />
               </div>
               <div>
-                <p className="text-xs text-slate-400 dark:text-slate-500 uppercase tracking-wider font-semibold">
-                  Pass Subscription
-                </p>
-                <p className="text-sm font-bold text-slate-800 dark:text-white mt-0.5">
-                  {selectedVehicle.expiryDate}
-                </p>
+                <p className="text-xs text-slate-400 dark:text-slate-500 uppercase tracking-wider font-semibold">Pass Subscription</p>
+                <p className="text-sm font-bold text-slate-800 dark:text-white mt-0.5">{selectedVehicle.expiryDate}</p>
               </div>
             </div>
           </div>
@@ -392,47 +341,29 @@ export default function MyVehicles() {
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             <div>
-              <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">
-                License Plate
-              </p>
+              <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">License Plate</p>
               <p className="text-base font-mono font-black text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-100 dark:border-slate-700 inline-block">
                 {selectedVehicle.plate_number}
               </p>
             </div>
             <div>
-              <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">
-                Vehicle Type
-              </p>
-              <p className="text-base font-bold text-slate-800 dark:text-white">
-                {selectedVehicle.vehicle_type}
-              </p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                {selectedVehicle.size}
-              </p>
+              <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">Vehicle Type</p>
+              <p className="text-base font-bold text-slate-800 dark:text-white">{selectedVehicle.vehicle_type}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">{selectedVehicle.size}</p>
             </div>
             <div>
-              <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">
-                Billing Type
-              </p>
-              <p className="text-base font-bold text-slate-800 dark:text-white">
-                {selectedVehicle.tier}
-              </p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                {selectedVehicle.price}
-              </p>
+              <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">Billing Type</p>
+              <p className="text-base font-bold text-slate-800 dark:text-white">{selectedVehicle.tier}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">{selectedVehicle.price}</p>
             </div>
             <div>
-              <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">
-                Color Finish
-              </p>
+              <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">Color Finish</p>
               <div className="flex items-center gap-2 mt-1">
                 <span
                   className="w-4 h-4 rounded-full border border-white dark:border-slate-800 shadow-sm ring-2 ring-slate-200 dark:ring-slate-700"
                   style={{ backgroundColor: selectedVehicle.colorHex }}
                 />
-                <p className="text-sm font-bold text-slate-800 dark:text-white">
-                  {selectedVehicle.colorName}
-                </p>
+                <p className="text-sm font-bold text-slate-800 dark:text-white">{selectedVehicle.colorName}</p>
               </div>
             </div>
           </div>
@@ -442,15 +373,11 @@ export default function MyVehicles() {
         <div className="bg-white dark:bg-slate-900 rounded-[2rem] p-6 border border-slate-100 dark:border-slate-800">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <RefreshCw size={18} className="text-slate-400" /> Recent Activity
-              Timeline
+              <RefreshCw size={18} className="text-slate-400" /> Recent Activity Timeline
             </h3>
-            <span className="text-xs text-slate-400 dark:text-slate-500 font-medium">
-              Live sync tracking
-            </span>
+            <span className="text-xs text-slate-400 dark:text-slate-500 font-medium">Live sync tracking</span>
           </div>
-          {selectedVehicle.activities &&
-          selectedVehicle.activities.length > 0 ? (
+          {selectedVehicle.activities && selectedVehicle.activities.length > 0 ? (
             <div className="relative pl-6 border-l border-dashed border-slate-200 dark:border-slate-800 space-y-6 ml-3">
               {selectedVehicle.activities.map((act) => {
                 const isCheckIn = act.type === "Check-in";
@@ -461,44 +388,28 @@ export default function MyVehicles() {
                 return (
                   <div key={act.id} className="relative group/item">
                     <div className="absolute -left-[32px] top-1.5 flex h-4 w-4 items-center justify-center">
-                      <span
-                        className={`animate-ping absolute inline-flex h-3.5 w-3.5 rounded-full opacity-75 ${isCheckIn ? "bg-blue-400" : "bg-indigo-400"}`}
-                      ></span>
-                      <span
-                        className={`relative inline-flex rounded-full h-2.5 w-2.5 ${neonGlowClass}`}
-                      ></span>
+                      <span className={`animate-ping absolute inline-flex h-3.5 w-3.5 rounded-full opacity-75 ${isCheckIn ? "bg-blue-400" : "bg-indigo-400"}`}></span>
+                      <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${neonGlowClass}`}></span>
                     </div>
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-slate-50/50 dark:bg-slate-800/30 p-4 rounded-2xl border border-transparent hover:border-slate-100 dark:hover:border-slate-800">
                       <div>
                         <div className="flex items-center gap-2">
-                          <span
-                            className={`text-sm font-bold ${isCheckIn ? "text-blue-600 dark:text-blue-400" : "text-indigo-600 dark:text-indigo-400"}`}
-                          >
-                            {act.type}
-                          </span>
-                          <span className="text-slate-300 dark:text-slate-700">
-                            •
-                          </span>
+                          <span className={`text-sm font-bold ${isCheckIn ? "text-blue-600 dark:text-blue-400" : "text-indigo-600 dark:text-indigo-400"}`}>{act.type}</span>
+                          <span className="text-slate-300 dark:text-slate-700">•</span>
                           <span className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1">
-                            <MapPin size={12} className="text-slate-400" />{" "}
-                            {act.location}
+                            <MapPin size={12} className="text-slate-400" /> {act.location}
                           </span>
                         </div>
                         <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1 text-xs text-slate-400 dark:text-slate-500">
                           <span>{act.time}</span>
                           <span>•</span>
-                          <span className="font-medium italic">
-                            {act.method}
-                          </span>
+                          <span className="font-medium italic">{act.method}</span>
                         </div>
                       </div>
                       <div className="sm:text-right flex sm:flex-col items-center sm:items-end justify-between gap-2">
-                        <span className="text-sm font-mono font-black text-slate-900 dark:text-white">
-                          {act.cost}
-                        </span>
+                        <span className="text-sm font-mono font-black text-slate-900 dark:text-white">{act.cost}</span>
                         <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${isCheckIn ? "bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400" : "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400"}`}
-                        >
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${isCheckIn ? "bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400" : "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400"}`}>
                           {act.status}
                         </span>
                       </div>
@@ -509,13 +420,8 @@ export default function MyVehicles() {
             </div>
           ) : (
             <div className="text-center py-10 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
-              <Car
-                size={36}
-                className="text-slate-300 dark:text-slate-700 mx-auto mb-2 opacity-50"
-              />
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                No active parking history recorded.
-              </p>
+              <Car size={36} className="text-slate-300 dark:text-slate-700 mx-auto mb-2 opacity-50" />
+              <p className="text-sm text-slate-500 dark:text-slate-400">No active parking history recorded.</p>
             </div>
           )}
         </div>
@@ -531,37 +437,25 @@ export default function MyVehicles() {
               <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <Plus className="text-blue-600" size={24} /> Connect New Vehicle
               </h3>
-              <button
-                onClick={() => setIsAddModalOpen(false)}
-                className="p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full"
-              >
+              <button onClick={() => setIsAddModalOpen(false)} className="p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full">
                 <X size={20} />
               </button>
             </div>
-            <form
-              onSubmit={handleAddFormSubmit}
-              className="p-6 space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto custom-scrollbar"
-            >
+            <form onSubmit={handleAddFormSubmit} className="p-6 space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto custom-scrollbar">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 mb-1">
-                    Display Name
-                  </label>
+                  <label className="block text-xs font-bold text-slate-400 mb-1">Display Name</label>
                   <input
                     type="text"
                     required
                     value={newVehicle.name}
-                    onChange={(e) =>
-                      setNewVehicle({ ...newVehicle, name: e.target.value })
-                    }
+                    onChange={(e) => setNewVehicle({ ...newVehicle, name: e.target.value })}
                     placeholder="e.g., My Sedan"
                     className={inputThemeClasses}
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 mb-1">
-                    License Plate
-                  </label>
+                  <label className="block text-xs font-bold text-slate-400 mb-1">License Plate</label>
                   <input
                     type="text"
                     required
@@ -579,31 +473,23 @@ export default function MyVehicles() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 mb-1">
-                    Brand
-                  </label>
+                  <label className="block text-xs font-bold text-slate-400 mb-1">Brand</label>
                   <input
                     type="text"
                     required
                     value={newVehicle.brand}
-                    onChange={(e) =>
-                      setNewVehicle({ ...newVehicle, brand: e.target.value })
-                    }
+                    onChange={(e) => setNewVehicle({ ...newVehicle, brand: e.target.value })}
                     placeholder="Toyota"
                     className={inputThemeClasses}
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 mb-1">
-                    Model
-                  </label>
+                  <label className="block text-xs font-bold text-slate-400 mb-1">Model</label>
                   <input
                     type="text"
                     required
                     value={newVehicle.model}
-                    onChange={(e) =>
-                      setNewVehicle({ ...newVehicle, model: e.target.value })
-                    }
+                    onChange={(e) => setNewVehicle({ ...newVehicle, model: e.target.value })}
                     placeholder="Camry"
                     className={inputThemeClasses}
                   />
@@ -611,9 +497,7 @@ export default function MyVehicles() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 mb-1">
-                    Type
-                  </label>
+                  <label className="block text-xs font-bold text-slate-400 mb-1">Type</label>
                   <select
                     value={newVehicle.vehicle_type_id}
                     onChange={(e) =>
@@ -622,8 +506,7 @@ export default function MyVehicles() {
                         vehicle_type_id: e.target.value,
                       })
                     }
-                    className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm rounded-xl text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 cursor-pointer"
-                  >
+                    className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm rounded-xl text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 cursor-pointer">
                     <option value={1} className="bg-white dark:bg-slate-800">
                       Car / Automobile
                     </option>
@@ -633,16 +516,12 @@ export default function MyVehicles() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 mb-1">
-                    Color Finish
-                  </label>
+                  <label className="block text-xs font-bold text-slate-400 mb-1">Color Finish</label>
                   <input
                     type="text"
                     required
                     value={newVehicle.color}
-                    onChange={(e) =>
-                      setNewVehicle({ ...newVehicle, color: e.target.value })
-                    }
+                    onChange={(e) => setNewVehicle({ ...newVehicle, color: e.target.value })}
                     placeholder="Black"
                     className={inputThemeClasses}
                   />
@@ -652,14 +531,10 @@ export default function MyVehicles() {
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(false)}
-                  className="px-5 py-2.5 border border-slate-200 dark:border-slate-700 text-sm font-semibold rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
-                >
+                  className="px-5 py-2.5 border border-slate-200 dark:border-slate-700 text-sm font-semibold rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300">
                   Cancel
                 </button>
-                <button
-                  type="submit"
-                  className="px-6 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-xl shadow-md"
-                >
+                <button type="submit" className="px-6 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-xl shadow-md">
                   Save Vehicle
                 </button>
               </div>
@@ -676,45 +551,24 @@ export default function MyVehicles() {
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden transform animate-scale-in">
             <div className="flex items-center justify-between p-6 border-b border-slate-100 dark:border-slate-800">
               <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <Edit3 className="text-blue-600" size={22} /> Edit Vehicle
-                Details
+                <Edit3 className="text-blue-600" size={22} /> Edit Vehicle Details
               </h3>
-              <button
-                onClick={() => setIsEditModalOpen(false)}
-                className="p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full"
-              >
+              <button onClick={() => setIsEditModalOpen(false)} className="p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full">
                 <X size={20} />
               </button>
             </div>
-            <form
-              onSubmit={handleEditFormSubmit}
-              className="p-6 space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto custom-scrollbar"
-            >
+            <form onSubmit={handleEditFormSubmit} className="p-6 space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto custom-scrollbar">
               {apiError && (
-                <div className="p-3.5 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded-xl text-xs font-semibold text-red-600">
-                  ✕ {apiError}
-                </div>
+                <div className="p-3.5 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded-xl text-xs font-semibold text-red-600">✕ {apiError}</div>
               )}
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 mb-1">
-                    Display Label
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={editVehicle.name}
-                    onChange={(e) =>
-                      setEditVehicle({ ...editVehicle, name: e.target.value })
-                    }
-                    className={inputThemeClasses}
-                  />
+                  <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 mb-1">Display Label</label>
+                  <input type="text" required value={editVehicle.name} onChange={(e) => setEditVehicle({ ...editVehicle, name: e.target.value })} className={inputThemeClasses} />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 mb-1">
-                    License Plate
-                  </label>
+                  <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 mb-1">License Plate</label>
                   <input
                     type="text"
                     required
@@ -731,39 +585,17 @@ export default function MyVehicles() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 mb-1">
-                    Brand Name
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={editVehicle.brand}
-                    onChange={(e) =>
-                      setEditVehicle({ ...editVehicle, brand: e.target.value })
-                    }
-                    className={inputThemeClasses}
-                  />
+                  <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 mb-1">Brand Name</label>
+                  <input type="text" required value={editVehicle.brand} onChange={(e) => setEditVehicle({ ...editVehicle, brand: e.target.value })} className={inputThemeClasses} />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 mb-1">
-                    Model Version
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={editVehicle.model}
-                    onChange={(e) =>
-                      setEditVehicle({ ...editVehicle, model: e.target.value })
-                    }
-                    className={inputThemeClasses}
-                  />
+                  <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 mb-1">Model Version</label>
+                  <input type="text" required value={editVehicle.model} onChange={(e) => setEditVehicle({ ...editVehicle, model: e.target.value })} className={inputThemeClasses} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 mb-1">
-                    Classification
-                  </label>
+                  <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 mb-1">Classification</label>
                   <select
                     value={editVehicle.vehicle_type_id}
                     onChange={(e) =>
@@ -772,8 +604,7 @@ export default function MyVehicles() {
                         vehicle_type_id: e.target.value,
                       })
                     }
-                    className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm rounded-xl text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 cursor-pointer"
-                  >
+                    className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm rounded-xl text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 cursor-pointer">
                     <option value={1} className="bg-white dark:bg-slate-800">
                       Car / Automobile
                     </option>
@@ -783,18 +614,8 @@ export default function MyVehicles() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 mb-1">
-                    Color Finish
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={editVehicle.color}
-                    onChange={(e) =>
-                      setEditVehicle({ ...editVehicle, color: e.target.value })
-                    }
-                    className={inputThemeClasses}
-                  />
+                  <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 mb-1">Color Finish</label>
+                  <input type="text" required value={editVehicle.color} onChange={(e) => setEditVehicle({ ...editVehicle, color: e.target.value })} className={inputThemeClasses} />
                 </div>
               </div>
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800 mt-6">
@@ -802,15 +623,13 @@ export default function MyVehicles() {
                   type="button"
                   disabled={apiLoading}
                   onClick={() => setIsEditModalOpen(false)}
-                  className="px-5 py-2.5 border border-slate-200 dark:border-slate-700 text-sm font-semibold rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition active:scale-95 disabled:opacity-50"
-                >
+                  className="px-5 py-2.5 border border-slate-200 dark:border-slate-700 text-sm font-semibold rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition active:scale-95 disabled:opacity-50">
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={apiLoading}
-                  className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-xl transition shadow-md active:scale-95 disabled:opacity-50"
-                >
+                  className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-xl transition shadow-md active:scale-95 disabled:opacity-50">
                   Save Changes
                 </button>
               </div>
