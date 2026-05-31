@@ -1199,9 +1199,8 @@ Authorization: Bearer JWT_ACCESS_TOKEN
 **Request Body**
 ```json
 {
-  "license_plate": "29A-123.45",
+  "license_plate": "51H-12345",
   "vehicle_type_id": 1,
-  "check_in_time_estimated": "2024-01-15T07:30:00Z",
   "lost_reason": "Customer misplaced ticket",
   "staff_id": "usr_001"
 }
@@ -1220,11 +1219,13 @@ Authorization: Bearer JWT_ACCESS_TOKEN
 {
   "success": true,
   "data": {
-    "incident_log_id": 1,
-    "session_id": "sess_lost_001",
-    "calculated_fee": 200000,
+    "incident_log_id": 5,
+    "session_id": "sess_e3a992277f",
+    "check_in_time": "2026-05-31T13:44:35",
+    "check_out_time": "2026-05-31T13:49:12.9968353+07:00",
+    "calculated_fee": 55000,
     "breakdown": {
-      "max_daily_rate": 150000,
+      "actual_parking_fee": 5000,
       "handling_fee": 50000
     },
     "payment_required": true
