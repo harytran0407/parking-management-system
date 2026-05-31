@@ -81,6 +81,10 @@ builder.Services.AddScoped<ISlotManagementService, SlotManagementService>();
 builder.Services.AddScoped<IPricingPolicyRepository, PricingPolicyRepository>();
 builder.Services.AddScoped<IPricingPolicyService, PricingPolicyService>();
 
+// ── Dashboard module ──────────────────────────────────────────────────────────
+builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
+builder.Services.AddScoped<IDashboardService, DashboardService>();
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
