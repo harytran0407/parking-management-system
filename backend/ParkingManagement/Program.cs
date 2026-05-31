@@ -77,6 +77,10 @@ builder.Services.AddJwtAuthentication(builder.Configuration);
 builder.Services.AddScoped<ISlotManagementRepository, SlotManagementRepository>();
 builder.Services.AddScoped<ISlotManagementService, SlotManagementService>();
 
+// ── Pricing Policy module ─────────────────────────────────────────────────────
+builder.Services.AddScoped<IPricingPolicyRepository, PricingPolicyRepository>();
+builder.Services.AddScoped<IPricingPolicyService, PricingPolicyService>();
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
