@@ -4,16 +4,8 @@ import { useAuth } from "../hooks/useAuth";
 import { Lock, Mail, ArrowLeft } from "lucide-react";
 import googleIcon from "../assets/google.png";
 import { useGoogleLogin } from "@react-oauth/google";
-import api from "../utils/api";
 
-const ROLES_CONFIG = [
-  { value: "ParkingManager", label: "Parking Manager" },
-  { value: "ParkingStaff", label: "Parking Staff" },
-  { value: "ParkingUser", label: "Driver" },
-  { value: "SystemAdmin", label: "Administrator" },
-];
-
-// SET ROLE_ROUTES
+// 🎯 GIỮ LẠI MAP NÀY ĐỂ ĐIỀU HƯỚNG TỰ ĐỘNG DỰA VÀO DATA BACKEND TRẢ VỀ
 const ROLE_ROUTES_MAP = {
   ParkingStaff: "/staff",
   ParkingUser: "/user",
@@ -27,7 +19,8 @@ export default function Login() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState("ParkingManager");
+  // Đã xóa state [role, setRole]
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -35,47 +28,32 @@ export default function Login() {
     e.preventDefault();
     setError("");
     setLoading(true);
+
     //=================AXIOS API==================
     try {
-      const response = await api.post("/auth/login", {
-        email_or_phone: email.trim(),
-        password: password,
-      });
-      if (response.data && response.data.success) {
-        const { token, user } = response.data.data;
-        console.log("User from server: ", user);
-        console.log("Role: ", user.role);
-        console.log("Redirect to: ", ROLE_ROUTES_MAP[user.role]);
-        // Luu tru JWT token vao Localstorage
-        localStorage.setItem("accessToken", token);
-        localStorage.setItem("userData", JSON.stringify(user));
-        // Doi chieu role nhan tu database de chuyen huong phu hop
-        const redirectPath = ROLE_ROUTES_MAP[user.role] || "/";
-        navigate(redirectPath);
-      } else {
-        setError("Invalid system payload format received.");
-      }
+      // Login <= AuthContext
+      const user = await login(email.trim(), password);
+
+      // 🎯 TỰ ĐỘNG ĐIỀU HƯỚNG: Lấy user.role từ Backend trả về để map với đường dẫn
+      const redirectPath = ROLE_ROUTES_MAP[user.role] || "/home";
+      navigate(redirectPath);
     } catch (err) {
-      if (err.response && err.response.data) {
-        const errorCode = err.response.data.error_code;
-        switch (errorCode) {
-          case "INVALID_CREDENTIALS":
-            setError("Invalid email or password.Please try again.");
-            break;
-          case "ACCOUNT_LOCKED":
-            setError("This account has been locked due to multiple failed login.");
-            break;
-          case "ACCESS_DENIED":
-            setError("Account is inactive or not verified.");
-            break;
-          case "TOO_MANY_ATTEMPTS":
-            setError("Too many login attempts.Please try again later.");
-            break;
-          default:
-            setError(err.response.data.message || "Login failed.Please verify your credentials");
-        }
-      } else {
-        setError("Network error.Unable to connect the server");
+      const errorCode = err?.error_code;
+      switch (errorCode) {
+        case "INVALID_CREDENTIALS":
+          setError("Invalid email or password. Please try again.");
+          break;
+        case "ACCOUNT_LOCKED":
+          setError("This account has been locked due to multiple failed logins.");
+          break;
+        case "ACCESS_DENIED":
+          setError("Account is inactive or not verified.");
+          break;
+        case "TOO_MANY_ATTEMPTS":
+          setError("Too many login attempts. Please try again later.");
+          break;
+        default:
+          setError(err?.message || "Login failed. Please verify your credentials.");
       }
     } finally {
       setLoading(false);
@@ -89,8 +67,10 @@ export default function Login() {
       try {
         const token = tokenResponse.access_token;
         const user = await loginWithGoogle(token);
-        const userRole = user.role.toLowerCase();
-        navigate(`/${userRole}`);
+
+        // 🎯 Sửa lại cho đồng bộ với logic map Route ở trên
+        const redirectPath = ROLE_ROUTES_MAP[user.role] || "/home";
+        navigate(redirectPath);
       } catch (err) {
         setError(err.message || `Google login failed`);
       } finally {
@@ -168,20 +148,7 @@ export default function Login() {
               </div>
             </div>
 
-            {/* ROLE SELECTION */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">Role</label>
-              <select
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-                className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-blue-500 transition cursor-pointer">
-                {ROLES_CONFIG.map((r) => (
-                  <option key={r.value} value={r.value} className="bg-slate-800 text-white">
-                    {r.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {/* Đã xóa Role Selection form ở đây */}
 
             <button
               type="submit"
