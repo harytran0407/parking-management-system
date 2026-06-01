@@ -21,7 +21,7 @@ namespace ParkingManagement.Utils
         public static bool IsValidPassword(string password)
         {
             if (string.IsNullOrEmpty(password)) return false;
-            string passwordPattern = @"^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{6,}$"; // Mật khẩu tối thiểu 6 ký tự, ít nhất một chữ hoa và một số
+            string passwordPattern = @"^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$"; //Cho phép chứa các ký tự đặc biệt như @, $, !, %, *, ?, & giống hệt React
             return Regex.IsMatch(password, passwordPattern);
         }
 

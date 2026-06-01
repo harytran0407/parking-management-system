@@ -32,9 +32,15 @@ namespace ParkingManagement.Controllers.AuthController
         }
 
         [HttpPost("register")]
-        public IActionResult Register(RegisterRequestDto request)
+        public IActionResult Register([FromBody] RegisterRequestDto request)
         {
             //-- Các hàm kiểm tra tính hợp lệ của họ tên, email, số điện thoại và mật khẩu --//
+            Console.WriteLine("======= KIỂM TRA TRẠNG THÁI VALIDATION =======");
+            Console.WriteLine($"1. Tên có trống không?: {string.IsNullOrWhiteSpace(request.FullName)}");
+            Console.WriteLine($"2. Email hợp lệ không?: {ValidationUtils.IsValidEmail(request.Email)}");
+            Console.WriteLine($"3. SĐT hợp lệ không?: {ValidationUtils.IsValidPhoneNumber(request.PhoneNumber)}");
+            Console.WriteLine($"4. Mật khẩu hợp lệ không?: {ValidationUtils.IsValidPassword(request.Password)}");
+            Console.WriteLine("==============================================");
 
             if (string.IsNullOrWhiteSpace(request.FullName) || !ValidationUtils.IsValidEmail(request.Email) ||
                     !ValidationUtils.IsValidPhoneNumber(request.PhoneNumber) || !ValidationUtils.IsValidPassword(request.Password))
@@ -173,6 +179,16 @@ namespace ParkingManagement.Controllers.AuthController
         [HttpPost("login")]
         public IActionResult Login([FromBody] LoginRequestDto request)
         {
+            Console.WriteLine("\n======= KIỂM TRA TRẠNG THÁI VALIDATION LOGIN =======");
+            // 1. Kiểm tra xem các trường dữ liệu có bị để trống/null từ client không
+            Console.WriteLine($"1. Tài khoản (Email/SĐT) có trống không?: {string.IsNullOrWhiteSpace(request.EmailOrPhone)}");
+            Console.WriteLine($"2. Mật khẩu có bị trống không?          : {string.IsNullOrWhiteSpace(request.Password)}");
+
+            // 2. Định dạng kiểm tra (Sử dụng lại class ValidationUtils của bạn)
+            Console.WriteLine($"3. Nhận diện dạng định dạng Email hợp lệ?: {ValidationUtils.IsValidEmail(request.EmailOrPhone)}");
+            Console.WriteLine($"4. Nhận diện dạng định dạng SĐT hợp lệ?  : {ValidationUtils.IsValidPhoneNumber(request.EmailOrPhone)}");
+            Console.WriteLine($"5. Độ phức tạp mật khẩu hợp lệ không?   : {ValidationUtils.IsValidPassword(request.Password)}");
+            Console.WriteLine("====================================================\n");
             // Kiểm tra số lần thử trong cache
             string cacheKey = $"LoginAttempts_{request.EmailOrPhone}";
             int attempts = 0;
@@ -245,12 +261,12 @@ namespace ParkingManagement.Controllers.AuthController
             var key = Encoding.UTF8.GetBytes(jwtSettings["Key"] ?? "ParkingManagement_Super_Secret_Key_2026");
 
             var claims = new List<Claim>
-    {
-        new Claim(JwtRegisteredClaimNames.Sub, userInDb.UserId),
-        new Claim(ClaimTypes.Email, userInDb.Email ?? ""),
-        new Claim(ClaimTypes.Role, roleName),
-        new Claim("session_id", Guid.NewGuid().ToString().Substring(0, 6))
-    };
+            {
+            new Claim(JwtRegisteredClaimNames.Sub, userInDb.UserId),
+            new Claim(ClaimTypes.Email, userInDb.Email ?? ""),
+            new Claim(ClaimTypes.Role, roleName),
+            new Claim("session_id", Guid.NewGuid().ToString().Substring(0, 6))
+             };
 
             var tokenDescriptor = new SecurityTokenDescriptor
             {
@@ -279,7 +295,9 @@ namespace ParkingManagement.Controllers.AuthController
                         user_id = userInDb.UserId,
                         full_name = userInDb.FullName,
                         email = userInDb.Email,
+                        phone = userInDb.Phone,
                         role = roleName
+                        
                     }
                 }
             });
