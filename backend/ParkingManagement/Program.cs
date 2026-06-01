@@ -93,6 +93,14 @@ if (app.Environment.IsDevelopment())
 app.UseExceptionHandler(errApp => errApp.Run(async ctx =>
 {
     var ex = ctx.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>()?.Error;
+
+    if (ex != null)
+    {
+        Console.WriteLine("\n🚨 ======= [BACKEND CRASH DETECTED] =======");
+        Console.WriteLine(ex.ToString()); // In trọn vẹn dấu vết lỗi, tên file, số dòng bị sập
+        Console.WriteLine("============================================\n");
+    }
+    
     var (status, message) = ex switch
     {
         KeyNotFoundException => (404, ex.Message),
