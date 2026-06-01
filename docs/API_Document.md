@@ -43,7 +43,7 @@
 **Request Body**
 ```json
 {
-  "email": "staff@parking.com",
+  "email_or_phone": "staff@parking.com",
   "password": "123456"
 }
 ```
