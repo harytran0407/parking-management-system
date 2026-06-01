@@ -178,7 +178,6 @@ namespace ParkingManagement.Controllers.AuthController
 
         [HttpPost("login")]
         public IActionResult Login([FromBody] LoginRequestDto request)
-
         {
             Console.WriteLine("\n======= KIỂM TRA TRẠNG THÁI VALIDATION LOGIN =======");
             // 1. Kiểm tra xem các trường dữ liệu có bị để trống/null từ client không
@@ -405,6 +404,113 @@ namespace ParkingManagement.Controllers.AuthController
             });
         }
 
+        [Authorize]
+        [HttpGet("profile")]
+        public IActionResult GetProfile()
+        {
+            // Lấy userId từ JWT Token đang gửi kèm
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized(new
+                {
+                    success = false,
+                    message = "Invalid token"
+                });
+            }
 
+            // Truy soát Database để lấy thông tin tài khoản
+            var userInDb = _context.Users.FirstOrDefault(u => u.UserId == userId);
+            if (userInDb == null)
+            {
+                return NotFound(new
+                {
+                    success = false,
+                    message = "User not found."
+                });
+            }
+
+            var profile = new UserProfileResponseDto
+            {
+                Id = userInDb.UserId,
+                Username = userInDb.Username,
+                Email = userInDb.Email,
+                Phone = userInDb.Phone,
+                AvatarUrl = userInDb.AvatarUrl ?? ""
+            };
+
+            return Ok(new
+            {
+                success = true,
+                data = profile
+            });
+        }
+
+        [Authorize]
+        [HttpPut("profile")]
+        public async Task<IActionResult> UpdateProfile([FromForm] UpdateProfileRequestDto request)
+        {
+            // Lấy userId từ JWT Token đang gửi kèm
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized(new
+                {
+                    success = false,
+                    message = "Invalid token"
+                });
+            }
+            var userInDb = _context.Users.FirstOrDefault(u => u.UserId == userId);
+            if (userInDb == null)
+            {
+                return NotFound(new
+                {
+                    success = false,
+                    message = "User not found."
+                });
+            }
+
+            /* -- Validation -- */
+
+            // Dò tìm xem có tài khoản nào khác đã sử dụng Email mà người dùng đang muốn cập nhật
+            bool isEmailTaken = _context.Users.Any(u => u.Email == request.Email && u.UserId != userId);
+            if (isEmailTaken)
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message = "This Email is already taken by another account"
+                });
+            }
+
+            // Dò tìm xem có tài khoản nào khác đã sử dụng SĐT mà người dùng đang muốn cập nhật
+            bool isPhoneTaken = _context.Users.Any(u => u.Phone == request.Phone && u.UserId != userId);
+            if (isPhoneTaken)
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message = "This phone number is already taken by another account"
+                });
+            }
+
+            if (request.Avatar != null && request.Avatar.Length > 0)
+            {
+                var fileName = $"{Guid.NewGuid()}_{request.Avatar.FileName}";
+                userInDb.AvatarUrl = $"/uploads/avatars/{fileName}";
+            }
+
+            userInDb.Username = request.Username;
+            userInDb.Email = request.Email;
+            userInDb.Phone = request.Phone;
+            _context.SaveChanges();
+
+            return Ok(new
+            {
+                success = true,
+                message = "Profile updated successfully",
+
+            });
+        }
     }
 }

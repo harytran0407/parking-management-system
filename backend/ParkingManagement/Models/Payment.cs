@@ -31,7 +31,7 @@ public partial class Payment
 
     public int? CardId { get; set; }
 
-    public int? BookingId { get; set; }
+    public string? BookingId { get; set; }
 
     public string? UserId { get; set; }
 

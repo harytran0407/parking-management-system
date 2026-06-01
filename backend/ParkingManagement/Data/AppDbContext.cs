@@ -526,6 +526,10 @@ public partial class AppDbContext : DbContext
                 .HasColumnName("OVERNIGHT_FEE");
             entity.Property(e => e.VehicleTypeId).HasColumnName("VEHICLE_TYPE_ID");
 
+            entity.Property(e => e.HandlingFee)
+                .HasPrecision(10, 2)
+                .HasColumnName("HANDLING_FEE");
+
             entity.HasOne(d => d.VehicleType).WithMany(p => p.PricingPolicies)
                 .HasForeignKey(d => d.VehicleTypeId)
                 .OnDelete(DeleteBehavior.ClientSetNull)

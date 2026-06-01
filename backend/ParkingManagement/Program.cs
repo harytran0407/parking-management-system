@@ -58,6 +58,13 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddScoped<IParkingRepository, ParkingRepository>();
 builder.Services.AddScoped<IParkingService, ParkingService>();
 
+// ── Booking module ───────────────────────────────────────────────────────────────────────
+builder.Services.AddScoped<IBookingRepository, BookingRepository>();
+
+// ── Incident module ───────────────────────────────────────────────────────────────────────
+builder.Services.AddScoped<IIncidentRepository, IncidentRepository>();
+builder.Services.AddScoped<IIncidentService, IncidentService>();
+
 // ── Building module ───────────────────────────────────────────────────────────
 builder.Services.AddScoped<IBuildingRepository, BuildingRepository>();
 builder.Services.AddScoped<IBuildingService, BuildingService>();
@@ -80,6 +87,10 @@ builder.Services.AddScoped<ISlotManagementService, SlotManagementService>();
 // ── Pricing Policy module ─────────────────────────────────────────────────────
 builder.Services.AddScoped<IPricingPolicyRepository, PricingPolicyRepository>();
 builder.Services.AddScoped<IPricingPolicyService, PricingPolicyService>();
+
+// ── Dashboard module ──────────────────────────────────────────────────────────
+builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
+builder.Services.AddScoped<IDashboardService, DashboardService>();
 
 var app = builder.Build();
 

@@ -2,63 +2,71 @@ using System;
 using Xunit;
 using FluentAssertions;
 using ParkingManagement.Services.Helpers;
+using ParkingManagement.Models; // Import namespace chứa thực thể PricingPolicy
 
-namespace ParkingManagement.Tests.Helpers
+namespace ParkingManagement.Tests
 {
-    public class ParkingCalculationHelperTests
+    public class ParkingCalculationHelperTest
     {
-        // =========================================================================
-        // CASE 1: XE ĐỖ TRONG THỜI GIAN ÂN HẠN (MỨC PHÍ PHẢI BẰNG 0đ)
-        // =========================================================================
-        [Fact]
-        public void CASE_1_CalculateParkingFee_ShouldReturnZero_WhenWithinGracePeriod()
+        // Khởi tạo bảng giá cấu hình giả lập dùng chung cho các test case
+        private readonly PricingPolicy _mockPolicy = new PricingPolicy
         {
-            // Arrange (Thiết lập 2 phút đỗ - dưới hạn 3 phút)
-            int minutes = 2;
-            decimal basePrice = 15000;
-            decimal hourlyRate = 10000;
+            PolicyId = 1,
+            VehicleTypeId = 1, // Giả định: Xe máy
+            BasePrice = 10000m,
+            HourlyRate = 5000m,
+            OvernightFee = 20000m
+        };
+
+        // Giả lập khung giờ hoạt động tiêu chuẩn bao quát để không bị tính phí qua đêm
+        private const string StandardOperatingHours = "00:00-23:59";
+
+        [Fact]
+        public void CalculateParkingFee_WithinFirstHour_ReturnsBasePrice()
+        {
+            // Arrange
+            var checkIn = new DateTime(2026, 6, 2, 8, 0, 0);
+            var checkOut = new DateTime(2026, 6, 2, 8, 45, 0); // Đỗ 45 phút
 
             // Act
-            decimal fee = ParkingCalculationHelper.CalculateParkingFee(minutes, basePrice, hourlyRate);
+            var result = ParkingCalculationHelper.CalculateParkingFee(checkIn, checkOut, _mockPolicy, StandardOperatingHours);
 
             // Assert
-            fee.Should().Be(0); // Không tính tiền
+            Assert.Equal(10000m, result.CurrentFee); // Tiếng đầu bằng BasePrice
+            Assert.Equal(1, result.Hours);            // Làm tròn thành 1 tiếng đỗ
         }
 
-        // =========================================================================
-        // CASE 2: XE ĐỖ VỪA QUÁ THỜI GIAN ÂN HẠN (TÍNH GIÁ GỐC GIỜ ĐẦU)
-        // =========================================================================
         [Fact]
-        public void CASE_2_CalculateParkingFee_ShouldChargeBasePrice_WhenJustOverGracePeriod()
+        public void CalculateParkingFee_MultipleHours_CalculatesProgressiveFee()
         {
-            // Arrange (Thiết lập 4 phút đỗ - đã lố mốc 3 phút)
-            int minutes = 4;
-            decimal basePrice = 15000;
-            decimal hourlyRate = 10000;
+            // Arrange
+            var checkIn = new DateTime(2026, 6, 2, 8, 0, 0);
+            var checkOut = new DateTime(2026, 6, 2, 11, 15, 0); // Đỗ 3 tiếng 15 phút -> tính thành 4 tiếng
 
             // Act
-            decimal fee = ParkingCalculationHelper.CalculateParkingFee(minutes, basePrice, hourlyRate);
+            var result = ParkingCalculationHelper.CalculateParkingFee(checkIn, checkOut, _mockPolicy, StandardOperatingHours);
 
             // Assert
-            fee.Should().Be(basePrice); // Thu đúng 15,000đ
+            // 1 tiếng đầu (10k) + 3 tiếng tiếp theo (3 * 5k = 15k) = 25k
+            Assert.Equal(25000m, result.CurrentFee);
+            Assert.Equal(4, result.Hours);
         }
 
-        // =========================================================================
-        // CASE 3: XE ĐỖ LŨY TIẾN NHIỀU GIỜ (TÍNH GIÁ GỐC + GIÁ THEO GIỜ LÀM TRÒN)
-        // =========================================================================
         [Fact]
-        public void CASE_3_CalculateParkingFee_ShouldChargeProgressiveFee_WhenParkingMultipleHours()
+        public void CalculateParkingFee_WithinGracePeriod_ReturnsZero()
         {
-            // Arrange (Thiết lập đỗ 2 tiếng 5 phút = 125 phút -> làm tròn lên thành 3 block giờ)
-            int minutes = 125;
-            decimal basePrice = 15000;  // Tiếng 1: 15,000đ
-            decimal hourlyRate = 10000; // Tiếng 2 + Tiếng 3 = 20,000đ
+            // Arrange
+            var checkIn = new DateTime(2026, 6, 2, 8, 0, 0);
+            var checkOut = new DateTime(2026, 6, 2, 8, 2, 30); // Đỗ 2 phút 30 giây (Trong thời gian ân hạn 5 phút)
 
             // Act
-            decimal fee = ParkingCalculationHelper.CalculateParkingFee(minutes, basePrice, hourlyRate);
+            var result = ParkingCalculationHelper.CalculateParkingFee(checkIn, checkOut, _mockPolicy, StandardOperatingHours, gracePeriodMinutes: 5);
 
             // Assert
-            fee.Should().Be(35000); // Tổng thu phải là 35,000đ
+            Assert.Equal(0m, result.CurrentFee);
+            Assert.Equal(0, result.Hours);
+            // Kiểm tra số giây ân hạn còn lại: (5 phút * 60) - 150 giây = 150 giây còn lại
+            Assert.Equal(150, result.GracePeriodRemainingSeconds);
         }
     }
 }
