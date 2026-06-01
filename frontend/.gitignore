@@ -4,3 +4,8 @@ dist/
 *.local
 .env.local
 .env.*.local
+# ── VITE CACHE & NPM DEPENDENCIES ─────────────────────────────────────────────
+
+.vite/
+build/
+*.log
