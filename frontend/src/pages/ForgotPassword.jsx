@@ -1,67 +1,46 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Mail, Phone, KeyRound, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Mail, KeyRound, CheckCircle2, RefreshCcw, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
-
-// import axios from 'axios'; //
+import api from "../utils/api";
 
 export default function ForgotPassword() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
 
-  // Quản lý các bước luồng đi: 'request' -> 'otp' -> 'reset' -> 'success'
+  // Flow control: 'request' -> 'otp' -> 'reset' -> 'success'
   const [step, setStep] = useState("request");
-  const [method, setMethod] = useState("email"); // 'email' hoặc 'phone'
 
-  const [inputValue, setInputValue] = useState(""); // Lưu email hoặc số điện thoại người dùng nhập
+  // State lưu trữ thông tin (Xóa bỏ hoàn toàn state 'method')
+  const [inputValue, setInputValue] = useState(""); // Dùng chung cho cả Email/SĐT
   const [otpCode, setOtpCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   // ============================================================
-  // BƯỚC 1: GỬI YÊU CẦU KHÔI PHỤC (GỬI LINK EMAIL HOẶC MÃ OTP SĐT)
+  // BƯỚC 1: GỬI YÊU CẦU KHÔI PHỤC (EMAIL HOẶC SĐT CHUNG 1 Ô)
   // ============================================================
   const handleRequestSubmit = async (e) => {
     e.preventDefault();
     if (!inputValue.trim()) {
-      toast.error("Please enter your information.");
+      toast.error("Please enter your email or phone number.");
       return;
     }
 
     setLoading(true);
     try {
-      /* // 🛠️ ===== AXIOS REAL API CALL (BƯỚC 1) =====
-      // Cấu trúc Request Body truyền lên khớp với đặc tả hệ thống
-      const requestPayload = {
-        method_type: method, // 'email' hoặc 'phone'
-        account_value: inputValue // Giá trị chuỗi email hoặc sđt người dùng nhập
-      };
+      // Gửi lên key duy nhất 'email_or_phone' khớp chuẩn DTO Backend
+      const response = await api.post("/auth/forgot-password", {
+        email_or_phone: inputValue.trim(),
+      });
 
-      const response = await axios.post('/api/v1/auth/forgot-password-request', requestPayload);
-
-      if (response.data.success) {
-        if (method === 'email') {
-          toast.success("A password reset link has been sent to your email!");
-          setStep('reset'); // Nhảy thẳng đến màn hình nhập mật khẩu mới nếu là Email
-        } else {
-          toast.success("An OTP verification code has been sent to your phone number!");
-          setStep('otp'); // Chuyển sang màn hình bắt nhập mã OTP nếu là Số điện thoại
-        }
-      }
-      // ===========================================
-      */
-
-      // --- MOCK TIMEOUT (Xóa đoạn giả lập dưới này đi khi mở khối lệnh Axios ở trên) ---
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      if (method === "email") {
-        toast.success("A password reset link has been sent to your email!");
-        setStep("reset");
-      } else {
-        toast.success("An OTP verification code has been sent to your phone number!");
+      if (response.data && response.data.success) {
+        toast.success("Verification code has been dispatched successfully!");
         setStep("otp");
       }
-      // ---------------------------------------------------------------------------------
     } catch (err) {
+      console.error("[Recovery] Request initialization failed:", err);
       toast.error(err.response?.data?.message || "Account verification failed. Please try again.");
     } finally {
       setLoading(false);
@@ -69,51 +48,23 @@ export default function ForgotPassword() {
   };
 
   // ============================================================
-  // BƯỚC 2: XÁC THỰC MÃ OTP ĐIỆN THOẠI (CHỈ CHẠY KHI CHỌN METHOD PHONE)
+  // BƯỚC 2: TIẾP NHẬN MÃ OTP
   // ============================================================
-  const handleVerifyOtp = async (e) => {
+  const handleVerifyOtp = (e) => {
     e.preventDefault();
     if (otpCode.length < 4) {
       toast.error("Please enter a valid OTP code.");
       return;
     }
-
-    setLoading(true);
-    try {
-      /* // 🛠️ ===== AXIOS REAL API CALL (BƯỚC 2) =====
-      const requestPayload = {
-        phone_number: inputValue, // Số điện thoại đã nhập ở Bước 1
-        otp: otpCode // Mã OTP gồm 4 hoặc 6 số do người dùng nhập vào Form
-      };
-
-      const response = await axios.post('/api/v1/auth/verify-otp', requestPayload);
-
-      if (response.data.success) {
-        toast.success("OTP verified successfully!");
-        setStep('reset'); // Mã xác thực khớp, chuyển tiếp sang màn đặt mật khẩu mới
-      }
-      // ===========================================
-      */
-
-      // --- MOCK TIMEOUT (Xóa đoạn giả lập dưới này đi khi mở khối lệnh Axios ở trên) ---
-      await new Promise((resolve) => setTimeout(resolve, 600));
-      toast.success("OTP verified successfully!");
-      setStep("reset");
-      // ---------------------------------------------------------------------------------
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Invalid or expired OTP code.");
-    } finally {
-      setLoading(false);
-    }
+    setStep("reset");
   };
 
   // ============================================================
-  // BƯỚC 3: TIẾN HÀNH THIẾT LẬP LẠI MẬT KHẨU MỚI
+  // BƯỚC 3: ĐỔI MẬT KHẨU MỚI (BẮN CẢ OTP + PASS MỚI LÊN SERVER)
   // ============================================================
   const handleResetPassword = async (e) => {
     e.preventDefault();
 
-    // Kiểm tra định dạng Regex bảo mật mật khẩu
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
     if (!passwordRegex.test(newPassword)) {
       toast.error("Password must be at least 8 characters, including uppercase, lowercase, numbers, and special characters.");
@@ -127,28 +78,18 @@ export default function ForgotPassword() {
 
     setLoading(true);
     try {
-      /* // 🛠️ ===== AXIOS REAL API CALL (BƯỚC 3) =====
-      const requestPayload = {
-        account_value: inputValue, // Truyền Email hoặc Phone lên để Backend định danh tài khoản cần đổi
-        password: newPassword, // Mật khẩu mới vừa thiết lập
-        confirm_password: confirmPassword // Xác nhận lại mật khẩu mới
-      };
+      const response = await api.post("/auth/reset-password", {
+        email_or_phone: inputValue.trim(),
+        otp: otpCode.trim(),
+        new_password: newPassword,
+      });
 
-      const response = await axios.post('/api/v1/auth/reset-password-confirm', requestPayload);
-
-      if (response.data.success) {
+      if (response.data && response.data.success) {
         toast.success("Password updated successfully!");
-        setStep('success'); // Đổi mật khẩu thành công, hiển thị màn hình chúc mừng
+        setStep("success");
       }
-      // ===========================================
-      */
-
-      // --- MOCK TIMEOUT (Xóa đoạn giả lập dưới này đi khi mở khối lệnh Axios ở trên) ---
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      toast.success("Password updated successfully!");
-      setStep("success");
-      // ---------------------------------------------------------------------------------
     } catch (err) {
+      console.error("[Recovery] Reset password submission failed:", err);
       toast.error(err.response?.data?.message || "Failed to reset password.");
     } finally {
       setLoading(false);
@@ -180,116 +121,93 @@ export default function ForgotPassword() {
           </div>
 
           {/* ============================================================
-              BƯỚC 1: FORM KHỞI TẠO YÊU CẦU (EMAIL HOẶC SĐT)
+              BƯỚC 1: FORM NHẬP EMAIL HOẶC SĐT (ĐÃ GỘP THÀNH 1 INPUT)
              ============================================================ */}
           {step === "request" && (
             <form onSubmit={handleRequestSubmit} className="space-y-5">
-              {/* Tab lựa chọn phương thức khôi phục */}
-              <div className="flex bg-slate-800 p-1 rounded-lg border border-slate-700/60">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMethod("email");
-                    setInputValue("");
-                  }}
-                  className={`flex-1 py-2 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1.5 ${method === "email" ? "bg-blue-600 text-white shadow" : "text-slate-400 hover:text-slate-200"}`}>
-                  <Mail size={14} /> Email Address
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMethod("phone");
-                    setInputValue("");
-                  }}
-                  className={`flex-1 py-2 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1.5 ${method === "phone" ? "bg-blue-600 text-white shadow" : "text-slate-400 hover:text-slate-200"}`}>
-                  <Phone size={14} /> Phone Number
-                </button>
-              </div>
-
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">{method === "email" ? "Registered Email" : "Registered Phone Number"}</label>
+                <label className="block text-sm font-medium text-slate-300 mb-1">Email or Phone Number</label>
                 <div className="relative">
-                  {method === "email" ? (
-                    <>
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
-                      <input
-                        type="email"
-                        required
-                        value={inputValue}
-                        onChange={(e) => setInputValue(e.target.value)}
-                        placeholder="name@smartpark.com"
-                        className="w-full pl-10 pr-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
-                      />
-                    </>
-                  ) : (
-                    <>
-                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
-                      <input
-                        type="tel"
-                        required
-                        value={inputValue}
-                        onChange={(e) => setInputValue(e.target.value)}
-                        placeholder="0912345678"
-                        className="w-full pl-10 pr-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
-                      />
-                    </>
-                  )}
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+                  <input
+                    type="text"
+                    required
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    placeholder="Enter registered email or phone"
+                    className="w-full pl-10 pr-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
+                  />
                 </div>
               </div>
 
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 px-4 rounded-lg transition duration-200 disabled:opacity-50">
-                {loading ? "Processing..." : "Send Recovery Request"}
+                className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 px-4 rounded-lg transition duration-200 disabled:opacity-50 flex items-center justify-center gap-2">
+                {loading && <RefreshCcw size={14} className="animate-spin" />}
+                <span>{loading ? "Processing..." : "Send Recovery Request"}</span>
               </button>
             </form>
           )}
 
           {/* ============================================================
-              BƯỚC 2: FORM NHẬP MÃ OTP XÁC THỰC SỐ ĐIỆN THOẠI
+              BƯỚC 2: FORM NHẬP MÃ OTP XÁC THỰC
              ============================================================ */}
           {step === "otp" && (
             <form onSubmit={handleVerifyOtp} className="space-y-4">
               <div className="text-center text-sm text-slate-300 mb-2">
-                Please enter the 4-digit verification code sent to <span className="text-blue-400 font-mono">{inputValue}</span>
+                Please enter the verification code sent to <br />
+                <span className="text-blue-400 font-mono font-semibold">{inputValue}</span>
               </div>
               <div className="relative">
                 <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
                 <input
                   type="text"
-                  maxLength={4}
+                  maxLength={6}
                   required
                   value={otpCode}
-                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))} // Chặn không cho nhập chữ
-                  placeholder="Enter 4-digit OTP"
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white text-center font-bold tracking-[0.5em] placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
+                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
+                  placeholder="Enter OTP code"
+                  className="w-full pl-10 pr-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white text-center font-bold tracking-[0.3em] placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
                 />
               </div>
               <button
                 type="submit"
-                disabled={loading}
-                className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 px-4 rounded-lg transition duration-200 disabled:opacity-50">
-                {loading ? "Verifying..." : "Verify OTP Code"}
+                className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 px-4 rounded-lg transition duration-200 flex items-center justify-center">
+                <span>Continue</span>
               </button>
+
+              <div className="text-center mt-2">
+                <button type="button" onClick={() => setStep("request")} className="text-xs text-blue-500 hover:underline font-medium">
+                  Change Email / Phone Number
+                </button>
+              </div>
             </form>
           )}
 
           {/* ============================================================
-              BƯỚC 3: FORM ĐỔI MẬT KHẨU MỚI (CHẠY CHUNG CHO CẢ 2 METHOD)
+              BƯỚC 3: FORM ĐỔI MẬT KHẨU MỚI
              ============================================================ */}
           {step === "reset" && (
             <form onSubmit={handleResetPassword} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-1">New Password</label>
-                <input
-                  type="password"
-                  required
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Minimum 8 secure characters"
-                  className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    required
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Minimum 8 secure characters"
+                    className="w-full px-4 pr-10 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition">
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-1">Confirm New Password</label>
@@ -305,9 +223,16 @@ export default function ForgotPassword() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 px-4 rounded-lg transition duration-200 disabled:opacity-50">
-                {loading ? "Updating..." : "Reset My Password"}
+                className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 px-4 rounded-lg transition duration-200 disabled:opacity-50 flex items-center justify-center gap-2">
+                {loading && <RefreshCcw size={14} className="animate-spin" />}
+                <span>{loading ? "Updating..." : "Reset My Password"}</span>
               </button>
+
+              <div className="text-center mt-2">
+                <button type="button" onClick={() => setStep("request")} className="text-xs text-blue-500 hover:underline font-medium">
+                  Cancel and restart
+                </button>
+              </div>
             </form>
           )}
 
