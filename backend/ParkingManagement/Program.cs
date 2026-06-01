@@ -107,6 +107,10 @@ app.UseExceptionHandler(errApp => errApp.Run(async ctx =>
 }));
 
 app.UseHttpsRedirection();
+app.UseCors(policy => policy
+    .WithOrigins("http://localhost:5173") // Cho phép duy nhất cổng React Frontend 
+    .AllowAnyMethod()                     // Cho phép mọi phương thức GET, POST, PUT, DELETE
+    .AllowAnyHeader());                   // Cho phép mọi Header truyền lên (Content-Type, Authorization)
 // Security
 app.UseMiddleware<ParkingManagement.Middlewares.TokenBlacklistMiddleware>(); // Check blacklist
 app.UseAuthentication(); // Read JWT token
