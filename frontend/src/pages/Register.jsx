@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle, XCircle, AlertCircle, RefreshCcw } from "lucide-react";
 import googleIcon from "../assets/google.png";
 import { useGoogleLogin } from "@react-oauth/google";
 import { useAuth } from "../hooks/useAuth";
@@ -52,7 +52,7 @@ export default function Register() {
     role: "ParkingUser",
   });
 
-  const [fieldErrors, setFieldErrors] = useState({}); // Lỗi từng field (inline)
+  const [fieldErrors, setFieldErrors] = useState({});
   const [banner, setBanner] = useState(null); // { type, message } — banner cấp form
   const [loading, setLoading] = useState(false);
 
@@ -81,8 +81,8 @@ export default function Register() {
       currentErrors.full_name = "Name must be 2–100 characters and contain only letters.";
       isValid = false;
     }
-
-    const phoneRegex = /^(0|)[3|5|7|8|9][0-9]{8}$/;
+    // PHONE REGEX VALIDATION
+    const phoneRegex = /^0[3|5|7|8|9][0-9]{8}$/;
     if (!phoneRegex.test(formData.phone_number)) {
       currentErrors.phone_number = "Invalid phone number format (e.g., 0901234567).";
       isValid = false;
@@ -114,17 +114,18 @@ export default function Register() {
       });
       // nếu tiếp nhận dữ liệu hợp lệ (200 OK/201)
       if (response.data) {
-        setBanner({
-          type: "success",
-          message: "Account created! Redirecting to login...",
-        });
+        // setBanner({
+        //   type: "success",
+        //   message: "Account created! Redirecting to login...",
+        // });
         toast.success("Account registered successfully!", {
           description: "Welcome to Parking Management System node.",
         });
         setTimeout(() => navigate("/login"), 1500);
       }
+
     } catch (error) {
-      const serverMessage = error?.message || "Registered failed.Please check your inputs.";
+      const serverMessage = error.response?.data?.message || error?.message || "Registered failed.Please check your inputs.";
       setBanner({ type: "error", message: serverMessage });
     } finally {
       setLoading(false);
@@ -212,14 +213,13 @@ export default function Register() {
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-1">Phone Number</label>
             <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium select-none">+84</span>
               <input
                 type="tel"
                 name="phone_number"
                 required
                 value={formData.phone_number}
                 onChange={handleChange}
-                placeholder="912 345 678"
+                placeholder="e,g., 0901234567"
                 className={`w-full pl-12 pr-4 py-2.5 bg-slate-800 border rounded-lg text-white placeholder-slate-500 focus:outline-none transition ${
                   fieldErrors.phone_number ? "border-red-500 focus:border-red-500" : "border-slate-700 focus:border-blue-500"
                 }`}
@@ -275,6 +275,7 @@ export default function Register() {
             type="submit"
             disabled={loading}
             className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 px-4 rounded-lg transition duration-200 focus:outline-none mt-2 disabled:opacity-50">
+            {loading && <RefreshCcw size={14} className="animate-spin" />}
             {loading ? "Registering..." : "Register"}
           </button>
         </form>
