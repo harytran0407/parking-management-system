@@ -296,7 +296,9 @@ namespace ParkingManagement.Controllers.AuthController
                         user_id = userInDb.UserId,
                         full_name = userInDb.FullName,
                         email = userInDb.Email,
+                        phone = userInDb.Phone,
                         role = roleName
+                        
                     }
                 }
             });
