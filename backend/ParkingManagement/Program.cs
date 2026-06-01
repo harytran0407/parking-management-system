@@ -58,6 +58,13 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddScoped<IParkingRepository, ParkingRepository>();
 builder.Services.AddScoped<IParkingService, ParkingService>();
 
+// ── Booking module ───────────────────────────────────────────────────────────────────────
+builder.Services.AddScoped<IBookingRepository, BookingRepository>();
+
+// ── Incident module ───────────────────────────────────────────────────────────────────────
+builder.Services.AddScoped<IIncidentRepository, IncidentRepository>();
+builder.Services.AddScoped<IIncidentService, IncidentService>();
+
 // ── Building module ───────────────────────────────────────────────────────────
 builder.Services.AddScoped<IBuildingRepository, BuildingRepository>();
 builder.Services.AddScoped<IBuildingService, BuildingService>();

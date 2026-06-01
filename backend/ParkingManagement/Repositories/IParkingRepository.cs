@@ -113,5 +113,8 @@ namespace ParkingManagement.Repositories
         /// </list>
         /// </returns>
         Task<(List<ParkingSlot> Slots, int TotalCount, Dictionary<string, int> StatusCounts)> GetPagedSlotsWithStatusAsync(SlotQueryFilterDto filter);
+
+        Task<string> GetOperatingHoursForDayAsync(DateTime referenceTime);
+
     }
 }

@@ -5,7 +5,7 @@ namespace ParkingManagement.Models;
 
 public partial class Booking
 {
-    public int BookingId { get; set; }
+    public string BookingId { get; set; } = string.Empty;
 
     public string VehicleUserId { get; set; } = null!;
 

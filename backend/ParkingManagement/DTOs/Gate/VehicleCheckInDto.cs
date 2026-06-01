@@ -29,6 +29,6 @@ namespace ParkingManagement.DTOs
         public string? SlotId { get; set; }
 
         [JsonPropertyName("booking_id")]
-        public int? BookingId { get; set; }
+        public string? BookingId { get; set; }
     }
 }
