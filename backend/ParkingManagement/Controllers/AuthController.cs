@@ -296,8 +296,8 @@ namespace ParkingManagement.Controllers.AuthController
                         full_name = userInDb.FullName,
                         email = userInDb.Email,
                         phone = userInDb.Phone,
-                        role = roleName
-                        
+                        role = roleName,
+                        avatar_url = userInDb.AvatarUrl ?? ""
                     }
                 }
             });
@@ -506,14 +506,14 @@ namespace ParkingManagement.Controllers.AuthController
                 }
                 var fileName = $"{Guid.NewGuid()}_{extension}";
 
-                var uploadFolder = Path.Combine(Directory.GetCurrentDirectory(),"wwwroot","uploads","avatars");
+                var uploadFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "avatars");
                 if (!Directory.Exists(uploadFolder))
                 {
                     Directory.CreateDirectory(uploadFolder);
                 }
                 // Sử dụng luồng FileStream đồng bộ 
-                var filePath = Path.Combine(uploadFolder,fileName);
-                using(var stream = new FileStream(filePath, FileMode.Create))
+                var filePath = Path.Combine(uploadFolder, fileName);
+                using (var stream = new FileStream(filePath, FileMode.Create))
                 {
                     request.Avatar.CopyTo(stream);
                 }
@@ -532,7 +532,7 @@ namespace ParkingManagement.Controllers.AuthController
                 message = "Profile updated successfully",
                 data = new
                 {
-                    avatar_url=userInDb.AvatarUrl
+                    avatar_url = userInDb.AvatarUrl
                 }
 
             });
