@@ -31,8 +31,8 @@ export default function Header() {
     "/staff": "Dashboard",
     "/staff/slots": "Slots and Gate Management",
   };
-    // CLEAR AVATAR LINK
-    const getBackendRootUrl = () => {
+  // CLEAR AVATAR LINK
+  const getBackendRootUrl = () => {
     const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:5077";
     return baseUrl.replace("/api/v1", "");
   };
@@ -58,7 +58,7 @@ export default function Header() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
+  const userAvatar = user?.avatar || user?.avatar_url;
   const initial = user?.full_name ? user.full_name.charAt(0).toUpperCase() : "U";
 
   const handleLogout = () => {
@@ -103,7 +103,7 @@ export default function Header() {
             className={`w-10 h-10 rounded-full text-white font-bold flex items-center justify-center shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 overflow-hidden ${
               user?.role === "ParkingStaff" ? "bg-indigo-600 hover:bg-indigo-700" : "bg-blue-600 hover:bg-blue-700"
             } ${isDropdownOpen ? "ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-slate-900" : ""}`}>
-            {user?.avatar ? <img src={`${getBackendRootUrl()}${user.avatar}`} alt="User Avatar" className="w-full h-full object-cover" /> : initial}
+            {userAvatar ? <img src={`${getBackendRootUrl()}${userAvatar}`} alt="User Avatar" className="w-full h-full object-cover" /> : initial}
           </button>
 
           {isDropdownOpen && (
