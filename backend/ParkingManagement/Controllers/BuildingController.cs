@@ -11,7 +11,7 @@ public class BuildingController : ControllerBase
     private readonly IBuildingService _service;
 
     // Hệ thống 1 tòa nhà — ID cố định
-    private const string BuildingId = "B01";
+    private const string BuildingId = "B001";
 
     public BuildingController(IBuildingService service)
     {
