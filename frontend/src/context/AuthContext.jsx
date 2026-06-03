@@ -107,9 +107,9 @@ export function AuthProvider({ children }) {
       console.warn("Server-side logout token revocation skipped or failed:", e);
     } finally {
       // Luôn luôn dọn sạch bộ nhớ bộ nhớ Client bất kể API thành công hay gặp lỗi
-      setUser(null);
       localStorage.removeItem("accessToken");
       localStorage.removeItem("userData");
+      setUser(null);
     }
   }, []);
 
