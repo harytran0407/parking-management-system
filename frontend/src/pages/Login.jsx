@@ -1,11 +1,12 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react"; // ĐÃ SỬA: Import thêm useRef
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
-import { Lock, Mail, ArrowLeft } from "lucide-react";
+import { Lock, Contact, ArrowLeft } from "lucide-react";
 import googleIcon from "../assets/google.png";
 import { useGoogleLogin } from "@react-oauth/google";
+import ReCAPTCHA from "react-google-recaptcha"; // ĐÃ SỬA: Import thư viện reCAPTCHA
 
-// 🎯 GIỮ LẠI MAP NÀY ĐỂ ĐIỀU HƯỚNG TỰ ĐỘNG DỰA VÀO DATA BACKEND TRẢ VỀ
+// MAP ĐIỀU HƯỚNG TỰ ĐỘNG DỰA VÀO DATA BACKEND TRẢ VỀ
 const ROLE_ROUTES_MAP = {
   ParkingStaff: "/staff",
   ParkingUser: "/user",
@@ -17,28 +18,44 @@ export default function Login() {
   const navigate = useNavigate();
   const { login, loginWithGoogle } = useAuth();
 
+  // ĐÃ SỬA: Thay đổi destructuring từ {} sang [] cho đúng cú pháp React Hook
+  const [captchaToken, setCaptchaToken] = useState(null);
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  // Đã xóa state [role, setRole]
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const recaptchaRef = useRef(null);
+  const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
+
+  const handleCaptchaSuccess = (token) => {
+    setCaptchaToken(token);
+    if (token) setError("");
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    setLoading(true);
 
-    //=================AXIOS API==================
+    if (!captchaToken) {
+      setError("Complete the verification 'I am not a robot'.");
+      return;
+    }
+
+    setLoading(true); // ĐÃ SỬA: Bổ sung trạng thái loading khi bắt đầu gửi request
     try {
-      // Login <= AuthContext
-      const user = await login(email.trim(), password);
+      // ĐÃ SỬA: Truyền thêm tham số captchaToken vào hàm login để đẩy dữ liệu lên AuthContext
+      const user = await login(email.trim(), password, captchaToken);
 
-      // 🎯 TỰ ĐỘNG ĐIỀU HƯỚNG: Lấy user.role từ Backend trả về để map với đường dẫn
+      // TỰ ĐỘNG ĐIỀU HƯỚNG: Lấy user.role từ Backend trả về để map với đường dẫn
       const redirectPath = ROLE_ROUTES_MAP[user.role] || "/home";
       navigate(redirectPath);
     } catch (err) {
-      const errorCode = err?.error_code;
+      // ĐÃ SỬA: Reset lại token và giao diện ô tích khi đăng nhập thất bại
+      setCaptchaToken(null);
+      recaptchaRef.current?.reset();
+
+      const errorCode = err?.error_code; // Đối chiếu bảng Business Error Codes
       switch (errorCode) {
         case "INVALID_CREDENTIALS":
           setError("Invalid email or password. Please try again.");
@@ -68,7 +85,6 @@ export default function Login() {
         const token = tokenResponse.access_token;
         const user = await loginWithGoogle(token);
 
-        // 🎯 Sửa lại cho đồng bộ với logic map Route ở trên
         const redirectPath = ROLE_ROUTES_MAP[user.role] || "/home";
         navigate(redirectPath);
       } catch (err) {
@@ -113,7 +129,7 @@ export default function Login() {
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-1">Email or Phone</label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+                <Contact className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
                 <input
                   type="text"
                   value={email}
@@ -129,7 +145,6 @@ export default function Login() {
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-sm font-medium text-slate-300">Password</label>
-
                 <Link to="/forgot-password" className="text-xs font-semibold text-blue-500 hover:text-blue-400 hover:underline transition-colors">
                   Forgot password?
                 </Link>
@@ -148,7 +163,19 @@ export default function Login() {
               </div>
             </div>
 
-            {/* Đã xóa Role Selection form ở đây */}
+            {/* ĐÃ SỬA: KHỐI WIDGET RECAPTCHA VISUAL DISPLAY TRÊN UI */}
+            <div className="flex justify-center py-2 bg-slate-800/40 ">
+              {RECAPTCHA_SITE_KEY ? (
+                <ReCAPTCHA
+                  ref={recaptchaRef}
+                  sitekey={RECAPTCHA_SITE_KEY}
+                  onChange={handleCaptchaSuccess}
+                  theme="dark" // Sử dụng theme tối để tiệp màu với nền slate-900 của app
+                />
+              ) : (
+                <p className="text-xs text-red-400 font-mono p-2">[SYSTEM ERROR]: Missing VITE_RECAPTCHA_SITE_KEY in .env!</p>
+              )}
+            </div>
 
             <button
               type="submit"
