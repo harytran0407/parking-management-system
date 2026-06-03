@@ -185,7 +185,7 @@ export default function Register() {
       </Link>
 
       <div className="w-full max-w-md bg-[#1e293b]/70 backdrop-blur-md rounded-xl shadow-lg border border-slate-700/50 p-8 relative z-10">
-        <div className="text-center mb-6">
+        <div className="text-center mb-1">
           <h2 className="text-3xl font-bold text-white tracking-tight">Smartpark</h2>
           <p className="text-slate-400 mt-1">Create your account</p>
         </div>
