@@ -178,7 +178,6 @@ namespace ParkingManagement.Controllers.AuthController
 
         [HttpPost("login")]
         public IActionResult Login([FromBody] LoginRequestDto request)
-
         {
             Console.WriteLine("\n======= KIỂM TRA TRẠNG THÁI VALIDATION LOGIN =======");
             // 1. Kiểm tra xem các trường dữ liệu có bị để trống/null từ client không
@@ -405,6 +404,138 @@ namespace ParkingManagement.Controllers.AuthController
             });
         }
 
+        [Authorize]
+        [HttpGet("profile")]
+        public IActionResult GetProfile()
+        {
+            // Lấy userId từ JWT Token đang gửi kèm
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized(new
+                {
+                    success = false,
+                    message = "Invalid token"
+                });
+            }
 
+            // Truy soát Database để lấy thông tin tài khoản
+            var userInDb = _context.Users.FirstOrDefault(u => u.UserId == userId);
+            if (userInDb == null)
+            {
+                return NotFound(new
+                {
+                    success = false,
+                    message = "User not found."
+                });
+            }
+
+            var profile = new UserProfileResponseDto
+            {
+                Id = userInDb.UserId,
+                Username = userInDb.Username,
+                FullName = userInDb.FullName ?? string.Empty,
+                Email = userInDb.Email ?? string.Empty,
+                Phone = userInDb.Phone ?? string.Empty,
+                AvatarUrl = userInDb.AvatarUrl ?? string.Empty
+            };
+
+            return Ok(new
+            {
+                success = true,
+                data = profile
+            });
+        }
+
+        [Authorize]
+        [HttpPut("profile")]
+        public IActionResult UpdateProfile([FromForm] UpdateProfileRequestDto request)
+        {
+            // Lấy userId từ JWT Token đang gửi kèm
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized(new
+                {
+                    success = false,
+                    message = "Invalid token"
+                });
+            }
+            var userInDb = _context.Users.FirstOrDefault(u => u.UserId == userId);
+            if (userInDb == null)
+            {
+                return NotFound(new
+                {
+                    success = false,
+                    message = "User not found."
+                });
+            }
+
+            /* -- Validation -- */
+
+            // Dò tìm xem có tài khoản nào khác đã sử dụng Email mà người dùng đang muốn cập nhật
+            // bool isEmailTaken = _context.Users.Any(u => u.Email == request.Email && u.UserId != userId);
+            // if (isEmailTaken)
+            // {
+            //     return BadRequest(new
+            //     {
+            //         success = false,
+            //         message = "This Email is already taken by another account"
+            //     });
+            // }
+
+            // Dò tìm xem có tài khoản nào khác đã sử dụng SĐT mà người dùng đang muốn cập nhật
+            bool isPhoneTaken = _context.Users.Any(u => u.Phone == request.Phone && u.UserId != userId);
+            if (isPhoneTaken)
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message = "This phone number is already taken by another account"
+                });
+            }
+
+            if (request.Avatar != null && request.Avatar.Length > 0)
+            {
+                // BÓC TÁCH ĐUÔI FILE: Lấy phần mở rộng gốc của ảnh (Ví dụ: .png, .jpg)
+                var extension = Path.GetExtension(request.Avatar.FileName);
+                // BIỆN PHÁP AN TOÀN: Nếu file gốc bị truncated mất đuôi, tự động ép về đuôi .jpg chuẩn
+                if (string.IsNullOrEmpty(extension))
+                {
+                    extension = ".jpg";
+                }
+                var fileName = $"{Guid.NewGuid()}_{extension}";
+
+                var uploadFolder = Path.Combine(Directory.GetCurrentDirectory(),"wwwroot","uploads","avatars");
+                if (!Directory.Exists(uploadFolder))
+                {
+                    Directory.CreateDirectory(uploadFolder);
+                }
+                // Sử dụng luồng FileStream đồng bộ 
+                var filePath = Path.Combine(uploadFolder,fileName);
+                using(var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    request.Avatar.CopyTo(stream);
+                }
+                userInDb.AvatarUrl = $"/uploads/avatars/{fileName}";
+            }
+
+            // userInDb.Username = request.Username;
+            userInDb.FullName = request.FullName;
+            // userInDb.Email = request.Email;
+            userInDb.Phone = request.Phone;
+            _context.SaveChanges();
+
+            return Ok(new
+            {
+                success = true,
+                message = "Profile updated successfully",
+                data = new
+                {
+                    avatar_url=userInDb.AvatarUrl
+                }
+
+            });
+        }
     }
 }
