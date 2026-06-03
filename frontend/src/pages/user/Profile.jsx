@@ -64,7 +64,13 @@ export default function Profile() {
             // Nối đúng mã cấu hình host môi trường tĩnh để không bị lỗi vỡ hình ảnh
             const rootUrl = baseUrl.replace("/api/v1", "");
             // 3. Ghép chuỗi sạch để trình duyệt gọi đúng link: http://localhost:5077/uploads/avatars/...
-            setPreviewUrl(`${rootUrl}${data.avatar_url}`);
+            // setPreviewUrl(`${rootUrl}${data.avatar_url}`);
+            // Kiểm tra nếu là ảnh Google thì giữ nguyên, ảnh local thì mới nối rootUrl
+            if (data.avatar_url.startsWith("http://") || data.avatar_url.startsWith("https://")) {
+              setPreviewUrl(data.avatar_url);
+            } else {
+              setPreviewUrl(`${rootUrl}${data.avatar_url}`);
+            }
           }
         }
       } catch (error) {
