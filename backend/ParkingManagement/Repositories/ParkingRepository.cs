@@ -240,5 +240,26 @@ namespace ParkingManagement.Repositories
 
             return (pagedSlots, totalCount, statusCounts);
         }
+
+        public async Task<string> GetOperatingHoursForDayAsync(DateTime referenceTime)
+        {
+            var building = await _context.ParkingBuildings.FindAsync("B001");
+
+            // Mặc định dự phòng nếu không tìm thấy tòa nhà
+            if (building == null) return "06:00-22:00";
+
+            if (building.Is247 == true)
+            {
+                return "00:00-24:00";
+            }
+
+            // Kiểm tra ngày cuối tuần (Thứ 7 hoặc Chủ Nhật)
+            bool isWeekend = referenceTime.DayOfWeek == DayOfWeek.Saturday || referenceTime.DayOfWeek == DayOfWeek.Sunday;
+
+            // Trả về giờ tương ứng, sử dụng ?? "06:00-22:00" để phòng trường hợp dữ liệu trong DB bị null
+            return isWeekend
+                ? (building.WeekendHours ?? "06:00-22:00")
+                : (building.WeekdayHours ?? "06:00-22:00");
+        }
     }
 }

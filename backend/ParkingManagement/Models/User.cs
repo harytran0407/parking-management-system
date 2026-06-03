@@ -25,6 +25,8 @@ public partial class User
 
     public DateTime? CreatedAt { get; set; }
 
+    public string? AvatarUrl { get; set; }
+
     public virtual ICollection<Booking> Bookings { get; set; } = new List<Booking>();
 
     public virtual ICollection<IncidentLog> IncidentLogReportedByNavigations { get; set; } = new List<IncidentLog>();
