@@ -71,7 +71,9 @@ public class PricingPolicyService : IPricingPolicyService
             BasePrice = request.BasePrice,
             HourlyRate = request.HourlyRate,
             OvernightFee = request.OvernightFee,
-            EffectiveDate = effectiveDate
+            EffectiveDate = effectiveDate,
+            HandlingFee = request.HandlingFee
+
         };
 
         var created = await _repo.CreateAsync(policy);
@@ -101,6 +103,8 @@ public class PricingPolicyService : IPricingPolicyService
                 throw new ArgumentException("effective_date must be in format YYYY-MM-DD");
             policy.EffectiveDate = effectiveDate;
         }
+        if (request.HandlingFee.HasValue)
+            policy.HandlingFee = request.HandlingFee.Value;
 
         await _repo.UpdateAsync(policy);
         return ToResponse(policy);
@@ -126,6 +130,8 @@ public class PricingPolicyService : IPricingPolicyService
         BasePrice = p.BasePrice,
         HourlyRate = p.HourlyRate,
         OvernightFee = p.OvernightFee,
-        EffectiveDate = p.EffectiveDate.ToString("yyyy-MM-dd")
+        EffectiveDate = p.EffectiveDate.ToString("yyyy-MM-dd"),
+        HandlingFee = p.HandlingFee
+
     };
 }
