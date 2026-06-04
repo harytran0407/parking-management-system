@@ -1,511 +1,578 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
-import {Camera,CarFront,Hash,MapPin,CheckCircle2,Search,AlertCircle,RefreshCcw,Ticket,Video,VideoOff,Zap,ShieldCheck,Wifi,ShieldAlert,History,Clock,} from "lucide-react";
-// import api from "../services/api";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import Webcam from "react-webcam";
+import axios from "axios";
+import {
+    Camera, CarFront, MapPin, CheckCircle2, RefreshCcw,
+    VideoOff, Ban, ParkingSquare, Hash, ArrowDownCircle,
+    Video, X, Maximize2
+} from "lucide-react";
+
+const API_BASE_URL = "http://localhost:5077/api/v1/parking";
+const PYTHON_STREAM_URL = "http://localhost:5001/api/v1/stream";
 
 export default function CheckInPage() {
-  // --- STATES NGHIỆP VỤ ---
-  const [plateNumber, setPlateNumber] = useState("");
-  const [vehicleTypeId, setVehicleTypeId] = useState(1); // 1: Car, 2: Motorbike
-  const [bookingId, setBookingId] = useState("");
-  const [suggestedSlot, setSuggestedSlot] = useState(null);
+    const webcamRef = useRef(null);
+    const [capturedImage, setCapturedImage] = useState(null);
+    const [plateNumber, setPlateNumber] = useState("");
+    const [manualInput, setManualInput] = useState("");
+    const [selectedVehicleType, setSelectedVehicleType] = useState(1);
+    const [scanResult, setScanResult] = useState(null);
 
-  // --- STATES LỊCH SỬ (HISTORY) ---
-  const [recentCheckIns, setRecentCheckIns] = useState([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const [errorMessage, setErrorMessage] = useState("");
+    const [successMessage, setSuccessMessage] = useState("");
+    const [isStreamConnected, setIsStreamConnected] = useState(true);
 
-  // States tính năng nâng cao (Enterprise Features)
-  const [isAutoScan, setIsAutoScan] = useState(true);
-  const [vipStatus, setVipStatus] = useState(null);
-  const [systemWarning, setSystemWarning] = useState("");
-  const [confidenceScore, setConfidenceScore] = useState(0);
+    // Lightbox image modal state
+    const [isLightboxOpen, setIsLightboxOpen] = useState(false);
 
-  // --- STATES CAMERA & UI ---
-  const videoRef = useRef(null);
-  const canvasRef = useRef(null);
-  const [isCameraOn, setIsCameraOn] = useState(false);
-  const [cameraError, setCameraError] = useState("");
-  const [isCapturing, setIsCapturing] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [checkInSuccess, setCheckInSuccess] = useState(null);
+    const vehicleTypes = [
+        { id: 1, name: "Motorbike" },
+        { id: 2, name: "Car" }
+    ];
 
-  // ============================================================
-  // KHỐI 0: INITIAL LOAD — TẢI LỊCH SỬ CÁC XE VỪA VÀO BỐT TRỰC
-  // ============================================================
-  useEffect(() => {
-    const fetchRecentCheckIns = async () => {
-      try {
-        /* 🛠️ ===== AXIOS REAL API CALL (KHỐI LỊCH SỬ) =====
-        const response = await api.get("/staff/checkin/recent?limit=5");
-        if (response && response.data) {
-          setRecentCheckIns(response.data);
-          return;
+    const videoConstraints = {
+        width: 1280,
+        height: 720,
+        facingMode: "environment"
+    };
+
+    const getOpConfig = () => ({
+        staffId: localStorage.getItem("staff_id") || "usr_001",
+        camIn: localStorage.getItem("camera_in_id") || "cam_in_01",
+        gateIn: localStorage.getItem("gate_in_id") || "gate_in_01",
+    });
+
+    /**
+     * Hàm kiểm tra trùng biển số xe dựa trên API lấy session active
+     * Trả về true nếu xe đang ở trong bãi (bị trùng), ngược lại trả về false.
+     */
+    const checkIsPlateDuplicate = async (targetPlate) => {
+        try {
+            const formattedPlate = targetPlate.toUpperCase().trim();
+            const response = await axios.get(`${API_BASE_URL}/sessions/active/${formattedPlate}`);
+            // Nếu API trả về thành công và success: true nghĩa là xe đang có trong bãi
+            if (response.data && response.data.success === true) {
+                return true;
+            }
+            return false;
+        } catch (error) {
+            // Thông thường nếu không tìm thấy (404) API sẽ throw error, nghĩa là xe chưa vào bãi -> Không trùng
+            return false;
         }
-        */
-
-        // --- MOCK DATA GIẢ LẬP BAN ĐẦU ---
-        setRecentCheckIns([
-          {
-            session_id: "sess_0912",
-            license_plate_in: "43A-567.89",
-            slot_name: "A012",
-            check_in_time: new Date(Date.now() - 300000).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
-          },
-          {
-            session_id: "sess_0911",
-            license_plate_in: "29C-123.45",
-            slot_name: "B045",
-            check_in_time: new Date(Date.now() - 800000).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
-          },
-        ]);
-      } catch (error) {
-        console.error("Failed to fetch recent check-ins:", error);
-      }
     };
 
-    fetchRecentCheckIns();
-  }, []);
+    /**
+     * MAIN FLOW: REACT CAPTURE -> PYTHON AI RECOGNITION -> ASP.NET CORE CHECK-IN
+     */
+    const handleCaptureAndRecognize = useCallback(async () => {
+        if (!webcamRef.current || isLoading) return;
 
-  // --- HOTKEYS HỆ THỐNG ---
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (document.activeElement.tagName === "INPUT") return;
-      switch (e.key) {
-        case "1":
-          setVehicleTypeId(1);
-          break;
-        case "2":
-          setVehicleTypeId(2);
-          break;
-        case " ":
-          e.preventDefault();
-          if (isCameraOn && !isCapturing && !checkInSuccess) manualCapture();
-          break;
-        case "Enter":
-          if (plateNumber && !isSubmitting && !checkInSuccess) {
-            document.getElementById("btn-submit-checkin")?.click();
-          }
-          break;
-        default:
-          break;
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isCameraOn, isCapturing, checkInSuccess, plateNumber, isSubmitting]);
+        setIsLoading(true);
+        setErrorMessage("");
+        setSuccessMessage("");
+        setScanResult(null);
 
-  // --- CAMERA CONTROL ---
-  const startCamera = async () => {
-    try {
-      setCameraError("");
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" },
-      });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        setIsCameraOn(true);
-      }
-    } catch (err) {
-      setCameraError("Cannot access Camera. Please check browser permissions!");
-    }
-  };
+        const imageSrc = webcamRef.current.getScreenshot();
+        if (!imageSrc) {
+            setErrorMessage("Cannot capture image from Webcam. Please check device permissions.");
+            setIsLoading(false);
+            return;
+        }
+        setCapturedImage(imageSrc);
 
-  const stopCamera = useCallback(() => {
-    if (videoRef.current && videoRef.current.srcObject) {
-      videoRef.current.getTracks().forEach((track) => track.stop());
-      videoRef.current.srcObject = null;
-      setIsCameraOn(false);
-    }
-  }, []);
+        try {
+            const aiResponse = await axios.post(`${PYTHON_STREAM_URL}/recognize_uploaded_image`, {
+                image: imageSrc
+            });
 
-  useEffect(() => {
-    return () => stopCamera();
-  }, [stopCamera]);
+            if (!aiResponse.data || !aiResponse.data.success) {
+                throw new Error(aiResponse.data?.message || "AI system failed to recognize license plate from snapshot.");
+            }
 
-  // ============================================================
-  // KHỐI 3: QUÉT ẢNH CAMERA — NHẬN DIỆN BIỂN SỐ QUA AI / YOLO
-  // ============================================================
-  const processYoloFrame = async (imageBase64) => {
-    try {
-      /* 🛠️ ===== AXIOS REAL API CALL (XỬ LÝ ẢNH AI ĐỌC BIỂN SỐ) =====
-      const response = await api.post("/staff/checkin/recognize-plate", { image: imageBase64, vehicle_type_id: vehicleTypeId });
-      if (response && response.data) {
-        const { plate_number, confidence, slot, vip_status, warning } = response.data;
-        setPlateNumber(plate_number);
-        setConfidenceScore(confidence);
-        setSystemWarning(warning || "");
-        setVipStatus(vip_status || null);
-        setSuggestedSlot(slot || null);
-        return true;
-      }
-      */
+            const aiPlate = aiResponse.data.plate.toUpperCase().trim();
+            const aiVehicleType = aiResponse.data.vehicle_type_id || selectedVehicleType;
 
-      const isDetected = Math.random() > 0.7;
-      if (isDetected) {
-        const detectedPlate = `51H-${Math.floor(10000 + Math.random() * 90000)}`;
-        setPlateNumber(detectedPlate);
-        setConfidenceScore(Math.floor(85 + Math.random() * 14));
+            setPlateNumber(aiPlate);
 
-        const isVip = Math.random() > 0.8;
-        const isDuplicate = Math.random() > 0.95;
+            // KIỂM TRA TRÙNG BIỂN SỐ TRƯỚC KHI THỰC HIỆN CHECK-IN
+            const isDuplicate = await checkIsPlateDuplicate(aiPlate);
+            if (isDuplicate) {
+                setScanResult(null);
+                setErrorMessage(`Xe hiện đang ở trong bãi, vui lòng kiểm tra lại biển số.`);
+                setIsLoading(false);
+                return;
+            }
 
+            const { staffId, camIn, gateIn } = getOpConfig();
+            const bodyData = {
+                license_plate_in: aiPlate,
+                vehicle_type_id: parseInt(aiVehicleType, 10),
+                camera_in: camIn,
+                gate_in: gateIn,
+                image_url_in: `/uploads/plates/client_captured_${new Date().getTime()}.jpg`,
+                staff_in_id: staffId,
+                slot_id: null,
+                booking_id: null
+            };
+
+            const response = await axios.post(`${API_BASE_URL}/check-in`, bodyData);
+
+            if (response.data && response.data.success) {
+                const sessionData = response.data.data;
+                setSuccessMessage(`Successfully checked in vehicle: ${aiPlate}`);
+
+                setScanResult({
+                    type: "EntryConfirmed",
+                    plate: sessionData.license_plate_in || aiPlate,
+                    sessionId: sessionData.session_id,
+                    slot: sessionData.slot_name || "N/A",
+                    floor: sessionData.floor !== undefined ? `Floor ${sessionData.floor}` : "N/A",
+                    zone: sessionData.zone || "Unassigned Zone",
+                    vehicleModel: vehicleTypes.find(v => v.id === parseInt(aiVehicleType))?.name || "Vehicle"
+                });
+            } else {
+                throw new Error("Backend server rejected the Check-In command request.");
+            }
+
+        } catch (error) {
+            console.error("Pipeline Error:", error);
+            setErrorMessage(error.response?.data?.message || error.message || "License plate processing workflow failed.");
+        } finally {
+            setIsLoading(false);
+        }
+    }, [selectedVehicleType, isLoading]);
+
+    /**
+     * WORKFLOW ACTION SUBMITTERS FOR MANUAL LOGIC
+     */
+    const handleManualCheckInSubmit = async () => {
+        if (!plateNumber || isLoading) return;
+
+        setIsLoading(true);
+        setErrorMessage("");
+        setSuccessMessage("");
+
+        // KIỂM TRA TRÙNG BIỂN SỐ TRƯỚC KHI MANUAL CHECK-IN
+        const isDuplicate = await checkIsPlateDuplicate(plateNumber);
         if (isDuplicate) {
-          setSystemWarning("ACTIVE_SESSION_EXISTS: Vehicle is already inside the parking lot.");
-        } else if (isVip) {
-          setVipStatus({ plan_name: "Premium Monthly", expires_in: "15 days" });
-          setSystemWarning("");
-        } else {
-          setVipStatus(null);
-          setSystemWarning("");
-          setSuggestedSlot({ slot_name: "C045", floor: 3, zone: "C" });
+            setErrorMessage(`Trùng biển số: Xe với biển số [${plateNumber}] hiện đang ở trong bãi xe.`);
+            setIsLoading(false);
+            return;
         }
-        return true;
-      }
-      return false;
-    } catch (err) {
-      return false;
-    }
-  };
 
-  const manualCapture = async () => {
-    if (!videoRef.current || !canvasRef.current) return;
-    setIsCapturing(true);
-    setCheckInSuccess(null);
-    setSuggestedSlot(null);
-    setVipStatus(null);
-    setSystemWarning("");
+        const { staffId, camIn, gateIn } = getOpConfig();
 
-    const canvas = canvasRef.current;
-    canvas.width = videoRef.current.videoWidth;
-    canvas.height = videoRef.current.videoHeight;
-    canvas.getContext("2d").drawImage(videoRef.current, 0, 0);
-    await processYoloFrame(canvas.toDataURL("image/jpeg", 0.8));
-    setIsCapturing(false);
-  };
+        try {
+            const bodyData = {
+                license_plate_in: plateNumber,
+                vehicle_type_id: parseInt(selectedVehicleType, 10),
+                camera_in: camIn,
+                gate_in: gateIn,
+                image_url_in: "/uploads/plates/manual_entry.jpg",
+                staff_in_id: staffId,
+                slot_id: null,
+                booking_id: null
+            };
 
-  useEffect(() => {
-    let intervalId;
-    if (isCameraOn && isAutoScan && !plateNumber && !isCapturing && !checkInSuccess) {
-      intervalId = setInterval(async () => {
-        if (!videoRef.current || !canvasRef.current) return;
-        const canvas = canvasRef.current;
-        canvas.width = videoRef.current.videoWidth;
-        canvas.height = videoRef.current.videoHeight;
-        canvas.getContext("2d").drawImage(videoRef.current, 0, 0);
-        setIsCapturing(true);
-        const found = await processYoloFrame(canvas.toDataURL("image/jpeg", 0.5));
-        setIsCapturing(false);
-        if (found) clearInterval(intervalId);
-      }, 1000);
-    }
-    return () => clearInterval(intervalId);
-  }, [isCameraOn, isAutoScan, plateNumber, isCapturing, checkInSuccess]);
+            const response = await axios.post(`${API_BASE_URL}/check-in`, bodyData);
+            if (response.data && response.data.success) {
+                const data = response.data.data;
+                setSuccessMessage(`Manual Check-In recorded for: ${plateNumber}`);
+                setScanResult({
+                    type: "EntryConfirmed",
+                    plate: data.license_plate_in,
+                    slot: data.slot_name || "N/A",
+                    floor: data.floor !== undefined ? `Floor ${data.floor}` : "N/A",
+                    zone: data.zone || "Unassigned Zone",
+                    sessionId: data.session_id,
+                    vehicleModel: vehicleTypes.find(v => v.id === selectedVehicleType)?.name || "Vehicle"
+                });
+            }
+        } catch (error) {
+            setErrorMessage(error.response?.data?.message || "Manual check-in registration failed.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
-  // ============================================================
-  // KHỐI 4: NHẤN NÚT CONFIRM — GỬI LỆNH LƯU XE VÀO BÃI LÊN DATABASE
-  // ============================================================
-  const handleCheckIn = async (e) => {
-    e.preventDefault();
-    if (!plateNumber || systemWarning) return;
-    setIsSubmitting(true);
+    const handleQueryManualInbound = async (targetPlate) => {
+        if (!targetPlate || targetPlate.trim() === "" || isLoading) return;
 
-    try {
-      /* 🛠 ===== AXIOS REAL API CALL (XÁC NHẬN CHO XE VÀO BÃI) =====
-      const response = await api.post("/staff/checkin", { license_plate: plateNumber, vehicle_type_id: vehicleTypeId });
-      if (response && response.data) {
-        setCheckInSuccess(response.data);
-        setRecentCheckIns((prev) => [response.data, ...prev].slice(0, 5));
-        setIsSubmitting(false);
-        return;
-      }
-      */
+        setIsLoading(true);
+        setErrorMessage("");
+        setSuccessMessage("");
+        const formattedPlate = targetPlate.toUpperCase().trim();
 
-      await new Promise((resolve) => setTimeout(resolve, 600));
-      const newSessionData = {
-        session_id: `sess_${Math.floor(1000 + Math.random() * 9000)}`,
-        license_plate_in: plateNumber,
-        slot_name: vipStatus ? "VIP Zone" : suggestedSlot?.slot_name || "Any Open Space",
-        check_in_time: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
-      };
+        try {
+            // Đầu tiên kiểm tra xem xe này có đang ở trong bãi không
+            const isDuplicate = await checkIsPlateDuplicate(formattedPlate);
+            if (isDuplicate) {
+                setScanResult(null);
+                setErrorMessage(`Trùng biển số: Xe với biển số [${formattedPlate}] hiện đang ở trong bãi xe.`);
+                setIsLoading(false);
+                return;
+            }
 
-      setCheckInSuccess(newSessionData);
-      setRecentCheckIns((prev) => [newSessionData, ...prev].slice(0, 5));
-    } catch (error) {
-      if (error?.error_code === "ACTIVE_SESSION_EXISTS") {
-        setSystemWarning("ACTIVE_SESSION_EXISTS: Vehicle is already inside the parking lot.");
-      } else {
-        setSystemWarning(error?.message || "Check-in operation failed.");
-      }
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+            // Nếu không trùng, chuẩn bị cho phép tiến hành Check-In thủ công
+            setPlateNumber(formattedPlate);
+            setScanResult({
+                type: "ManualEntryPending",
+                plate: formattedPlate,
+                vehicleModel: vehicleTypes.find(v => v.id === selectedVehicleType)?.name || "Vehicle",
+                vehicleTypeId: selectedVehicleType
+            });
 
-  const resetForm = () => {
-    setPlateNumber("");
-    setBookingId("");
-    setSuggestedSlot(null);
-    setCheckInSuccess(null);
-    setVipStatus(null);
-    setSystemWarning("");
-    setConfidenceScore(0);
-  };
+        } catch (error) {
+            setErrorMessage("An error occurred while preparing manual entry session.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
-  return (
-    <div className="animate-slide-in max-w-7xl mx-auto space-y-6 text-slate-800 dark:text-slate-200">
-      
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-        <div>
-          <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-            Gate Entry Operation
-            <span className="px-2 py-0.5 text-[10px] font-bold tracking-wide bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-md font-mono uppercase">Hotkeys Enabled</span>
-          </h2>
-        </div>
-        <div className="flex items-center gap-4 text-xs font-bold uppercase tracking-wider">
-          <div className="flex items-center gap-1.5 text-emerald-600">
-            <Wifi size={16} /> Gate Control: Online
-          </div>
-          <div className={`flex items-center gap-1.5 ${isCameraOn ? "text-blue-600" : "text-slate-400"}`}>
-            <Camera size={16} /> Camera: {isCameraOn ? "Active" : "Standby"}
-          </div>
-        </div>
-      </div>
+    const resetTerminal = () => {
+        setManualInput("");
+        setScanResult(null);
+        setPlateNumber("");
+        setCapturedImage(null);
+        setSuccessMessage("");
+        setErrorMessage("");
+    };
 
-      {/* KHU VỰC ĐIỀU KHIỂN CHÍNH (CAMERA + FORM) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* LEFT COLUMN: CAMERA TÍCH HỢP AI SCAN */}
-        <div className="lg:col-span-7 space-y-4">
-          <div className="bg-slate-900 rounded-2xl overflow-hidden aspect-video relative flex flex-col items-center justify-center border-2 border-slate-800 shadow-xl group">
-            <video ref={videoRef} autoPlay playsInline muted className={`w-full h-full object-cover ${!isCameraOn ? "hidden" : ""}`} />
-            <canvas ref={canvasRef} className="hidden" />
+    /**
+     * GLOBAL ENTER KEYLISTENER PATTERN FOR SMART TERMINAL OPERATORS
+     */
+    useEffect(() => {
+        const handleGlobalKeyDown = (event) => {
+            if (event.key === "Enter") {
+                if (document.activeElement.tagName === "INPUT" && document.activeElement !== webcamRef.current) {
+                    if (document.activeElement.placeholder === "Enter license plate..." && manualInput) {
+                        event.preventDefault();
+                        handleQueryManualInbound(manualInput);
+                    }
+                    return;
+                }
 
-            {!isCameraOn && !cameraError && (
-              <div className="text-slate-500 flex flex-col items-center">
-                <VideoOff size={48} className="mb-2 opacity-50" />
-                <button
-                  onClick={startCamera}
-                  className="mt-4 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all flex items-center gap-2 shadow-sm">
-                  <Video size={16} /> Open Lane Feed
-                </button>
-              </div>
+                event.preventDefault();
+
+                if (!scanResult) {
+                    handleCaptureAndRecognize();
+                } else {
+                    if (scanResult.type === "ManualEntryPending") {
+                        handleManualCheckInSubmit();
+                    } else if (scanResult.type === "EntryConfirmed") {
+                        resetTerminal();
+                    }
+                }
+            }
+        };
+
+        window.addEventListener("keydown", handleGlobalKeyDown);
+        return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+    }, [scanResult, handleCaptureAndRecognize, manualInput, plateNumber, selectedVehicleType]);
+
+    return (
+        <div className="w-full flex-1 text-[#0f172a] flex flex-col font-sans box-border select-none">
+            {/* NOTIFICATION BANNERS - shrink-0 ngăn banner đẩy khung dưới xuống */}
+            {errorMessage && (
+                <div className="w-full mb-3 bg-red-50 border-l-4 border-red-500 text-red-700 p-3 rounded-r-xl flex items-center gap-2.5 text-xs font-bold shadow-sm shrink-0">
+                    <Ban size={16} className="shrink-0" />
+                    <span>{errorMessage}</span>
+                </div>
             )}
 
-            {isCameraOn && (
-              <>
+            {successMessage && (
+                <div className="w-full mb-3 bg-emerald-50 border-l-4 border-[#10b981] text-emerald-800 p-3 rounded-r-xl flex items-center gap-2.5 text-xs font-bold shadow-sm shrink-0">
+                    <CheckCircle2 size={16} className="shrink-0 text-[#10b981]" />
+                    <span> {successMessage}</span>
+                </div>
+            )}
+
+            {/* MAIN CONTENT AREA */}
+            <div className="flex-1 w-full gap-5 flex flex-col lg:grid lg:grid-cols-[1.62fr_1fr] items-stretch min-h-0">
+
+                {/* LEFT COLUMN: CAMERA WORKSPACE */}
+                <div className="bg-white border border-[#e2e8f0] rounded-md p-4 shadow-sm flex flex-col min-h-0">
+
+                        <div className="flex items-center justify-between mb-3 shrink-0">
+                            <div className="flex items-center gap-2">
+                                <Video size={16} className="text-[#64748b]" />
+                                <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#475569]">Check-In Camera</h3>
+                            </div>
+                            <button
+                                onClick={handleCaptureAndRecognize}
+                                disabled={isLoading}
+                                className="bg-[#0f172a] hover:bg-slate-800 disabled:bg-slate-300 text-white font-bold text-xs px-5 py-2.5 rounded-md transition-all shadow-sm shadow-slate-900/20 active:scale-98 flex items-center gap-2 uppercase tracking-wide"
+                                title="Press Enter to trigger snapshot"
+                            >
+                                <Camera size={14} /> Scan Plate <kbd className="bg-slate-700 text-white px-1 rounded text-[9px] ml-1 font-mono font-normal">Enter</kbd>
+                            </button>
+                        </div>
+
+                        {/* LIVE CAMERA HOVER CONTAINER */}
+                        <div className="bg-[#0b1329] flex-1 min-h-[340px] lg:min-h-0 w-full relative overflow-hidden flex items-center justify-center border border-slate-800 shadow-inner group rounded-md">
+                            {isStreamConnected ? (
+                                <Webcam
+                                    audio={false}
+                                    ref={webcamRef}
+                                    screenshotFormat="image/jpeg"
+                                    videoConstraints={videoConstraints}
+                                    className="w-full h-full object-cover"
+                                    onUserMedia={() => setIsStreamConnected(true)}
+                                    onUserMediaError={() => setIsStreamConnected(false)}
+                                />
+                            ) : (
+                                <div className="flex flex-col items-center gap-2 text-slate-500">
+                                    <VideoOff size={36} className="opacity-40" />
+                                    <p className="text-xs font-bold">Webcam device source missing or unavailable</p>
+                                </div>
+                            )}
+
+                            {plateNumber && (
+                                <div className="absolute top-4 right-4 border border-[#10b981] bg-slate-950/90 px-4 py-2 rounded-md text-center shadow-lg backdrop-blur-sm">
+                                    <div className="text-[#10b981] font-mono text-base font-black tracking-widest">{plateNumber}</div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* MANUAL ENTRY PANEL CONTROL */}
+                        <div className="mt-4 flex flex-col sm:flex-row gap-3 items-stretch sm:items-end border-t border-slate-100 pt-3.5 shrink-0">
+                            <div className="flex-1">
+                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Manual Entry</label>
+                                <div className="relative">
+                                    <input
+                                        type="text"
+                                        placeholder="Enter license plate..."
+                                        value={manualInput}
+                                        onChange={(e) => setManualInput(e.target.value.toUpperCase())}
+                                        className="w-full border border-slate-200 rounded-md pl-9 pr-3 py-2 text-xs font-mono font-bold bg-slate-50/50 tracking-wider focus:outline-none focus:border-[#0f172a] focus:bg-white transition-all h-[40px]"
+                                    />
+                                </div>
+                            </div>
+                            <div className="w-full sm:w-[160px]">
+                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Vehicle Type</label>
+                                <select
+                                    value={selectedVehicleType}
+                                    onChange={(e) => setSelectedVehicleType(Number(e.target.value))}
+                                    className="w-full border border-slate-200 rounded-md px-3 py-2 text-xs font-bold bg-white text-slate-700 h-[40px] focus:outline-none focus:border-[#0f172a] transition-all cursor-pointer"
+                                >
+                                    {vehicleTypes.map((t) => (
+                                        <option key={t.id} value={t.id}>{t.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <button
+                                onClick={() => handleQueryManualOrExit(manualInput)}
+                                disabled={isLoading || !manualInput}
+                                className="bg-[#0f172a] hover:bg-slate-800 text-white px-5 py-2 rounded-md text-xs font-bold h-[40px] transition-all disabled:bg-slate-100 disabled:text-slate-400 tracking-wide flex items-center justify-center gap-1.5 shrink-0 active:scale-98"
+                            >
+                                <RefreshCcw size={13} className={isLoading ? "animate-spin" : ""} /> Query Vehicle
+                            </button>
+                        </div>
+
+                    
+                </div>
+
+                {/* RIGHT COLUMN: RECONCILIATION RESULT CARD & ACTION */}
+                <div className="bg-white border border-[#e2e8f0] rounded-md p-5 flex flex-col justify-between shadow-sm min-h-0">
+                    <div className="space-y-4 flex-1 flex flex-col min-h-0">
+                        <div className="flex items-center justify-between border-b border-slate-100 pb-2 shrink-0">
+                            <h3 className="text-xs font-black uppercase tracking-widest text-[#475569]">Entry Session Information</h3>
+                            {scanResult && (
+                                <span className="inline-flex text-[9px] font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 uppercase tracking-wider animate-pulse">
+                                    {scanResult.type === "ManualEntryPending" ? "Manual Check-In" : scanResult.type === "ExitPending" ? "Exit Processing" : "Entry Confirmation"}
+                                </span>
+                            )}
+                        </div>
+
+                        <div className="flex-1 flex flex-col min-h-0 justify-center">
+                            {scanResult ? (
+                                <div className="space-y-4 overflow-y-auto pr-1 flex-1">
+                                    {/* ENHANCED UX: INTERACTIVE IMAGING SCREENSHOT LIGHTBOX INITIATOR */}
+                                    <div
+                                        onClick={() => setIsLightboxOpen(true)}
+                                        className="bg-slate-950 h-[200px] overflow-hidden border border-slate-800 shadow-md relative group cursor-zoom-in rounded-md"
+                                        title="Click to zoom picture snapshot"
+                                    >
+                                        <img
+                                            src={capturedImage || "https://placehold.co/600x400?text=Snapshot+Acquired"}
+                                            alt="Captured Gate Target Area"
+                                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 opacity-90 group-hover:opacity-100"
+                                        />
+                                        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 via-transparent to-transparent pointer-events-none" />
+                                        <div className="absolute bottom-2 right-2 bg-slate-900/80 rounded-lg p-1.5 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200 backdrop-blur-sm">
+                                            <Maximize2 size={12} />
+                                        </div>
+                                    </div>
+
+                                    {/* CASE 1: EXIT TERMINATION ACTION FLOW (ExitPending) */}
+                                    {scanResult.type === "ExitPending" && (
+                                        <div className="space-y-3">
+                                            <div className="bg-emerald-50 border border-emerald-200 rounded-md p-4 shadow-sm relative overflow-hidden">
+                                                <div className="absolute -right-2 -bottom-2 opacity-5 text-emerald-600"><CreditCard size={70} /></div>
+                                                <div className="text-[10px] uppercase font-black tracking-wider text-emerald-800 flex items-center gap-1"><DollarSign size={12} /> Total Accumulated Parking Fee</div>
+                                                <div className="text-2xl font-mono font-black text-emerald-700 mt-0.5">
+                                                    {(scanResult.price || 0).toLocaleString()} VND
+                                                </div>
+                                                <div className="mt-3 pt-2.5 border-t border-emerald-200/50 text-[11px] text-emerald-700/90 space-y-1.5 font-medium">
+                                                    <div className="flex justify-between"><span>Check-In Time:</span> <span className="font-mono font-bold">{scanResult.timeIn}</span></div>
+                                                    <div className="flex justify-between"><span>Total Duration:</span> <span className="font-bold">{scanResult.duration}</span></div>
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <div className="bg-slate-50 border p-2.5 rounded-md">
+                                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Audited Plate</span>
+                                                    <span className="text-sm font-mono font-black text-slate-800 tracking-wide">{scanResult.plate}</span>
+                                                </div>
+                                                <div className="bg-slate-50 border p-2.5 rounded-md">
+                                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Class Type</span>
+                                                    <span className="text-sm font-bold text-slate-800 tracking-wide">{scanResult.vehicleModel}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* CASE 2: REGISTRATION NOT FOUND IN SYSTEM (ManualEntryPending) */}
+                                    {scanResult.type === "ManualEntryPending" && (
+                                        <div className="space-y-3">
+                                            <div className="bg-amber-50 border border-amber-200 text-amber-800 p-3.5 rounded-md text-xs font-bold leading-relaxed flex items-start gap-2">
+                                                <Ban size={15} className="shrink-0 mt-0.5 text-amber-600" />
+                                                <span>No active parking session matches this plate record. Register an internal entry session flow for this vehicle?</span>
+                                            </div>
+                                            <div className="bg-slate-50 p-3.5 rounded-md border space-y-2">
+                                                <div>
+                                                    <span className="text-[9px] font-bold text-slate-400 uppercase block tracking-wider">License Plate</span>
+                                                    <span className="text-lg font-bold text-slate-700 truncate block mt-">{scanResult.plate}</span>
+                                                </div>
+                                                <div>
+                                                    <span className="text-[9px] font-bold text-slate-400 uppercase block tracking-wider">Class Registration</span>
+                                                    <span className="text-lg font-bold text-slate-700 truncate block mt-">{scanResult.vehicleModel}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* CASE 3: ENTRY VERIFIED & ALLOCATED (EntryConfirmed) */}
+                                    {scanResult.type === "EntryConfirmed" && (
+                                        <div className="space-y-3">
+                                            <div className="flex items-center gap-1.5 text-[#10b981] font-bold text-xs uppercase tracking-wide">
+                                                <ArrowDownCircle size={15} /> Check-In Confirmed
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <div className="bg-slate-50 border rounded-md px-3 py-2">
+                                                    <span className="text-[9px] font-bold text-slate-400 uppercase block tracking-wider">License Plate</span>
+                                                    <span className="text-[20px] font-bold text-slate-700">{scanResult.plate}</span>
+                                                </div>
+                                                <div className="bg-slate-50 border rounded-md px-3 py-2">
+                                                    <span className="text-[9px] font-bold text-slate-400 uppercase block tracking-wider">Type</span>
+                                                    <span className="text-[20px] font-bold text-slate-700">{scanResult.vehicleModel}</span>
+                                                </div>
+                                            </div>
+
+                                            {/* EXPANDED FIELDS PANEL GRID */}
+                                            <div className="bg-gradient-to-br from-[#0f172a] to-slate-800 rounded-md p-4 text-white shadow-sm relative overflow-hidden space-y-2">
+                                                <div className="absolute -right-4 -bottom-4 opacity-5 text-white"><MapPin size={80} /></div>
+                                                <div>
+                                                    <div className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Assigned Slot</div>
+                                                    <div className="text-xl font-mono font-black tracking-widest text-yellow-400">{scanResult.slot}</div>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-1 pt-1.5 border-t border-slate-700/60 text-[11px] text-slate-300">
+                                                    <div className="flex items-center gap-1">
+                                                        <MapPin size={11} className="text-slate-400" /> {scanResult.floor}
+                                                    </div>
+                                                    <div className="text-right text-slate-400 font-medium">
+                                                        <span className="text-white font-bold">{scanResult.zone}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                /* IDLE EMPTY PLACEHOLDER SCREEN STATE */
+                                <div className="flex-1 border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center text-center p-6 text-[#94a3b8] bg-slate-50/50 my-auto">
+                                    <CarFront size={32} className="mb-3 opacity-40 text-slate-500 animate-pulse" />
+                                    <p className="text-xs font-black uppercase tracking-widest text-slate-700">Ready to Scan</p>
+                                    <p className="text-[11px] text-slate-500 mt-1.5 max-w-[200px] leading-normal">
+                                        Press <kbd className="bg-white border border-slate-300 text-slate-800 px-1.5 py-0.5 rounded shadow-sm font-bold font-mono text-[10px]">[Enter]</kbd> or click Scan Plate to start.
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* ACTION PANEL BOUNDARY TRIGGERS */}
+                    <div className="space-y-2 pt-4 border-t border-slate-100 shrink-0">
+                        {scanResult ? (
+                            <>
+                                {scanResult.type === "ManualEntryPending" && (
+                                    <>
+                                        <button
+                                            onClick={handleManualCheckInSubmit}
+                                            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-md text-xs font-black uppercase tracking-widest transition-all shadow-sm active:scale-98"
+                                        >
+                                            Confirm Manual Inbound Gate <span className="font-mono font-normal opacity-80 text-[10px] ml-1">[Enter]</span>
+                                        </button>
+                                        <button
+                                            onClick={resetTerminal}
+                                            className="w-full border border-slate-200 text-slate-600 hover:bg-slate-50 py-2 rounded-md text-xs font-bold uppercase tracking-wide transition-all active:scale-98"
+                                        >
+                                            Abort
+                                        </button>
+                                    </>
+                                )}
+
+                                {scanResult.type === "EntryConfirmed" && (
+                                    <button
+                                        onClick={resetTerminal}
+                                        className="w-full bg-[#0f172a] hover:bg-slate-800 text-white py-2.5 rounded-md text-xs font-black uppercase tracking-wider transition-all active:scale-98 shadow-md"
+                                    >
+                                        Next Scan <span className="font-mono font-normal opacity-80 text-[10px] ml-1">[Enter]</span>
+                                    </button>
+                                )}
+                            </>
+                        ) : (
+                            <button disabled className="w-full bg-[#f8fafc] text-slate-400 py-2.5 rounded-md text-xs font-bold uppercase tracking-widest border border-slate-200 cursor-not-allowed text-center">
+                                System Ready
+                            </button>
+                        )}
+                    </div>
+                </div>
+
+            </div>
+
+        {/* INTERACTIVE MODAL LIGHTBOX OVERLAY COMPONENT */}
+        {isLightboxOpen && capturedImage && (
+            <div
+                className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex flex-col items-center justify-center p-4 animate-fadeIn cursor-zoom-out"
+                onClick={() => setIsLightboxOpen(false)}
+            >
+                <div className="absolute top-5 right-5 text-white/70 hover:text-white transition-colors bg-slate-900/60 p-2.5 rounded-full border border-white/10">
+                    <X size={20} />
+                </div>
+
                 <div
-                  className={`absolute inset-0 border-blue-500/20 pointer-events-none transition-opacity duration-500 ${isAutoScan && !plateNumber ? "opacity-100" : "opacity-0"}`}>
-                  <div className="w-full h-1 bg-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.6)] animate-[scan_2s_ease-in-out_infinite]"></div>
-                </div>
-
-                {plateNumber && (
-                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-52 h-20 border-2 border-dashed border-emerald-400 bg-emerald-950/40 rounded-xl flex items-center justify-center backdrop-blur-xs">
-                    <span className="bg-emerald-600 text-white text-xs font-black px-2.5 py-1 rounded-md tracking-wider font-mono uppercase shadow-md">
-                      {plateNumber} ({confidenceScore}%)
-                    </span>
-                  </div>
-                )}
-
-                <div className="absolute top-4 left-4 right-4 flex justify-between">
-                  <label className="flex items-center gap-2 bg-slate-900/70 backdrop-blur-md px-2.5 py-1 rounded-lg text-white text-[11px] font-bold cursor-pointer border border-slate-700 select-none uppercase tracking-wider">
-                    <div className="relative inline-flex items-center cursor-pointer">
-                      <input type="checkbox" className="sr-only peer" checked={isAutoScan} onChange={(e) => setIsAutoScan(e.target.checked)} />
-                      <div className="w-7 h-3.5 bg-slate-700 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[3px] after:left-[3px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-2 after:w-2 after:transition-all peer-checked:bg-blue-500"></div>
+                    className="relative max-w-4xl max-h-[85vh] rounded-2xl overflow-hidden border border-white/10 bg-slate-900 shadow-2xl scaleUp"
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <img
+                        src={capturedImage}
+                        alt="High Resolution Audit View"
+                        className="w-full h-auto max-h-[85vh] object-contain"
+                    />
+                    <div className="absolute bottom-0 inset-x-0 bg-slate-950/70 p-3 text-center border-t border-white/5 backdrop-blur-sm">
+                        <p className="font-mono font-bold tracking-widest text-sm text-yellow-400">
+                            {plateNumber || "No Plate Detected"}
+                        </p>
+                        <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mt-0.5">
+                            Enlarged Camera Snapshot View
+                        </p>
                     </div>
-                    YOLO POLLING
-                  </label>
-                  <button onClick={stopCamera} className="bg-slate-900/70 text-slate-300 hover:text-white p-1.5 rounded-lg border border-slate-700 transition-colors">
-                    <VideoOff size={14} />
-                  </button>
                 </div>
-
-                <div className="absolute bottom-4 right-4">
-                  <button
-                    id="btn-submit-checkin"
-                    type="submit"
-                    disabled={!plateNumber || isSubmitting || !!systemWarning}
-                    className="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-800 disabled:text-slate-500 text-white py-2.5 px-4 rounded-xl font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 active:scale-95">
-                    {isSubmitting ? <RefreshCcw size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
-                    {isSubmitting ? "Processing..." : "Confirm Entry (Enter)"}
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-
-          {systemWarning && (
-            <div className="bg-red-50 dark:bg-red-950/20 border-l-4 border-red-500 p-3.5 rounded-r-xl flex items-start gap-3 border dark:border-red-900/30">
-              <ShieldAlert className="text-red-500 mt-0.5 shrink-0" size={16} />
-              <div>
-                <h4 className="text-xs font-bold text-red-700 dark:text-red-400 uppercase tracking-wide">Security Alert Conflict</h4>
-                <p className="text-xs text-red-600 dark:text-red-300 mt-0.5 font-medium">{systemWarning}</p>
-              </div>
             </div>
-          )}
+        )}
 
-          {vipStatus && !systemWarning && (
-            <div className="bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-500 p-3.5 rounded-r-xl flex items-start gap-3 border dark:border-amber-900/30">
-              <ShieldCheck className="text-amber-500 mt-0.5 shrink-0" size={16} />
-              <div>
-                <h4 className="text-xs font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wide">Monthly Pass Verified</h4>
-                <p className="text-xs text-amber-600 dark:text-amber-300 mt-0.5 font-medium">
-                  Plan: {vipStatus.plan_name} • Active for {vipStatus.expires_in}. Open gate directly.
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* RIGHT COLUMN: FORM CHECK-IN CHÍNH */}
-        <div className="lg:col-span-5 flex flex-col">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm flex flex-col h-full min-h-[340px] justify-between">
-            {checkInSuccess ? (
-              <div className="flex-1 flex flex-col items-center justify-center text-center space-y-5 animate-in zoom-in-95 duration-200">
-                <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-500 border border-emerald-100 rounded-full flex items-center justify-center">
-                  <CheckCircle2 size={24} />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">Gate Barie Released</h3>
-                  <p className="text-[10px] text-slate-400 font-mono mt-0.5">
-                    SESSION: <span className="font-mono">#{checkInSuccess.session_id}</span>
-                  </p>
-                </div>
-
-                <div className="w-full bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 rounded-xl p-4 text-left text-xs space-y-2 font-medium">
-                  <div className="flex justify-between items-center border-b pb-1.5 dark:border-slate-700">
-                    <span className="text-slate-400">License Plate:</span>
-                    <span className="font-mono font-black text-sm text-slate-900 dark:text-white">{checkInSuccess.license_plate_in}</span>
-                  </div>
-                  <div className="flex justify-between items-center border-b pb-1.5 dark:border-slate-700">
-                    <span className="text-slate-400">Assigned Slot:</span>
-                    <span className="font-bold text-blue-600 dark:text-blue-400 text-sm">{checkInSuccess.slot_name}</span>
-                  </div>
-                  <div className="flex justify-between items-center pt-0.5">
-                    <span className="text-slate-400">Time In:</span>
-                    <span className="font-mono font-bold text-slate-700 dark:text-slate-300">{checkInSuccess.check_in_time}</span>
-                  </div>
-                </div>
-
-                <button
-                  onClick={resetForm}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition shadow-md shadow-blue-500/10 active:scale-95">
-                  Next Lane Event (Space)
-                </button>
-              </div>
-            ) : (
-              <form onSubmit={handleCheckIn} className="flex-1 flex flex-col justify-between h-full">
-                <div className="space-y-4">
-                  <div>
-                    <div className="flex justify-between items-center mb-1">
-                      <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">License Plate Recognition</label>
-                      <span className="text-[10px] font-bold font-mono text-slate-400">YOLO Match: {confidenceScore}%</span>
-                    </div>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <Hash className="h-4 w-4 text-slate-400" />
-                      </div>
-                      <input
-                        type="text"
-                        required
-                        value={plateNumber}
-                        onChange={(e) => setPlateNumber(e.target.value.toUpperCase())}
-                        className="block w-full pl-9 pr-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800/40 text-slate-900 dark:text-white font-mono font-black text-base uppercase tracking-wider focus:outline-none focus:border-blue-500 focus:bg-white transition-all"
-                        placeholder="WAITING OCR CAMERA..."
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">
-                      Vehicle Classification <span className="font-mono lowercase text-[10px] text-slate-400">(hotkeys: 1, 2)</span>
-                    </label>
-                    <div className="grid grid-cols-2 gap-2.5">
-                      <button
-                        type="button"
-                        onClick={() => setVehicleTypeId(1)}
-                        className={`py-2 border rounded-xl font-bold text-xs uppercase tracking-wider transition flex items-center justify-center gap-2 outline-none ${vehicleTypeId === 1 ? "border-blue-500 bg-blue-50 text-blue-600 dark:border-blue-500 dark:bg-blue-500/10 dark:text-blue-400 shadow-sm" : "border-slate-200 text-slate-500 hover:bg-slate-50 dark:border-slate-400 dark:text-slate-400 dark:hover:bg-slate-800/50"}`}>
-                        <CarFront size={14} /> Car
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setVehicleTypeId(2)}
-                        className={`py-2 border rounded-xl font-bold text-xs uppercase tracking-wider transition flex items-center justify-center gap-2 outline-none ${vehicleTypeId === 2 ? "border-blue-500 bg-blue-50 text-blue-600 dark:border-blue-500 dark:bg-blue-500/10 dark:text-blue-400 shadow-sm" : "border-slate-200 text-slate-500 hover:bg-slate-50 dark:border-slate-400 dark:text-slate-400 dark:hover:bg-slate-800/50"}`}>
-                        Motorbike
-                      </button>
-                    </div>
-                  </div>
-
-                  {suggestedSlot && (
-                    <div className="bg-blue-50/40 dark:bg-blue-950/10 border border-blue-100/60 dark:border-blue-900/30 rounded-xl p-3 flex gap-2.5 text-xs font-semibold text-blue-600 dark:text-blue-400">
-                      <MapPin className="shrink-0 mt-0.5" size={15} />
-                      <div>
-                        <span className="font-black block text-[10px] uppercase tracking-wider text-blue-800 dark:text-blue-300">AI Suggested Routing Node</span>
-                        Route asset to: <span className="font-bold underline">{suggestedSlot.slot_name}</span> (Floor {suggestedSlot.floor} - Area {suggestedSlot.zone})
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <button
-                  id="btn-submit-checkin"
-                  type="submit"
-                  disabled={!plateNumber || isSubmitting || !!systemWarning}
-                  className="w-full bg-slate-950 hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-500 disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:text-slate-300 dark:disabled:text-slate-600 text-white py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition flex items-center justify-center gap-2 shadow-sm shrink-0 mt-6 active:scale-[0.98]">
-                  {isSubmitting ? <RefreshCcw size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
-                  <span>{isSubmitting ? "Issuing Ticket assets..." : "Confirm Entry Operations"}</span>
-                </button>
-              </form>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* ===================RECENT ENTRY LOGS================== */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm w-full">
-        <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 flex items-center gap-1.5 mb-4 uppercase tracking-wider pb-2 border-b border-slate-100 dark:border-slate-800">
-          <History size={14} className="text-blue-500" /> Recent Lane Entry Logs
-        </h3>
-
-        {/* Khung danh sách hàng dọc phẳng trải dài 100% vạt ngang */}
-        <div className="flex flex-col gap-2.5">
-          {recentCheckIns.length > 0 ? (
-            recentCheckIns.map((session, idx) => (
-              <div
-                key={idx}
-                className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-slate-100 dark:border-slate-800/80 bg-slate-50/40 dark:bg-slate-800/20 hover:bg-blue-50/40 dark:hover:bg-blue-950/10 hover:border-blue-200/60 dark:hover:border-blue-900/40 transition-all duration-200 shadow-xs gap-4">
-                {/* Cụm 1 (Bên trái): Icon nhận diện phương tiện & Mã kiểm soát */}
-                <div className="flex items-center gap-4 min-w-0 sm:w-1/3">
-                  <div className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 dark:bg-blue-950/40 dark:border-blue-900/40 text-blue-500 dark:text-blue-400 flex items-center justify-center shrink-0 shadow-xs">
-                    <CarFront size={16} />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="font-mono font-black text-base text-slate-800 dark:text-white tracking-wider">{session.license_plate_in}</p>
-                    <p className="text-[11px] text-slate-400 font-mono mt-0.5 tracking-tight flex items-center gap-1">
-                      <span className="text-slate-300 dark:text-slate-600">ID:</span> #{session.session_id}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Cụm 2 (Ở giữa): Mốc thời gian hệ thống ghi nhận ca trực */}
-                <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 sm:justify-center sm:w-1/3">
-                  <Clock size={14} className="text-slate-400" />
-                  <span className="text-xs font-bold text-slate-400 dark:text-slate-500 font-sans uppercase tracking-wider">Timestamp:</span>
-                  <span className="text-sm font-bold font-mono text-slate-700 dark:text-slate-300">{session.check_in_time}</span>
-                </div>
-
-                {/* Cụm 3 (Bên phải): Vị trí bãi đỗ xe đã chỉ định (Badge phát sáng) */}
-                <div className="flex items-center justify-between sm:justify-end gap-3 sm:w-1/3 shrink-0">
-                  <span className="text-[11px] font-bold font-sans uppercase tracking-wider text-slate-400 dark:text-slate-500 sm:hidden">Slot Node:</span>
-                  <div className="px-4 py-1.5 bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400 text-xs font-black rounded-lg font-mono tracking-wide border border-blue-100 dark:border-blue-900/40 shadow-xs min-w-[90px] text-center uppercase">
-                    {session.slot_name}
-                  </div>
-                </div>
-              </div>
-            ))
-          ) : (
-            <div className="text-center py-10 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
-              No entry shift logs recorded.
-            </div>
-          )}
-        </div>
-      </div>
     </div>
-  );
+);
 }

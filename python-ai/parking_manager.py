@@ -36,6 +36,7 @@ logging.basicConfig(
 # ══════════════════════════════════════════════════════════════════════════
 COOLDOWN_SECONDS = 15          # Bộ giảm tải quét trùng biển số trong 15 giây
 ASPNET_API_BASE  = 'http://localhost:5077/api/v1'  
+PYTHON_STREAM_URL = 'http://localhost:5001/api/v1/stream'
 ASPNET_TIMEOUT   = 4           # Tối ưu thời gian timeout tránh nghẽn camera
 CSV_PATH         = 'parking_history.csv'
 SNAPSHOT_DIR     = 'snapshots'
@@ -229,6 +230,28 @@ class ParkingManager:
                     self._active.pop(plate, None) 
                 return self._checkin(plate, frame, votes, confidence, vehicle_type)
 
+    def _notify_frontend(self, plate: str, status: str) -> None:
+        """
+        Chủ động đẩy thông tin biển số vừa nhận diện thành công lên bộ đệm 
+        của Python Stream Server (Port 5001) để Frontend bắt được tức thì.
+        """
+        def worker():
+            url = f"{PYTHON_STREAM_URL}/update_latest"
+            payload = {
+                "plate": plate,
+                "status": status,
+                "timestamp": time.time()
+            }
+            try:
+                headers = {"Content-Type": "application/json"}
+                r = requests.post(url, json=payload, headers=headers, timeout=2)
+                log.info(f'[NOTIFY FRONTEND] Đã đồng bộ {plate} ({status}) -> Stream Server Status: {r.status_code}')
+            except Exception as e:
+                log.warning(f'[NOTIFY FRONTEND] Không thể kết nối đến Stream Server: {e}')
+
+        # Chạy ngầm để không gây giật lag khung hình camera AI
+        threading.Thread(target=worker, daemon=True).start()
+
     # ── Check-in ──────────────────────────────────────────────────────
 
     def _checkin(self, plate: str, frame, votes: int, confidence: float,
@@ -252,6 +275,7 @@ class ParkingManager:
         log.info(f'CHECK-IN  {plate}  votes={votes}  conf={confidence:.2f}  id={rec.id}')
         
         self._post_async('check-in', rec, frame)
+        self._notify_frontend(plate, "ENTRY")
         return 'checkin'
 
     # ── Check-out ─────────────────────────────────────────────────────
@@ -275,6 +299,7 @@ class ParkingManager:
         log.info(f'CHECK-OUT {plate}  Thời gian đỗ: {rec.total_minutes:.1f} phút | id={rec.id}')
         
         self._post_async('check-out', rec, frame)
+        self._notify_frontend(plate, "EXIT")
         return 'checkout'
 
     # ── CSV ───────────────────────────────────────────────────────────

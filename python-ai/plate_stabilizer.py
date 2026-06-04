@@ -35,8 +35,8 @@ log = logging.getLogger('PlateStabilizer')
 # Tunable parameters
 # ══════════════════════════════════════════════════════════════════════════
 BUFFER_WINDOW_SEC   = 2.0   # collect readings for this long before voting
-MIN_VOTES           = 3     # minimum identical (normalised) readings to confirm
-MIN_CONFIDENCE      = 0.45  # discard readings below this confidence
+MIN_VOTES           = 2     # minimum identical (normalised) readings to confirm
+MIN_CONFIDENCE      = 0.40  # discard readings below this confidence
 SIMILARITY_THRESH   = 0.80  # treat two plate strings as "same" if similarity ≥ this
 BUFFER_TTL_SEC      = 5.0   # drop buffer if car_id not seen for this long
 MAX_BUFFER_SIZE     = 30    # hard cap – prevent unbounded growth on stuck cars
