@@ -302,20 +302,41 @@ namespace ParkingManagement.Tests.Services
         public async Task CalculatePreCheckOutFee_ValidSessionId_ReturnsCorrectBreakdown()
         {
             // Arrange
-            var session = new ParkingSession { SessionId = "SESS-ABC", VehicleTypeId = 1, CheckInTime = DateTime.Now.AddHours(-3) };
-            var policy = new PricingPolicy { BasePrice = 10000, HourlyRate = 5000 };
+            var sessionId = "SESS-ABC";
+            var currentUtc = DateTime.Now;
 
-            _parkingRepositoryMock.Setup(r => r.GetActiveSessionByIdAsync("SESS-ABC")).ReturnsAsync(session);
+            var session = new ParkingSession
+            {
+                SessionId = sessionId,
+                VehicleTypeId = 1,
+                CheckInTime = currentUtc.AddHours(-3) // Xe đã đỗ đúng 3 tiếng
+            };
+
+            var policy = new PricingPolicy
+            {
+                BasePrice = 10000,
+                HourlyRate = 5000
+            };
+
+            // 1. Mock các hàm lấy Session và Policy
+            _parkingRepositoryMock.Setup(r => r.GetActiveSessionByIdAsync(sessionId)).ReturnsAsync(session);
             _parkingRepositoryMock.Setup(r => r.GetActivePricingPolicyByVehicleTypeAsync(session.VehicleTypeId)).ReturnsAsync(policy);
 
+            _parkingRepositoryMock.Setup(r => r.GetOperatingHoursForDayAsync(It.IsAny<DateTime>())).ReturnsAsync("00:00-23:59");
+
             // Act
-            var result = await _parkingService.CalculatePreCheckOutFeeAsync("SESS-ABC");
+            var result = await _parkingService.CalculatePreCheckOutFeeAsync(sessionId);
 
             // Assert
+            Assert.NotNull(result);
             Assert.True(result.Success);
+            Assert.NotNull(result.Data);
+            Assert.NotNull(result.Data.FeeBreakdown);
+
             Assert.Equal(10000, result.Data.FeeBreakdown.BasePrice);
             Assert.Equal(5000, result.Data.FeeBreakdown.HourlyRate);
-            Assert.Equal(300, result.Data.GracePeriodRemainingSeconds);
+
+            Assert.Equal(0, result.Data.GracePeriodRemainingSeconds);
         }
 
         // TC-16: Thất bại khi xem trước chi phí của SessionId không tồn tại hoặc đã kết thúc phiên trước đó

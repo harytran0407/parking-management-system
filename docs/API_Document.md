@@ -43,7 +43,7 @@
 **Request Body**
 ```json
 {
-  "email": "staff@parking.com",
+  "email_or_phone": "staff@parking.com",
   "password": "123456"
 }
 ```
@@ -1274,21 +1274,19 @@ Authorization: Bearer JWT_ACCESS_TOKEN
 
 ---
 
-## 7.3 Manual Gate Control
+## 7.3 Resolve Slot Dispute
 
 | Property | Value |
 |----------|-------|
 | **Method** | `POST` |
-| **Endpoint** | `/api/v1/staff/gate-control` |
+| **Endpoint** | `/api/v1/staff/resolve-slot-dispute` |
 | **Roles** | `ParkingStaff` |
 
 **Request Body**
 ```json
 {
-  "gate_id": "gate_in_01",
-  "action": "open",
-  "reason": "Emergency override",
-  "staff_id": "usr_001"
+  "session_id": "sess_vi_pham_001",
+  "reason": "Xe vãng lai chiếm chỗ ô A301 của khách bk_001"
 }
 ```
 
@@ -1296,14 +1294,24 @@ Authorization: Bearer JWT_ACCESS_TOKEN
 ```json
 {
   "success": true,
-  "message": "Gate opened successfully.",
+  "message": "Slot dispute resolved. Booking reallocated successfully.",
   "data": {
-    "gate_id": "gate_in_01",
-    "action": "open",
-    "executed_at": "2026-05-17T10:05:00Z"
+    "conflicted_slot_name": "A301",
+    "reallocated_slot_name": "A302",
+    "moved_booking_id": "bk_001"
   }
 }
 ```
+### **Error Responses**
+
+| Mã HTTP (Status) | Mã Lỗi (Error Code) | Mô Tả Nghiệp Vụ (Business Description) |
+|:---|:---|:---|
+| **404 Not Found** | `SESSION_NOT_FOUND` | Phiên gửi xe (`ParkingSession`) của chiếc xe chiếm chỗ không tồn tại trong hệ thống hoặc phiên này đã hoàn tất quá trình Check-out (ra bãi). |
+| **404 Not Found** | `SLOT_NOT_FOUND` | Không tìm thấy thông tin chi tiết của ô đỗ xe (`ParkingSlot`) tương ứng với mã định danh trong hệ thống. |
+| **400 Bad Request** | `SESSION_HAS_NO_ASSIGNED_SLOT` | Phiên gửi xe hiện tại đang hoạt động nhưng chưa được gán hoặc chưa liên kết với bất kỳ vị trí ô đỗ cụ thể nào. |
+| **400 Bad Request** | `NO_BOOKING_DISPUTE_FOUND_ON_THIS_SLOT` | Ô đỗ xe bị chiếm dụng thực tế không ghi nhận bất kỳ lịch đặt chỗ trước (`BOOKING`) nào đang ở trạng thái `CONFIRMED` từ khách hàng khác. |
+| **400 Bad Request** | `NO_AVAILABLE_SLOT_TO_REALLOCATE_FOR_BOOKING` | Hệ thống đã hết sạch ô đỗ trống hoàn toàn (`AVAILABLE`) cùng loại phương tiện để đền bù và dời lịch giữ chỗ cho khách hàng đặt trước. |
+
 
 ---
 

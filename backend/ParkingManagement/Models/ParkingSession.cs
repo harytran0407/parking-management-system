@@ -45,7 +45,7 @@ public partial class ParkingSession
 
     public int? VehicleId { get; set; }
 
-    public int? BookingId { get; set; }
+    public string? BookingId { get; set; }
 
     public virtual Booking? Booking { get; set; }
 
