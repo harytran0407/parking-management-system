@@ -297,7 +297,7 @@ namespace ParkingManagement.Controllers.AuthController
                         email = userInDb.Email,
                         phone = userInDb.Phone,
                         role = roleName
-                        
+
                     }
                 }
             });
