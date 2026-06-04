@@ -282,6 +282,52 @@ namespace ParkingManagement.Services
             return response;
         }
 
+        public async Task<PagedHistoryResponseDto> GetParkingHistoryAsync(ParkingHistoryFilterDto filter)
+        {
+            // 1. Gọi Repo lấy toàn bộ danh sách hỗn hợp (Active + Completed)
+            var (items, totalCount) = await _parkingRepository.GetParkingHistoryAsync(
+                filter.LicensePlate,
+                filter.FromDate,
+                filter.ToDate,
+                filter.VehicleType,
+                filter.Page,
+                filter.PageSize
+            );
+
+            // 2. Mapping an toàn sang DTO (chấp nhận CheckOutTime mang giá trị null)
+            var historyItems = items.Select(s => new ParkingHistoryItemDto
+            {
+                SessionId = s.SessionId,
+                LicensePlate = s.LicensePlateIn ?? s.LicensePlateOut ?? "N/A",
+                VehicleType = s.VehicleTypeId.ToString(),
+                SlotNumber = s.Slot?.SlotName ?? "N/A",
+                ZoneName = s.Slot?.Zone?.ZoneName ?? "N/A",
+                CheckInTime = s.CheckInTime ?? DateTime.Now,
+
+                // Xe chưa ra thì CheckOutTime trên giao diện sẽ hiển thị trống (null)
+                CheckOutTime = s.CheckOutTime,
+
+                // Nếu xe chưa ra, TotalFee bằng 0 (hoặc có thể giữ nguyên tính toán tạm thời tùy bạn)
+                TotalFee = s.TotalFee ?? 0,
+
+                // Hiển thị trực tiếp trạng thái phiên: ACTIVE (Đang đỗ) hoặc COMPLETED (Đã xong)
+                PaymentStatus = s.Status == "ACTIVE" ? "PARKING" : (s.PaymentStatus ?? "COMPLETED"),
+
+                StaffCheckIn = s.StaffInId ?? "System",
+                StaffCheckOut = s.StaffOutId // Sẽ tự động null nếu xe chưa check-out
+            }).ToList();
+
+            // 3. Đóng gói kết quả trả về
+            return new PagedHistoryResponseDto
+            {
+                Success = true,
+                Data = historyItems,
+                TotalRecords = totalCount,
+                Page = filter.Page,
+                PageSize = filter.PageSize
+            };
+        }
+
         #region Private Sub-Functions (Các hàm phụ trợ nội bộ giúp code gọn gàng)
 
         private async Task<string> ResolveSlotIdAsync(string? inputSlotId, int vehicleTypeId)

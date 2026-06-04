@@ -261,5 +261,54 @@ namespace ParkingManagement.Repositories
                 ? (building.WeekendHours ?? "06:00-22:00")
                 : (building.WeekdayHours ?? "06:00-22:00");
         }
+
+        public async Task<(List<ParkingSession> Items, int TotalCount)> GetParkingHistoryAsync(
+    string? licensePlate, DateTime? fromDate, DateTime? toDate, string? vehicleType, int page, int pageSize)
+        {
+            // BỎ lọc CheckOutTime != null để lấy CẢ xe đang đỗ và xe đã ra
+            var query = _context.ParkingSessions
+                .Include(s => s.Slot)
+                    .ThenInclude(sl => sl!.Zone)
+                .AsQueryable();
+
+            // 1. Lọc theo biển số xe (kiểm tra cả cổng vào và cổng ra)
+            if (!string.IsNullOrWhiteSpace(licensePlate))
+            {
+                query = query.Where(s => s.LicensePlateIn.Contains(licensePlate) ||
+                                     (s.LicensePlateOut != null && s.LicensePlateOut.Contains(licensePlate)));
+            }
+
+            // 2. Lọc theo khoảng thời gian dựa trên thời gian vào bãi (CheckInTime) 
+            // Vì xe đang đỗ chưa có CheckOutTime nên lọc theo CheckInTime là chuẩn nhất cho cả 2 trạng thái
+            if (fromDate.HasValue)
+            {
+                query = query.Where(s => s.CheckInTime >= fromDate.Value);
+            }
+
+            if (toDate.HasValue)
+            {
+                query = query.Where(s => s.CheckInTime <= toDate.Value);
+            }
+
+            // 3. Lọc theo loại xe
+            if (!string.IsNullOrWhiteSpace(vehicleType) && int.TryParse(vehicleType, out int vehicleTypeId))
+            {
+                query = query.Where(s => s.VehicleTypeId == vehicleTypeId);
+            }
+
+            // Đếm tổng số dòng thỏa mãn bộ lọc
+            int totalCount = await query.CountAsync();
+
+            // 4. Sắp xếp: Ưu tiên xe đang đỗ (Status == "ACTIVE") lên trước, 
+            // sau đó sắp xếp theo thời gian vào (CheckInTime) mới nhất lên đầu
+            var items = await query
+                .OrderBy(s => s.Status == "ACTIVE" ? 0 : 1)
+                .ThenByDescending(s => s.CheckInTime)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (items, totalCount);
+        }
     }
 }
