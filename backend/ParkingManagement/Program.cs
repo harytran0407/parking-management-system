@@ -6,6 +6,8 @@ using ParkingManagement.Services;
 using ParkingManagement.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
+// ── .ENV Reader ───────────────────────────────────────────────────────────────
+DotNetEnv.Env.Load();
 
 // ── Database ──────────────────────────────────────────────────────────────────
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
