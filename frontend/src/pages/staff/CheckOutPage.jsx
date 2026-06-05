@@ -1,638 +1,469 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
-import {Camera,CarFront,Hash,CheckCircle2,RefreshCcw,Video,VideoOff,Zap,Clock,Banknote,QrCode,Receipt,CreditCard,ShieldAlert,ArrowRight,Wifi,History,
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import Webcam from "react-webcam";
+import axios from "axios";
+import {
+    Camera, CarFront, Search, MapPin, CheckCircle2, RefreshCcw,
+    VideoOff, Ban, ParkingSquare, Hash, Clock, Calendar,
+    Video, X, Maximize2, DollarSign
 } from "lucide-react";
-// import api from "../utils/api";
 
-// ── PERFORMANCE OPTIMIZATION: Static color array to prevent re-renders ──
-const LOG_COLORS = [
-  {
-    bg: "bg-blue-50/20 dark:bg-blue-950/10",
-    border: "border-blue-100/70 dark:border-blue-900/30 hover:border-blue-400",
-    badge: "bg-blue-50/60 text-blue-600 border-blue-100 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-900/40",
-    icon: "bg-blue-50 dark:bg-blue-950/40 text-blue-500",
-  },
-  {
-    bg: "bg-emerald-50/20 dark:bg-emerald-950/10",
-    border: "border-emerald-100/70 dark:border-emerald-900/30 hover:border-emerald-400",
-    badge: "bg-emerald-50/60 text-emerald-600 border-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-900/40",
-    icon: "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-500",
-  },
-  {
-    bg: "bg-amber-50/20 dark:bg-amber-950/10",
-    border: "border-amber-100/70 dark:border-amber-900/30 hover:border-amber-400",
-    badge: "bg-amber-50/60 text-amber-600 border-amber-100 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-900/40",
-    icon: "bg-amber-50 dark:bg-amber-950/40 text-amber-500",
-  },
-  {
-    bg: "bg-purple-50/20 dark:bg-purple-950/10",
-    border: "border-purple-100/70 dark:border-purple-900/30 hover:border-purple-400",
-    badge: "bg-purple-50/60 text-purple-600 border-purple-100 dark:bg-purple-500/10 dark:text-purple-400 dark:border-purple-900/40",
-    icon: "bg-purple-50 dark:bg-purple-950/40 text-purple-500",
-  },
-];
-
-// ── PERFORMANCE OPTIMIZATION: Payment Icon Component ──
-function PaymentIcon({ method, size = 14 }) {
-  if (method === "CASH") return <Banknote size={size} />;
-  if (method === "VNPAY") return <QrCode size={size} />;
-  if (method === "SUBSCRIPTION") return <CreditCard size={size} />;
-  return <CreditCard size={size} />;
-}
+const API_BASE_URL = "http://localhost:5077/api/v1/parking";
+const PYTHON_STREAM_URL = "http://localhost:5001/api/v1/stream";
 
 export default function CheckOutPage() {
-  // ── Business States ────────────────────────────────────────────────────
-  const [plateNumber, setPlateNumber] = useState("");
-  const [activeSession, setActiveSession] = useState(null);
-  const [billingInfo, setBillingInfo] = useState(null);
-  const [paymentMethod, setPaymentMethod] = useState("CASH");
-  const [recentCheckOuts, setRecentCheckOuts] = useState([]);
+    const webcamRef = useRef(null);
+    const [capturedImage, setCapturedImage] = useState(null);
+    const [plateNumber, setPlateNumber] = useState("");
+    const [manualInput, setManualInput] = useState("");
+    const [selectedVehicleType, setSelectedVehicleType] = useState(1);
+    const [scanResult, setScanResult] = useState(null);
 
-  // ── Camera & UI States ──────────────────────────────────────────────────
-  const videoRef = useRef(null);
-  const canvasRef = useRef(null);
-  const [isCameraOn, setIsCameraOn] = useState(false);
-  const [isAutoScan, setIsAutoScan] = useState(true);
-  const [cameraError, setCameraError] = useState("");
-  const [isCapturing, setIsCapturing] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [checkoutSuccess, setCheckoutSuccess] = useState(null);
-  const [systemWarning, setSystemWarning] = useState("");
-  const [confidenceScore, setConfidenceScore] = useState(0);
+    const [isLoading, setIsLoading] = useState(false);
+    const [errorMessage, setErrorMessage] = useState("");
+    const [successMessage, setSuccessMessage] = useState("");
+    const [isStreamConnected, setIsStreamConnected] = useState(true);
 
-  // ── [AXIOS] Load recent checkouts on mount (GET /recent) ──
-  useEffect(() => {
-    const fetchRecentCheckOuts = async () => {
-      try {
-        /*
-        // [API Integration] Replace with actual API call
-        const response = await api.get("/staff/checkout/recent?limit=5");
-        if (response.data?.success) {
-           setRecentCheckOuts(response.data.data);
-           return;
+    // Lightbox image modal state
+    const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+
+    const vehicleTypes = [
+        { id: 1, name: "Motorbike" },
+        { id: 2, name: "Car" }
+    ];
+
+    const videoConstraints = {
+        width: 1280,
+        height: 720,
+        facingMode: "environment"
+    };
+
+    const getOpConfig = () => ({
+        staffId: localStorage.getItem("staff_id") || "usr_001",
+        camOut: localStorage.getItem("camera_out_id") || "cam_out_01",
+        gateOut: localStorage.getItem("gate_out_id") || "gate_out_01",
+    });
+
+    /**
+     * LOGIC TRA CỨU: Lấy thông tin phiên đỗ xe đang ACTIVE của biển số xe
+     */
+    const fetchActiveSession = async (targetPlate) => {
+        try {
+            const formattedPlate = targetPlate.toUpperCase().trim();
+            const response = await axios.get(`${API_BASE_URL}/sessions/active/${formattedPlate}`);
+
+            if (response.status === 200 && response.data && response.data.success) {
+                return response.data.data; // Trả về thông tin session hoạt động
+            }
+            return null;
+        } catch (error) {
+            return null;
         }
-        */
-
-        // Mock initial data
-        setRecentCheckOuts([
-          {
-            session_id: "sess_8831",
-            license_plate_out: "51H-123.45",
-            slot_name: "S12",
-            total_fee: 45000,
-            payment_method: "CASH",
-            check_out_time: "10:36 AM",
-          },
-          {
-            session_id: "sess_8830",
-            license_plate_out: "29A-888.88",
-            slot_name: "S05",
-            total_fee: 0,
-            payment_method: "SUBSCRIPTION",
-            check_out_time: "10:28 AM",
-          },
-        ]);
-      } catch (error) {
-        console.error("Failed to fetch recent check-outs:", error);
-      }
     };
-    fetchRecentCheckOuts();
-  }, []);
 
-  // ── Hotkeys ─────────────────────────────────────────────────────────────
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (document.activeElement.tagName === "INPUT") return;
-      switch (e.key) {
-        case "1":
-          if (!activeSession?.is_vip) setPaymentMethod("CASH");
-          break;
-        case "2":
-          if (!activeSession?.is_vip) setPaymentMethod("VNPAY");
-          break;
-        case " ":
-          e.preventDefault();
-          if (isCameraOn && !isCapturing && !checkoutSuccess) manualCapture();
-          break;
-        case "Enter":
-          if (plateNumber && activeSession && !isSubmitting && !checkoutSuccess) {
-            document.getElementById("btn-submit-checkout")?.click();
-          }
-          break;
-        default:
-          break;
-      }
+    /**
+     * MAIN FLOW: REACT CAPTURE -> PYTHON AI RECOGNITION -> ASP.NET CORE FETCH SESSION FOR CHECK-OUT
+     */
+    const handleCaptureAndRecognize = useCallback(async () => {
+        if (!webcamRef.current || isLoading) return;
+
+        setIsLoading(true);
+        setErrorMessage("");
+        setSuccessMessage("");
+        setScanResult(null);
+
+        const imageSrc = webcamRef.current.getScreenshot();
+        if (!imageSrc) {
+            setErrorMessage("Cannot capture image from Webcam. Please check device permissions.");
+            setIsLoading(false);
+            return;
+        }
+        setCapturedImage(imageSrc);
+
+        try {
+            // 1. Nhận diện biển số từ AI
+            const aiResponse = await axios.post(`${PYTHON_STREAM_URL}/recognize_uploaded_image`, {
+                image: imageSrc
+            });
+
+            if (!aiResponse.data || !aiResponse.data.success) {
+                throw new Error(aiResponse.data?.message || "AI system failed to recognize license plate from snapshot.");
+            }
+
+            const aiPlate = aiResponse.data.plate.toUpperCase().trim();
+            setPlateNumber(aiPlate);
+
+            // 2. Tìm kiếm Session đang hoạt động của biển số vừa quét
+            const activeSession = await fetchActiveSession(aiPlate);
+
+            if (activeSession) {
+                setScanResult({
+                    type: "ExitPending",
+                    sessionId: activeSession.session_id,
+                    plate: aiPlate,
+                    slot: activeSession.slot_name || "N/A",
+                    floor: activeSession.floor !== undefined ? `Floor ${activeSession.floor}` : "N/A",
+                    zone: activeSession.zone || "Unassigned Zone",
+                    timeIn: activeSession.check_in_time ? new Date(activeSession.check_in_time).toLocaleString("vi-VN") : "N/A",
+                    duration: activeSession.duration_minutes !== undefined ? `${activeSession.duration_minutes} mins` : "0 mins",
+                    price: activeSession.current_fee || 0,
+                    vehicleModel: vehicleTypes.find(v => v.id === (activeSession.vehicle_type_id || selectedVehicleType))?.name || "Vehicle"
+                });
+            } else {
+                setScanResult(null);
+                setErrorMessage(`Không tìm thấy phiên đỗ xe hoạt động cho biển số [${aiPlate}]. Xe chưa vào bãi hoặc đã ra bãi.`);
+            }
+
+        } catch (error) {
+            console.error("Pipeline Error:", error);
+            setErrorMessage(error.response?.data?.message || error.message || "License plate processing workflow failed.");
+        } finally {
+            setIsLoading(false);
+        }
+    }, [selectedVehicleType, isLoading]);
+
+    /**
+     * WORKFLOW ACTION SUBMITTERS FOR MANUAL SEARCH LOGIC
+     */
+    const handleManualSearchSubmit = async () => {
+        if (!manualInput || isLoading) return;
+
+        setIsLoading(true);
+        setErrorMessage("");
+        setSuccessMessage("");
+        setScanResult(null);
+
+        const formattedPlate = manualInput.toUpperCase().trim();
+        setPlateNumber(formattedPlate);
+
+        const activeSession = await fetchActiveSession(formattedPlate);
+
+        if (activeSession) {
+            setScanResult({
+                type: "ExitPending",
+                sessionId: activeSession.session_id,
+                plate: formattedPlate,
+                slot: activeSession.slot_name || "N/A",
+                floor: activeSession.floor !== undefined ? `Floor ${activeSession.floor}` : "N/A",
+                zone: activeSession.zone || "Unassigned Zone",
+                timeIn: activeSession.check_in_time ? new Date(activeSession.check_in_time).toLocaleString("vi-VN") : "N/A",
+                duration: activeSession.duration_minutes !== undefined ? `${activeSession.duration_minutes} mins` : "0 mins",
+                price: activeSession.current_fee || 0,
+                vehicleModel: vehicleTypes.find(v => v.id === (activeSession.vehicle_type_id || selectedVehicleType))?.name || "Vehicle"
+            });
+        } else {
+            setErrorMessage(`Biển số xe [${formattedPlate}] không tồn tại trong trạng thái đang đỗ ở bãi.`);
+        }
+        setIsLoading(false);
     };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isCameraOn, isCapturing, checkoutSuccess, plateNumber, activeSession, isSubmitting]);
 
-  // ── Camera control ───────────────────────────────────────────────────────
-  const startCamera = async () => {
-    try {
-      setCameraError("");
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" },
-      });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        setIsCameraOn(true);
-      }
-    } catch {
-      setCameraError("Cannot access camera. Please check browser permissions.");
-    }
-  };
+    /**
+     * ĐÓNG PHIÊN VÀ XÁC NHẬN CHO XE RA
+     */
+    const handleConfirmCheckOut = async () => {
+        if (!scanResult || scanResult.type !== "ExitPending" || isLoading) return;
 
-  const stopCamera = useCallback(() => {
-    if (videoRef.current?.srcObject) {
-      videoRef.current.srcObject.getTracks().forEach((t) => t.stop());
-      videoRef.current.srcObject = null;
-      setIsCameraOn(false);
-    }
-  }, []);
+        setIsLoading(true);
+        setErrorMessage("");
+        setSuccessMessage("");
 
-  useEffect(() => () => stopCamera(), [stopCamera]);
+        const { staffId, camOut, gateOut } = getOpConfig();
 
-  // ── [AXIOS] Fetch Session and Calculate Fee (API §5.4) ────────────────────
-  const fetchSessionAndCalculateFee = async (detectedPlate) => {
-    try {
-      /*
-      // [API Integration]
-      const response = await api.get(`/staff/checkout/calculate-fee?plate=${detectedPlate}`);
-      if (!response.data?.success) {
-         setSystemWarning("NO_ACTIVE_SESSION: Vehicle not found in the parking lot.");
-         setActiveSession(null);
-         setBillingInfo(null);
-         return;
-      }
-      const { session, billing } = response.data.data;
-      setSystemWarning("");
-      setActiveSession(session);
-      setBillingInfo(billing);
-      */
+        try {
+            const bodyData = {
+                license_plate_out: scanResult.plate,
+                camera_out: camOut,
+                gate_out: gateOut,
+                image_url_out: `/uploads/plates/checkout_captured_${Date.now()}.jpg`,
+                staff_out_id: staffId
+            };
 
-      // Mock logic
-      const isFound = Math.random() > 0.1;
-      if (!isFound) {
-        setSystemWarning("DATA MISMATCH: Vehicle not found in the parking lot or incorrect plate.");
-        setActiveSession(null);
-        setBillingInfo(null);
-        return;
-      }
+            const response = await axios.post(`${API_BASE_URL}/check-out`, bodyData);
 
-      setSystemWarning("");
-      const timeIn = new Date(Date.now() - (Math.random() * 5 + 1) * 3600000);
-      const hours = Math.ceil((new Date() - timeIn) / 3600000);
-      const isVip = Math.random() > 0.8;
+            if (response.data?.status === "COMPLETED" || response.data?.payment_status === "PAID" || response.data?.success) {
+                setSuccessMessage(`Vehicle ${scanResult.plate} successfully checked out!`);
+                setScanResult(null);
+                setPlateNumber("");
+                setManualInput("");
+                setCapturedImage(null);
+            } else {
+                throw new Error("Backend server rejected the Check-Out response command.");
+            }
+        } catch (error) {
+            setErrorMessage(error.response?.data?.message || "Checkout validation request failed.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
-      setActiveSession({
-        session_id: `sess_${Math.floor(1000 + Math.random() * 9000)}`,
-        slot_name: isVip ? "S40 (VIP)" : "S12",
-        time_in: timeIn.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
-        date_in: timeIn.toLocaleDateString("en-US"),
-        is_vip: isVip,
-      });
-      setBillingInfo({
-        duration: `${hours} hour(s)`,
-        total_fee: isVip ? 0 : hours * 15000,
-      });
-    } catch (error) {
-      console.error("Fee calculation error:", error);
-    }
-  };
+    const resetTerminal = () => {
+        setManualInput("");
+        setScanResult(null);
+        setPlateNumber("");
+        setCapturedImage(null);
+        setSuccessMessage("");
+        setErrorMessage("");
+    };
 
-  // ── [AXIOS] YOLO plate recognition ──────────────────────────────────────
-  const processYoloFrame = async (imageBase64) => {
-    try {
-      /*
-      // [API Integration]
-      const response = await api.post("/staff/checkout/recognize-plate", { image: imageBase64 });
-      if (!response.data?.success) return false;
-      const { plate_number, confidence } = response.data.data;
-      setPlateNumber(plate_number);
-      setConfidenceScore(confidence);
-      await fetchSessionAndCalculateFee(plate_number);
-      return true;
-      */
+    /**
+     * GLOBAL ENTER KEYLISTENER PATTERN FOR SMART TERMINAL OPERATORS
+     */
+    useEffect(() => {
+        const handleGlobalKeyDown = (event) => {
+            if (event.key === "Enter") {
+                if (document.activeElement.tagName === "INPUT" && document.activeElement !== webcamRef.current) {
+                    if (document.activeElement.placeholder === "Enter license plate..." && manualInput) {
+                        event.preventDefault();
+                        handleManualSearchSubmit();
+                    }
+                    return;
+                }
 
-      const isDetected = Math.random() > 0.7;
-      if (!isDetected) return false;
+                event.preventDefault();
 
-      const detectedPlate = `51H-${Math.floor(10000 + Math.random() * 90000)}`;
-      setPlateNumber(detectedPlate);
-      setConfidenceScore(Math.floor(85 + Math.random() * 14));
-      await fetchSessionAndCalculateFee(detectedPlate);
-      return true;
-    } catch (error) {
-      console.error("AI recognition error:", error);
-      return false;
-    }
-  };
+                if (!scanResult) {
+                    handleCaptureAndRecognize();
+                } else {
+                    if (scanResult.type === "ExitPending") {
+                        handleConfirmCheckOut();
+                    }
+                }
+            }
+        };
 
-  const manualCapture = async () => {
-    if (!videoRef.current || !canvasRef.current) return;
-    setIsCapturing(true);
-    setCheckoutSuccess(null);
-    setActiveSession(null);
-    setBillingInfo(null);
-    setSystemWarning("");
+        window.addEventListener("keydown", handleGlobalKeyDown);
+        return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+    }, [scanResult, handleCaptureAndRecognize, manualInput, plateNumber]);
 
-    const canvas = canvasRef.current;
-    canvas.width = videoRef.current.videoWidth;
-    canvas.height = videoRef.current.videoHeight;
-    canvas.getContext("2d").drawImage(videoRef.current, 0, 0);
-    await processYoloFrame(canvas.toDataURL("image/jpeg", 0.8));
-    setIsCapturing(false);
-  };
-
-  useEffect(() => {
-    let intervalId;
-    if (isCameraOn && isAutoScan && !plateNumber && !isCapturing && !checkoutSuccess) {
-      intervalId = setInterval(async () => {
-        if (!videoRef.current || !canvasRef.current) return;
-        const canvas = canvasRef.current;
-        canvas.width = videoRef.current.videoWidth;
-        canvas.height = videoRef.current.videoHeight;
-        canvas.getContext("2d").drawImage(videoRef.current, 0, 0);
-        setIsCapturing(true);
-        const found = await processYoloFrame(canvas.toDataURL("image/jpeg", 0.5));
-        setIsCapturing(false);
-        if (found) clearInterval(intervalId);
-      }, 1000);
-    }
-    return () => clearInterval(intervalId);
-  }, [isCameraOn, isAutoScan, plateNumber, isCapturing, checkoutSuccess]);
-
-  // ── [AXIOS] Process checkout and payment (API §5.2) ──────────────────
-  const handleCheckOut = async (e) => {
-    e.preventDefault();
-    if (!plateNumber || !activeSession || systemWarning) return;
-    setIsSubmitting(true);
-
-    try {
-      /*
-      // [API Integration]
-      const response = await api.post("/staff/checkout", {
-         session_id:     activeSession.session_id,
-         license_plate:  plateNumber,
-         payment_method: activeSession.is_vip ? "SUBSCRIPTION" : paymentMethod,
-      });
-      if (response.data?.success) {
-         const newLog = response.data.data;
-         setCheckoutSuccess(newLog);
-         setRecentCheckOuts((prev) => [newLog, ...prev].slice(0, 5));
-      }
-      */
-
-      // Mock transaction
-      await new Promise((r) => setTimeout(r, 800));
-      const newLog = {
-        session_id: activeSession.session_id,
-        license_plate_out: plateNumber,
-        slot_name: activeSession.slot_name,
-        total_fee: billingInfo.total_fee,
-        payment_method: activeSession.is_vip ? "SUBSCRIPTION" : paymentMethod,
-        check_out_time: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
-      };
-      setCheckoutSuccess(newLog);
-      setRecentCheckOuts((prev) => [newLog, ...prev].slice(0, 5));
-    } catch (error) {
-      setSystemWarning(error?.message || "Payment transaction failed. Please try again.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const resetForm = () => {
-    setPlateNumber("");
-    setActiveSession(null);
-    setBillingInfo(null);
-    setCheckoutSuccess(null);
-    setSystemWarning("");
-    setConfidenceScore(0);
-  };
-
-  return (
-    <div className="animate-slide-in max-w-7xl mx-auto space-y-6 text-slate-800 dark:text-slate-200">
-      {/* ── HEADER ── */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-        <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-          Gate Exit & Payment Terminal
-          <span className="px-2 py-0.5 text-[10px] font-bold tracking-wide bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-md font-mono uppercase">Hotkeys Enabled</span>
-        </h2>
-        <div className="flex items-center gap-4 text-xs font-bold uppercase tracking-wider">
-          <div className="flex items-center gap-1.5 text-emerald-600">
-            <Wifi size={16} /> Gate Control: Online
-          </div>
-          <div className={`flex items-center gap-1.5 ${isCameraOn ? "text-blue-600" : "text-slate-400"}`}>
-            <Camera size={16} /> Camera: {isCameraOn ? "Active" : "Standby"}
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* ── LEFT: CAMERA & INFO ── */}
-        <div className="lg:col-span-7 space-y-4">
-          <div className="bg-slate-900 rounded-2xl overflow-hidden aspect-video relative flex flex-col items-center justify-center border-2 border-slate-800 shadow-xl">
-            <video ref={videoRef} autoPlay playsInline muted className={`w-full h-full object-cover ${!isCameraOn ? "hidden" : ""}`} />
-            <canvas ref={canvasRef} className="hidden" />
-
-            {!isCameraOn && !cameraError && (
-              <div className="text-slate-500 flex flex-col items-center">
-                <VideoOff size={48} className="mb-2 opacity-50" />
-                <button
-                  onClick={startCamera}
-                  className="mt-4 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition flex items-center gap-2 shadow-sm">
-                  <Video size={16} /> Open Lane Feed
-                </button>
-              </div>
+    return (
+        <div className="w-full flex-1 text-[#0f172a] flex flex-col font-sans box-border select-none">
+            {/* NOTIFICATION BANNERS */}
+            {errorMessage && (
+                <div className="w-full mb-3 bg-red-50 border-l-4 border-red-500 text-red-700 p-3.5 rounded-r-xl flex items-center gap-2.5 text-xs font-bold shadow-sm">
+                    <Ban size={16} className="shrink-0" />
+                    <span>{errorMessage}</span>
+                </div>
             )}
 
-            {cameraError && <p className="text-red-400 text-sm font-medium px-6 text-center">{cameraError}</p>}
-
-            {isCameraOn && (
-              <>
-                <div className={`absolute inset-0 pointer-events-none transition-opacity duration-500 ${isAutoScan && !plateNumber ? "opacity-100" : "opacity-0"}`}>
-                  <div className="w-full h-1 bg-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.6)] animate-[scan_2s_ease-in-out_infinite]" />
+            {successMessage && (
+                <div className="w-full mb-4 bg-emerald-50 border-l-4 border-[#10b981] text-emerald-800 p-3.5 rounded-r-xl flex items-center gap-2.5 text-xs font-bold shadow-sm">
+                    <CheckCircle2 size={16} className="shrink-0 text-[#10b981]" />
+                    <span>{successMessage}</span>
                 </div>
-
-                {plateNumber && (
-                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-52 h-20 border-2 border-dashed border-emerald-400 bg-emerald-950/40 rounded-xl flex items-center justify-center backdrop-blur-sm">
-                    <span className="bg-emerald-600 text-white text-xs font-black px-2.5 py-1 rounded-md tracking-wider font-mono uppercase shadow-md">
-                      {plateNumber} ({confidenceScore}%)
-                    </span>
-                  </div>
-                )}
-
-                <div className="absolute top-4 left-4 right-4 flex justify-between">
-                  <label className="flex items-center gap-2 bg-slate-900/70 backdrop-blur-md px-2.5 py-1.5 rounded-lg text-white text-[11px] font-bold cursor-pointer border border-slate-700 select-none uppercase tracking-wider">
-                    <input type="checkbox" className="sr-only peer" checked={isAutoScan} onChange={(e) => setIsAutoScan(e.target.checked)} />
-                    <div className="w-7 h-3.5 bg-slate-700 rounded-full peer peer-checked:bg-blue-500 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[3px] after:left-[3px] after:bg-white after:border after:rounded-full after:h-2 after:w-2 after:transition-all" />
-                    YOLO Polling
-                  </label>
-                  <button onClick={stopCamera} className="bg-slate-900/70 text-slate-300 hover:text-white p-1.5 rounded-lg border border-slate-700 transition-colors">
-                    <VideoOff size={14} />
-                  </button>
-                </div>
-
-                <div className="absolute bottom-4 right-4">
-                  <button
-                    type="button"
-                    onClick={manualCapture}
-                    disabled={isCapturing || !!checkoutSuccess}
-                    className="bg-slate-950/80 hover:bg-slate-900 border border-slate-700 backdrop-blur-md text-white text-xs font-bold uppercase tracking-wider py-2 px-3.5 rounded-xl transition flex items-center gap-2 shadow-lg active:scale-95 disabled:opacity-50">
-                    {isCapturing ? <RefreshCcw size={14} className="animate-spin" /> : <Zap size={14} />} Capture (Space)
-                  </button>
-                </div>
-              </>
             )}
-          </div>
 
-          {systemWarning && (
-            <div className="bg-red-50 dark:bg-red-950/20 border-l-4 border-red-500 border dark:border-red-900/30 p-3.5 rounded-r-xl flex items-start gap-3">
-              <ShieldAlert className="text-red-500 mt-0.5 shrink-0" size={16} />
-              <div>
-                <h4 className="text-xs font-bold text-red-700 dark:text-red-400 uppercase tracking-wide">System Alert</h4>
-                <p className="text-xs text-red-600 dark:text-red-300 mt-0.5 font-medium">{systemWarning}</p>
-              </div>
-            </div>
-          )}
+            {/* MAIN CONTENT AREA — CHUYỂN SANG CSS GRID ĐỂ ĐỒNG BỘ CHIỀU CAO TUYỆT ĐỐI */}
+            <div className="flex-1 w-full gap-5 flex flex-col lg:grid lg:grid-cols-[1.62fr_1fr] items-stretch min-h-0">
 
-          {activeSession && !checkoutSuccess && (
-            <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex gap-4 animate-in fade-in-50 duration-200">
-              <div className="w-10 h-10 bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/40 text-blue-500 dark:text-blue-400 rounded-xl flex items-center justify-center shrink-0">
-                <CarFront size={18} />
-              </div>
-              <div className="flex-1 grid grid-cols-2 gap-x-4 gap-y-2 text-xs font-medium">
-                {[
-                  { label: "Session Node ID", value: activeSession.session_id, mono: true },
-                  { label: "Parking Slot", value: activeSession.slot_name, blue: true },
-                  { label: "Check-In Time", value: activeSession.time_in, mono: true },
-                  { label: "Check-In Date", value: activeSession.date_in, mono: true },
-                ].map((item, i) => (
-                  <div key={i}>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">{item.label}</span>
-                    <p
-                      className={`mt-0.5 font-bold ${item.blue ? "text-blue-600 dark:text-blue-400" : item.mono ? "font-mono text-slate-800 dark:text-white" : "text-slate-800 dark:text-white"}`}>
-                      {item.value}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+                {/* LEFT COLUMN: CAMERA WORKSPACE */}
+                <div className="bg-white border border-[#e2e8f0] rounded-md p-4 shadow-sm flex flex-col min-h-0">
 
-        {/* ── RIGHT: PAYMENT FORM ──────────────────────────────────────── */}
-        <div className="lg:col-span-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm flex flex-col min-h-[340px] justify-between">
-          {checkoutSuccess ? (
-            <div className="flex-1 flex flex-col items-center justify-center text-center space-y-5 animate-in zoom-in-95 duration-200">
-              <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-500 border border-emerald-100 dark:border-emerald-900/30 rounded-full flex items-center justify-center">
-                <CheckCircle2 size={24} />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">Check-Out Completed</h3>
-                <p className="text-[10px] text-slate-400 font-mono mt-0.5">Barie released successfully. Gate is open.</p>
-              </div>
-
-              <div className="w-full bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 rounded-xl p-4 text-left text-xs space-y-2.5 font-medium">
-                {[
-                  { label: "Plate Number", value: checkoutSuccess.license_plate_out, cls: "font-mono font-black text-sm text-slate-900 dark:text-white", border: true },
-                  // 🚀 Defensive Programming applied before .toLocaleString()
-                  { label: "Paid Amount", value: `${(checkoutSuccess.total_fee || 0).toLocaleString()} VND`, cls: "font-bold text-emerald-500 font-mono text-sm", border: true },
-                  { label: "Time Out", value: checkoutSuccess.check_out_time, cls: "font-medium font-mono text-slate-700 dark:text-slate-300", border: true },
-                ].map((row, i) => (
-                  <div key={i} className={`flex justify-between items-center ${row.border ? "border-b pb-2 dark:border-slate-700" : ""}`}>
-                    <span className="text-slate-400">{row.label}</span>
-                    <span className={row.cls}>{row.value}</span>
-                  </div>
-                ))}
-                <div className="flex justify-between items-center pt-0.5">
-                  <span className="text-slate-400">Method applied:</span>
-                  <span className="font-bold text-xs uppercase tracking-wider text-blue-600 dark:text-blue-400 flex items-center gap-1 font-sans">
-                    <PaymentIcon method={checkoutSuccess.payment_method} /> {checkoutSuccess.payment_method}
-                  </span>
-                </div>
-              </div>
-
-              <button
-                onClick={resetForm}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition shadow-md active:scale-95">
-                Next Lane Event (Space)
-              </button>
-            </div>
-          ) : (
-            <form onSubmit={handleCheckOut} className="flex-1 flex flex-col justify-between h-full">
-              <div className="space-y-4">
-                {/* Outbound Plate */}
-                <div>
-                  <div className="flex justify-between items-center mb-1">
-                    <label className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">License Plate (Outbound)</label>
-                    <span className="text-[10px] font-bold font-mono text-slate-400">YOLO Match: {confidenceScore}%</span>
-                  </div>
-                  <div className="relative">
-                    <Hash className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                    <input
-                      type="text"
-                      required
-                      value={plateNumber}
-                      onChange={(e) => setPlateNumber(e.target.value.toUpperCase())}
-                      className="block w-full pl-9 pr-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800/40 text-slate-900 dark:text-white font-mono font-black text-base uppercase tracking-wider focus:outline-none focus:border-blue-500 focus:bg-white dark:focus:bg-slate-800 transition-all"
-                      placeholder="SCANNING OUTBOUND..."
-                    />
-                  </div>
-                </div>
-
-                {/* Billing Summary */}
-                <div className={`transition-opacity duration-300 ${activeSession ? "opacity-100" : "opacity-40 pointer-events-none"}`}>
-                  <h4 className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5 flex items-center gap-1">
-                    <Receipt size={13} /> Fee Settlement Details
-                  </h4>
-                  <div className="bg-slate-50 dark:bg-slate-800/30 rounded-xl p-3 border border-slate-100 dark:border-slate-800 space-y-2 text-xs font-semibold">
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-400 flex items-center gap-1">
-                        <Clock size={12} /> Total Duration
-                      </span>
-                      <span className="font-mono font-bold text-slate-800 dark:text-white">{billingInfo?.duration || "--"}</span>
+                    <div className="flex items-center justify-between mb-3 shrink-0">
+                        <div className="flex items-center gap-2">
+                            <Video size={16} className="text-[#64748b]" />
+                            <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#475569]">Check-out Camera</h3>
+                        </div>
+                        <button
+                            onClick={handleCaptureAndRecognize}
+                            disabled={isLoading}
+                            className="bg-[#0f172a] hover:bg-slate-800 disabled:bg-slate-300 text-white font-bold text-xs px-5 py-2.5 rounded-md transition-all shadow-sm shadow-slate-900/20 active:scale-98 flex items-center gap-2 uppercase tracking-wide"
+                        >
+                            <Camera size={14} /> Scan Plate <kbd className="bg-slate-700 text-white px-1 rounded text-[9px] ml-1 font-mono font-normal">Enter</kbd>
+                        </button>
                     </div>
-                    <div className="flex justify-between items-center border-t border-dashed pt-2 dark:border-slate-700">
-                      {activeSession?.is_vip ? (
-                        <>
-                          <span className="text-amber-500 font-bold uppercase tracking-wide text-[10px]">Monthly Subscription Pass</span>
-                          <span className="font-black text-amber-500 font-mono text-sm">0 VND</span>
-                        </>
-                      ) : (
-                        <>
-                          <span className="text-slate-700 dark:text-slate-300">Total Billing Amount</span>
-                          <span className="font-black text-blue-600 dark:text-blue-400 font-mono text-lg">{(billingInfo?.total_fee || 0).toLocaleString()} VND</span>
-                        </>
-                      )}
+
+                    {/* LIVE CAMERA HOVER CONTAINER — Tự giãn nở lắp đầy vùng trống cột trái */}
+                    <div className="bg-[#0b1329] flex-1 min-h-[340px] lg:min-h-0 w-full relative overflow-hidden flex items-center justify-center border border-slate-800 shadow-inner group rounded-md">
+                        {isStreamConnected ? (
+                            <Webcam
+                                audio={false}
+                                ref={webcamRef}
+                                screenshotFormat="image/jpeg"
+                                videoConstraints={videoConstraints}
+                                className="w-full h-full object-cover"
+                                onUserMedia={() => setIsStreamConnected(true)}
+                                onUserMediaError={() => setIsStreamConnected(false)}
+                            />
+                        ) : (
+                            <div className="flex flex-col items-center gap-2 text-slate-500">
+                                <VideoOff size={36} className="opacity-40" />
+                                <p className="text-xs font-bold">Webcam device source missing or unavailable</p>
+                            </div>
+                        )}
+
+                        {plateNumber && (
+                            <div className="absolute top-4 right-4 border border-[#10b981] bg-slate-950/90 px-4 py-2 rounded-md text-center shadow-lg backdrop-blur-sm">
+                                <div className="text-[#10b981] font-mono text-base font-black tracking-widest">{plateNumber}</div>
+                            </div>
+                        )}
                     </div>
-                  </div>
+
+                    {/* MANUAL SEARCH PANEL CONTROL */}
+                    <div className="mt-4 flex flex-col sm:flex-row gap-3 items-stretch sm:items-end border-t border-slate-100 pt-3.5 shrink-0">
+                        <div className="flex-1">
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Manual Entry</label>
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    placeholder="Enter license plate..."
+                                    value={manualInput}
+                                    onChange={(e) => setManualInput(e.target.value.toUpperCase())}
+                                    className="w-full border border-slate-200 rounded-md pl-9 pr-3 py-2 text-xs font-mono font-bold bg-slate-50/50 tracking-wider focus:outline-none focus:border-[#0f172a] focus:bg-white transition-all h-[40px]"
+                                />
+                                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                            </div>
+                        </div>
+                        <button
+                            onClick={handleManualSearchSubmit}
+                            disabled={isLoading || !manualInput}
+                            className="bg-[#0f172a] hover:bg-slate-800 text-white px-6 py-2 rounded-md text-xs font-bold h-[40px] transition-all disabled:bg-slate-100 disabled:text-slate-400 tracking-wide flex items-center justify-center gap-1.5 shrink-0 active:scale-98"
+                        >
+                            <RefreshCcw size={13} className={isLoading ? "animate-spin" : ""} /> Search
+                        </button>
+                    </div>
+
                 </div>
 
-                {/* Hide Payment Method if VIP (Free) */}
-                <div className={`transition-opacity duration-300 ${activeSession && !activeSession.is_vip ? "opacity-100" : "hidden pointer-events-none"}`}>
-                  <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5 flex justify-between">
-                    <span>Payment Node Classification</span>
-                    <span className="font-mono lowercase text-[10px]">(hotkeys: 1, 2)</span>
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      {
-                        method: "CASH",
-                        label: "Cash",
-                        icon: <Banknote size={14} />,
-                        active: "border-emerald-500 bg-emerald-50 text-emerald-600 dark:border-emerald-500 dark:bg-emerald-500/10 dark:text-emerald-400",
-                      },
-                      {
-                        method: "VNPAY",
-                        label: "VNPay QR",
-                        icon: <QrCode size={14} />,
-                        active: "border-blue-500 bg-blue-50 text-blue-600 dark:border-blue-500 dark:bg-blue-500/10 dark:text-blue-400",
-                      },
-                    ].map((p) => (
-                      <button
-                        key={p.method}
-                        type="button"
-                        onClick={() => setPaymentMethod(p.method)}
-                        className={`py-2.5 border rounded-xl font-bold text-xs uppercase tracking-wider transition flex items-center justify-center gap-1.5 outline-none ${
-                          paymentMethod === p.method
-                            ? `${p.active} shadow-sm`
-                            : "border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
-                        }`}>
-                        {p.icon} {p.label}
-                      </button>
-                    ))}
-                  </div>
+                {/* RIGHT COLUMN: RECONCILIATION RESULT CARD & INVOICE */}
+                <div className="bg-white border border-[#e2e8f0] rounded-md p-5 flex flex-col justify-between shadow-sm min-h-0">
 
-                  {paymentMethod === "VNPAY" && (
-                    <div className="mt-3 p-3 border border-blue-100 dark:border-blue-900/30 bg-blue-50/40 dark:bg-blue-950/10 rounded-xl flex items-center justify-between text-xs">
-                      <div className="text-blue-600 dark:text-blue-400 font-semibold">
-                        <p>Awaiting Gateway Callback...</p>
-                        <p className="text-[10px] text-slate-400 mt-0.5">Please scan the integrated client-node QR code.</p>
-                      </div>
-                      <CreditCard className="text-blue-500 animate-pulse shrink-0" size={18} />
+                    {/* Vùng nội dung cuộn bên trong — Đảm bảo co giãn thông minh */}
+                    <div className="space-y-4 flex-1 flex flex-col min-h-0 justify-center">
+                        <div className="flex items-center justify-between border-b border-slate-100 pb-2 shrink-0">
+                            <h3 className="text-xs font-black uppercase tracking-widest text-[#475569]">Exit Session Information</h3>
+                            {scanResult && (
+                                <span className="inline-flex text-[9px] font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 uppercase tracking-wider animate-pulse">
+                                    {scanResult.type === "ExitPending" ? "Pending Validation" : "Unknown Status"  }
+                                </span>
+                            )}
+                        </div>
+
+                        {scanResult ? (
+                            <div className="space-y-4 overflow-y-auto pr-1 flex-1 w-full">
+                                <div
+                                    onClick={() => setIsLightboxOpen(true)}
+                                    className="bg-slate-950 h-[160px] overflow-hidden border border-slate-800 shadow-md relative group cursor-zoom-in rounded-md"
+                                    title="Click to zoom picture snapshot"
+                                >
+                                    <img
+                                        src={capturedImage || "https://placehold.co/600x400?text=Snapshot+Outbound"}
+                                        alt="Captured Gate Target Area"
+                                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 opacity-90 group-hover:opacity-100"
+                                    />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 via-transparent to-transparent pointer-events-none" />
+                                    <div className="absolute bottom-2 right-2 bg-slate-900/80 rounded-lg p-1.5 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200 backdrop-blur-sm">
+                                        <Maximize2 size={12} />
+                                    </div>
+                                </div>
+
+                                {/* TOTAL PRICE BANNER */}
+                                <div className="bg-[#0052CC] rounded-md p-4 text-center space-y-0.5 shadow-md relative overflow-hidden">
+                                    <div className="absolute -right-4 -bottom-4 opacity-5 text-white"><DollarSign size={60} /></div>
+                                    <div className="text-4xl font-mono font-black text-yellow-400 tracking-wider">
+                                        {scanResult.price.toLocaleString("vi-VN")} <span className="text-2xl font-bold text-white">VND</span>
+                                    </div>
+                                </div>
+
+                                {/* CASE: EXIT IS PENDING VALIDATION */}
+                                {scanResult.type === "ExitPending" && (
+                                    <div className="space-y-3">
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div className="bg-slate-50 border rounded-md px-3 py-2">
+                                                <span className="text-[9px] font-bold text-slate-400 uppercase block tracking-wider">License Plate</span>
+                                                <span className="text-lg font-bold text-slate-700 truncate block mt-1">{scanResult.plate}</span>
+                                            </div>
+                                            <div className="bg-slate-50 border rounded-md px-3 py-2">
+                                                <span className="text-[9px] font-bold text-slate-400 uppercase block tracking-wider">Slot</span>
+                                                <span className="text-lg font-bold text-slate-700 truncate block mt-1">{scanResult.slot} ({scanResult.floor})</span>
+                                            </div>
+                                        </div>
+
+                                        {/* LOGISTIC TIMELINE INFO PANEL */}
+                                        <div className="bg-slate-50 border rounded-md p-3 space-y-2 text-[11px]">
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-slate-400 font-medium flex items-center gap-1"><Calendar size={12} /> Check-in Time:</span>
+                                                <span className="font-bold text-slate-700 font-mono">{scanResult.timeIn}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center border-t border-slate-200/60 pt-2">
+                                                <span className="text-slate-400 font-medium flex items-center gap-1"><Clock size={12} /> Durations:</span>
+                                                <span className="font-black text-slate-800 font-mono bg-slate-200 px-1.5 py-0.5 rounded text-[10px]">{scanResult.duration}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            /* IDLE EMPTY PLACEHOLDER SCREEN STATE — Tự động co giãn phủ kín chiều cao nhờ flex-1 */
+                                <div className="flex-1 border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center text-center p-6 text-[#94a3b8] bg-slate-50/50 my-auto">
+                                    <CarFront size={32} className="mb-3 opacity-40 text-slate-500 animate-pulse" />
+                                    <p className="text-xs font-black uppercase tracking-widest text-slate-700">Ready to Scan</p>
+                                    <p className="text-[11px] text-slate-500 mt-1.5 max-w-[200px] leading-normal">
+                                        Press <kbd className="bg-white border border-slate-300 text-slate-800 px-1.5 py-0.5 rounded shadow-sm font-bold font-mono text-[10px]">[Enter]</kbd> or click Scan Plate to start.
+                                    </p>
+                                </div>
+                        )}
                     </div>
-                  )}
+
+                    {/* ACTION PANEL BOUNDARY TRIGGERS */}
+                    <div className="space-y-2 pt-4 border-t border-slate-100 shrink-0">
+                        {scanResult ? (
+                            <>
+                                {scanResult.type === "ExitPending" && (
+                                    <>
+                                        <button
+                                            onClick={handleConfirmCheckOut}
+                                            disabled={isLoading}
+                                            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-md text-xs font-black uppercase tracking-widest transition-all shadow-sm active:scale-98"
+                                        >
+                                            Confirm Payment & Exit <span className="font-mono font-normal opacity-80 text-[10px] ml-1">[Enter]</span>
+                                        </button>
+                                        <button
+                                            onClick={resetTerminal}
+                                            className="w-full border border-slate-200 text-slate-600 hover:bg-slate-50 py-2 rounded-md text-xs font-bold uppercase tracking-wide transition-all active:scale-98"
+                                        >
+                                            Cancle <span className="font-mono font-normal opacity-80 text-[10px] ml-1">[Esc]</span>
+                                        </button>
+                                    </>
+                                )}
+                            </>
+                        ) : (
+                            <button disabled className="w-full bg-[#f8fafc] text-slate-400 py-2.5 rounded-md text-xs font-bold uppercase tracking-widest border border-slate-200 cursor-not-allowed text-center">
+                                    System ready
+                            </button>
+                        )}
+                    </div>
                 </div>
-              </div>
 
-              <button
-                id="btn-submit-checkout"
-                type="submit"
-                disabled={!plateNumber || !activeSession || isSubmitting || !!systemWarning}
-                className="w-full mt-6 bg-slate-950 hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-500 disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:text-slate-300 dark:disabled:text-slate-600 text-white py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition flex items-center justify-center gap-2 shadow-sm active:scale-[0.98]">
-                {isSubmitting ? <RefreshCcw size={14} className="animate-spin" /> : <ArrowRight size={14} />}
-                {isSubmitting ? "Processing Node payment..." : "Confirm Checkout Operations"}
-              </button>
-            </form>
-          )}
-        </div>
-      </div>
+            </div>
 
-      {/* ── HISTORY PANEL — FULL WIDTH ───────────────────────────────────── */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
-        <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 flex items-center gap-1.5 mb-4 pb-2 border-b border-slate-100 dark:border-slate-800 uppercase tracking-wider">
-          <History size={14} className="text-blue-500" /> Recent Lane Exit Logs
-        </h3>
-
-        <div className="flex flex-col gap-3">
-          {recentCheckOuts.length > 0 ? (
-            recentCheckOuts.map((session, idx) => {
-              const color = LOG_COLORS[idx % LOG_COLORS.length];
-              return (
+            {/* INTERACTIVE MODAL LIGHTBOX OVERLAY COMPONENT */}
+            {isLightboxOpen && capturedImage && (
                 <div
-                  key={session.session_id}
-                  className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border transition-all duration-200 gap-4 ${color.bg} ${color.border}`}>
-                  {/* Cluster 1: Plate & Session ID (Truncated and bolded) */}
-                  <div className="flex items-center gap-3 sm:w-1/4 min-w-0">
-                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${color.icon}`}>
-                      <CarFront size={16} />
+                    className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex flex-col items-center justify-center p-4 animate-fadeIn cursor-zoom-out"
+                    onClick={() => setIsLightboxOpen(false)}
+                >
+                    <div className="absolute top-5 right-5 text-white/70 hover:text-white transition-colors bg-slate-900/60 p-2.5 rounded-full border border-white/10">
+                        <X size={20} />
                     </div>
-                    <div className="min-w-0">
-                      <p className="font-mono font-black text-base text-slate-800 dark:text-white tracking-wider leading-none mb-1 truncate">{session.license_plate_out}</p>
-                      <p className="text-sm font-extrabold font-mono text-slate-600 dark:text-slate-300 tracking-wide flex items-center gap-1.5 leading-none">
-                        <span className="text-[9px] font-black text-slate-400 bg-slate-100 dark:bg-slate-800/60 px-1 py-0.5 rounded-sm uppercase tracking-widest shrink-0">
-                          SESS
-                        </span>
-                        <span className="truncate">#{session.session_id}</span>
-                      </p>
+
+                    <div
+                        className="relative max-w-4xl max-h-[85vh] rounded-md overflow-hidden border border-white/10 bg-slate-900 shadow-2xl scaleUp"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <img
+                            src={capturedImage}
+                            alt="High Resolution Audit View"
+                            className="w-full h-auto max-h-[85vh] object-contain"
+                        />
+                        <div className="absolute bottom-0 inset-x-0 bg-slate-950/70 p-3 text-center border-t border-white/5 backdrop-blur-sm">
+                            <p className="font-mono font-bold tracking-widest text-sm text-yellow-400">
+                                {plateNumber || "No Plate Detected"}
+                            </p>
+                            
+                        </div>
                     </div>
-                  </div>
-
-                  {/* Cluster 2: Time Out */}
-                  <div className="flex items-center gap-2 sm:justify-center sm:w-1/4">
-                    <Clock size={13} className="text-slate-400 shrink-0" />
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Checkout Time:</span>
-                    <span className="text-sm font-bold font-mono text-slate-700 dark:text-slate-300">{session.check_out_time}</span>
-                  </div>
-
-                  {/* Cluster 3: Method */}
-                  <div className="flex items-center gap-2 sm:justify-center sm:w-1/4">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Method:</span>
-                    <span className="text-xs font-extrabold uppercase tracking-wider text-blue-600 dark:text-blue-400 flex items-center gap-1">
-                      <PaymentIcon method={session.payment_method} />
-                      {session.payment_method}
-                    </span>
-                  </div>
-
-                  {/* Cluster 4: Revenue */}
-                  <div className="flex items-center justify-between sm:justify-end gap-3 sm:w-1/4 shrink-0">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 sm:hidden">Revenue Collected:</span>
-                    <div className={`px-4 py-1.5 text-xs font-black rounded-lg font-mono tracking-wide border min-w-[110px] text-center uppercase ${color.badge}`}>
-                      {session.total_fee === 0 ? "FREE / VIP" : `${(session.total_fee || 0).toLocaleString()} VND`}
-                    </div>
-                  </div>
                 </div>
-              );
-            })
-          ) : (
-            <div className="text-center py-10 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
-              No exit shift logs recorded.
-            </div>
-          )}
+            )}
+
         </div>
-      </div>
-    </div>
-  );
+    );
 }

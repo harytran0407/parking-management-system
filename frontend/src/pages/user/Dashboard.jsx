@@ -2,8 +2,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../utils/api";
-import {
-  MapPin,
+import {MapPin,
   Clock,
   Building,
   Layers,

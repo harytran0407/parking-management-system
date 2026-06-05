@@ -534,6 +534,9 @@ public partial class AppDbContext : DbContext
                 .HasForeignKey(d => d.VehicleTypeId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_POLICY_TYPE");
+            entity.Property(e => e.HandlingFee)
+                .HasPrecision(10, 2)
+                .HasColumnName("HANDLING_FEE");
         });
 
         modelBuilder.Entity<Role>(entity =>
@@ -625,6 +628,9 @@ public partial class AppDbContext : DbContext
             entity.HasOne(d => d.Role).WithMany(p => p.Users)
                 .HasForeignKey(d => d.RoleId)
                 .HasConstraintName("FK_USER_ROLE");
+            entity.Property(e => e.AvatarUrl)
+                .HasColumnName("AvatarUrl")
+                .HasColumnType("LONGTEXT");
         });
 
         modelBuilder.Entity<Vehicle>(entity =>

@@ -37,5 +37,12 @@ namespace ParkingManagement.Services
         /// Truy vấn danh sách các ô đỗ xe theo bộ lọc phân trang và thống kê số lượng thời gian thực.
         /// </summary>
         Task<ParkingSlotsResponseDto> GetRealtimeSlotsAsync(SlotQueryFilterDto filter);
+
+        /// <summary>
+        /// Lấy danh sách lịch sử những xe đã và đang gửi tại bãi theo bộ lọc phân trang
+        /// </summary>
+        /// <param name="filter"></param>
+        /// <returns></returns>
+        Task<PagedHistoryResponseDto> GetParkingHistoryAsync(ParkingHistoryFilterDto filter);
     }
 }

@@ -27,6 +27,8 @@ public class PricingPolicyResponse
 
     [JsonPropertyName("effective_date")]
     public string EffectiveDate { get; set; } = null!;
+    [JsonPropertyName("handling_fee")]
+    public decimal HandlingFee { get; set; }
 }
 
 // ─── POST ─────────────────────────────────────────────────────────────────────
@@ -55,6 +57,10 @@ public class CreatePricingPolicyRequest
     [Required(ErrorMessage = "effective_date is required (YYYY-MM-DD)")]
     [JsonPropertyName("effective_date")]
     public string EffectiveDate { get; set; } = null!;
+    [Required]
+    [Range(0, double.MaxValue)]
+    [JsonPropertyName("handling_fee")]
+    public decimal HandlingFee { get; set; }
 }
 
 // ─── PUT ─────────────────────────────────────────────────────────────────────
@@ -75,4 +81,7 @@ public class UpdatePricingPolicyRequest
 
     [JsonPropertyName("effective_date")]
     public string? EffectiveDate { get; set; }
+    [Range(0, double.MaxValue)]
+    [JsonPropertyName("handling_fee")]
+    public decimal? HandlingFee { get; set; }
 }

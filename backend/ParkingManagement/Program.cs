@@ -6,6 +6,8 @@ using ParkingManagement.Services;
 using ParkingManagement.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
+// ── .ENV Reader ───────────────────────────────────────────────────────────────
+DotNetEnv.Env.Load();
 
 // ── Database ──────────────────────────────────────────────────────────────────
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -132,9 +134,8 @@ app.UseCors(policy => policy
     .AllowAnyHeader());                   // Cho phép mọi Header truyền lên (Content-Type, Authorization)
 // Security
 app.UseMiddleware<ParkingManagement.Middlewares.TokenBlacklistMiddleware>(); // Check blacklist
-app.UseStaticFiles(); 
 app.UseAuthentication(); // Read JWT token
 app.UseAuthorization(); // Check role/permission
-
+app.UseStaticFiles();
 app.MapControllers();
 app.Run();

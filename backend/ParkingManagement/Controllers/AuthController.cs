@@ -10,6 +10,8 @@ using ParkingManagement.Utils;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using Google.Apis.Auth;
+using Microsoft.EntityFrameworkCore;
 
 namespace ParkingManagement.Controllers.AuthController
 {
@@ -536,6 +538,161 @@ namespace ParkingManagement.Controllers.AuthController
                 }
 
             });
+        }
+        [HttpPost("google-login")]
+        public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginRequestDto request)
+        {
+            // 1. Rút Token ra 
+            var access_Token = request.GetTokenChecked();
+
+            // 2. Kiểm tra xem token có tồn tại hay không
+            if (string.IsNullOrEmpty(access_Token))
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message = "Backend can't find the token"
+                });
+            }
+            try
+            {
+                string userEmail = "";
+                string userFullName = "";
+                string userAvatar = "";
+
+                // 3. PHÂN LUỒNG: Hỏi Google xem đây là ID Token hay Access Token
+
+                // Trường hợp 1 : Nếu token bắt đầu bằng ya29 => nó là Access Token.
+                if (access_Token.StartsWith("ya29"))
+                {
+                    var httpClient = new HttpClient();
+                    var response = await httpClient.GetAsync($"https://www.googleapis.com/oauth2/v3/userinfo?access_token={access_Token}");
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        return Unauthorized(new
+                        {
+                            success = false,
+                            message = "Invalid Google access token"
+                        });
+                    }
+                    // Đọc kết quả google dưới dạng chuỗi thô
+                    var jsonResponse = await response.Content.ReadAsStringAsync();
+
+                    // Xử lý chuỗi JSON để lấy email, name và picture (avatar)
+                    var document = System.Text.Json.JsonDocument.Parse(jsonResponse);
+                    var root = document.RootElement;
+
+                    // Lấy email, name và picture từ kết quả trả về của Google
+                    userEmail = root.TryGetProperty("email", out var emailEl) ? emailEl.GetString() ?? "" : "";
+                    userFullName = root.TryGetProperty("name", out var nameEl) ? nameEl.GetString() ?? "" : "";
+                    userAvatar = root.TryGetProperty("picture", out var picEl) ? picEl.GetString() ?? "" : "";
+                }
+                else
+                // Trường hợp 2: Nếu token không bắt đầu bằng ya29 => nó là ID Token (JWT Token do Google cấp)
+                {
+                    var clientId = _configuration["Google:ClientId"];
+                    var settings = new GoogleJsonWebSignature.ValidationSettings()
+                    {
+                        Audience = new List<string>() { clientId ?? string.Empty }
+                    };
+
+                    var payload = await GoogleJsonWebSignature.ValidateAsync(access_Token, settings);
+                    userEmail = payload.Email;
+                    userFullName = payload.Name;
+                    userAvatar = payload.Picture;
+                }
+
+                // 4. KIỂM TRA DATABASE VÀ LƯU NGƯỜI DÙNG
+                var userInDb = await _context.Users.FirstOrDefaultAsync(u => u.Email == userEmail);
+                var roleName = "User"; // Mặc định role khi đăng nhập bằng Google sẽ là "User".
+
+                // Tạo một mật khẩu giả ngẫu nhiên để lưu vào Database, vì đăng nhập qua Google sẽ không có mật khẩu.
+                string randomDummyPassword = Guid.NewGuid().ToString();
+                string hashedDummyPassword = BCrypt.Net.BCrypt.HashPassword(randomDummyPassword);
+
+                if (userInDb == null)
+                {
+                    userInDb = new User
+                    {
+                        UserId = "usr_" + DateTime.Now.ToString("yyMMddHHmmssfff"),
+                        Username = "user_" + Guid.NewGuid().ToString("N").Substring(0, 8),
+                        FullName = userFullName,
+                        Email = userEmail,
+                        AvatarUrl = userAvatar,
+                        Password = hashedDummyPassword,
+                        Phone = "", // Để trống số điện thoại vì đăng nhập qua Google chưa có số điện thoại
+                        RoleId = 4,
+                        Status = "ACTIVE",
+                        CreatedAt = DateTime.UtcNow,
+                        LastLogin = DateTime.UtcNow
+                        // Bỏ trống Password và Phone vì đăng nhập qua Google chưa có những cái này
+                    };
+                    _context.Users.Add(userInDb);
+                }
+                else
+                {
+                    // Nếu user đã tồn tại, cập nhật LastLogin
+                    userInDb.LastLogin = DateTime.UtcNow;
+                }
+                await _context.SaveChangesAsync();
+
+                // 5. Tạo JWT Token cho tài khoản và trả về cho client (tương tự như trong phương thức Login)
+                var jwtSettings = _configuration.GetSection("Jwt");
+                var issuer = jwtSettings["Issuer"];
+                var audience = jwtSettings["Audience"];
+                var secretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY");
+
+                if (string.IsNullOrEmpty(secretKey))
+                {
+                    throw new InvalidOperationException("JWT_SECRET_KEY is missing in the .env file");
+                }
+                var key = Encoding.UTF8.GetBytes(secretKey);
+                var claims = new List<Claim>
+            {
+            new Claim(JwtRegisteredClaimNames.Sub, userInDb.UserId),
+            new Claim(ClaimTypes.Email, userInDb.Email ?? ""),
+            new Claim(ClaimTypes.Role, roleName),
+            new Claim("session_id", Guid.NewGuid().ToString().Substring(0, 6))
+             };
+
+                var tokenDescriptor = new SecurityTokenDescriptor
+                {
+                    Subject = new ClaimsIdentity(claims),
+                    Expires = DateTime.UtcNow.AddMinutes(60),
+                    Issuer = issuer,
+                    Audience = audience,
+                    SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+                };
+
+                var tokenHandler = new JwtSecurityTokenHandler();
+                var token = tokenHandler.CreateToken(tokenDescriptor);
+                var jwtToken = tokenHandler.WriteToken(token);
+
+                // 6. Trả về JWT Token cho client cùng với thông tin tài khoản và role
+                return Ok(new
+                {
+                    success = true,
+                    message = "Google Login successful",
+                    data = new
+                    {
+                        token = jwtToken,
+                        expires_in = 3600,
+                        token_type = "Bearer",
+                        user = new
+                        {
+                            user_id = userInDb.UserId,
+                            full_name = userInDb.FullName,
+                            email = userInDb.Email,
+                            avatar = userInDb.AvatarUrl,
+                            role = roleName
+                        }
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = "Lỗi hệ thống: " + ex.Message });
+            }
         }
     }
 }

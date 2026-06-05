@@ -385,5 +385,36 @@ namespace ParkingManagement.Controllers
             await _slotManagementService.DeleteSlotAsync(slotId);
             return NoContent();
         }
+
+        /// <summary>
+        /// Lấy danh sách lịch sử đỗ xe (Các phiên đã kết thúc/đã check-out)
+        /// </summary>
+        [HttpGet("history")]
+        // [Authorize(Roles = "ParkingStaff,ParkingManager")] // Sau này bật lên để phân quyền
+        [AllowAnonymous]
+        [ProducesResponseType(typeof(PagedHistoryResponseDto), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetParkingHistory([FromQuery] ParkingHistoryFilterDto filter)
+        {
+            try
+            {
+                // Đảm bảo dữ liệu phân trang luôn hợp lệ
+                if (filter.Page < 1) filter.Page = 1;
+                if (filter.PageSize < 1 || filter.PageSize > 100) filter.PageSize = 20;
+
+                // Gọi xuống Service xử lý truy vấn DB (Lọc theo Biển số, Khoảng thời gian, Trạng thái...)
+                var response = await _parkingService.GetParkingHistoryAsync(filter);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new
+                {
+                    success = false,
+                    error_code = "DATABASE_QUERY_FAILED",
+                    message = "Lỗi kết nối cơ sở dữ liệu khi truy vấn lịch sử đỗ xe.",
+                    details = ex.Message
+                });
+            }
+        }
     }
 }

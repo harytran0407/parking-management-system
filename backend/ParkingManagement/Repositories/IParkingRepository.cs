@@ -116,5 +116,15 @@ namespace ParkingManagement.Repositories
 
         Task<string> GetOperatingHoursForDayAsync(DateTime referenceTime);
 
+        /// <summary>
+        /// Lấy lịch sử gửi xe của một phương tiện dựa trên biển số xe, khoảng thời gian và loại phương tiện, đồng thời hỗ trợ phân trang kết quả trả về.
+        /// </summary>
+        Task<(List<ParkingSession> Items, int TotalCount)> GetParkingHistoryAsync(
+            string? licensePlate,
+            DateTime? fromDate,
+            DateTime? toDate,
+            string? vehicleType,
+            int page,
+            int pageSize);
     }
 }

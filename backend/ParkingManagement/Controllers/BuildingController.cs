@@ -59,7 +59,7 @@ public class BuildingController : ControllerBase
         var today = DateOnly.FromDateTime(DateTime.Today);
 
         var currentActivePolicies = allPolicies
-            .Where(p => p.EffectiveDate <= today) 
+            .Where(p => p.EffectiveDate <= today)
             .GroupBy(p => p.VehicleTypeId)
             .Select(g => g.OrderByDescending(p => p.EffectiveDate).First())
             .Select(p => new PricingPolicyResponse
@@ -70,7 +70,7 @@ public class BuildingController : ControllerBase
                 BasePrice = p.BasePrice,
                 HourlyRate = p.HourlyRate,
                 OvernightFee = p.OvernightFee,
-                EffectiveDate = p.EffectiveDate.ToString("yyyy-MM-dd") 
+                EffectiveDate = p.EffectiveDate.ToString("yyyy-MM-dd")
             })
             .ToList();
 
