@@ -570,7 +570,7 @@ namespace ParkingManagement.Controllers.AuthController
                     userEmail = root.TryGetProperty("email", out var emailEl) ? emailEl.GetString() ?? "" : "";
                     userFullName = root.TryGetProperty("name", out var nameEl) ? nameEl.GetString() ?? "" : "";
                     userAvatar = root.TryGetProperty("picture", out var picEl) ? picEl.GetString() ?? "" : "";
-                } 
+                }
                 else
                 // Trường hợp 2: Nếu token không bắt đầu bằng ya29 => nó là ID Token (JWT Token do Google cấp)
                 {
@@ -618,7 +618,7 @@ namespace ParkingManagement.Controllers.AuthController
                     // Nếu user đã tồn tại, cập nhật LastLogin
                     userInDb.LastLogin = DateTime.UtcNow;
                 }
-                    await _context.SaveChangesAsync();
+                await _context.SaveChangesAsync();
 
                 // 5. Tạo JWT Token cho tài khoản và trả về cho client (tương tự như trong phương thức Login)
                 var jwtSettings = _configuration.GetSection("Jwt");
@@ -677,6 +677,66 @@ namespace ParkingManagement.Controllers.AuthController
             {
                 return StatusCode(500, new { success = false, message = "Lỗi hệ thống: " + ex.Message });
             }
+        }
+
+        [Authorize]
+        [HttpPut("update-password")]
+        public async Task<IActionResult> UpdatePassword([FromBody] UpdatePasswordRequestDto request)
+        {
+            // Lấy UserId của người đang dùng
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized(new
+                {
+                    success = false,
+                    message = "Can't find the authorize information"
+                });
+            }
+
+            // Tìm user trong database
+            var userInDb = await _context.Users.FirstOrDefaultAsync(u => u.UserId == userId);
+            if (userId == null)
+            {
+                return NotFound(new
+                {
+                    success = false,
+                    message = "User not found."
+                });
+            }
+
+            // Kiểm tra mật khẩu cũ có khớp trong database không
+            bool isOldPasswordCorrect = BCrypt.Net.BCrypt.Verify(request.OldPassword, userInDb.Password);
+            if (!isOldPasswordCorrect)
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message = "Current password doesn't correct."
+                });
+            }
+
+            // Kiểm tra mật khẩu mới trùng khớp mật khẩu 
+            if (request.OldPassword == request.NewPassword)
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message = "New password must be different from the old password"
+                });
+            }
+
+            // Mã hóa mật khẩu mới và update database
+            string hashedNewPassword = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+            userInDb.Password = hashedNewPassword;
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                success = true,
+                message = "Update password successfully."
+            });
         }
     }
 }
