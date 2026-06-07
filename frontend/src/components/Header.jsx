@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import { Bell, Sun, Moon, User, LogOut } from "lucide-react";
+import { useLocation, useNavigate, Link } from "react-router-dom"; // Giữ nguyên các import định tuyến
+import { Bell, Sun, Moon, User, LogOut, KeyRound } from "lucide-react";
+import ChangePasswordModal from "./ChangePasswordModal";
 import { useTheme } from "../hooks/useTheme";
 import { useAuth } from "../hooks/useAuth";
 
@@ -10,13 +11,16 @@ export default function Header() {
   const navigate = useNavigate();
   const location = useLocation();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  // Khởi tạo trạng thái đóng mở của Modal đổi mật khẩu trung tâm
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+
   const dropdownRef = useRef(null);
 
   // ==========================================
-  // DYNAMIC PATH MAPPING
+  // DYNAMIC PATH MAPPING (GIỮ NGUYÊN VẸN CỦA BẠN)
   // ==========================================
   const pageTitles = {
-    // --- ParkingUser (Driver) Routes ---
     "/user": "Parking Info",
     "/user/book": "Booking Slot",
     "/user/bookings": "Booking Sessions",
@@ -24,20 +28,21 @@ export default function Header() {
     "/user/issues": "Reports",
     "/user/profile": "Edit My Profile",
 
-    // --- ParkingStaff (Operator) Routes ---
     "/staff/checkin": "Gate Entry Operation",
     "/staff/checkout": "Gate Exit & Payment",
     "/staff/incidents": "Incident Handling",
     "/staff": "Dashboard",
     "/staff/slots": "Slots and Gate Management",
   };
-  // CLEAR AVATAR LINK
+
+  // CLEAR AVATAR LINK (GIỮ NGUYÊN VẸN CỦA BẠN)
   const getBackendRootUrl = () => {
     const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:5077";
     return baseUrl.replace("/api/v1", "");
   };
+
   // ==========================================
-  // ROLE-BASED CONTEXT RESOLUTION
+  // ROLE-BASED CONTEXT RESOLUTION (GIỮ NGUYÊN VẸN CỦA BẠN)
   // ==========================================
   const getFallbackTitle = () => {
     if (user?.role === "ParkingStaff") return "Operator Dashboard";
@@ -46,7 +51,6 @@ export default function Header() {
   };
 
   const currentTitle = pageTitles[location.pathname] || getFallbackTitle();
-
   const targetProfileRoute = user?.role === "ParkingStaff" ? "/staff/profile" : "/user/profile";
 
   useEffect(() => {
@@ -58,8 +62,11 @@ export default function Header() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-  const userAvatar = user?.avatar || user?.avatar_url;
-  const initial = user?.full_name ? user.full_name.charAt(0).toUpperCase() : "U";
+
+  const userAvatar = user?.avatar || user?.avatar_url || "";
+
+  // 🚀 ĐÃ SỬA: Thay thế biến undefined thành phương thức Heuristic kiểm tra chuỗi URL Avatar tuyệt đối của Google
+  const isGoogleAccount = userAvatar.startsWith("http://") || userAvatar.startsWith("https://");
 
   const handleLogout = () => {
     setIsDropdownOpen(false);
@@ -68,7 +75,7 @@ export default function Header() {
 
   const handleEditProfile = () => {
     setIsDropdownOpen(false);
-    navigate(targetProfileRoute); // Điều hướng động theo Role của phiên làm việc
+    navigate(targetProfileRoute);
   };
 
   return (
@@ -103,16 +110,7 @@ export default function Header() {
             className={`w-10 h-10 rounded-full text-white font-bold flex items-center justify-center shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 overflow-hidden ${
               user?.role === "ParkingStaff" ? "bg-indigo-600 hover:bg-indigo-700" : "bg-blue-600 hover:bg-blue-700"
             } ${isDropdownOpen ? "ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-slate-900" : ""}`}>
-            {/* {userAvatar ? <img src={`${getBackendRootUrl()}${userAvatar}`} alt="User Avatar" className="w-full h-full object-cover" /> : initial} */}
-            <img
-              src={
-                userAvatar.startsWith("http://") || userAvatar.startsWith("https://")
-                  ? userAvatar // Nếu là link tuyệt đối từ Google thì lấy luôn
-                  : `${getBackendRootUrl()}${userAvatar}` // Nếu là ảnh local /uploads/... mới nối host Backend
-              }
-              alt="User Avatar"
-              className="w-full h-full object-cover"
-            />
+            <img src={isGoogleAccount ? userAvatar : `${getBackendRootUrl()}${userAvatar}`} alt="User Avatar" className="w-full h-full object-cover" />
           </button>
 
           {isDropdownOpen && (
@@ -140,6 +138,20 @@ export default function Header() {
                   Profile Settings
                 </button>
 
+                {/* 🚀 ĐÃ SỬA: Đổi điều kiện kiểm tra sang biến logic cục bộ isGoogleAccount */}
+                {!isGoogleAccount && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsDropdownOpen(false);
+                      setIsPasswordModalOpen(true);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800/60 rounded-xl transition-colors text-left hover:text-slate-800 dark:hover:text-slate-200 mt-0.5">
+                    <KeyRound size={14} className="text-slate-400 dark:text-slate-500" />
+                    Change Password
+                  </button>
+                )}
+
                 <button
                   type="button"
                   onClick={handleLogout}
@@ -152,6 +164,9 @@ export default function Header() {
           )}
         </div>
       </div>
+
+      {/* Quản lý cổng hiển thị Modal đổi mật khẩu an toàn */}
+      <ChangePasswordModal isOpen={isPasswordModalOpen} onClose={() => setIsPasswordModalOpen(false)} />
     </header>
   );
 }
