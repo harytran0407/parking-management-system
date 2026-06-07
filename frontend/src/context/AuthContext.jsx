@@ -64,7 +64,7 @@ export function AuthProvider({ children }) {
 
   /**
    * ==========================================
-   * 🛑 HÀM ĐĂNG NHẬP GOOGLE THỰC TẾ (TÍCH HỢP AXIOS API)
+   *  HÀM ĐĂNG NHẬP GOOGLE THỰC TẾ (TÍCH HỢP AXIOS API)
    * ==========================================
    */
   const loginWithGoogle = useCallback(async (googleAccessToken) => {
