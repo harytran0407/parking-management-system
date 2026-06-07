@@ -123,7 +123,6 @@ export default function Register() {
         });
         setTimeout(() => navigate("/login"), 1500);
       }
-
     } catch (error) {
       const serverMessage = error.response?.data?.message || error?.message || "Registered failed.Please check your inputs.";
       setBanner({ type: "error", message: serverMessage });
@@ -142,7 +141,8 @@ export default function Register() {
           type: "success",
           message: "Google sign-up successful! Redirecting...",
         });
-        setTimeout(() => navigate(`/${user.role.toLowerCase()}`), 1500);
+        const redirectPath = "/user";
+        setTimeout(() => navigate(redirectPath, { replace: true }), 1500);
       } catch (err) {
         setBanner({
           type: "error",
