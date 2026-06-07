@@ -70,6 +70,7 @@ function App() {
               </ProtectedRoute>
             }
           />
+          
           <Route
             path="/admin/*"
             element={
