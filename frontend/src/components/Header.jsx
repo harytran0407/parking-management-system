@@ -33,14 +33,6 @@ export default function Header() {
     "/staff/incidents": "Incident Handling",
     "/staff": "Dashboard",
     "/staff/slots": "Slots and Gate Management",
-
-    // --- SystemAdmin (Administrator) Routes ---
-    "/admin": "Administrator Dashboard",
-    "/admin/users": "Manage Users",
-    "/admin/permissions": "Role Permissions",
-    "/admin/settings": "System Settings",
-    "/admin/roles": "Role Management",
-    "/admin/configuration": "System Configuration",
   };
 
   // CLEAR AVATAR LINK (GIỮ NGUYÊN VẸN CỦA BẠN)
@@ -53,19 +45,13 @@ export default function Header() {
   // ROLE-BASED CONTEXT RESOLUTION (GIỮ NGUYÊN VẸN CỦA BẠN)
   // ==========================================
   const getFallbackTitle = () => {
-    if (user?.role === "SystemAdmin") return "Administrator Dashboard";
     if (user?.role === "ParkingStaff") return "Operator Dashboard";
     if (user?.role === "ParkingManager") return "Manager Dashboard";
     return "Driver Dashboard";
   };
 
   const currentTitle = pageTitles[location.pathname] || getFallbackTitle();
-
-  const targetProfileRoute = user?.role === "ParkingStaff"
-    ? "/staff/profile"
-    : user?.role === "SystemAdmin"
-      ? "/admin"
-      : "/user/profile";
+  const targetProfileRoute = user?.role === "ParkingStaff" ? "/staff/profile" : "/user/profile";
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -124,23 +110,7 @@ export default function Header() {
             className={`w-10 h-10 rounded-full text-white font-bold flex items-center justify-center shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 overflow-hidden ${
               user?.role === "ParkingStaff" ? "bg-indigo-600 hover:bg-indigo-700" : "bg-blue-600 hover:bg-blue-700"
             } ${isDropdownOpen ? "ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-slate-900" : ""}`}>
-<<<<<<< HEAD
             <img src={isGoogleAccount ? userAvatar : `${getBackendRootUrl()}${userAvatar}`} alt="User Avatar" className="w-full h-full object-cover" />
-=======
-            {userAvatar ? (
-              <img
-                src={
-                  userAvatar.startsWith("http://") || userAvatar.startsWith("https://")
-                    ? userAvatar
-                    : `${getBackendRootUrl()}${userAvatar}`
-                }
-                alt="User Avatar"
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <span>{initial}</span>
-            )}
->>>>>>> 55b563c (feat(admin): add admin dashboard, routing and admin page UI)
           </button>
 
           {isDropdownOpen && (
