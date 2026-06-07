@@ -1,32 +1,34 @@
-import React, { useState, useRef } from "react"; // ĐÃ SỬA: Import thêm useRef
+import React, { useState, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { Lock, Contact, ArrowLeft } from "lucide-react";
 import googleIcon from "../assets/google.png";
 import { useGoogleLogin } from "@react-oauth/google";
-import ReCAPTCHA from "react-google-recaptcha"; // ĐÃ SỬA: Import thư viện reCAPTCHA
+import ReCAPTCHA from "react-google-recaptcha";
 
-// MAP ĐIỀU HƯỚNG TỰ ĐỘNG DỰA VÀO DATA BACKEND TRẢ VỀ
+// MAP ĐIỀU HƯỚNG TỰ ĐỘNG DỰA VÀO DATA BACKEND TRẢ VỀ (GIỮ NGUYÊN VẸN)
 const ROLE_ROUTES_MAP = {
   ParkingStaff: "/staff",
   ParkingUser: "/user",
   ParkingManager: "/manager",
   SystemAdmin: "/admin",
+  User: "/user",
 };
 
 export default function Login() {
   const navigate = useNavigate();
   const { login, loginWithGoogle } = useAuth();
 
-  // ĐÃ SỬA: Thay đổi destructuring từ {} sang [] cho đúng cú pháp React Hook
   const [captchaToken, setCaptchaToken] = useState(null);
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const recaptchaRef = useRef(null);
   const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
+
+  // 🚀 ĐA SỬA: Tách thành 2 trạng thái loading riêng biệt để tránh xung đột nút bấm
+  const [submitLoading, setSubmitLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const handleCaptchaSuccess = (token) => {
     setCaptchaToken(token);
@@ -42,26 +44,22 @@ export default function Login() {
       return;
     }
 
-    setLoading(true); // ĐÃ SỬA: Bổ sung trạng thái loading khi bắt đầu gửi request
+    setSubmitLoading(true); // 🚀 Chỉ bật hiệu ứng cho form thường
     try {
-      // ĐÃ SỬA: Truyền thêm tham số captchaToken vào hàm login để đẩy dữ liệu lên AuthContext
       const user = await login(email.trim(), password, captchaToken);
-
-      // TỰ ĐỘNG ĐIỀU HƯỚNG: Lấy user.role từ Backend trả về để map với đường dẫn
-      const redirectPath = ROLE_ROUTES_MAP[user.role] || "/home";
+      const redirectPath = ROLE_ROUTES_MAP[user.role] || "/login";
       navigate(redirectPath);
     } catch (err) {
-      // ĐÃ SỬA: Reset lại token và giao diện ô tích khi đăng nhập thất bại
       setCaptchaToken(null);
       recaptchaRef.current?.reset();
 
-      const errorCode = err?.error_code; // Đối chiếu bảng Business Error Codes
+      const errorCode = err?.error_code;
       switch (errorCode) {
         case "INVALID_CREDENTIALS":
           setError("Invalid email or password. Please try again.");
           break;
         case "ACCOUNT_LOCKED":
-          setError("This account has been locked due to multiple failed logins.");
+          setError("This account has been banned.");
           break;
         case "ACCESS_DENIED":
           setError("Account is inactive or not verified.");
@@ -73,24 +71,24 @@ export default function Login() {
           setError(err?.message || "Login failed. Please verify your credentials.");
       }
     } finally {
-      setLoading(false);
+      setSubmitLoading(false); // Giải phóng form thường
     }
   };
 
   const handleGoogleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
       setError("");
-      setLoading(true);
+      setGoogleLoading(true); // 🚀 Chỉ bật hiệu ứng cho nút Google
       try {
         const token = tokenResponse.access_token;
         const user = await loginWithGoogle(token);
 
-        const redirectPath = ROLE_ROUTES_MAP[user.role] || "/home";
+        const redirectPath = ROLE_ROUTES_MAP[user.role] || "/login";
         navigate(redirectPath);
       } catch (err) {
         setError(err.message || `Google login failed`);
       } finally {
-        setLoading(false);
+        setGoogleLoading(false); // Giải phóng nút Google
       }
     },
     onError: () => {
@@ -163,25 +161,21 @@ export default function Login() {
               </div>
             </div>
 
-            {/* ĐÃ SỬA: KHỐI WIDGET RECAPTCHA VISUAL DISPLAY TRÊN UI */}
+            {/* RECAPTCHA WIDGET */}
             <div className="flex justify-center py-2 bg-slate-800/40 ">
               {RECAPTCHA_SITE_KEY ? (
-                <ReCAPTCHA
-                  ref={recaptchaRef}
-                  sitekey={RECAPTCHA_SITE_KEY}
-                  onChange={handleCaptchaSuccess}
-                  theme="dark" // Sử dụng theme tối để tiệp màu với nền slate-900 của app
-                />
+                <ReCAPTCHA ref={recaptchaRef} sitekey={RECAPTCHA_SITE_KEY} onChange={handleCaptchaSuccess} theme="dark" />
               ) : (
                 <p className="text-xs text-red-400 font-mono p-2">[SYSTEM ERROR]: Missing VITE_RECAPTCHA_SITE_KEY in .env!</p>
               )}
             </div>
 
+            {/* ĐUỢC SỬA: Lắng nghe trạng thái của submitLoading và googleLoading */}
             <button
               type="submit"
-              disabled={loading}
+              disabled={submitLoading || googleLoading}
               className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 px-4 rounded-lg transition duration-200 focus:outline-none mt-2 disabled:opacity-50 disabled:cursor-not-allowed">
-              {loading ? "Logging in..." : "Login"}
+              {submitLoading ? "Logging in..." : "Login"}
             </button>
           </form>
 
@@ -193,13 +187,14 @@ export default function Login() {
           </div>
 
           {/* Google button */}
+          {/* ĐUỢC SỬA: Lắng nghe trạng thái của submitLoading và googleLoading */}
           <button
             type="button"
             onClick={() => handleGoogleLogin()}
-            disabled={loading}
-            className="w-full flex items-center justify-center gap-3 bg-white hover:bg-slate-100 text-slate-700 font-medium py-2.5 px-4 rounded-lg transition duration-200">
+            disabled={submitLoading || googleLoading}
+            className="w-full flex items-center justify-center gap-3 bg-white hover:bg-slate-100 text-slate-700 font-medium py-2.5 px-4 rounded-lg transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
             <img src={googleIcon} alt="Google" className="w-5 h-5" />
-            {loading ? "Processing..." : "Continue with Google"}
+            {googleLoading ? "Processing..." : "Continue with Google"}
           </button>
 
           {/* Redirect to Register */}
