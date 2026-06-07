@@ -3,6 +3,9 @@ import { Users, Lock, Settings, BarChart3 } from 'lucide-react'
 import Sidebar from '../components/Sidebar'
 import Header from '../components/Header'
 import AdminDashboard from '../pages/admin/Dashboard'
+import AdminUsers from '../pages/admin/Users'
+import AdminPermissions from '../pages/admin/Permissions'
+import AdminSettings from '../pages/admin/Settings'
 
 export default function AdminLayout() {
   const navigationItems = [
@@ -20,6 +23,9 @@ export default function AdminLayout() {
         <main className="page-content">
           <Routes>
             <Route path="/" element={<AdminDashboard />} />
+            <Route path="users" element={<AdminUsers />} />
+            <Route path="permissions" element={<AdminPermissions />} />
+            <Route path="settings" element={<AdminSettings />} />
             <Route path="/*" element={<AdminDashboard />} />
           </Routes>
         </main>
