@@ -74,6 +74,7 @@ export default function AboutUsModal({ isOpen, onClose }) {
           <span>Need help? Contact gate staff for immediate assistance.</span>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
