@@ -278,46 +278,56 @@ export default function UserDashboard() {
                 </div>
               </div>
 
-              {/* BLOCK 2: PARKING AVAILABILITY GRID */}
               <div>
-                <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-2">
-                  <Info size={14} /> Parking Availability
+                {/* Tiêu đề phân vùng ma trận sức chứa bãi xe */}
+                <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                  <Info size={13} className="text-emerald-600 dark:text-emerald-400" /> Space Capacity
                 </p>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 font-mono text-center">
-                  <div className="p-2 bg-slate-50 border border-slate-100 dark:bg-slate-800/40 dark:border-slate-800 rounded-xl flex flex-col items-center justify-center">
-                    <Building size={14} className="text-amber-500 mb-0.5" />
-                    <span className="text-xs font-black text-slate-800 dark:text-white">{buildingInfo.total_floors} Floors</span>
-                    <span className="text-[9px] font-sans text-slate-400 font-bold uppercase tracking-wider">Size</span>
+
+                {/* Thiết kế phẳng 2 cột đối xứng tối giản tiếng ồn thị giác */}
+                <div className="grid grid-cols-2 gap-4 font-sans">
+                  {/* HỘP HIỂN THỊ Ô ĐỖ TRỐNG KHẢ DỤNG (FREE SLOTS) */}
+                  <div className="p-4 bg-white dark:bg-[#0b1326] border border-slate-200 dark:border-slate-800 rounded-[8px] flex items-center justify-between transition-colors duration-200">
+                    <div className="space-y-0.5">
+                      <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Available</span>
+                      {buildingInfo.current_occupancy?.total_available === 0 ? (
+                        <span className="text-2xl font-extrabold text-rose-600 dark:text-rose-400 tracking-tight animate-pulse">FULL</span>
+                      ) : (
+                        <span className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 tracking-tight">
+                          {buildingInfo.current_occupancy?.total_available ?? 0}
+                        </span>
+                      )}
+                    </div>
+                    <div className="w-9 h-9 bg-emerald-50 dark:bg-emerald-950/10 text-emerald-600 dark:text-emerald-400 rounded-[8px] flex items-center justify-center shrink-0">
+                      <CheckCircle2 size={16} />
+                    </div>
                   </div>
-                  <div className="p-2 bg-slate-50 border border-slate-100 dark:bg-slate-800/40 dark:border-slate-800 rounded-xl flex flex-col items-center justify-center">
-                    <Layers size={14} className="text-blue-500 mb-0.5" />
-                    <span className="text-sm font-black text-slate-800 dark:text-white">{buildingInfo.total_slots}</span>
-                    <span className="text-[9px] font-sans text-slate-400 font-bold uppercase tracking-wider">Total</span>
-                  </div>
-                  <div className="p-2 bg-emerald-50/60 border border-emerald-100 dark:bg-emerald-950/20 dark:border-emerald-900/30 rounded-xl flex flex-col items-center justify-center">
-                    <CheckCircle2 size={14} className="text-emerald-500 mb-0.5" />
-                    <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">{buildingInfo.current_occupancy?.total_available}</span>
-                    <span className="text-[9px] font-sans text-slate-400 font-bold uppercase tracking-wider">Free</span>
-                  </div>
-                  <div className="p-2 bg-rose-50/60 border border-rose-100 dark:bg-rose-950/20 dark:border-rose-900/30 rounded-xl flex flex-col items-center justify-center">
-                    <XCircle size={14} className="text-rose-500 mb-0.5" />
-                    <span className="text-sm font-black text-rose-600 dark:text-rose-400">{buildingInfo.current_occupancy?.total_occupied}</span>
-                    <span className="text-[9px] font-sans text-slate-400 font-bold uppercase tracking-wider">Used</span>
+
+                  {/* HỘP HIỂN THỊ Ô ĐỖ ĐÃ BỊ CHIẾM (USED SLOTS) */}
+                  <div className="p-4 bg-white dark:bg-[#0b1326] border border-slate-200 dark:border-slate-800 rounded-[8px] flex items-center justify-between transition-colors duration-200">
+                    <div className="space-y-0.5">
+                      <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Occupied</span>
+                      <span className="text-2xl font-extrabold text-slate-950 dark:text-slate-100 tracking-tight">{buildingInfo.current_occupancy?.total_occupied ?? 0}</span>
+                    </div>
+                    <div className="w-9 h-9 bg-slate-50 dark:bg-[#141f38] border border-slate-100 dark:border-slate-800 text-slate-500 dark:text-slate-400 rounded-[8px] flex items-center justify-center shrink-0">
+                      <XCircle size={16} />
+                    </div>
                   </div>
                 </div>
 
-                {/* VISUAL PROCESS LIVE OCCUPANCY PROGRESS BAR */}
-                <div className="mt-3 px-1">
-                  <div className="flex justify-between text-[10px] font-bold text-slate-400 dark:text-slate-500 mb-1 uppercase tracking-wider items-center">
+                <div className="mt-4 px-0.5">
+                  <div className="flex justify-between text-[10px] font-bold text-slate-400 dark:text-slate-500 mb-2 uppercase tracking-wider items-center">
                     <span className="flex items-center gap-1">
-                      <Percent size={12} /> Parking Space Used
+                      <Percent size={11} className="text-emerald-600 dark:text-emerald-400" /> Fill Rate
                     </span>
-                    <span className="font-mono text-slate-700 dark:text-slate-300">{occupancyPercent}%</span>
+                    <span className="font-mono text-slate-950 dark:text-slate-200 font-bold">{occupancyPercent}%</span>
                   </div>
-                  <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+
+                  {/* Điều chỉnh chiều cao từ h-1 (4px) lên h-2 (8px) để tối ưu khả năng nhận diện màu sắc nhanh */}
+                  <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden border border-slate-200/10">
                     <div
-                      className={`h-full transition-all duration-1000 rounded-full ${
-                        occupancyPercent > 85 ? "bg-red-500" : occupancyPercent > 60 ? "bg-amber-500" : "bg-blue-500"
+                      className={`h-full transition-all duration-1000 ease-out rounded-full ${
+                        occupancyPercent > 85 ? "bg-rose-500" : occupancyPercent > 60 ? "bg-amber-400" : "bg-emerald-500"
                       }`}
                       style={{ width: `${occupancyPercent}%` }}
                     />
