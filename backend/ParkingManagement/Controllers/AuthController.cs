@@ -239,7 +239,7 @@ namespace ParkingManagement.Controllers.AuthController
                 return StatusCode(403, new
                 {
                     success = false,
-                    error_code = "ACCOUNT_DENIED",
+                    error_code = "ACCESS_DENIED",
                     message = "Account inactive or not verified"
                 });
 
