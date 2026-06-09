@@ -17,7 +17,7 @@ namespace ParkingManagement.Controllers
     /// </summary>
     [ApiController]
     [Route("api/v1/parking")]
-    // [Authorize] // Tạm thời tắt phân quyền toàn bộ Controller để phục vụ quá trình test
+    [Authorize]
     public class ParkingController : ControllerBase
     {
         private readonly IParkingService _parkingService;
@@ -33,22 +33,30 @@ namespace ParkingManagement.Controllers
         /// Endpoint xử lý tính năng Check-in đưa phương tiện vào bãi xe.
         /// </summary>
         [HttpPost("check-in")]
-        // [Authorize(Roles = "ParkingStaff")] // Endpoint này thuộc nghiệp vụ của nhân viên trực cổng (Staff)
-        [AllowAnonymous] // Cho phép test trực tiếp mà không cần Token
+        [Authorize(Roles = "ParkingStaff")] 
         [ProducesResponseType(typeof(CheckInResponseDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> CheckIn([FromBody] VehicleCheckInDto dto)
         {
-            // Kiểm tra ràng buộc dữ liệu đầu vào (Validation chung)
             if (!ModelState.IsValid)
             {
                 return BadRequest(new { success = false, error_code = "INVALID_VEHICLE_TYPE", message = "Loại phương tiện hoặc dữ liệu đầu vào không hợp lệ." });
             }
 
+            string? staffId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                           ?? User.FindFirst("sub")?.Value;
+
+            if (string.IsNullOrEmpty(staffId))
+            {
+                return StatusCode(StatusCodes.Status401Unauthorized, new
+                {
+                    success = false,
+                    error_code = "UNAUTHORIZED_ACCESS",
+                    message = "Phiên làm việc đã hết hạn, vui lòng đăng nhập lại."
+                });
+            }
+
             try
             {
-                // Giả lập Staff ID từ JWT Token (Module Auth phát triển sau sẽ bóc tách từ User.Claims)
-                string staffId = "usr_001";
-
                 var response = await _parkingService.ProcessWalkInCheckInAsync(dto, staffId);
                 return Ok(response);
             }
@@ -84,22 +92,34 @@ namespace ParkingManagement.Controllers
         }
 
         /// <summary>
-        /// Endpoint xử lý tính năng Check-out cho phương tiện rời bãi xe.
+        /// Endpoint handles Check-out feature for vehicles leaving the parking lot.
         /// </summary>
         [HttpPost("check-out")]
-        // [Authorize(Roles = "ParkingStaff")] // Endpoint này thuộc nghiệp vụ của nhân viên cổng ra (Staff)
-        [AllowAnonymous] // Cho phép test trực tiếp mà không cần Token
+        [Authorize(Roles = "ParkingStaff")] 
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<IActionResult> CheckOut([FromBody] VehicleCheckOutDto dto)
         {
             if (!ModelState.IsValid)
             {
-                return BadRequest(new { success = false, error_code = "INVALID_TICKET", message = "Thông tin dữ liệu gửi lên không hợp lệ." });
+                return BadRequest(new { success = false, error_code = "INVALID_TICKET", message = "Invalid data submitted." });
+            }
+
+            string? staffId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+                           ?? User.FindFirst("sub")?.Value;
+
+            if (string.IsNullOrEmpty(staffId))
+            {
+                return StatusCode(StatusCodes.Status401Unauthorized, new
+                {
+                    success = false,
+                    error_code = "UNAUTHORIZED_ACCESS",
+                    message = "Session has expired, please log in again."
+                });
             }
 
             try
             {
-                var response = await _parkingService.ProcessCheckOutAsync(dto);
+                var response = await _parkingService.ProcessCheckOutAsync(dto, staffId);
                 return Ok(response);
             }
             catch (InvalidOperationException ex) when (ex.Message == "INVALID_TICKET")
@@ -108,7 +128,7 @@ namespace ParkingManagement.Controllers
                 {
                     success = false,
                     error_code = "INVALID_TICKET",
-                    message = "Không tìm thấy thông tin lượt gửi xe này (Mã phiên/Vé không hợp lệ)."
+                    message = "Parking session or ticket information could not be found."
                 });
             }
             catch (InvalidOperationException ex) when (ex.Message == "PAYMENT_FAILED")
@@ -117,7 +137,7 @@ namespace ParkingManagement.Controllers
                 {
                     success = false,
                     error_code = "PAYMENT_FAILED",
-                    message = "Thanh toán thất bại, vui lòng kiểm tra lại tài khoản."
+                    message = "Payment failed, please check the account balance or method."
                 });
             }
             catch (Exception ex)
@@ -127,7 +147,7 @@ namespace ParkingManagement.Controllers
                 {
                     success = false,
                     error_code = "DATABASE_UPDATE_FAILED",
-                    message = "Lỗi kết nối cơ sở dữ liệu, hành động chưa được ghi nhận.",
+                    message = "Database connection error, action was not recorded.",
                     details = innerMessage
                 });
             }
@@ -137,8 +157,7 @@ namespace ParkingManagement.Controllers
         /// 5.3 Get Active Session by License Plate
         /// </summary>
         [HttpGet("sessions/active/{license_plate}")]
-        // [Authorize(Roles = "ParkingStaff,ParkingManager,ParkingUser")] // Thường dùng cho cả Khách xem thông tin xe và Staff tra cứu nhanh
-        [AllowAnonymous] // Cho phép truy cập không cần auth để test nhanh tính năng tra cứu thông tin xe đang gửi trong bãi qua biển số
+        [Authorize(Roles = "ParkingStaff,ParkingManager")] 
         [ProducesResponseType(typeof(ActiveSessionResponseDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetActiveSessionByLicensePlate([FromRoute(Name = "license_plate")] string licensePlate)
         {
@@ -174,11 +193,49 @@ namespace ParkingManagement.Controllers
         }
 
         /// <summary>
+        /// Get Active Session by Slot Name (Phục vụ xử lý sai lệch OCR trên Frontend)
+        /// </summary>
+        [HttpGet("slots/active-session/{slot_name}")]
+        [Authorize(Roles = "ParkingStaff,ParkingManager")] 
+        [ProducesResponseType(typeof(ActiveSessionResponseDto), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetActiveSessionBySlotName([FromRoute(Name = "slot_name")] string slotName)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(slotName))
+                {
+                    return BadRequest(new { success = false, error_code = "INVALID_SLOT", message = "Tên ô đỗ không được để trống." });
+                }
+
+                var response = await _parkingService.GetActiveSessionBySlotNameAsync(slotName);
+                return Ok(response);
+            }
+            catch (InvalidOperationException ex) when (ex.Message == "SLOT_NOT_FOUND" || ex.Message == "ACTIVE_SESSION_NOT_FOUND")
+            {
+                return NotFound(new
+                {
+                    success = false,
+                    error_code = "ACTIVE_SESSION_NOT_FOUND",
+                    message = "Ô đỗ này hiện đang trống hoặc không có phiên gửi xe nào hoạt động."
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new
+                {
+                    success = false,
+                    error_code = "DATABASE_QUERY_FAILED",
+                    message = "Lỗi kết nối cơ sở dữ liệu khi truy vấn thông tin ô đỗ.",
+                    details = ex.Message
+                });
+            }
+        }
+
+        /// <summary>
         /// 5.4 Pre-check-out — Calculate Fee
         /// </summary>
         [HttpGet("sessions/{session_id}/calculate-fee")]
-        // [Authorize(Roles = "ParkingStaff,ParkingManager,ParkingUser")] // Phục vụ khách hàng tự check trước phí gửi xe hoặc staff tính tiền sớm
-        [AllowAnonymous] // Cho phép truy cập không cần auth để test tính năng tính tiền tạm tính trước khi khách hàng ra cổng
+        [Authorize(Roles = "ParkingStaff,ParkingManager")] // Staff và Manager được tính phí
         [ProducesResponseType(typeof(PreCheckOutResponseDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> CalculatePreCheckOutFee([FromRoute(Name = "session_id")] string sessionId)
         {
@@ -226,21 +283,11 @@ namespace ParkingManagement.Controllers
         /// [FR-GATE-05] Cập nhật trạng thái ô đỗ
         /// </summary>
         [HttpPut("slots/{slot_id}/status")]
-        // [Authorize(Roles = "ParkingStaff,ParkingManager")] // Chỉ cho phép Nhân viên hoặc Quản lý cập nhật thủ công (bảo trì/đóng ô)
-        [AllowAnonymous] // Cho phép test trực tiếp mà không cần Token để kiểm tra tính năng bảo trì ô đỗ và cập nhật trạng thái thủ công
+        [Authorize(Roles = "ParkingStaff,ParkingManager")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<IActionResult> UpdateSlotStatus(string slot_id, [FromBody] UpdateSlotStatusDto dto)
         {
-            // Trích xuất Staff ID từ Claim
             string? staffId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value;
-
-#if DEBUG
-            // Khối xử lý an toàn: Nếu chạy ở môi trường máy Local và chưa có Token, tự động cấp mã nhân viên giả lập
-            if (string.IsNullOrEmpty(staffId))
-            {
-                staffId = "usr_001";
-            }
-#endif
 
             if (string.IsNullOrEmpty(staffId))
             {
@@ -305,8 +352,7 @@ namespace ParkingManagement.Controllers
         /// 3.2 Get Parking Slots with Real-time Status
         /// </summary>
         [HttpGet("slots")]
-        // [Authorize(Roles = "ParkingStaff,ParkingManager,ParkingUser")] // Endpoint này thường dùng cho cả Khách hàng xem tình trạng bãi xe và Staff quản lý, nhưng tạm thời để AllowAnonymous để test nhanh
-        [AllowAnonymous] // Cho phép truy cập không cần auth để test tính năng hiển thị số lượng ô đỗ trống/đầy theo thời gian thực
+        [Authorize(Roles = "ParkingStaff,ParkingManager")] // Staff và Manager xem tình trạng ô đỗ
         [ProducesResponseType(typeof(ParkingSlotsResponseDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetRealtimeParkingSlots([FromQuery] SlotQueryFilterDto filter)
         {
@@ -390,31 +436,27 @@ namespace ParkingManagement.Controllers
         /// Lấy danh sách lịch sử đỗ xe (Các phiên đã kết thúc/đã check-out)
         /// </summary>
         [HttpGet("history")]
-        // [Authorize(Roles = "ParkingStaff,ParkingManager")] // Sau này bật lên để phân quyền
+        [Authorize(Roles = "ParkingStaff,ParkingManager")] // Chỉ Staff và Manager mới được xem lịch sử
         [AllowAnonymous]
         [ProducesResponseType(typeof(PagedHistoryResponseDto), StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetParkingHistory([FromQuery] ParkingHistoryFilterDto filter)
+        public async Task<IActionResult> GetParkingHistory(
+            [FromQuery] ParkingHistoryFilterDto filter,
+            [FromQuery(Name = "page")] int? queryPage,
+            [FromQuery(Name = "pageSize")] int? queryPageSize)
         {
-            try
+            if (queryPage.HasValue && queryPage.Value > 0)
             {
-                // Đảm bảo dữ liệu phân trang luôn hợp lệ
-                if (filter.Page < 1) filter.Page = 1;
-                if (filter.PageSize < 1 || filter.PageSize > 100) filter.PageSize = 20;
-
-                // Gọi xuống Service xử lý truy vấn DB (Lọc theo Biển số, Khoảng thời gian, Trạng thái...)
-                var response = await _parkingService.GetParkingHistoryAsync(filter);
-                return Ok(response);
+                filter.Page = queryPage.Value;
             }
-            catch (Exception ex)
+            
+            if (queryPageSize.HasValue && queryPageSize.Value > 0)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, new
-                {
-                    success = false,
-                    error_code = "DATABASE_QUERY_FAILED",
-                    message = "Lỗi kết nối cơ sở dữ liệu khi truy vấn lịch sử đỗ xe.",
-                    details = ex.Message
-                });
+                filter.PageSize = queryPageSize.Value;
             }
+        
+            var result = await _parkingService.GetParkingHistoryAsync(filter);
+            
+            return Ok(result);
         }
     }
 }

@@ -13,15 +13,9 @@ namespace ParkingManagement.Services
         /// Xử lý nghiệp vụ khách hàng báo mất thẻ/vé xe (Lost Ticket).
         /// </summary>
         Task<LostTicketResponseDto> HandleLostTicketAsync(LostTicketRequestDto dto, string staffId, DateTime? currentTime = null);
-
         /// <summary>
         /// Sửa đổi sai lệch biển số do hệ thống/OCR nhận diện nhầm lúc vào (Correct Mismatch).
         /// </summary>
-        Task<MismatchCorrectionResponseDto> CorrectMismatchAsync(MismatchCorrectionRequestDto dto, string staffId);
-
-        /// <summary>
-        /// Giải quyết tranh chấp khi xe vãng lai đỗ nhầm vào ô đã được đặt trước (Resolve Slot Dispute).
-        /// </summary>
-        Task<SlotDisputeResponseDto> ResolveSlotDisputeAsync(SlotDisputeRequestDto dto, string staffId);
+        Task<MismatchCorrectionResponseDto> CorrectMismatchAsync(MismatchCorrectionRequestDto dto, string staffId);       
     }
 }

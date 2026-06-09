@@ -20,13 +20,11 @@ namespace ParkingManagement.Services
 
         public async Task<CheckInResponseDto> ProcessWalkInCheckInAsync(VehicleCheckInDto dto, string staffId)
         {
-            // 1. Kiểm tra xe đã có phiên hoạt động chưa
             if (await _parkingRepository.IsVehicleActiveInParkingAsync(dto.LicensePlateIn))
             {
                 throw new InvalidOperationException("ACTIVE_SESSION_EXISTS");
             }
 
-            // 2. Định vị vị trí đỗ
             string selectedSlotId = await ResolveSlotIdAsync(dto.SlotId, dto.VehicleTypeId);
 
             var initialSlotInfo = await _parkingRepository.GetSlotByIdAsync(selectedSlotId);
@@ -35,7 +33,6 @@ namespace ParkingManagement.Services
             string sessionId = GenerateSessionId();
             DateTime checkInTime = DateTime.Now;
 
-            // 3. THỰC THI ATOMIC TRANSACTION (Kiểm tra và chiếm slot đồng thời)
             await _parkingRepository.SaveChangesWithTransactionAsync(async () =>
             {
                 var slotToUpdate = await _parkingRepository.GetSlotByIdAsync(selectedSlotId);
@@ -73,35 +70,34 @@ namespace ParkingManagement.Services
             return MapToCheckInResponseDto(sessionId, checkInTime, dto.LicensePlateIn, selectedSlotId, initialSlotInfo);
         }
 
-        public async Task<CheckOutResponseDto> ProcessCheckOutAsync(VehicleCheckOutDto checkOutDto)
+        public async Task<CheckOutResponseDto> ProcessCheckOutAsync(VehicleCheckOutDto checkOutDto, string staffId)
         {
             var session = await _parkingRepository.GetActiveSessionByPlateAsync(checkOutDto.LicensePlateOut);
             if (session == null)
             {
                 throw new Exception("INVALID_TICKET");
             }
-
+        
             var checkOutTime = DateTime.Now;
             int durationMinutes = ParkingCalculationHelper.CalculateDurationMinutes(session.CheckInTime, checkOutTime);
-
+        
             var policy = await _parkingRepository.GetActivePricingPolicyByVehicleTypeAsync(session.VehicleTypeId)
                          ?? throw new Exception("PRICING_POLICY_NOT_CONFIGURED");
-
+        
             string operatingHours = await _parkingRepository.GetOperatingHoursForDayAsync(checkOutTime);
-
-            // ĐỒNG BỘ: Gọi hàm Helper lấy về toàn bộ đối tượng kết quả tính toán
+        
             var feeResult = ParkingCalculationHelper.CalculateParkingFee(
                 session.CheckInTime ?? DateTime.Now,
                 checkOutTime,
                 policy,
                 operatingHours
             );
-
+        
             await _parkingRepository.SaveChangesWithTransactionAsync(async () =>
             {
-                UpdateSessionForCheckOut(session, checkOutDto, checkOutTime, durationMinutes, feeResult.CurrentFee);
+                UpdateSessionForCheckOut(session, checkOutDto, staffId, checkOutTime, durationMinutes, feeResult.CurrentFee);
                 await _parkingRepository.UpdateSessionAsync(session);
-
+        
                 if (!string.IsNullOrEmpty(session.SlotId))
                 {
                     var slot = await _parkingRepository.GetSlotByIdAsync(session.SlotId);
@@ -110,12 +106,12 @@ namespace ParkingManagement.Services
                         slot.Status = "AVAILABLE";
                         slot.CurrentSessionId = null;
                         slot.LastUpdated = checkOutTime;
-
+        
                         await _parkingRepository.UpdateSlotAsync(slot);
                     }
                 }
             });
-
+        
             return MapToCheckOutResponseDto(session, feeResult.CurrentFee, durationMinutes, checkOutTime);
         }
 
@@ -145,6 +141,17 @@ namespace ParkingManagement.Services
             return MapToActiveSessionResponseDto(session, durationMinutes, currentFee);
         }
 
+        public async Task<ActiveSessionResponseDto> GetActiveSessionBySlotNameAsync(string slotName)
+        {
+            var slot = await _parkingRepository.GetSlotByNameAsync(slotName);
+            if (slot == null) throw new InvalidOperationException("SLOT_NOT_FOUND");
+        
+            var session = await _parkingRepository.GetActiveSessionBySlotIdAsync(slot.SlotId)
+                          ?? throw new InvalidOperationException("ACTIVE_SESSION_NOT_FOUND");
+        
+            return await GetActiveSessionByLicensePlateAsync(session.LicensePlateIn);
+        }
+
         public async Task<PreCheckOutResponseDto> CalculatePreCheckOutFeeAsync(string sessionId)
         {
             var session = await _parkingRepository.GetActiveSessionByIdAsync(sessionId)
@@ -157,7 +164,6 @@ namespace ParkingManagement.Services
 
             string operatingHours = await _parkingRepository.GetOperatingHoursForDayAsync(currentTime);
 
-            // ĐỒNG BỘ ĐỘNG HOÀN TOÀN: Ép hệ thống chạy qua bộ lọc mới nhất của Helper
             var feeResult = ParkingCalculationHelper.CalculateParkingFee(
                 session.CheckInTime ?? DateTime.Now,
                 currentTime,
@@ -165,13 +171,11 @@ namespace ParkingManagement.Services
                 operatingHours
             );
 
-            // Truyền toàn bộ kết quả đóng gói từ bộ Helper sang cho hàm ánh xạ DTO xử lý
             return MapToPreCheckOutResponseDto(session, policy, feeResult);
         }
 
         public async Task<SlotStatusResponseDto> UpdateSlotStatusAsync(UpdateSlotStatusDto dto, string staffId)
         {
-            // 1. Validate trạng thái đầu vào hợp lệ
             var validStatuses = new[] { "AVAILABLE", "OCCUPIED", "RESERVED", "MAINTENANCE" };
             string upperStatus = dto.Status.ToUpper();
 
@@ -180,14 +184,12 @@ namespace ParkingManagement.Services
                 throw new ArgumentException("INVALID_SLOT_STATUS");
             }
 
-            // 2. Kiểm tra sự tồn tại của Slot
             var slot = await _parkingRepository.GetSlotByIdAsync(dto.SlotId);
             if (slot == null)
             {
                 throw new KeyNotFoundException("SLOT_NOT_AVAILABLE");
             }
 
-            // --- KIỂM TRA RÀNG BUỘC LOGIC BUSINESS ---
             if (slot.Status == "OCCUPIED" && (upperStatus == "AVAILABLE" || upperStatus == "RESERVED"))
             {
                 throw new InvalidOperationException("CANNOT_MANUALLY_FREE_AN_OCCUPIED_SLOT");
@@ -202,9 +204,7 @@ namespace ParkingManagement.Services
             {
                 throw new InvalidOperationException("CANNOT_MAINTAIN_RESERVED_SLOT");
             }
-            // ---------------------------------------------------------
 
-            // 3. Tiến hành cập nhật Database & Ghi Log
             bool isUpdated = await _parkingRepository.UpdateSlotStatusWithLogAsync(dto.SlotId, upperStatus, staffId, dto.Reason, dto.EstimatedDurationMinutes);
 
             if (!isUpdated)
@@ -212,7 +212,6 @@ namespace ParkingManagement.Services
                 throw new InvalidOperationException("DATABASE_UPDATE_FAILED");
             }
 
-            // 4. Định dạng dữ liệu trả về...
             return new SlotStatusResponseDto
             {
                 Success = true,
@@ -229,12 +228,10 @@ namespace ParkingManagement.Services
 
         public async Task<ParkingSlotsResponseDto> GetRealtimeSlotsAsync(SlotQueryFilterDto filter)
         {
-            // 1. Gọi Repository lấy dữ liệu thô từ Database
             var (slots, totalCount, statusCounts) = await _parkingRepository.GetPagedSlotsWithStatusAsync(filter);
 
             var response = new ParkingSlotsResponseDto();
 
-            // 2. Thiết lập khối Summary số lượng ô đỗ theo đúng định dạng API yêu cầu
             response.Data.Summary = new SlotSummaryDto
             {
                 TotalSlots = statusCounts["TOTAL"],
@@ -244,7 +241,6 @@ namespace ParkingManagement.Services
                 Maintenance = statusCounts["MAINTENANCE"]
             };
 
-            // 3. Thiết lập khối thông tin phân trang (Pagination)
             int totalPages = (int)Math.Ceiling((double)totalCount / filter.PageSize);
             response.Data.Pagination = new PaginationDto
             {
@@ -254,7 +250,6 @@ namespace ParkingManagement.Services
                 TotalPages = totalPages == 0 ? 1 : totalPages
             };
 
-            // 4. Ánh xạ danh sách chi tiết ô đỗ xe (Mapping sang DTO)
             foreach (var slot in slots)
             {
                 var activeSession = slot.ParkingSessions?
@@ -284,17 +279,16 @@ namespace ParkingManagement.Services
 
         public async Task<PagedHistoryResponseDto> GetParkingHistoryAsync(ParkingHistoryFilterDto filter)
         {
-            // 1. Gọi Repo lấy toàn bộ danh sách hỗn hợp (Active + Completed)
             var (items, totalCount) = await _parkingRepository.GetParkingHistoryAsync(
-                filter.LicensePlate,
-                filter.FromDate,
-                filter.ToDate,
-                filter.VehicleType,
-                filter.Page,
-                filter.PageSize
+        filter.LicensePlate,
+        filter.FromDate,
+        filter.ToDate,
+        filter.VehicleType,
+        filter.Status,
+        filter.Page,
+        filter.PageSize
             );
-
-            // 2. Mapping an toàn sang DTO (chấp nhận CheckOutTime mang giá trị null)
+        
             var historyItems = items.Select(s => new ParkingHistoryItemDto
             {
                 SessionId = s.SessionId,
@@ -303,21 +297,15 @@ namespace ParkingManagement.Services
                 SlotNumber = s.Slot?.SlotName ?? "N/A",
                 ZoneName = s.Slot?.Zone?.ZoneName ?? "N/A",
                 CheckInTime = s.CheckInTime ?? DateTime.Now,
-
-                // Xe chưa ra thì CheckOutTime trên giao diện sẽ hiển thị trống (null)
                 CheckOutTime = s.CheckOutTime,
-
-                // Nếu xe chưa ra, TotalFee bằng 0 (hoặc có thể giữ nguyên tính toán tạm thời tùy bạn)
                 TotalFee = s.TotalFee ?? 0,
-
-                // Hiển thị trực tiếp trạng thái phiên: ACTIVE (Đang đỗ) hoặc COMPLETED (Đã xong)
                 PaymentStatus = s.Status == "ACTIVE" ? "PARKING" : (s.PaymentStatus ?? "COMPLETED"),
-
                 StaffCheckIn = s.StaffInId ?? "System",
-                StaffCheckOut = s.StaffOutId // Sẽ tự động null nếu xe chưa check-out
+                StaffCheckOut = s.StaffOutId,
+                
+                Status = s.Status?.ToUpper() ?? (s.CheckOutTime.HasValue ? "COMPLETED" : "ACTIVE")
             }).ToList();
-
-            // 3. Đóng gói kết quả trả về
+        
             return new PagedHistoryResponseDto
             {
                 Success = true,
@@ -341,13 +329,13 @@ namespace ParkingManagement.Services
 
         private string GenerateSessionId() => "sess_" + Guid.NewGuid().ToString("N").Substring(0, 10).ToLower();
 
-        private void UpdateSessionForCheckOut(ParkingSession session, VehicleCheckOutDto dto, DateTime checkOutTime, int duration, decimal fee)
+        private void UpdateSessionForCheckOut(ParkingSession session, VehicleCheckOutDto dto, string staffId, DateTime checkOutTime, int duration, decimal fee)
         {
             session.LicensePlateOut = dto.LicensePlateOut;
             session.CameraOut = dto.CameraOut;
             session.GateOut = dto.GateOut;
             session.ImageUrlOut = dto.ImageUrlOut;
-            session.StaffOutId = dto.StaffOutId;
+            session.StaffOutId = staffId;
             session.CheckOutTime = checkOutTime;
             session.DurationMinutes = duration;
             session.TotalFee = fee;
@@ -423,16 +411,15 @@ namespace ParkingManagement.Services
                 Data = new PreCheckOutDataDto
                 {
                     SessionId = session.SessionId,
-                    CurrentFee = feeResult.CurrentFee, // Đồng bộ tổng tiền hóa đơn lớn
+                    CurrentFee = feeResult.CurrentFee,
                     FeeBreakdown = new FeeBreakdownDto
                     {
                         BasePrice = policy.BasePrice,
                         HourlyRate = policy.HourlyRate,
-                        Hours = feeResult.Hours,         // Đồng bộ số giờ (Bằng 0 nếu đang trong thời gian ân hạn)
+                        Hours = feeResult.Hours,
                         OvernightFee = feeResult.OvernightFee,
-                        Total = feeResult.CurrentFee     // Đồng bộ tổng tiền chi tiết breakdown
+                        Total = feeResult.CurrentFee
                     },
-                    // Đồng bộ số giây ân hạn thực tế còn lại (Sẽ tự động về 0 nếu xe đã đỗ quá giờ miễn phí)
                     GracePeriodRemainingSeconds = feeResult.GracePeriodRemainingSeconds
                 }
             };

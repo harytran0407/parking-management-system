@@ -9,10 +9,7 @@ using ParkingManagement.DTOs;
 
 namespace ParkingManagement.Repositories
 {
-    /// <summary>
-    /// Thực thi các truy vấn dữ liệu bãi xe bằng Entity Framework Core.
-    /// Tuân thủ quy định thiết kế hệ thống PMS, tối ưu hiệu suất chống Race Condition.
-    /// </summary>
+
     public class ParkingRepository : IParkingRepository
     {
         private readonly AppDbContext _context;
@@ -69,17 +66,32 @@ namespace ParkingManagement.Repositories
                 .FirstOrDefaultAsync(s => s.SlotId == slotId);
         }
 
+        public async Task<ParkingSlot?> GetSlotByNameAsync(string slotName)
+        {
+            if (string.IsNullOrWhiteSpace(slotName)) return null;
+
+            return await _context.ParkingSlots
+                .Include(s => s.Zone)
+                .FirstOrDefaultAsync(s => s.SlotName.ToUpper() == slotName.Trim().ToUpper());
+        }
+
+        public async Task<ParkingSession?> GetActiveSessionBySlotIdAsync(string slotId)
+        {
+            return await _context.ParkingSessions
+                .Include(s => s.Slot)
+                    .ThenInclude(sl => sl!.Zone)
+                .FirstOrDefaultAsync(s => s.SlotId == slotId && s.Status == "ACTIVE");
+        }
+
         public async Task SaveChangesWithTransactionAsync(Func<Task> action)
         {
             if (action == null) throw new ArgumentNullException(nameof(action));
 
-            // Sử dụng Isolated Transaction cấp độ cao để đảm bảo an toàn dữ liệu đồng thời
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
                 await action();
 
-                // Gom tất cả các thay đổi còn lại và Commit toàn cục
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
             }
@@ -189,14 +201,11 @@ namespace ParkingManagement.Repositories
 
         public async Task<(List<ParkingSlot> Slots, int TotalCount, Dictionary<string, int> StatusCounts)> GetPagedSlotsWithStatusAsync(SlotQueryFilterDto filter)
         {
-            // 1. Tạo Query gốc bao gồm cả bảng liên kết Khu Vực (Zone) để lọc tầng và tên khu
             var query = _context.ParkingSlots
                 .Include(s => s.Zone)
-                // Cần Include thêm ParkingSessions đang Active để lấy Biển số xe (LicensePlate) và Giờ vào (CheckInTime) nếu Slot đang bị chiếm chỗ (OCCUPIED)
                 .Include(s => s.ParkingSessions)
                 .AsQueryable();
 
-            // 2. Áp dụng các bộ lọc động (Dynamic Filters)
             if (filter.Floor.HasValue)
             {
                 query = query.Where(s => s.Zone.FloorNumber == filter.Floor.Value);
@@ -217,7 +226,6 @@ namespace ParkingManagement.Repositories
                 query = query.Where(s => s.Status == filter.Status.Trim().ToUpper());
             }
 
-            // 3. Tính toán Thống kê Tổng số lượng theo từng Status trước khi Phân trang (Pagination)
             var allFilteredSlots = await query.Select(s => new { s.Status }).ToListAsync();
 
             var statusCounts = new Dictionary<string, int>
@@ -231,7 +239,6 @@ namespace ParkingManagement.Repositories
 
             int totalCount = allFilteredSlots.Count;
 
-            // 4. Thực hiện Phân trang và sắp xếp mặc định theo Tên ô đỗ
             var pagedSlots = await query
                 .OrderBy(s => s.SlotName)
                 .Skip((filter.Page - 1) * filter.PageSize)
@@ -245,7 +252,6 @@ namespace ParkingManagement.Repositories
         {
             var building = await _context.ParkingBuildings.FindAsync("B001");
 
-            // Mặc định dự phòng nếu không tìm thấy tòa nhà
             if (building == null) return "06:00-22:00";
 
             if (building.Is247 == true)
@@ -253,61 +259,76 @@ namespace ParkingManagement.Repositories
                 return "00:00-24:00";
             }
 
-            // Kiểm tra ngày cuối tuần (Thứ 7 hoặc Chủ Nhật)
             bool isWeekend = referenceTime.DayOfWeek == DayOfWeek.Saturday || referenceTime.DayOfWeek == DayOfWeek.Sunday;
 
-            // Trả về giờ tương ứng, sử dụng ?? "06:00-22:00" để phòng trường hợp dữ liệu trong DB bị null
             return isWeekend
                 ? (building.WeekendHours ?? "06:00-22:00")
                 : (building.WeekdayHours ?? "06:00-22:00");
         }
 
         public async Task<(List<ParkingSession> Items, int TotalCount)> GetParkingHistoryAsync(
-    string? licensePlate, DateTime? fromDate, DateTime? toDate, string? vehicleType, int page, int pageSize)
+            string? licensePlate, 
+            DateTime? fromDate, 
+            DateTime? toDate, 
+            string? vehicleType, 
+            string? status, 
+            int page, 
+            int pageSize)
         {
-            // BỎ lọc CheckOutTime != null để lấy CẢ xe đang đỗ và xe đã ra
+            if (page < 1) page = 1;
+            if (pageSize <= 0) pageSize = 15;
+        
             var query = _context.ParkingSessions
                 .Include(s => s.Slot)
                     .ThenInclude(sl => sl!.Zone)
                 .AsQueryable();
-
-            // 1. Lọc theo biển số xe (kiểm tra cả cổng vào và cổng ra)
+        
             if (!string.IsNullOrWhiteSpace(licensePlate))
             {
-                query = query.Where(s => s.LicensePlateIn.Contains(licensePlate) ||
-                                     (s.LicensePlateOut != null && s.LicensePlateOut.Contains(licensePlate)));
+                var cleanedPlate = licensePlate.Trim();
+                query = query.Where(s => s.LicensePlateIn.Contains(cleanedPlate) ||
+                                     (s.LicensePlateOut != null && s.LicensePlateOut.Contains(cleanedPlate)));
             }
-
-            // 2. Lọc theo khoảng thời gian dựa trên thời gian vào bãi (CheckInTime) 
-            // Vì xe đang đỗ chưa có CheckOutTime nên lọc theo CheckInTime là chuẩn nhất cho cả 2 trạng thái
+        
             if (fromDate.HasValue)
             {
                 query = query.Where(s => s.CheckInTime >= fromDate.Value);
             }
-
+        
             if (toDate.HasValue)
             {
-                query = query.Where(s => s.CheckInTime <= toDate.Value);
+                var endOfToDate = toDate.Value.Date.AddDays(1).AddTicks(-1);
+                query = query.Where(s => s.CheckInTime <= endOfToDate);
             }
-
-            // 3. Lọc theo loại xe
+        
             if (!string.IsNullOrWhiteSpace(vehicleType) && int.TryParse(vehicleType, out int vehicleTypeId))
             {
                 query = query.Where(s => s.VehicleTypeId == vehicleTypeId);
             }
-
-            // Đếm tổng số dòng thỏa mãn bộ lọc
+        
+            if (!string.IsNullOrWhiteSpace(status))
+            {
+                string searchStatus = status.Trim().ToUpper();
+                
+                if (searchStatus == "LOST_TICKET")
+                {
+                    query = query.Where(s => s.Status != null && s.Status.ToUpper() == "LOST_TICKET");
+                }
+                else
+                {
+                    query = query.Where(s => s.Status != null && s.Status.ToUpper() == searchStatus);
+                }
+            }
+        
             int totalCount = await query.CountAsync();
-
-            // 4. Sắp xếp: Ưu tiên xe đang đỗ (Status == "ACTIVE") lên trước, 
-            // sau đó sắp xếp theo thời gian vào (CheckInTime) mới nhất lên đầu
+        
             var items = await query
-                .OrderBy(s => s.Status == "ACTIVE" ? 0 : 1)
-                .ThenByDescending(s => s.CheckInTime)
+                .OrderByDescending(s => s.CheckOutTime ?? s.CheckInTime)
+                .ThenByDescending(s => s.SessionId) 
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
-
+        
             return (items, totalCount);
         }
     }

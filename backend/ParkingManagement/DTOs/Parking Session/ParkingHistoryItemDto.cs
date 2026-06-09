@@ -13,5 +13,6 @@ namespace ParkingManagement.DTOs
         public string PaymentStatus { get; set; } = null!; // PAID, FAILED...
         public string StaffCheckIn { get; set; } = null!;
         public string? StaffCheckOut { get; set; }
+        public string Status { get; set; } = null!;
     }
 }
