@@ -91,7 +91,7 @@ namespace ParkingManagement.Controllers.AuthController
             string hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password);
             var newUser = new User
             {
-                UserId = "usr_" + DateTime.Now.ToString("yyMMddHHmmssfff"),
+                UserId = Guid.NewGuid().ToString(),
                 FullName = request.FullName,
                 Email = request.Email,
                 Phone = request.PhoneNumber,
@@ -598,7 +598,7 @@ namespace ParkingManagement.Controllers.AuthController
                 {
                     userInDb = new User
                     {
-                        UserId = "usr_" + DateTime.Now.ToString("yyMMddHHmmssfff"),
+                        UserId = Guid.NewGuid().ToString(),
                         Username = "user_" + Guid.NewGuid().ToString("N").Substring(0, 8),
                         FullName = userFullName,
                         Email = userEmail,

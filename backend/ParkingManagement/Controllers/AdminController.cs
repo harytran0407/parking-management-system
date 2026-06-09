@@ -151,7 +151,7 @@ namespace ParkingManagement.Controllers
         // ==========================================
         // 3. UPDATE: CẬP NHẬT THÔNG TIN CHO USER
         // ==========================================
-        [HttpPut("users")]
+        [HttpPut("users/{user_id}")]
         public async Task<IActionResult> UpdateUser([FromRoute] string user_id, [FromBody] UpdateUserRequestDto request)
         {
             var userInDb = await _context.Users.FirstOrDefaultAsync(u => u.UserId == user_id);

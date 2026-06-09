@@ -93,7 +93,7 @@ public partial class AppDbContext : DbContext
                 .HasColumnName("STATUS");
             entity.Property(e => e.VehicleId).HasColumnName("VEHICLE_ID");
             entity.Property(e => e.VehicleUserId)
-                .HasMaxLength(20)
+                .HasMaxLength(36)
                 .HasColumnName("VEHICLE_USER_ID");
 
             entity.HasOne(d => d.Slot).WithMany(p => p.Bookings)
@@ -180,7 +180,7 @@ public partial class AppDbContext : DbContext
                 .HasColumnType("datetime")
                 .HasColumnName("REPORT_TIME");
             entity.Property(e => e.ReportedBy)
-                .HasMaxLength(20)
+                .HasMaxLength(36)
                 .HasColumnName("REPORTED_BY");
             entity.Property(e => e.ResolvedAt)
                 .HasColumnType("datetime")
@@ -348,10 +348,10 @@ public partial class AppDbContext : DbContext
                 .HasMaxLength(20)
                 .HasColumnName("SLOT_ID");
             entity.Property(e => e.StaffInId)
-                .HasMaxLength(20)
+                .HasMaxLength(36)
                 .HasColumnName("STAFF_IN_ID");
             entity.Property(e => e.StaffOutId)
-                .HasMaxLength(20)
+                .HasMaxLength(36)
                 .HasColumnName("STAFF_OUT_ID");
             entity.Property(e => e.Status)
                 .HasDefaultValueSql("'ACTIVE'")
@@ -485,7 +485,7 @@ public partial class AppDbContext : DbContext
                 .HasMaxLength(100)
                 .HasColumnName("TRANSACTION_ID");
             entity.Property(e => e.UserId)
-                .HasMaxLength(20)
+                .HasMaxLength(36)
                 .HasColumnName("USER_ID");
 
             entity.HasOne(d => d.Booking).WithMany(p => p.Payments)
@@ -595,7 +595,7 @@ public partial class AppDbContext : DbContext
             entity.HasIndex(e => e.Username, "USERNAME").IsUnique();
 
             entity.Property(e => e.UserId)
-                .HasMaxLength(20)
+                .HasMaxLength(36)
                 .HasColumnName("USER_ID");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
@@ -663,7 +663,7 @@ public partial class AppDbContext : DbContext
                 .HasColumnName("VEHICLE_PLATE_NUMBER");
             entity.Property(e => e.VehicleTypeId).HasColumnName("VEHICLE_TYPE_ID");
             entity.Property(e => e.VehicleUserId)
-                .HasMaxLength(20)
+                .HasMaxLength(36)
                 .HasColumnName("VEHICLE_USER_ID");
 
             entity.HasOne(d => d.VehicleType).WithMany(p => p.Vehicles)
