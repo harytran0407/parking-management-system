@@ -4,16 +4,18 @@ using ParkingManagement.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using System;
+using System.Collections.Generic;
+using System.Security.Claims;
 using System.Threading.Tasks;
 
 namespace ParkingManagement.Controllers
 {
     /// <summary>
-    /// Controller chịu trách nhiệm tiếp nhận và xử lý các sự cố, ngoại lệ trong bãi xe (Mất thẻ, hỏng hóc,...)
+    /// Controller tiếp nhận và xử lý các sự cố, ngoại lệ thực tế phát sinh trong bãi xe từ phía nhân viên (Staff)
     /// </summary>
     [ApiController]
-    [Route("api/v1/staff")] // Khớp với Endpoint /api/v1/staff/lost-ticket trong tài liệu thiết kế
-    //[Authorize(Roles = "ParkingStaff")] // Sẽ bật khi hệ thống chạy phân quyền bằng JWT
+    [Route("api/v1/staff")] 
+    [Authorize(Roles = "ParkingStaff")] // Chỉ nhân viên bãi xe mới được thực hiện các thao tác xử lý sự cố này
     public class IncidentController : ControllerBase
     {
         private readonly IIncidentService _incidentService;
@@ -24,19 +26,42 @@ namespace ParkingManagement.Controllers
         }
 
         /// <summary>
-        /// [API 7.1] Xử lý nghiệp vụ mất thẻ xe cho khách hàng (Handle Lost Ticket)
+        /// Helper lấy StaffId bảo mật từ JWT Token (Claims) của người dùng đang đăng nhập
         /// </summary>
+        private string? GetCurrentStaffId()
+        {
+            return User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                   ?? User.FindFirst("sub")?.Value;
+        }
+
+        /// <summary>
+        /// Helper trả về phản hồi chuẩn khi Token hết hạn hoặc không hợp lệ
+        /// </summary>
+        private IActionResult UnauthorizedResponse()
+        {
+            return StatusCode(StatusCodes.Status401Unauthorized, new
+            {
+                success = false,
+                error_code = "UNAUTHORIZED_ACCESS",
+                message = "Phiên làm việc đã hết hạn hoặc không hợp lệ, vui lòng đăng nhập lại."
+            });
+        }
+
+        // XỬ LÝ MẤT THẺ XE
         [HttpPost("lost-ticket")]
         public async Task<IActionResult> HandleLostTicket([FromBody] LostTicketRequestDto dto)
         {
             if (!ModelState.IsValid)
             {
-                return BadRequest(new { success = false, error_code = "INVALID_INPUT", message = "Dữ liệu không hợp lệ." });
+                return BadRequest(new { success = false, error_code = "INVALID_INPUT", message = "Dữ liệu đầu vào không hợp lệ." });
             }
+
+            string? staffId = GetCurrentStaffId();
+            if (string.IsNullOrEmpty(staffId)) return UnauthorizedResponse();
 
             try
             {
-                var response = await _incidentService.HandleLostTicketAsync(dto, dto.StaffId);
+                var response = await _incidentService.HandleLostTicketAsync(dto, staffId);
                 return Ok(response);
             }
             catch (KeyNotFoundException ex) when (ex.Message == "ACTIVE_SESSION_NOT_FOUND")
@@ -45,7 +70,7 @@ namespace ParkingManagement.Controllers
                 {
                     success = false,
                     error_code = "ACTIVE_SESSION_NOT_FOUND",
-                    message = $"Không tìm thấy phiên đỗ xe nào đang hoạt động cho biển số {dto.LicensePlate} trong hệ thống."
+                    message = $"Không tìm thấy phiên đỗ xe nào đang hoạt động cho biển số [{dto.LicensePlate}] trong bãi."
                 });
             }
             catch (InvalidOperationException ex) when (ex.Message == "PRICING_POLICY_NOT_CONFIGURED")
@@ -54,70 +79,44 @@ namespace ParkingManagement.Controllers
                 {
                     success = false,
                     error_code = "PRICING_POLICY_NOT_CONFIGURED",
-                    message = "Hệ thống chưa cấu hình bảng giá phạt cho loại xe này."
+                    message = "Hệ thống chưa cấu hình bảng giá/phí phạt mất thẻ cho loại phương tiện này."
                 });
             }
             catch (Exception ex)
             {
-                var innerMessage = ex.InnerException != null ? ex.InnerException.Message : ex.Message;
-                return StatusCode(StatusCodes.Status500InternalServerError, new
-                {
-                    success = false,
-                    error_code = "DATABASE_UPDATE_FAILED",
-                    message = "Lỗi hệ thống khi ghi nhận sự cố mất thẻ.",
-                    details = innerMessage
-                });
+                return StatusCode(StatusCodes.Status500InternalServerError, new { success = false, error_code = "SERVER_ERROR", message = ex.Message });
             }
         }
 
+        // SỬA SAI LỆCH THÔNG TIN XE / KHỚP LỆCH OCR
         [HttpPost("correct-mismatch")]
         public async Task<IActionResult> CorrectMismatch([FromBody] MismatchCorrectionRequestDto dto)
         {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(new { success = false, error_code = "INVALID_INPUT", message = "Dữ liệu đầu vào không hợp lệ." });
+            }
+
+            string? staffId = GetCurrentStaffId();
+            if (string.IsNullOrEmpty(staffId)) return UnauthorizedResponse();
+
             try
             {
-                // Lấy staff_id từ Claims của Token JWT đã đăng nhập
-                // Nếu chưa có JWT setup hoàn chỉnh, tạm thời lấy từ dto hoặc gán chuỗi test: "usr_001"
-                string staffId = User.FindFirst("userId")?.Value ?? "usr_001";
-
                 var response = await _incidentService.CorrectMismatchAsync(dto, staffId);
                 return Ok(response);
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new { success = false, message = ex.Message });
+                return NotFound(new { success = false, error_code = "NOT_FOUND", message = ex.Message });
             }
             catch (InvalidOperationException ex)
             {
-                return BadRequest(new { success = false, message = ex.Message });
+                return BadRequest(new { success = false, error_code = "BAD_REQUEST", message = ex.Message });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { success = false, message = "INTERNAL_SERVER_ERROR", detail = ex.Message });
+                return StatusCode(StatusCodes.Status500InternalServerError, new { success = false, error_code = "SERVER_ERROR", message = ex.Message });
             }
-        }
-
-        [HttpPost("resolve-slot-dispute")]
-        public async Task<IActionResult> ResolveSlotDispute([FromBody] SlotDisputeRequestDto dto)
-        {
-            try
-            {
-                string staffId = User.FindFirst("userId")?.Value ?? "usr_001";
-
-                var response = await _incidentService.ResolveSlotDisputeAsync(dto, staffId);
-                return Ok(response);
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { success = false, message = ex.Message });
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(new { success = false, message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { success = false, message = "INTERNAL_SERVER_ERROR", detail = ex.Message });
-            }
-        }
+        }        
     }
 }

@@ -7,11 +7,21 @@ using ParkingManagement.Services.BookingServices;
 using ParkingManagement.Services.BuildingServices;
 
 var builder = WebApplication.CreateBuilder(args);
+
 // ── .ENV Reader ───────────────────────────────────────────────────────────────
 DotNetEnv.Env.Load();
 
 // ── Database ──────────────────────────────────────────────────────────────────
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+var dbServer = Environment.GetEnvironmentVariable("DB_SERVER");
+var dbPort = Environment.GetEnvironmentVariable("DB_PORT");
+var dbName = Environment.GetEnvironmentVariable("DB_NAME");
+var dbUser = Environment.GetEnvironmentVariable("DB_USER");
+var dbPassword = Environment.GetEnvironmentVariable("DB_PASSWORD");
+
+var connectionString = string.IsNullOrEmpty(dbServer)
+    ? builder.Configuration.GetConnectionString("DefaultConnection")
+    : $"Server={dbServer};Port={dbPort};Database={dbName};User={dbUser};Password={dbPassword};";
+
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString))
 );
@@ -22,13 +32,29 @@ builder.Services.AddControllers()
         opt.JsonSerializerOptions.PropertyNamingPolicy =
             System.Text.Json.JsonNamingPolicy.SnakeCaseLower);
 
+// ── CORS Policy Definition ────────────────────────────────────────────────────
+// Định nghĩa tường minh cấu hình CORS từ tầng Service của WebApplication
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowReactFrontend", policy =>
+    {
+        policy.WithOrigins(
+                "http://localhost:5173",  // Vite mặc định (HTTP)
+                "https://localhost:5173", // Vite bảo mật (HTTPS)
+                "http://localhost:3000"   // Cổng phụ/NextJS nếu có
+              )
+              .AllowAnyMethod()
+              .AllowAnyHeader()
+              .AllowCredentials();        // Hỗ trợ truyền cookie/authen bảo mật nếu cần
+    });
+});
+
 // ── Swagger ───────────────────────────────────────────────────────────────────
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo { Title = "ParkingManagement API", Version = "v1" });
 
-    // Cấu hình nút Authorize trên Swagger
     c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
     {
         Description = "Nhập chữ 'Bearer' [khoảng trắng] [chuỗi_token_của_bạn].\r\n\r\nVí dụ: Bearer eyJhbGciOiJIUzI1Ni...",
@@ -55,47 +81,39 @@ builder.Services.AddSwaggerGen(c =>
             new System.Collections.Generic.List<string>()
         }
     });
-}); builder.Services.AddMemoryCache(); // Thêm bộ nhớ đệm (cache) dùng cho rate limiting.
+});
 
-// ── Parking module ───────────────────────────────────────────────────────────────────────
+builder.Services.AddMemoryCache();
+
+// ── Dependency Injection Modules ──────────────────────────────────────────────
 builder.Services.AddScoped<IParkingRepository, ParkingRepository>();
 builder.Services.AddScoped<IParkingService, ParkingService>();
 
-// ── Booking module ───────────────────────────────────────────────────────────────────────
 builder.Services.AddScoped<IBookingRepository, BookingRepository>();
 
-// ── Incident module ───────────────────────────────────────────────────────────────────────
 builder.Services.AddScoped<IIncidentRepository, IncidentRepository>();
 builder.Services.AddScoped<IIncidentService, IncidentService>();
 
-// ── Building module ───────────────────────────────────────────────────────────
 builder.Services.AddScoped<IBuildingRepository, BuildingRepository>();
 builder.Services.AddScoped<IBuildingService, BuildingService>();
 
-// ── VehicleType module ────────────────────────────────────────────────────────
 builder.Services.AddScoped<IVehicleTypeRepository, VehicleTypeRepository>();
 builder.Services.AddScoped<IVehicleTypeService, VehicleTypeService>();
 
-// ── VehicleFloor module ────────────────────────────────────────────────────────
 builder.Services.AddScoped<IFloorAllocationRepository, FloorAllocationRepository>();
 builder.Services.AddScoped<IFloorAllocationService, FloorAllocationService>();
 
-// ── Auth & JWT ─────────────────────────────────────────-────────────────────────
 builder.Services.AddJwtAuthentication(builder.Configuration);
 
-// ── Slot management module ────────────────────────────────────────────────────
 builder.Services.AddScoped<ISlotManagementRepository, SlotManagementRepository>();
 builder.Services.AddScoped<ISlotManagementService, SlotManagementService>();
 
-// ── Pricing Policy module ─────────────────────────────────────────────────────
 builder.Services.AddScoped<IPricingPolicyRepository, PricingPolicyRepository>();
 builder.Services.AddScoped<IPricingPolicyService, PricingPolicyService>();
 
-// ── Dashboard module ──────────────────────────────────────────────────────────
 builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 
-// ── Booking module ────────────────────────────────────────────────────────────
 builder.Services.AddScoped<IBookingServiceRepository, BookingServiceRepository>();
 builder.Services.AddScoped<IBookingService, BookingService>();
 
@@ -115,10 +133,10 @@ app.UseExceptionHandler(errApp => errApp.Run(async ctx =>
     if (ex != null)
     {
         Console.WriteLine("\n🚨 ======= [BACKEND CRASH DETECTED] =======");
-        Console.WriteLine(ex.ToString()); // In trọn vẹn dấu vết lỗi, tên file, số dòng bị sập
+        Console.WriteLine(ex.ToString());
         Console.WriteLine("============================================\n");
     }
-    
+
     var (status, message) = ex switch
     {
         KeyNotFoundException => (404, ex.Message),
@@ -133,14 +151,13 @@ app.UseExceptionHandler(errApp => errApp.Run(async ctx =>
 }));
 
 app.UseHttpsRedirection();
-app.UseCors(policy => policy
-    .WithOrigins("https://localhost:5173", "http://localhost:3000") // Cho phép duy nhất cổng React Frontend 
-    .AllowAnyMethod()                     // Cho phép mọi phương thức GET, POST, PUT, DELETE
-    .AllowAnyHeader());                   // Cho phép mọi Header truyền lên (Content-Type, Authorization)
-// Security
-app.UseMiddleware<ParkingManagement.Middlewares.TokenBlacklistMiddleware>(); // Check blacklist
-app.UseAuthentication(); // Read JWT token
-app.UseAuthorization(); // Check role/permission
+
+app.UseCors("AllowReactFrontend");
+
+app.UseAuthentication(); 
+app.UseMiddleware<ParkingManagement.Middlewares.TokenBlacklistMiddleware>(); 
+app.UseAuthorization(); 
 
 app.MapControllers();
+
 app.Run();

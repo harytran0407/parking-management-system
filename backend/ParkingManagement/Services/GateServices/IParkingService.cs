@@ -16,12 +16,14 @@ namespace ParkingManagement.Services
         /// <summary>
         /// Xử lý nghiệp vụ cho xe rời bãi, tính hóa đơn và giải phóng ô đỗ (Check-out).
         /// </summary>
-        Task<CheckOutResponseDto> ProcessCheckOutAsync(VehicleCheckOutDto checkOutDto);
+        Task<CheckOutResponseDto> ProcessCheckOutAsync(VehicleCheckOutDto checkOutDto, string staffId);
 
         /// <summary>
         /// Tìm kiếm thông tin phiên gửi xe đang hoạt động (ACTIVE) bằng biển số xe.
         /// </summary>
         Task<ActiveSessionResponseDto> GetActiveSessionByLicensePlateAsync(string licensePlate);
+
+        Task<ActiveSessionResponseDto> GetActiveSessionBySlotNameAsync(string slotName);
 
         /// <summary>
         /// Tính toán chi tiết chi phí gửi xe tạm tính tại thời điểm hiện tại (Pre-check-out).

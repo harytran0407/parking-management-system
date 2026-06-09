@@ -414,8 +414,9 @@ namespace ParkingManagement.Controllers.AuthController
             });
         }
 
-        [Authorize]
+        //[Authorize]
         [HttpGet("profile")]
+        [AllowAnonymous]
         public IActionResult GetProfile()
         {
             // Lấy userId từ JWT Token đang gửi kèm
