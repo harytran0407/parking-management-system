@@ -1,9 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using ParkingManagement.Data;
-using ParkingManagement.Repositories;
-using ParkingManagement.Services.BuildingServices;
-using ParkingManagement.Services;
 using ParkingManagement.Extensions;
+using ParkingManagement.Repositories;
+using ParkingManagement.Services;
+using ParkingManagement.Services.BookingServices;
+using ParkingManagement.Services.BuildingServices;
 
 var builder = WebApplication.CreateBuilder(args);
 // ── .ENV Reader ───────────────────────────────────────────────────────────────
@@ -93,6 +94,10 @@ builder.Services.AddScoped<IPricingPolicyService, PricingPolicyService>();
 // ── Dashboard module ──────────────────────────────────────────────────────────
 builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
+
+// ── Booking module ────────────────────────────────────────────────────────────
+builder.Services.AddScoped<IBookingServiceRepository, BookingServiceRepository>();
+builder.Services.AddScoped<IBookingService, BookingService>();
 
 var app = builder.Build();
 
