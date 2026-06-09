@@ -1,9 +1,0 @@
-ultralytics>=8.2.0
-pandas>=2.2.0
-opencv-python>=4.9.0
-numpy>=1.26.0
-scipy>=1.12.0
-easyocr>=1.7.1
-filterpy>=1.4.5
-torch
-torchvision
