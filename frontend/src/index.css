@@ -1,0 +1,208 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  @apply antialiased;
+}
+
+body {
+  @apply bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100 transition-colors duration-300;
+}
+
+::-webkit-scrollbar {
+  @apply w-2 h-2;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-slate-100 dark:bg-slate-900;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-300 dark:bg-slate-700 rounded hover:bg-slate-400 dark:hover:bg-slate-600;
+}
+
+@layer components {
+
+  /* BUTTONS */
+  .btn-primary {
+    @apply px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 font-medium;
+  }
+
+  .btn-secondary {
+    @apply px-4 py-2 bg-slate-200 text-slate-800 rounded-lg hover:bg-slate-300 dark:bg-slate-800 dark:text-gray-100 dark:hover:bg-slate-700 transition-colors duration-200 border border-slate-300 dark:border-slate-700;
+  }
+
+  .btn-danger {
+    @apply px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200;
+  }
+
+  /* CARDS:*/
+  .card {
+    @apply bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-6 shadow-sm dark:shadow-lg transition-colors duration-300;
+  }
+
+  .card-sm {
+    @apply bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-4 shadow-sm dark:shadow-md transition-colors duration-300;
+  }
+
+  /* INPUT FIELDS */
+  .input-field {
+    @apply w-full px-4 py-2 bg-white border border-slate-300 text-slate-800 rounded-lg focus:outline-none focus:border-blue-500 dark:bg-slate-800 dark:border-slate-700 dark:text-gray-100 transition-colors duration-200;
+  }
+
+  .input-field:disabled {
+    @apply bg-slate-100 text-slate-400 dark:bg-slate-700 dark:text-slate-500 cursor-not-allowed;
+  }
+
+  /* TABLES */
+  .table-header {
+    @apply bg-slate-100 dark:bg-slate-800/60 px-6 py-4 text-left text-sm font-semibold text-slate-600 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700;
+  }
+
+  .table-cell {
+    @apply px-6 py-4 text-sm text-slate-600 dark:text-slate-300 border-b border-slate-100 dark:border-slate-800;
+  }
+
+  /* BADGES */
+  .badge {
+    @apply inline-block px-3 py-1 rounded-full text-xs font-semibold;
+  }
+
+  .badge-success {
+    @apply bg-green-100 text-green-800 dark:bg-green-950/50 dark:text-green-300;
+  }
+
+  .badge-warning {
+    @apply bg-yellow-100 text-yellow-800 dark:bg-yellow-950/50 dark:text-yellow-300;
+  }
+
+  .badge-error {
+    @apply bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-300;
+  }
+
+  .badge-info {
+    @apply bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300;
+  }
+
+  /* TYPOGRAPHY */
+  .label {
+    @apply block text-sm font-medium text-slate-600 dark:text-slate-400 mb-2;
+  }
+
+  .section-title {
+    @apply text-2xl font-bold text-slate-800 dark:text-white mb-6;
+  }
+
+  .subsection-title {
+    @apply text-lg font-semibold text-slate-700 dark:text-slate-200 mb-4;
+  }
+}
+
+/* LAYOUT STRUCTURAL WRAPPERS */
+.main-container {
+  @apply min-h-screen flex;
+}
+
+.sidebar-wrapper {
+  @apply w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transition-colors duration-300;
+}
+
+.content-wrapper {
+  @apply flex-1 flex flex-col overflow-hidden;
+}
+
+.header-wrapper {
+  @apply h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center px-8 shadow-sm dark:shadow-md transition-colors duration-300;
+}
+
+.page-content {
+  @apply flex-1 overflow-y-auto p-8 bg-slate-50 dark:bg-slate-950 transition-colors duration-300;
+}
+
+/* ANIMATIONS */
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in {
+  animation: slideInRight 0.3s ease-out;
+}
+
+@keyframes slideUpDense {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-slide-up-dense {
+  animation: slideUpDense 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.text-muted {
+  @apply text-slate-400 dark:text-slate-500;
+}
+
+.text-light {
+  @apply text-slate-600 dark:text-slate-300;
+}
+
+.divider {
+  @apply border-t border-slate-200 dark:border-slate-800;
+}
+
+/* ============================================================
+   SIÊU CẤP ĐÈ HỦY THANH CÔNG CỤ GOOGLE TRANSLATE
+   ============================================================ */
+
+/* 1. Ép ẩn hoàn toàn tất cả các loại iframe và class thanh công cụ của Google */
+iframe.goog-te-banner-frame,
+.goog-te-banner-frame,
+.goog-te-banner-frame.skiptranslate,
+#goog-gt-tt,
+.goog-te-balloon-frame {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  height: 0 !important;
+  width: 0 !important;
+}
+
+/* 2. Triệt tiêu tuyệt đối khoảng trống 40px mà Google chèn vào cả thẻ HTML và BODY */
+html {
+  top: 0px !important;
+  margin-top: 0px !important;
+}
+
+body {
+  top: 0px !important;
+  margin-top: 0px !important;
+  position: static !important;
+}
+
+/* 3. Khóa toàn bộ hộp thoại pop-up text gốc khi di chuột vào chữ đã dịch */
+.goog-tooltip,
+.goog-tooltip:hover,
+#goog-gt-box {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+.goog-text-highlight {
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
