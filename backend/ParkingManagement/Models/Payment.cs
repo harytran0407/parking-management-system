@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ParkingManagement.Models;
 
@@ -29,6 +30,7 @@ public partial class Payment
 
     public string? SessionId { get; set; }
 
+    [Column("MONTHLY_PASS_ID")]
     public int? CardId { get; set; }
 
     public string? BookingId { get; set; }
