@@ -213,7 +213,9 @@ namespace ParkingManagement.Controllers
             });
         }
 
-
+        // ==========================================
+        // 4. SOFT DELETE: CẬP NHẬT TRẠNG THÁI CHO USER
+        // ==========================================
         [HttpDelete("user/{user_id}")]
         public async Task<IActionResult> DeleteUser([FromRoute] string user_id)
         {
@@ -244,6 +246,49 @@ namespace ParkingManagement.Controllers
             userInDb.Status = "INACTIVE";
             await _context.SaveChangesAsync();
             return NoContent();
+        }
+
+        // ==========================================
+        // 5.. SEARCH: TÌM KIẾM USER THEO KEYWORD
+        // ==========================================
+        [HttpGet("search")]
+        public async Task<IActionResult> SearchUsers(
+            [FromQuery] string keyword,
+            [FromQuery] int pageIndex = 1,
+            [FromQuery] int pageSize = 10)
+        {
+            if (keyword == null || string.IsNullOrEmpty(keyword))
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message = "Keyword is required for searching."
+                });
+            }
+            var TrimmedKeyword = keyword.Trim();
+            var users = await _context.Users
+                .Where(u => u.Username.Contains(TrimmedKeyword) ||
+                            u.FullName.Contains(TrimmedKeyword) ||
+                            u.Email.Contains(TrimmedKeyword) ||
+                            u.Phone.Contains(TrimmedKeyword))
+                .Select(u => new
+                {
+                    user_id = u.UserId,
+                    username = u.Username,
+                    full_name = u.FullName,
+                    email = u.Email,
+                    phone = u.Phone,
+                    status = u.Status
+                })
+                .Skip((pageIndex - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return Ok(new
+            {
+                success = true,
+                data = users
+            });
         }
     }
 }
