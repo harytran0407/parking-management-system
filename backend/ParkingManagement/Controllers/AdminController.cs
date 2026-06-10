@@ -31,7 +31,7 @@ namespace ParkingManagement.Controllers
             [FromQuery] string? search = null)
         {
             // Khởi tạo 1 bản nháp về câu truy vấn nhưng chưa gửi xuống database liền
-            var query = _context.Users.Include(u => u.Role).AsQueryable(); 
+            var query = _context.Users.Include(u => u.Role).AsQueryable();
 
             // Search Filter (Nếu FE gửi về có chữ search nào không thì viết thêm vào bản nháp đang ghi dở)
             if (!string.IsNullOrEmpty(search))
@@ -94,7 +94,7 @@ namespace ParkingManagement.Controllers
         [HttpPost("users")]
         public async Task<IActionResult> CreateUser([FromBody] CreateUserRequestDto request)
         {
-            var isExist = await _context.Users.AnyAsync(u => 
+            var isExist = await _context.Users.AnyAsync(u =>
             u.UserId == request.UserId ||
             u.Username == request.Username ||
             u.Email == request.Email ||
@@ -184,6 +184,22 @@ namespace ParkingManagement.Controllers
                 });
             }
 
+            // ==========================================
+            // PHÂN QUYỀN CHO ADMIN
+            // ==========================================
+
+            if (userInDb.RoleId != roleInDb.RoleId)
+            {
+                var auditLog = new RoleAuditLog
+                {
+                    AdminId = currAdminId,             // Ai là người đổi?
+                    TargetUserId = userInDb.UserId,    // Đổi của ai?
+                    OldRoleId = userInDb.RoleId,       // Quyền cũ
+                    NewRoleId = roleInDb.RoleId,       // Quyền mới
+                    ChangedAt = DateTime.UtcNow        // Thời gian đổi
+                };
+                _context.RoleAuditLogs.Add(auditLog);
+            }
             userInDb.FullName = request.FullName;
             userInDb.Phone = request.Phone;
             userInDb.Status = request.Status;
@@ -196,6 +212,7 @@ namespace ParkingManagement.Controllers
                 message = "User updated successfully."
             });
         }
+
 
         [HttpDelete("user/{user_id}")]
         public async Task<IActionResult> DeleteUser([FromRoute] string user_id)
