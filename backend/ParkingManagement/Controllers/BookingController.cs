@@ -59,7 +59,7 @@ public class BookingController : ControllerBase
 
     // GET /api/v1/bookings/my
     // Lấy danh sách booking của user hiện tại
-    [HttpGet("my")]
+    [HttpGet("my-booking")]
     [Authorize]
     [ProducesResponseType(typeof(List<BookingResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetMyBookings()

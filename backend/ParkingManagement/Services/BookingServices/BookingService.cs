@@ -31,7 +31,7 @@ public class BookingService : IBookingService
     public async Task<BookingPriceResponse> GetPriceEstimateAsync(BookingPriceRequest request)
     {
         // AC3: Cannot select time in the past
-        if (request.ExpectedArrival <= DateTime.UtcNow)
+        if (request.ExpectedArrival <= DateTime.Now)
             throw new ArgumentException("Expected arrival time cannot be in the past");
 
         var slot = await _repo.GetSlotWithZoneAsync(request.SlotId)
@@ -65,11 +65,11 @@ public class BookingService : IBookingService
     public async Task<BookingResponse> CreateBookingAsync(string userId, CreateBookingRequest request)
     {
         // AC3: Cannot select time in the past
-        if (request.ExpectedArrival <= DateTime.UtcNow)
+        if (request.ExpectedArrival <= DateTime.Now)
             throw new ArgumentException("Expected arrival time cannot be in the past");
 
         // AC4: Validate minimum booking duration — phải book trước ít nhất 30 phút
-        if (request.ExpectedArrival < DateTime.UtcNow.AddMinutes(MinBookingAdvanceMinutes))
+        if (request.ExpectedArrival < DateTime.Now.AddMinutes(MinBookingAdvanceMinutes))
             throw new ArgumentException($"Booking must be made at least {MinBookingAdvanceMinutes} minutes in advance");
 
         var slot = await _repo.GetSlotWithZoneAsync(request.SlotId)
@@ -95,13 +95,13 @@ public class BookingService : IBookingService
 
         var booking = new Booking
         {
-            BookingId = "BK_" + DateTime.UtcNow.ToString("yyMMddHHmmss") + new Random().Next(100, 999),
+            BookingId = "BK_" + DateTime.Now.ToString("yyMMddHHmmss") + new Random().Next(100, 999),
             VehicleUserId = userId,
             VehicleId = request.VehicleId,
             SlotId = request.SlotId,
             ExpectedArrival = request.ExpectedArrival,
             ExpiredAt = request.ExpectedArrival.AddMinutes(BookingExpiryMinutes),
-            BookingTime = DateTime.UtcNow,
+            BookingTime = DateTime.Now,
             Status = "PENDING",
             Notes = request.Notes
         };

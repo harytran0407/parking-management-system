@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { toast } from "sonner";
 import Webcam from "react-webcam";
-import axios from "axios";
+import api from "../../utils/api";
 import {
     Camera, CarFront, Search, MapPin, CheckCircle2, RefreshCcw,
     VideoOff, Ban, ParkingSquare, Hash, Clock, Calendar,
     Video, X, Maximize2, DollarSign
 } from "lucide-react";
 
-const API_BASE_URL = "http://localhost:5077/api/v1/parking";
-const PYTHON_STREAM_URL = "http://localhost:5001/api/v1/stream";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const PYTHON_STREAM_URL = import.meta.env.VITE_PYTHON_STREAM_URL;
 
 export default function CheckOutPage() {
     const webcamRef = useRef(null);
@@ -19,11 +20,8 @@ export default function CheckOutPage() {
     const [scanResult, setScanResult] = useState(null);
 
     const [isLoading, setIsLoading] = useState(false);
-    const [errorMessage, setErrorMessage] = useState("");
-    const [successMessage, setSuccessMessage] = useState("");
     const [isStreamConnected, setIsStreamConnected] = useState(true);
 
-    // Lightbox image modal state
     const [isLightboxOpen, setIsLightboxOpen] = useState(false);
 
     const vehicleTypes = [
@@ -38,21 +36,17 @@ export default function CheckOutPage() {
     };
 
     const getOpConfig = () => ({
-        staffId: localStorage.getItem("staff_id") || "usr_001",
         camOut: localStorage.getItem("camera_out_id") || "cam_out_01",
         gateOut: localStorage.getItem("gate_out_id") || "gate_out_01",
     });
 
-    /**
-     * LOGIC TRA CỨU: Lấy thông tin phiên đỗ xe đang ACTIVE của biển số xe
-     */
     const fetchActiveSession = async (targetPlate) => {
         try {
             const formattedPlate = targetPlate.toUpperCase().trim();
-            const response = await axios.get(`${API_BASE_URL}/sessions/active/${formattedPlate}`);
+            const response = await api.get(`/parking/sessions/active/${formattedPlate}`);
 
             if (response.status === 200 && response.data && response.data.success) {
-                return response.data.data; // Trả về thông tin session hoạt động
+                return response.data.data;
             }
             return null;
         } catch (error) {
@@ -60,28 +54,23 @@ export default function CheckOutPage() {
         }
     };
 
-    /**
-     * MAIN FLOW: REACT CAPTURE -> PYTHON AI RECOGNITION -> ASP.NET CORE FETCH SESSION FOR CHECK-OUT
-     */
+
     const handleCaptureAndRecognize = useCallback(async () => {
         if (!webcamRef.current || isLoading) return;
 
         setIsLoading(true);
-        setErrorMessage("");
-        setSuccessMessage("");
         setScanResult(null);
 
         const imageSrc = webcamRef.current.getScreenshot();
         if (!imageSrc) {
-            setErrorMessage("Cannot capture image from Webcam. Please check device permissions.");
+            toast.error("Cannot capture image from Webcam. Please check device permissions.");
             setIsLoading(false);
             return;
         }
         setCapturedImage(imageSrc);
 
         try {
-            // 1. Nhận diện biển số từ AI
-            const aiResponse = await axios.post(`${PYTHON_STREAM_URL}/recognize_uploaded_image`, {
+            const aiResponse = await api.post(`${import.meta.env.VITE_PYTHON_STREAM_URL}/recognize_uploaded_image`, {
                 image: imageSrc
             });
 
@@ -92,7 +81,6 @@ export default function CheckOutPage() {
             const aiPlate = aiResponse.data.plate.toUpperCase().trim();
             setPlateNumber(aiPlate);
 
-            // 2. Tìm kiếm Session đang hoạt động của biển số vừa quét
             const activeSession = await fetchActiveSession(aiPlate);
 
             if (activeSession) {
@@ -108,28 +96,24 @@ export default function CheckOutPage() {
                     price: activeSession.current_fee || 0,
                     vehicleModel: vehicleTypes.find(v => v.id === (activeSession.vehicle_type_id || selectedVehicleType))?.name || "Vehicle"
                 });
+                toast.success(`Detected Plate: ${aiPlate}`);
             } else {
                 setScanResult(null);
-                setErrorMessage(`Không tìm thấy phiên đỗ xe hoạt động cho biển số [${aiPlate}]. Xe chưa vào bãi hoặc đã ra bãi.`);
+                toast.error(`Active session not found for plate [${aiPlate}].`);
             }
 
         } catch (error) {
             console.error("Pipeline Error:", error);
-            setErrorMessage(error.response?.data?.message || error.message || "License plate processing workflow failed.");
+            toast.error(error.response?.data?.message || error.message || "License plate processing workflow failed.");
         } finally {
             setIsLoading(false);
         }
     }, [selectedVehicleType, isLoading]);
 
-    /**
-     * WORKFLOW ACTION SUBMITTERS FOR MANUAL SEARCH LOGIC
-     */
     const handleManualSearchSubmit = async () => {
         if (!manualInput || isLoading) return;
 
         setIsLoading(true);
-        setErrorMessage("");
-        setSuccessMessage("");
         setScanResult(null);
 
         const formattedPlate = manualInput.toUpperCase().trim();
@@ -150,8 +134,9 @@ export default function CheckOutPage() {
                 price: activeSession.current_fee || 0,
                 vehicleModel: vehicleTypes.find(v => v.id === (activeSession.vehicle_type_id || selectedVehicleType))?.name || "Vehicle"
             });
+            toast.success(`Found active session for plate: ${formattedPlate}`);
         } else {
-            setErrorMessage(`Biển số xe [${formattedPlate}] không tồn tại trong trạng thái đang đỗ ở bãi.`);
+            toast.error(`Plate [${formattedPlate}] is not registered inside the parking lot.`);
         }
         setIsLoading(false);
     };
@@ -163,10 +148,8 @@ export default function CheckOutPage() {
         if (!scanResult || scanResult.type !== "ExitPending" || isLoading) return;
 
         setIsLoading(true);
-        setErrorMessage("");
-        setSuccessMessage("");
 
-        const { staffId, camOut, gateOut } = getOpConfig();
+        const { camOut, gateOut } = getOpConfig();
 
         try {
             const bodyData = {
@@ -174,13 +157,13 @@ export default function CheckOutPage() {
                 camera_out: camOut,
                 gate_out: gateOut,
                 image_url_out: `/uploads/plates/checkout_captured_${Date.now()}.jpg`,
-                staff_out_id: staffId
+                // staff_out_id LẤY TỪ JWT TOKEN — không cần gửi từ frontend
             };
 
-            const response = await axios.post(`${API_BASE_URL}/check-out`, bodyData);
+            const response = await api.post(`/parking/check-out`, bodyData);
 
             if (response.data?.status === "COMPLETED" || response.data?.payment_status === "PAID" || response.data?.success) {
-                setSuccessMessage(`Vehicle ${scanResult.plate} successfully checked out!`);
+                toast.success(`Vehicle ${scanResult.plate} successfully checked out!`);
                 setScanResult(null);
                 setPlateNumber("");
                 setManualInput("");
@@ -189,7 +172,7 @@ export default function CheckOutPage() {
                 throw new Error("Backend server rejected the Check-Out response command.");
             }
         } catch (error) {
-            setErrorMessage(error.response?.data?.message || "Checkout validation request failed.");
+            toast.error(error.response?.data?.message || "Checkout validation request failed.");
         } finally {
             setIsLoading(false);
         }
@@ -200,18 +183,20 @@ export default function CheckOutPage() {
         setScanResult(null);
         setPlateNumber("");
         setCapturedImage(null);
-        setSuccessMessage("");
-        setErrorMessage("");
+        toast.info("Terminal session cleared.");
     };
 
-    /**
-     * GLOBAL ENTER KEYLISTENER PATTERN FOR SMART TERMINAL OPERATORS
-     */
     useEffect(() => {
         const handleGlobalKeyDown = (event) => {
+            if (event.key === "Escape" || event.key === "Esc") {
+                event.preventDefault();
+                resetTerminal();
+                return;
+            }
+
             if (event.key === "Enter") {
-                if (document.activeElement.tagName === "INPUT" && document.activeElement !== webcamRef.current) {
-                    if (document.activeElement.placeholder === "Enter license plate..." && manualInput) {
+                if (document.activeElement.tagName === "INPUT") {
+                    if (manualInput) {
                         event.preventDefault();
                         handleManualSearchSubmit();
                     }
@@ -235,44 +220,31 @@ export default function CheckOutPage() {
     }, [scanResult, handleCaptureAndRecognize, manualInput, plateNumber]);
 
     return (
-        <div className="w-full flex-1 text-[#0f172a] flex flex-col font-sans box-border select-none">
-            {/* NOTIFICATION BANNERS */}
-            {errorMessage && (
-                <div className="w-full mb-3 bg-red-50 border-l-4 border-red-500 text-red-700 p-3.5 rounded-r-xl flex items-center gap-2.5 text-xs font-bold shadow-sm">
-                    <Ban size={16} className="shrink-0" />
-                    <span>{errorMessage}</span>
-                </div>
-            )}
+        <div className="w-full flex-1 text-slate-800 dark:text-slate-100 bg-slate-50 dark:bg-slate-950 flex flex-col font-sans box-border select-none p-4 transition-colors duration-200">
 
-            {successMessage && (
-                <div className="w-full mb-4 bg-emerald-50 border-l-4 border-[#10b981] text-emerald-800 p-3.5 rounded-r-xl flex items-center gap-2.5 text-xs font-bold shadow-sm">
-                    <CheckCircle2 size={16} className="shrink-0 text-[#10b981]" />
-                    <span>{successMessage}</span>
-                </div>
-            )}
-
-            {/* MAIN CONTENT AREA — CHUYỂN SANG CSS GRID ĐỂ ĐỒNG BỘ CHIỀU CAO TUYỆT ĐỐI */}
-            <div className="flex-1 w-full gap-5 flex flex-col lg:grid lg:grid-cols-[1.62fr_1fr] items-stretch min-h-0">
+            {/* MAIN CONTENT AREA — CSS GRID ĐỒNG BỘ CHIỀU CAO TUYỆT ĐỐI */}
+            <div className="flex-1 w-full gap-4 xl:gap-5 flex flex-col lg:grid lg:grid-cols-[1.5fr_1fr] xl:grid-cols-[1.62fr_1fr] items-stretch min-h-0">
 
                 {/* LEFT COLUMN: CAMERA WORKSPACE */}
-                <div className="bg-white border border-[#e2e8f0] rounded-md p-4 shadow-sm flex flex-col min-h-0">
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md p-4 xl:p-5 shadow-sm dark:shadow-xl flex flex-col min-h-0 transition-colors duration-200">
 
                     <div className="flex items-center justify-between mb-3 shrink-0">
                         <div className="flex items-center gap-2">
-                            <Video size={16} className="text-[#64748b]" />
-                            <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#475569]">Check-out Camera</h3>
+                            <Video size={16} className="text-slate-500 dark:text-slate-400" />
+                            <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-400">Check-Out Camera</h3>
                         </div>
                         <button
                             onClick={handleCaptureAndRecognize}
                             disabled={isLoading}
-                            className="bg-[#0f172a] hover:bg-slate-800 disabled:bg-slate-300 text-white font-bold text-xs px-5 py-2.5 rounded-md transition-all shadow-sm shadow-slate-900/20 active:scale-98 flex items-center gap-2 uppercase tracking-wide"
+                            className="bg-slate-900 dark:bg-slate-600 hover:bg-slate-600 dark:hover:bg-slate-500 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 dark:disabled:text-slate-600 text-white font-bold text-xs px-4 py-2.5 rounded-lg transition-all shadow-md shadow-slate-600/10 dark:shadow-lg dark:shadow-slate-950/50 active:scale-98 flex items-center gap-2 uppercase tracking-wide"
+                            title="Press Enter to trigger snapshot"
                         >
-                            <Camera size={14} /> Scan Plate <kbd className="bg-slate-700 text-white px-1 rounded text-[9px] ml-1 font-mono font-normal">Enter</kbd>
+                            <Camera size={14} /> Scan Plate <kbd className="bg-slate-600 dark:bg-slate-900 text-slate-100 dark:text-slate-200 px-1 rounded text-[9px] ml-1 font-mono font-normal">Enter</kbd>
                         </button>
                     </div>
 
-                    {/* LIVE CAMERA HOVER CONTAINER — Tự giãn nở lắp đầy vùng trống cột trái */}
-                    <div className="bg-[#0b1329] flex-1 min-h-[340px] lg:min-h-0 w-full relative overflow-hidden flex items-center justify-center border border-slate-800 shadow-inner group rounded-md">
+                    {/* LIVE CAMERA CONTAINER */}
+                    <div className="relative bg-slate-950 border border-slate-200 dark:border-slate-800 flex-1 min-h-[220px] sm:min-h-[300px] lg:min-h-0 flex items-center justify-center overflow-hidden rounded-lg transition-colors duration-200">
                         {isStreamConnected ? (
                             <Webcam
                                 audio={false}
@@ -284,127 +256,119 @@ export default function CheckOutPage() {
                                 onUserMediaError={() => setIsStreamConnected(false)}
                             />
                         ) : (
-                            <div className="flex flex-col items-center gap-2 text-slate-500">
+                            <div className="flex flex-col items-center gap-2 text-slate-400 dark:text-slate-600">
                                 <VideoOff size={36} className="opacity-40" />
-                                <p className="text-xs font-bold">Webcam device source missing or unavailable</p>
-                            </div>
-                        )}
-
-                        {plateNumber && (
-                            <div className="absolute top-4 right-4 border border-[#10b981] bg-slate-950/90 px-4 py-2 rounded-md text-center shadow-lg backdrop-blur-sm">
-                                <div className="text-[#10b981] font-mono text-base font-black tracking-widest">{plateNumber}</div>
+                                <p className="text-xs font-semibold">Webcam unavailable — check device permissions</p>
                             </div>
                         )}
                     </div>
 
                     {/* MANUAL SEARCH PANEL CONTROL */}
-                    <div className="mt-4 flex flex-col sm:flex-row gap-3 items-stretch sm:items-end border-t border-slate-100 pt-3.5 shrink-0">
+                    <div className="mt-4 flex flex-col sm:flex-row gap-3 items-stretch sm:items-end border-t border-slate-100 dark:border-slate-800 pt-4 shrink-0 transition-colors duration-200">
                         <div className="flex-1">
-                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Manual Entry</label>
+                            <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">Manual Entry</label>
                             <div className="relative">
                                 <input
                                     type="text"
                                     placeholder="Enter license plate..."
                                     value={manualInput}
                                     onChange={(e) => setManualInput(e.target.value.toUpperCase())}
-                                    className="w-full border border-slate-200 rounded-md pl-9 pr-3 py-2 text-xs font-mono font-bold bg-slate-50/50 tracking-wider focus:outline-none focus:border-[#0f172a] focus:bg-white transition-all h-[40px]"
+                                    className="flex-1 w-full border border-slate-200 dark:border-slate-800 rounded-lg pl-9 pr-3 py-2 text-xs font-mono font-bold bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 tracking-wider focus:outline-none focus:border-slate-400 dark:focus:border-slate-700 focus:bg-white dark:focus:bg-slate-950 transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600 placeholder:font-sans placeholder:font-normal h-10"
                                 />
-                                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                             </div>
                         </div>
                         <button
                             onClick={handleManualSearchSubmit}
                             disabled={isLoading || !manualInput}
-                            className="bg-[#0f172a] hover:bg-slate-800 text-white px-6 py-2 rounded-md text-xs font-bold h-[40px] transition-all disabled:bg-slate-100 disabled:text-slate-400 tracking-wide flex items-center justify-center gap-1.5 shrink-0 active:scale-98"
+                            className=" bg-slate-800 dark:bg-slate-100 dark:hover:bg-slate-200 hover:bg-slate-700 dark:text-slate-700 text-slate-200 px-5 py-2 rounded-lg text-xs font-bold h-10 transition-all border dark:border-slate-200 border-slate-700/50 disabled:bg-slate-50 dark:disabled:bg-slate-900 disabled:text-slate-300 dark:disabled:text-slate-600 disabled:border-slate-100 dark:disabled:border-slate-800 tracking-wide flex items-center justify-center gap-1.5 shrink-0 active:scale-98"
                         >
                             <RefreshCcw size={13} className={isLoading ? "animate-spin" : ""} /> Search
                         </button>
                     </div>
-
                 </div>
 
                 {/* RIGHT COLUMN: RECONCILIATION RESULT CARD & INVOICE */}
-                <div className="bg-white border border-[#e2e8f0] rounded-md p-5 flex flex-col justify-between shadow-sm min-h-0">
-
-                    {/* Vùng nội dung cuộn bên trong — Đảm bảo co giãn thông minh */}
-                    <div className="space-y-4 flex-1 flex flex-col min-h-0 justify-center">
-                        <div className="flex items-center justify-between border-b border-slate-100 pb-2 shrink-0">
-                            <h3 className="text-xs font-black uppercase tracking-widest text-[#475569]">Exit Session Information</h3>
-                            {scanResult && (
-                                <span className="inline-flex text-[9px] font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 uppercase tracking-wider animate-pulse">
-                                    {scanResult.type === "ExitPending" ? "Pending Validation" : "Unknown Status"  }
-                                </span>
-                            )}
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md p-4 xl:p-5 flex flex-col justify-between shadow-sm dark:shadow-xl min-h-0 transition-colors duration-200">
+                    <div className="space-y-4 flex-1 flex flex-col min-h-0">
+                        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5 shrink-0 transition-colors duration-200">
+                            <h3 className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Exit Session Info</h3>
                         </div>
 
-                        {scanResult ? (
-                            <div className="space-y-4 overflow-y-auto pr-1 flex-1 w-full">
-                                <div
-                                    onClick={() => setIsLightboxOpen(true)}
-                                    className="bg-slate-950 h-[160px] overflow-hidden border border-slate-800 shadow-md relative group cursor-zoom-in rounded-md"
-                                    title="Click to zoom picture snapshot"
-                                >
-                                    <img
-                                        src={capturedImage || "https://placehold.co/600x400?text=Snapshot+Outbound"}
-                                        alt="Captured Gate Target Area"
-                                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 opacity-90 group-hover:opacity-100"
-                                    />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 via-transparent to-transparent pointer-events-none" />
-                                    <div className="absolute bottom-2 right-2 bg-slate-900/80 rounded-lg p-1.5 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200 backdrop-blur-sm">
-                                        <Maximize2 size={12} />
+                        {/* Vùng nội dung kết quả */}
+                        <div className="flex-1 flex flex-col min-h-0 justify-start overflow-y-auto pr-1 space-y-4 class-scroll-em-di">
+                            {scanResult ? (
+                                <>
+                                    {/* ẢNH SNAPSHOT OUTBOUND */}
+                                    <div
+                                        onClick={() => setIsLightboxOpen(true)}
+                                        className="bg-slate-100 dark:bg-slate-950 h-[130px] xl:h-[160px] 2xl:h-[200px] shrink-0 border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm dark:shadow-md relative group cursor-zoom-in rounded-lg transition-colors duration-200"
+                                        title="Click to zoom picture snapshot"
+                                    >
+                                        <img
+                                            src={capturedImage || "https://placehold.co/600x400/0f172a/64748b?text=Snapshot+Outbound"}
+                                            alt="Captured Gate Target Area"
+                                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 opacity-90 dark:opacity-80"
+                                        />
+                                        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 dark:from-slate-950/80 via-transparent to-transparent pointer-events-none" />
+                                        <div className="absolute bottom-2 right-2 bg-white/90 dark:bg-slate-900/90 rounded-md p-1.5 text-slate-700 dark:text-slate-200 opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm border border-slate-200 dark:border-slate-700 shadow-sm">
+                                            <Maximize2 size={12} />
+                                        </div>
                                     </div>
-                                </div>
 
-                                {/* TOTAL PRICE BANNER */}
-                                <div className="bg-[#0052CC] rounded-md p-4 text-center space-y-0.5 shadow-md relative overflow-hidden">
-                                    <div className="absolute -right-4 -bottom-4 opacity-5 text-white"><DollarSign size={60} /></div>
-                                    <div className="text-4xl font-mono font-black text-yellow-400 tracking-wider">
-                                        {scanResult.price.toLocaleString("vi-VN")} <span className="text-2xl font-bold text-white">VND</span>
-                                    </div>
-                                </div>
-
-                                {/* CASE: EXIT IS PENDING VALIDATION */}
-                                {scanResult.type === "ExitPending" && (
-                                    <div className="space-y-3">
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <div className="bg-slate-50 border rounded-md px-3 py-2">
-                                                <span className="text-[9px] font-bold text-slate-400 uppercase block tracking-wider">License Plate</span>
-                                                <span className="text-lg font-bold text-slate-700 truncate block mt-1">{scanResult.plate}</span>
+                                    {/* THÔNG TIN XE */}
+                                    {scanResult.type === "ExitPending" && (
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div className="bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-lg px-3 py-2 transition-colors duration-200">
+                                                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase block tracking-wider mb-0.5">License Plate</span>
+                                                <span className="text-base xl:text-lg font-bold text-white-600 dark:text-white-400 font-mono">{scanResult.plate}</span>
                                             </div>
-                                            <div className="bg-slate-50 border rounded-md px-3 py-2">
-                                                <span className="text-[9px] font-bold text-slate-400 uppercase block tracking-wider">Slot</span>
-                                                <span className="text-lg font-bold text-slate-700 truncate block mt-1">{scanResult.slot} ({scanResult.floor})</span>
+                                            <div className="bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-lg px-3 py-2 transition-colors duration-200">
+                                                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase block tracking-wider mb-0.5">Assigned Slot</span>
+                                                <span className="text-base xl:text-lg font-bold text-white-600 dark:text-white-400 font-mono truncate block">{scanResult.slot}</span>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* BANNER TÍNH TIỀN */}
+                                    <div className="relative overflow-hidden rounded-lg bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-950 dark:to-slate-900 border border-slate-800 p-4 text-white shadow-md dark:shadow-inner">
+                                        <div className="space-y-1 text-center">
+                                            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-300 dark:text-slate-500">Total Fee</div>
+                                            <div className="font-mono text-yellow-400 text-3xl xl:text-4xl font-black tracking-wider drop-shadow-[0_2px_8px_rgba(234,179,8,0.2)]">
+                                                {scanResult.price.toLocaleString("vi-VN")} <span className="text-sm font-sans font-medium text-slate-300 dark:text-slate-400">VND</span>
                                             </div>
                                         </div>
 
                                         {/* LOGISTIC TIMELINE INFO PANEL */}
-                                        <div className="bg-slate-50 border rounded-md p-3 space-y-2 text-[11px]">
-                                            <div className="flex justify-between items-center">
-                                                <span className="text-slate-400 font-medium flex items-center gap-1"><Calendar size={12} /> Check-in Time:</span>
-                                                <span className="font-bold text-slate-700 font-mono">{scanResult.timeIn}</span>
+                                        <div className="mt-4 grid grid-cols-2 gap-2 border-t border-slate-700/50 dark:border-slate-800 pt-3 text-xs">
+                                            <div className="flex items-center gap-1.5 font-medium text-slate-300 dark:text-slate-400">
+                                                <Clock size={13} className="text-slate-400 dark:text-slate-500 shrink-0" />
+                                                <span className="truncate" title={scanResult.timeIn}>{scanResult.timeIn}</span>
                                             </div>
-                                            <div className="flex justify-between items-center border-t border-slate-200/60 pt-2">
-                                                <span className="text-slate-400 font-medium flex items-center gap-1"><Clock size={12} /> Durations:</span>
-                                                <span className="font-black text-slate-800 font-mono bg-slate-200 px-1.5 py-0.5 rounded text-[10px]">{scanResult.duration}</span>
+                                            <div className="text-right font-semibold text-slate-300 dark:text-slate-400 flex items-center justify-end gap-1">
+                                                Duration:
+                                                <span className="bg-white/10 dark:bg-slate-800 border border-white/5 dark:border-slate-700 text-white dark:text-slate-200 px-1.5 py-0.5 rounded text-[11px] font-mono font-bold ml-1">
+                                                    {scanResult.duration}
+                                                </span>
                                             </div>
                                         </div>
                                     </div>
-                                )}
-                            </div>
-                        ) : (
-                            /* IDLE EMPTY PLACEHOLDER SCREEN STATE — Tự động co giãn phủ kín chiều cao nhờ flex-1 */
-                                <div className="flex-1 border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center text-center p-6 text-[#94a3b8] bg-slate-50/50 my-auto">
-                                    <CarFront size={32} className="mb-3 opacity-40 text-slate-500 animate-pulse" />
-                                    <p className="text-xs font-black uppercase tracking-widest text-slate-700">Ready to Scan</p>
-                                    <p className="text-[11px] text-slate-500 mt-1.5 max-w-[200px] leading-normal">
-                                        Press <kbd className="bg-white border border-slate-300 text-slate-800 px-1.5 py-0.5 rounded shadow-sm font-bold font-mono text-[10px]">[Enter]</kbd> or click Scan Plate to start.
+                                </>
+                            ) : (
+                                /* IDLE EMPTY PLACEHOLDER */
+                                <div className="flex-1 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-lg flex flex-col items-center justify-center text-center p-5 text-slate-400 dark:text-slate-600 bg-slate-50/50 dark:bg-slate-950/40 my-auto transition-colors duration-200">
+                                    <CarFront size={32} className="mb-2 opacity-40 text-slate-400" />
+                                    <p className="text-xs font-black uppercase tracking-widest text-slate-600 dark:text-slate-400">Ready to Scan</p>
+                                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-1.5 max-w-[200px] leading-normal">
+                                        Press <kbd className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 px-1 py-0.5 rounded text-[10px] font-mono font-bold shadow-sm">[Enter]</kbd> or click Scan Plate to start.
                                     </p>
                                 </div>
-                        )}
+                            )}
+                        </div>
                     </div>
 
                     {/* ACTION PANEL BOUNDARY TRIGGERS */}
-                    <div className="space-y-2 pt-4 border-t border-slate-100 shrink-0">
+                    <div className="space-y-2 pt-4 border-t border-slate-100 dark:border-slate-800 shrink-0 transition-colors duration-200">
                         {scanResult ? (
                             <>
                                 {scanResult.type === "ExitPending" && (
@@ -412,22 +376,22 @@ export default function CheckOutPage() {
                                         <button
                                             onClick={handleConfirmCheckOut}
                                             disabled={isLoading}
-                                            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-md text-xs font-black uppercase tracking-widest transition-all shadow-sm active:scale-98"
+                                            className="w-full bg-blue-600 hover:bg-blue-400 dark:hover:bg-blue-500 text-white py-2.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all active:scale-98 shadow-md shadow-blue-600/10 dark:shadow-lg dark:shadow-blue-950/30"
                                         >
-                                            Confirm Payment & Exit <span className="font-mono font-normal opacity-80 text-[10px] ml-1">[Enter]</span>
+                                            Confirm <span className="font-mono font-normal opacity-70 text-[10px] ml-1">[Enter]</span>
                                         </button>
                                         <button
                                             onClick={resetTerminal}
-                                            className="w-full border border-slate-200 text-slate-600 hover:bg-slate-50 py-2 rounded-md text-xs font-bold uppercase tracking-wide transition-all active:scale-98"
+                                            className="w-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 py-2 rounded-lg text-xs font-bold uppercase tracking-wide transition-all active:scale-98 shadow-sm"
                                         >
-                                            Cancle <span className="font-mono font-normal opacity-80 text-[10px] ml-1">[Esc]</span>
+                                            Cancel <span className="font-mono font-normal opacity-70 text-[10px] ml-1">[Esc]</span>
                                         </button>
                                     </>
                                 )}
                             </>
                         ) : (
-                            <button disabled className="w-full bg-[#f8fafc] text-slate-400 py-2.5 rounded-md text-xs font-bold uppercase tracking-widest border border-slate-200 cursor-not-allowed text-center">
-                                    System ready
+                            <button disabled className="w-full bg-slate-50 dark:bg-slate-950 text-slate-400 dark:text-slate-600 py-2.5 rounded-lg text-xs font-bold uppercase tracking-widest border border-slate-200 dark:border-slate-800 cursor-not-allowed text-center transition-colors duration-200">
+                                System Ready
                             </button>
                         )}
                     </div>
@@ -435,30 +399,19 @@ export default function CheckOutPage() {
 
             </div>
 
-            {/* INTERACTIVE MODAL LIGHTBOX OVERLAY COMPONENT */}
+            {/* LIGHTBOX MODAL OVERLAY */}
             {isLightboxOpen && capturedImage && (
                 <div
-                    className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex flex-col items-center justify-center p-4 animate-fadeIn cursor-zoom-out"
+                    className="fixed inset-0 bg-slate-950/80 dark:bg-slate-950/90 backdrop-blur-md z-50 flex flex-col items-center justify-center p-4 cursor-zoom-out animate-fadeIn"
                     onClick={() => setIsLightboxOpen(false)}
                 >
-                    <div className="absolute top-5 right-5 text-white/70 hover:text-white transition-colors bg-slate-900/60 p-2.5 rounded-full border border-white/10">
+                    <div className="absolute top-5 right-5 text-slate-500 hover:text-slate-200 dark:text-slate-400 dark:hover:text-white bg-white/10 dark:bg-slate-900/60 p-2 rounded-full border border-slate-300 dark:border-slate-800 transition-colors">
                         <X size={20} />
                     </div>
-
-                    <div
-                        className="relative max-w-4xl max-h-[85vh] rounded-md overflow-hidden border border-white/10 bg-slate-900 shadow-2xl scaleUp"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <img
-                            src={capturedImage}
-                            alt="High Resolution Audit View"
-                            className="w-full h-auto max-h-[85vh] object-contain"
-                        />
-                        <div className="absolute bottom-0 inset-x-0 bg-slate-950/70 p-3 text-center border-t border-white/5 backdrop-blur-sm">
-                            <p className="font-mono font-bold tracking-widest text-sm text-yellow-400">
-                                {plateNumber || "No Plate Detected"}
-                            </p>
-                            
+                    <div className="relative max-w-4xl max-h-[85vh] rounded-md overflow-hidden border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl scaleUp" onClick={(e) => e.stopPropagation()}>
+                        <img src={capturedImage} alt="High Resolution Audit" className="w-full h-auto max-h-[85vh] object-contain" />
+                        <div className="absolute bottom-0 inset-x-0 bg-slate-900/90 dark:bg-slate-950/80 p-3 text-center border-t border-slate-200 dark:border-slate-800 backdrop-blur-sm">
+                            <p className="font-mono font-bold tracking-widest text-sm text-yellow-500 dark:text-yellow-400">{plateNumber || "No Plate Detected"}</p>
                         </div>
                     </div>
                 </div>
