@@ -52,6 +52,13 @@ namespace ParkingManagement.Repositories
         Task<ParkingSession?> GetActiveSessionByPlateAsync(string licensePlate);
 
         /// <summary>
+        /// Tìm kiếm phiên gửi xe đang hoạt động (ACTIVE) trong bãi dựa trên mã vé xe/mã gửi xe (TicketCode).
+        /// </summary>
+        /// <param name="ticketCode">Mã định danh của vé xe hoặc UID thẻ từ.</param>
+        /// <returns>Trả về thực thể ParkingSession nếu tìm thấy, ngược lại trả về null.</returns>
+        Task<ParkingSession?> GetActiveSessionByTicketCodeAsync(string ticketCode);
+
+        /// <summary>
         /// Cập nhật thông tin Check-out của phiên gửi xe đồng thời giải phóng trạng thái ô đỗ về 'AVAILABLE' trong cùng một Transaction.
         /// </summary>
         Task<bool> UpdateSessionAndSlotAsync(ParkingSession session, string slotId);

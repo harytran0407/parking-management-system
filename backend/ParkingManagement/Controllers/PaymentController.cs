@@ -8,7 +8,6 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace ParkingManagement.Controllers
 {
-    //[Authorize]
     [ApiController]
     [Route("api/v1/payments")]
     public class PaymentController : ControllerBase
@@ -21,6 +20,7 @@ namespace ParkingManagement.Controllers
         }
 
         // [FR-BK-04] - Khởi tạo yêu cầu thanh toán cọc và sinh link thanh toán/QR
+        [Authorize]
         [HttpPost("create")]
         public async Task<IActionResult> CreateReservationPayment([FromBody] CreatePaymentRequest request)
         {
@@ -41,6 +41,7 @@ namespace ParkingManagement.Controllers
         }
 
         // [FR-BK-04] - Nhận kết quả tự động từ cổng thanh toán để cập nhật gạch nợ (Auto-confirm)
+        [AllowAnonymous]
         [HttpPost("webhook/vnpay")]
         public async Task<IActionResult> VnPayWebhook([FromBody] VnPayWebhookDto webhookData)
         {

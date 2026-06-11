@@ -117,6 +117,16 @@ namespace ParkingManagement.Repositories
                 .FirstOrDefaultAsync(s => s.LicensePlateIn == licensePlate && s.Status == "ACTIVE");
         }
 
+        public async Task<ParkingSession?> GetActiveSessionByTicketCodeAsync(string ticketCode)
+        {
+            if (string.IsNullOrWhiteSpace(ticketCode)) return null;
+
+            return await _context.ParkingSessions
+                .Include(s => s.Slot)
+                .ThenInclude(sl => sl!.Zone)
+                .FirstOrDefaultAsync(s => s.TicketCode == ticketCode && s.Status == "ACTIVE");
+        }
+
         public async Task<bool> UpdateSessionAndSlotAsync(ParkingSession session, string slotId)
         {
             if (session == null || string.IsNullOrWhiteSpace(slotId)) return false;

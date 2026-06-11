@@ -362,6 +362,9 @@ public partial class AppDbContext : DbContext
                 .HasColumnName("TOTAL_FEE");
             entity.Property(e => e.VehicleId).HasColumnName("VEHICLE_ID");
             entity.Property(e => e.VehicleTypeId).HasColumnName("VEHICLE_TYPE_ID");
+            entity.Property(e => e.TicketCode)
+                .HasMaxLength(20)
+                .HasColumnName("TICKET_CODE");
 
             entity.HasOne(d => d.Booking).WithMany(p => p.ParkingSessions)
                 .HasForeignKey(d => d.BookingId)
