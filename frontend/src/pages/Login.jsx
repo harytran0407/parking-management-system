@@ -32,7 +32,10 @@ export default function Login() {
     //=================AXIOS API==================
     try {
       // Login <= AuthContext
-      const user = await login(email.trim(), password);
+        const user = await login(email.trim(), password);
+
+        console.log("Google User: ", user); 
+        console.log("Google User Role: ", user.role);
 
       // 🎯 TỰ ĐỘNG ĐIỀU HƯỚNG: Lấy user.role từ Backend trả về để map với đường dẫn
       const redirectPath = ROLE_ROUTES_MAP[user.role] || "/home";

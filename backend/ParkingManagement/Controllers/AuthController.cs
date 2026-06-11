@@ -589,7 +589,7 @@ namespace ParkingManagement.Controllers.AuthController
 
                 // 4. KIỂM TRA DATABASE VÀ LƯU NGƯỜI DÙNG
                 var userInDb = await _context.Users.FirstOrDefaultAsync(u => u.Email == userEmail);
-                var roleName = "User"; // Mặc định role khi đăng nhập bằng Google sẽ là "User".
+                var roleName = "ParkingUser"; // Mặc định role khi đăng nhập bằng Google sẽ là "User".
 
                 // Tạo một mật khẩu giả ngẫu nhiên để lưu vào Database, vì đăng nhập qua Google sẽ không có mật khẩu.
                 string randomDummyPassword = Guid.NewGuid().ToString();

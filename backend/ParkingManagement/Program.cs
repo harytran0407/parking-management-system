@@ -5,6 +5,8 @@ using ParkingManagement.Repositories;
 using ParkingManagement.Services;
 using ParkingManagement.Services.BookingServices;
 using ParkingManagement.Services.BuildingServices;
+using ParkingManagement.Dtos;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -116,6 +118,9 @@ builder.Services.AddScoped<IDashboardService, DashboardService>();
 
 builder.Services.AddScoped<IBookingServiceRepository, BookingServiceRepository>();
 builder.Services.AddScoped<IBookingService, BookingService>();
+
+builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
+builder.Services.AddScoped<IPaymentService, PaymentService>();
 
 var app = builder.Build();
 

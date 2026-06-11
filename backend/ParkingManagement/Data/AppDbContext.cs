@@ -455,7 +455,7 @@ public partial class AppDbContext : DbContext
                 .HasPrecision(10, 2)
                 .HasColumnName("AMOUNT_PAID");
             entity.Property(e => e.BookingId).HasColumnName("BOOKING_ID");
-            entity.Property(e => e.MonthlyPassId).HasColumnName("CARD_ID");
+            entity.Property(e => e.CardId).HasColumnName("MONTHLY_PASS_ID");
             entity.Property(e => e.ChangeDue)
                 .HasPrecision(10, 2)
                 .HasDefaultValueSql("'0.00'")
