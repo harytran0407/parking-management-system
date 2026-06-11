@@ -194,8 +194,7 @@ namespace ParkingManagement.Controllers
         }
 
         /// <summary>
-        /// 5.3.b Get Active Session by Ticket Code (Tra cứu phiên đang hoạt động bằng Mã vé)
-        /// Endpoint: GET api/v1/parking/tickets/{ticket_code}/active
+        /// Get Active Session by Ticket Code 
         /// </summary>
         [HttpGet("tickets/{ticket_code}/active")]
         [Authorize(Roles = "ParkingStaff,ParkingManager")]
@@ -214,7 +213,6 @@ namespace ParkingManagement.Controllers
                     });
                 }
 
-                // Gọi trực tiếp xuống tầng Service để xử lý trọn gói (Lấy data, tính toán phí, map DTO)
                 var response = await _parkingService.GetActiveSessionByTicketCodeAsync(ticketCode);
 
                 return Ok(response);
