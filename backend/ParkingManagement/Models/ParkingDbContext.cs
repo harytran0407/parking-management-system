@@ -1,18 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
-using ParkingManagement.Models;
 using Pomelo.EntityFrameworkCore.MySql.Scaffolding.Internal;
 
-namespace ParkingManagement.Data;
+namespace ParkingManagement.Models;
 
-public partial class AppDbContext : DbContext
+public partial class ParkingDbContext : DbContext
 {
-    public AppDbContext()
+    public ParkingDbContext()
     {
     }
 
-    public AppDbContext(DbContextOptions<AppDbContext> options)
+    public ParkingDbContext(DbContextOptions<ParkingDbContext> options)
         : base(options)
     {
     }
@@ -37,22 +36,21 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<Role> Roles { get; set; }
 
+    public virtual DbSet<RoleAuditLog> RoleAuditLogs { get; set; }
+
+    public virtual DbSet<SlotStatusLog> SlotStatusLogs { get; set; }
+
     public virtual DbSet<SubscriptionPlan> SubscriptionPlans { get; set; }
 
     public virtual DbSet<User> Users { get; set; }
-
-    public virtual DbSet<RoleAuditLog> RoleAuditLogs { get; set; }
 
     public virtual DbSet<Vehicle> Vehicles { get; set; }
 
     public virtual DbSet<VehicleType> VehicleTypes { get; set; }
 
-    public virtual DbSet<SlotStatusLog> SlotStatusLogs { get; set; }
-
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-    {
-
-    }
+#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
+        => optionsBuilder.UseMySql("server=localhost;database=parking_db;user=root;password=123456", Microsoft.EntityFrameworkCore.ServerVersion.Parse("8.0.46-mysql"));
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -72,7 +70,9 @@ public partial class AppDbContext : DbContext
 
             entity.HasIndex(e => e.VehicleId, "FK_BOOKING_VEHICLE");
 
-            entity.Property(e => e.BookingId).HasColumnName("BOOKING_ID");
+            entity.Property(e => e.BookingId)
+                .HasMaxLength(20)
+                .HasColumnName("BOOKING_ID");
             entity.Property(e => e.BookingTime)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("datetime")
@@ -188,7 +188,7 @@ public partial class AppDbContext : DbContext
                 .HasColumnType("datetime")
                 .HasColumnName("RESOLVED_AT");
             entity.Property(e => e.ResolvedBy)
-                .HasMaxLength(20)
+                .HasMaxLength(36)
                 .HasColumnName("RESOLVED_BY");
             entity.Property(e => e.SessionId)
                 .HasMaxLength(20)
@@ -309,7 +309,9 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.SessionId)
                 .HasMaxLength(20)
                 .HasColumnName("SESSION_ID");
-            entity.Property(e => e.BookingId).HasColumnName("BOOKING_ID");
+            entity.Property(e => e.BookingId)
+                .HasMaxLength(20)
+                .HasColumnName("BOOKING_ID");
             entity.Property(e => e.CameraIn)
                 .HasMaxLength(50)
                 .HasColumnName("CAMERA_IN");
@@ -364,9 +366,6 @@ public partial class AppDbContext : DbContext
                 .HasColumnName("TOTAL_FEE");
             entity.Property(e => e.VehicleId).HasColumnName("VEHICLE_ID");
             entity.Property(e => e.VehicleTypeId).HasColumnName("VEHICLE_TYPE_ID");
-            entity.Property(e => e.TicketCode)
-                .HasMaxLength(20)
-                .HasColumnName("TICKET_CODE");
 
             entity.HasOne(d => d.Booking).WithMany(p => p.ParkingSessions)
                 .HasForeignKey(d => d.BookingId)
@@ -457,12 +456,14 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.AmountPaid)
                 .HasPrecision(10, 2)
                 .HasColumnName("AMOUNT_PAID");
-            entity.Property(e => e.BookingId).HasColumnName("BOOKING_ID");
-            entity.Property(e => e.CardId).HasColumnName("MONTHLY_PASS_ID");
+            entity.Property(e => e.BookingId)
+                .HasMaxLength(20)
+                .HasColumnName("BOOKING_ID");
             entity.Property(e => e.ChangeDue)
                 .HasPrecision(10, 2)
                 .HasDefaultValueSql("'0.00'")
                 .HasColumnName("CHANGE_DUE");
+            entity.Property(e => e.MonthlyPassId).HasColumnName("MONTHLY_PASS_ID");
             entity.Property(e => e.PaymentMethod)
                 .HasColumnType("enum('CASH','VNPAY','SUBSCRIPTION')")
                 .HasColumnName("PAYMENT_METHOD");
@@ -523,6 +524,9 @@ public partial class AppDbContext : DbContext
                 .HasPrecision(10, 2)
                 .HasColumnName("BASE_PRICE");
             entity.Property(e => e.EffectiveDate).HasColumnName("EFFECTIVE_DATE");
+            entity.Property(e => e.HandlingFee)
+                .HasPrecision(10, 2)
+                .HasColumnName("HANDLING_FEE");
             entity.Property(e => e.HourlyRate)
                 .HasPrecision(10, 2)
                 .HasColumnName("HOURLY_RATE");
@@ -531,17 +535,10 @@ public partial class AppDbContext : DbContext
                 .HasColumnName("OVERNIGHT_FEE");
             entity.Property(e => e.VehicleTypeId).HasColumnName("VEHICLE_TYPE_ID");
 
-            entity.Property(e => e.HandlingFee)
-                .HasPrecision(10, 2)
-                .HasColumnName("HANDLING_FEE");
-
             entity.HasOne(d => d.VehicleType).WithMany(p => p.PricingPolicies)
                 .HasForeignKey(d => d.VehicleTypeId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_POLICY_TYPE");
-            entity.Property(e => e.HandlingFee)
-                .HasPrecision(10, 2)
-                .HasColumnName("HANDLING_FEE");
         });
 
         modelBuilder.Entity<Role>(entity =>
@@ -559,6 +556,73 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.RoleName)
                 .HasMaxLength(50)
                 .HasColumnName("ROLE_NAME");
+        });
+
+        modelBuilder.Entity<RoleAuditLog>(entity =>
+        {
+            entity.HasKey(e => e.RoleLogId).HasName("PRIMARY");
+
+            entity.ToTable("role_audit_log");
+
+            entity.HasIndex(e => e.AdminId, "FK_AUDIT_ADMIN");
+
+            entity.HasIndex(e => e.TargetUserId, "FK_AUDIT_TARGET");
+
+            entity.Property(e => e.RoleLogId).HasColumnName("ROLE_LOG_ID");
+            entity.Property(e => e.AdminId)
+                .HasMaxLength(20)
+                .HasColumnName("ADMIN_ID");
+            entity.Property(e => e.ChangedAt)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnType("datetime")
+                .HasColumnName("CHANGED_AT");
+            entity.Property(e => e.NewRoleId).HasColumnName("NEW_ROLE_ID");
+            entity.Property(e => e.OldRoleId).HasColumnName("OLD_ROLE_ID");
+            entity.Property(e => e.TargetUserId)
+                .HasMaxLength(20)
+                .HasColumnName("TARGET_USER_ID");
+
+            entity.HasOne(d => d.Admin).WithMany()
+                .HasForeignKey(d => d.AdminId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_AUDIT_ADMIN");
+
+            entity.HasOne(d => d.TargetUser).WithMany()
+                .HasForeignKey(d => d.TargetUserId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_AUDIT_TARGET");
+        });
+
+        modelBuilder.Entity<SlotStatusLog>(entity =>
+        {
+            entity.HasKey(e => e.LogId).HasName("PRIMARY");
+
+            entity.ToTable("slot_status_logs");
+
+            entity.Property(e => e.LogId)
+                .HasMaxLength(50)
+                .HasColumnName("log_id");
+            entity.Property(e => e.ChangedAt)
+                .HasColumnType("datetime")
+                .HasColumnName("changed_at");
+            entity.Property(e => e.ChangedBy)
+                .HasMaxLength(50)
+                .HasColumnName("changed_by");
+            entity.Property(e => e.EstimatedDurationMinutes).HasColumnName("estimated_duration_minutes");
+            entity.Property(e => e.NewStatus)
+                .HasMaxLength(20)
+                .HasColumnName("new_status");
+            entity.Property(e => e.OldStatus)
+                .HasMaxLength(20)
+                .HasColumnName("old_status");
+            entity.Property(e => e.Reason)
+                .HasMaxLength(255)
+                .HasColumnName("reason")
+                .UseCollation("utf8mb3_general_ci")
+                .HasCharSet("utf8mb3");
+            entity.Property(e => e.SlotId)
+                .HasMaxLength(20)
+                .HasColumnName("slot_id");
         });
 
         modelBuilder.Entity<SubscriptionPlan>(entity =>
@@ -633,9 +697,6 @@ public partial class AppDbContext : DbContext
             entity.HasOne(d => d.Role).WithMany(p => p.Users)
                 .HasForeignKey(d => d.RoleId)
                 .HasConstraintName("FK_USER_ROLE");
-            entity.Property(e => e.AvatarUrl)
-                .HasColumnName("AvatarUrl")
-                .HasColumnType("LONGTEXT");
         });
 
         modelBuilder.Entity<Vehicle>(entity =>
@@ -695,94 +756,6 @@ public partial class AppDbContext : DbContext
                 .HasMaxLength(100)
                 .HasColumnName("VEHICLE_TYPE_NAME");
         });
-
-        modelBuilder.Entity<SlotStatusLog>(entity =>
-        {
-            // Map với bảng tên viết hoa và có gạch dưới
-            entity.ToTable("SLOT_STATUS_LOGS");
-
-            // Chỉ định khóa chính
-            entity.HasKey(e => e.LogId);
-
-            // Map các thuộc tính của Class sang tên cột Snake Case
-            entity.Property(e => e.LogId).HasColumnName("log_id").HasMaxLength(50);
-            entity.Property(e => e.SlotId).HasColumnName("slot_id").HasMaxLength(50);
-            entity.Property(e => e.OldStatus).HasColumnName("old_status").HasMaxLength(20);
-            entity.Property(e => e.NewStatus).HasColumnName("new_status").HasMaxLength(20);
-            entity.Property(e => e.ChangedBy).HasColumnName("changed_by").HasMaxLength(50);
-            entity.Property(e => e.ChangedAt).HasColumnName("changed_at").HasColumnType("datetime");
-            entity.Property(e => e.Reason).HasColumnName("reason").HasMaxLength(255);
-            entity.Property(e => e.EstimatedDurationMinutes).HasColumnName("estimated_duration_minutes");
-        });
-
-        modelBuilder.Entity<RoleAuditLog>(entity =>
-        {
-            // 1. Chỉ định đúng tên bảng
-            entity.ToTable("ROLE_AUDIT_LOG");
-
-            // 2. Chỉ định khóa chính và tên cột của nó
-            entity.HasKey(e => e.RoleLogId);
-            entity.Property(e => e.RoleLogId).HasColumnName("ROLE_LOG_ID");
-
-            // 3. MAP TÊN CỘT CHUẨN XÁC VỚI MYSQL
-            entity.Property(e => e.AdminId)
-                .HasColumnName("ADMIN_ID")
-                .HasMaxLength(36);
-
-            entity.Property(e => e.TargetUserId)
-                .HasColumnName("TARGET_USER_ID")
-                .HasMaxLength(36);
-
-            entity.Property(e => e.OldRoleId)
-                .HasColumnName("OLD_ROLE_ID");
-
-            entity.Property(e => e.NewRoleId)
-                .HasColumnName("NEW_ROLE_ID");
-
-            entity.Property(e => e.ChangedAt)
-                .HasColumnName("CHANGED_AT")
-                .HasColumnType("datetime")
-                .HasDefaultValueSql("CURRENT_TIMESTAMP");
-
-            // 4. Cấu hình Khóa ngoại
-            entity.HasOne(d => d.Admin)
-                .WithMany()
-                .HasForeignKey(d => d.AdminId)
-                .HasConstraintName("FK_AUDIT_ADMIN");
-
-            entity.HasOne(d => d.TargetUser)
-                .WithMany()
-                .HasForeignKey(d => d.TargetUserId)
-                .HasConstraintName("FK_AUDIT_TARGET");
-        });
-
-        var dateTimeConverter = new Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<DateTime, DateTime>(
-            v => v,
-            v => DateTime.SpecifyKind(v, DateTimeKind.Unspecified)
-        );
-
-        var nullableDateTimeConverter = new Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<DateTime?, DateTime?>(
-            v => v,
-            v => v.HasValue ? DateTime.SpecifyKind(v.Value, DateTimeKind.Unspecified) : null
-        );
-
-        // 2. Quét qua toàn bộ Database Schema được khai báo trong DbContext
-        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
-        {
-            foreach (var property in entityType.GetProperties())
-            {
-                // Nếu thuộc tính đó là DateTime (Bắt buộc)
-                if (property.ClrType == typeof(DateTime))
-                {
-                    property.SetValueConverter(dateTimeConverter);
-                }
-                // Nếu thuộc tính đó là DateTime? (Cho phép Null)
-                else if (property.ClrType == typeof(DateTime?))
-                {
-                    property.SetValueConverter(nullableDateTimeConverter);
-                }
-            }
-        }
 
         OnModelCreatingPartial(modelBuilder);
     }

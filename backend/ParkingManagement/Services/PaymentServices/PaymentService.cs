@@ -17,13 +17,10 @@ namespace ParkingManagement.Services
 
         public async Task<object> CreateReservationPaymentAsync(CreatePaymentRequest request, string userId)
         {
-            // 1. Lấy thông tin đặt chỗ thực tế từ DB
             var booking = await _paymentRepository.GetBookingByIdAsync(request.BookingId);
             if (booking == null) throw new Exception("Không tìm thấy thông tin đặt chỗ.");
 
-            // 2. LẤY SỐ TIỀN THỰC TẾ: 
-            // Bạn hãy kiểm tra xem biến 'booking' của bạn có trường lưu giá không (ví dụ: booking.Amount, booking.Price, hoặc booking.TotalPrice)
-            decimal realAmount = 50000; // <-- THAY BẰNG: booking.Price hoặc số tiền tính toán thực tế của lượt đặt này từ DB
+            decimal realAmount = 50000; // Tạm thời hardcode
 
             string paymentId = "pay_" + Guid.NewGuid().ToString().Substring(0, 8);
 
@@ -32,7 +29,7 @@ namespace ParkingManagement.Services
                 PaymentId = paymentId,
                 PaymentType = "BOOKING",
                 BookingId = request.BookingId,
-                AmountDue = realAmount,   // Gán số tiền thực tế lấy từ lượt đặt chỗ vào đây
+                AmountDue = realAmount,   
                 AmountPaid = 0,
                 ChangeDue = 0,
                 PaymentMethod = request.PaymentMethod,
