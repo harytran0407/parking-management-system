@@ -4,7 +4,7 @@ namespace ParkingManagement.Models;
 
 public partial class RoleAuditLog
 {
-    public int LogId { get; set; }
+    public int RoleLogId { get; set; }
 
     public string AdminId { get; set; } = null!;
 

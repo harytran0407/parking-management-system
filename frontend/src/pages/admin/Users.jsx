@@ -26,7 +26,13 @@ export default function AdminUsers() {
   const [search, setSearch] = useState("");
   const [selectedRole, setSelectedRole] = useState("ALL");
   const [selectedStatus, setSelectedStatus] = useState("ALL");
-  
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+
   // Modal configurations
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditRoleOpen, setIsEditRoleOpen] = useState(false);
@@ -108,21 +114,40 @@ export default function AdminUsers() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await api.get("/auth/admin/users", {
+      const response = await api.get("/admin/users", {
         params: {
           search,
           role: selectedRole,
           status: selectedStatus,
+          page: currentPage,
+          page_size: pageSize,
         },
       });
       if (response.data && response.data.success) {
-        setUsersList(response.data.data);
+        const data = response.data.data;
+        if (data && Array.isArray(data.items)) {
+          setUsersList(data.items);
+          setTotalPages(data.pagination?.total_pages || 1);
+          setTotalItems(data.pagination?.total_items || 0);
+        } else if (Array.isArray(data)) {
+          setUsersList(data);
+          setTotalPages(1);
+          setTotalItems(data.length);
+        } else {
+          setUsersList([]);
+          setTotalPages(1);
+          setTotalItems(0);
+        }
       } else {
         setUsersList(mockUsers);
+        setTotalPages(1);
+        setTotalItems(mockUsers.length);
       }
     } catch (err) {
       console.warn("[Admin Users Fetch Fallback]: Using pre-populated SaaS users database.");
       setUsersList(mockUsers);
+      setTotalPages(1);
+      setTotalItems(mockUsers.length);
     } finally {
       setLoading(false);
     }
@@ -130,10 +155,10 @@ export default function AdminUsers() {
 
   useEffect(() => {
     fetchUsers();
-  }, [search, selectedRole, selectedStatus]);
+  }, [search, selectedRole, selectedStatus, currentPage, pageSize]);
 
   // Filtered Users List calculation (fallback/client-side safety)
-  const filteredUsers = usersList.filter((user) => {
+  const filteredUsers = Array.isArray(usersList) ? usersList.filter((user) => {
     const fullName = user.fullName || user.full_name || "";
     const username = user.username || "";
     const email = user.email || "";
@@ -152,21 +177,21 @@ export default function AdminUsers() {
       selectedStatus === "ALL" || user.status === selectedStatus;
 
     return matchesSearch && matchesRole && matchesStatus;
-  });
+  }) : [];
 
   // Toggle user active / banned status
   const handleToggleStatus = async (user) => {
     const newStatus = user.status === "BANNED" ? "ACTIVE" : "BANNED";
     const uId = user.user_id || user.userId;
     const uName = user.fullName || user.full_name || user.username;
-    
+
     // Update local state immediately for snappy responsive feel
     setUsersList((prev) =>
       prev.map((u) => ((u.user_id || u.userId) === uId ? { ...u, status: newStatus } : u))
     );
 
     try {
-      await api.put(`/auth/admin/users/${uId}/status`, { status: newStatus });
+      await api.put(`/admin/users/${uId}/status`, { status: newStatus });
       toast.success(`User "${uName}" is now ${newStatus.toLowerCase()}.`);
     } catch (err) {
       console.error("Failed to update status on server:", err);
@@ -208,7 +233,7 @@ export default function AdminUsers() {
     setIsEditRoleOpen(false);
 
     try {
-      await api.put(`/auth/admin/users/${uId}/role`, { role_id: newRoleId });
+      await api.put(`/admin/users/${uId}/role`, { role_id: newRoleId });
       toast.success(`Successfully assigned role to "${uName}".`);
     } catch (err) {
       console.error("[Role Update Failed]:", err);
@@ -246,7 +271,7 @@ export default function AdminUsers() {
 
     try {
       setDeleting(true);
-      const response = await api.delete(`/auth/admin/users/${uId}`);
+      const response = await api.delete(`/admin/users/${uId}`);
       if (response.data && response.data.success) {
         // Remove from list
         setUsersList((prev) => prev.filter((u) => (u.user_id || u.userId) !== uId));
@@ -276,20 +301,17 @@ export default function AdminUsers() {
     }
 
     try {
-      let response;
-      if (newRole === "ParkingStaff") {
-        response = await api.post("/manager/staff", {
-          username: newUsername,
-          fullName: newFullName,
-          email: newEmail,
-          phoneNumber: newPhone,
-          password: newPassword,
-          confirmPassword: newPassword,
-        });
-      }
+      const response = await api.post("/admin/users", {
+        username: newUsername,
+        full_name: newFullName,
+        email: newEmail,
+        phone: newPhone,
+        password: newPassword,
+        role: newRole,
+      });
 
       setFormSuccess("Account created successfully!");
-      
+
       // Reload from server after creation
       fetchUsers();
 
@@ -299,7 +321,7 @@ export default function AdminUsers() {
       setNewEmail("");
       setNewPhone("");
       setNewPassword("");
-      
+
       setTimeout(() => {
         setIsAddModalOpen(false);
         setFormSuccess("");
@@ -307,7 +329,19 @@ export default function AdminUsers() {
 
     } catch (err) {
       console.error(err);
-      setFormError(err?.message || "Failed to create user. Verify field constraints.");
+      let errMsg = "Failed to create user. Verify field constraints.";
+      
+      // Extract detailed validation errors from ASP.NET Core ModelState
+      if (err.errors) {
+        errMsg = Object.values(err.errors).flat().join(" ");
+      } else if (err.response?.data?.errors) {
+        errMsg = Object.values(err.response.data.errors).flat().join(" ");
+      } else if (err.message) {
+        errMsg = err.message;
+      } else if (err.response?.data?.message) {
+        errMsg = err.response.data.message;
+      }
+      setFormError(errMsg);
     }
   };
 
@@ -355,7 +389,10 @@ export default function AdminUsers() {
             type="text"
             placeholder="Search by name, email, phone..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setCurrentPage(1);
+            }}
             className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-xl text-xs text-slate-800 dark:text-white placeholder-slate-450 focus:outline-none focus:border-blue-500 transition-colors"
           />
         </div>
@@ -367,12 +404,14 @@ export default function AdminUsers() {
             {["ALL", "SystemAdmin", "ParkingManager", "ParkingStaff", "ParkingUser"].map((role) => (
               <button
                 key={role}
-                onClick={() => setSelectedRole(role)}
+                onClick={() => {
+                  setSelectedRole(role);
+                  setCurrentPage(1);
+                }}
                 className={`px-3.5 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all
-                  ${
-                    selectedRole === role
-                      ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-white shadow-sm"
-                      : "text-slate-500 hover:text-slate-750 dark:text-slate-400 dark:hover:text-slate-200"
+                  ${selectedRole === role
+                    ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-white shadow-sm"
+                    : "text-slate-500 hover:text-slate-750 dark:text-slate-400 dark:hover:text-slate-200"
                   }`}
               >
                 {role === "ALL" ? "ALL ROLES" : role.replace("Parking", "").replace("System", "")}
@@ -385,12 +424,14 @@ export default function AdminUsers() {
             {["ALL", "ACTIVE", "BANNED"].map((status) => (
               <button
                 key={status}
-                onClick={() => setSelectedStatus(status)}
+                onClick={() => {
+                  setSelectedStatus(status);
+                  setCurrentPage(1);
+                }}
                 className={`px-3.5 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all
-                  ${
-                    selectedStatus === status
-                      ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-white shadow-sm"
-                      : "text-slate-500 hover:text-slate-750 dark:text-slate-400 dark:hover:text-slate-200"
+                  ${selectedStatus === status
+                    ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-white shadow-sm"
+                    : "text-slate-500 hover:text-slate-750 dark:text-slate-400 dark:hover:text-slate-200"
                   }`}
               >
                 {status}
@@ -475,10 +516,9 @@ export default function AdminUsers() {
                         {/* Status switch */}
                         <td className="py-3 px-4 text-center">
                           <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold
-                            ${
-                              user.status === "ACTIVE"
-                                ? "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/30"
-                                : "bg-red-50 text-red-700 border border-red-200 dark:bg-red-950/20 dark:text-red-400 dark:border-red-900/30"
+                            ${user.status === "ACTIVE"
+                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/30"
+                              : "bg-red-50 text-red-700 border border-red-200 dark:bg-red-950/20 dark:text-red-400 dark:border-red-900/30"
                             }`}>
                             <span className={`w-1.5 h-1.5 rounded-full ${user.status === "ACTIVE" ? "bg-emerald-500" : "bg-red-500"}`} />
                             {user.status}
@@ -510,11 +550,11 @@ export default function AdminUsers() {
                                 {activeDropdownUserId === uId && (
                                   <>
                                     {/* Backdrop transparent click catcher */}
-                                    <div 
-                                      className="fixed inset-0 z-40 bg-transparent" 
-                                      onClick={() => setActiveDropdownUserId(null)} 
+                                    <div
+                                      className="fixed inset-0 z-40 bg-transparent"
+                                      onClick={() => setActiveDropdownUserId(null)}
                                     />
-                                    
+
                                     {/* Dropdown Menu Panel */}
                                     <div className="absolute right-0 mt-1.5 w-44 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-50 py-1.5 animate-slide-up-dense">
                                       {/* Action 1: Edit Role */}
@@ -538,10 +578,9 @@ export default function AdminUsers() {
                                           handleToggleStatus(user);
                                         }}
                                         className={`w-full px-3.5 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-800/60 flex items-center gap-2.5 transition-colors font-medium text-xs
-                                          ${
-                                            user.status === "BANNED"
-                                              ? "text-emerald-600 hover:text-emerald-500"
-                                              : "text-amber-600 hover:text-amber-500"
+                                          ${user.status === "BANNED"
+                                            ? "text-emerald-600 hover:text-emerald-500"
+                                            : "text-amber-600 hover:text-amber-500"
                                           }`}
                                       >
                                         {user.status === "BANNED" ? (
@@ -584,6 +623,71 @@ export default function AdminUsers() {
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* Premium Pagination Footer */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 bg-slate-50/50 dark:bg-slate-800/20 border-t border-slate-100 dark:border-slate-800/60 text-xs text-slate-500 dark:text-slate-400">
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+              {/* Show X Entries Selector */}
+              <div className="flex items-center gap-2">
+                <span>Show</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPageSize(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/10 text-xs font-semibold cursor-pointer"
+                >
+                  <option value={2}>2</option>
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                </select>
+                <span>entries</span>
+              </div>
+              
+              {/* Stats */}
+              <span>
+                Showing {totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1} to{" "}
+                {Math.min(currentPage * pageSize, totalItems)} of {totalItems} entries
+              </span>
+            </div>
+
+            {/* Navigation Buttons */}
+            {totalPages > 1 && (
+              <div className="flex items-center gap-1">
+                <button
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 disabled:hover:bg-transparent transition-all cursor-pointer font-bold select-none text-[10px] uppercase tracking-wider text-slate-700 dark:text-slate-350"
+                >
+                  Prev
+                </button>
+
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setCurrentPage(p)}
+                    className={`w-8 h-8 rounded-lg text-xs font-bold transition-all flex items-center justify-center ${
+                      currentPage === p
+                        ? "bg-blue-600 text-white shadow-md shadow-blue-500/10"
+                        : "border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
+                    }`}
+                  >
+                    {p}
+                  </button>
+                ))}
+
+                <button
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                  className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 disabled:hover:bg-transparent transition-all cursor-pointer font-bold select-none text-[10px] uppercase tracking-wider text-slate-700 dark:text-slate-350"
+                >
+                  Next
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -755,14 +859,14 @@ export default function AdminUsers() {
       {/* POPUP MODAL 3: CONFIRM DELETE USER */}
       {isDeleteModalOpen && userToDelete && createPortal(
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
-          <div 
-            className="absolute inset-0 bg-slate-950/40 backdrop-blur-sm transition-opacity" 
+          <div
+            className="absolute inset-0 bg-slate-950/40 backdrop-blur-sm transition-opacity"
             onClick={() => {
               if (!deleting) {
                 setIsDeleteModalOpen(false);
                 setUserToDelete(null);
               }
-            }} 
+            }}
           />
           <div className="relative w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-xl z-10 text-slate-700 dark:text-slate-350 transform scale-100 transition-transform">
             <button

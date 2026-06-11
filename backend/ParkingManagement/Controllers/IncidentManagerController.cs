@@ -51,6 +51,7 @@ namespace ParkingManagement.Controllers
                     session_id = i.SessionId,
                     reported_by = i.ReportedBy,
                     reporter_name = i.ReportedByNavigation != null ? (i.ReportedByNavigation.FullName ?? i.ReportedByNavigation.Username) : i.ReportedBy,
+                    reporter_avatar = i.ReportedByNavigation != null ? i.ReportedByNavigation.AvatarUrl : null,
                     issue_type = i.IssueType,
                     description = i.Description,
                     report_time = i.ReportTime,

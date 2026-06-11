@@ -1,11 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace ParkingManagement.Models;
 
 public partial class Booking
 {
-    public string BookingId { get; set; } = string.Empty;
+    public string BookingId { get; set; } = null!;
 
     public string VehicleUserId { get; set; } = null!;
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { AlertCircle, CheckCircle, Search, RefreshCw, Phone, Mail, User, ShieldAlert, Paperclip } from 'lucide-react'
+import { AlertCircle, CheckCircle, Search, RefreshCw, Phone, Mail, User, ShieldAlert, Paperclip, Star } from 'lucide-react'
 import { toast } from 'sonner'
 import api from '../../utils/api'
 
@@ -12,7 +12,7 @@ export default function ManagerIssues() {
   const [feedbacks, setFeedbacks] = useState({})
 
   const parseDescription = (description) => {
-    if (!description) return { text: "", attachment: "", feedback: "" };
+    if (!description) return { rating: 0, subject: "", message: "", attachment: "", feedback: "" };
     
     let attachment = "";
     const attachmentMatch = description.match(/\[Attachment:\s*([^\]]+)\]/);
@@ -28,8 +28,23 @@ export default function ManagerIssues() {
       feedback = feedbackMatch[1];
       cleanedDesc = cleanedDesc.replace(/\[Feedback:\s*[^\]]+\]/, "").trim();
     }
+
+    let rating = 0;
+    const ratingMatch = cleanedDesc.match(/\[Rating:\s*(\d)★?\]/);
+    if (ratingMatch) {
+      rating = parseInt(ratingMatch[1], 10);
+      cleanedDesc = cleanedDesc.replace(/\[Rating:\s*\d★?\]/, "").trim();
+    }
+
+    let subject = "";
+    let message = cleanedDesc;
+    const colonIndex = cleanedDesc.indexOf(":");
+    if (colonIndex > 0) {
+      subject = cleanedDesc.substring(0, colonIndex).trim();
+      message = cleanedDesc.substring(colonIndex + 1).trim();
+    }
     
-    return { text: cleanedDesc, attachment, feedback };
+    return { rating, subject, message, attachment, feedback };
   };
 
   const getBackendRootUrl = () => {
@@ -194,105 +209,188 @@ export default function ManagerIssues() {
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-                <div className="lg:col-span-2 space-y-3">
-                  <div>
-                    <h4 className="text-base font-bold text-slate-800 dark:text-white mb-1.5">
-                      Issue Type: {incident.issue_type?.replace('_', ' ')}
-                    </h4>
-                    {(() => {
-                      const { text: parsedDesc, attachment, feedback } = parseDescription(incident.description);
-                      const backendRoot = getBackendRootUrl();
- 
-                      return (
-                        <div className="space-y-3">
-                          <p className="text-sm text-slate-600 dark:text-slate-350 bg-slate-50 dark:bg-slate-800/40 p-3.5 rounded-xl border border-slate-100 dark:border-slate-800 font-medium leading-relaxed">
-                            {parsedDesc || 'No description provided.'}
-                          </p>
-                          {attachment && (
-                            <div className="flex items-center gap-2">
-                              <a
-                                href={`${backendRoot}${attachment}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-850 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-blue-600 dark:text-blue-400 transition-colors shadow-sm"
-                              >
-                                <Paperclip size={14} className="text-blue-500" />
-                                View Attachment Image / File
-                              </a>
-                            </div>
-                          )}
-                          {feedback && (
-                            <div className="p-3.5 bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 rounded-xl space-y-1">
-                              <span className="text-[10px] font-black uppercase text-emerald-600 dark:text-emerald-400 block tracking-wider">
-                                Resolution Feedback
-                              </span>
-                              <p className="text-xs text-slate-700 dark:text-slate-300 font-semibold leading-relaxed">
-                                {feedback}
-                              </p>
-                            </div>
-                          )}
+                <div className="lg:col-span-2 space-y-4">
+                  {(() => {
+                    const { rating, subject, message, attachment } = parseDescription(incident.description);
+                    const backendRoot = getBackendRootUrl();
+
+                    return (
+                      <div className="space-y-4">
+                        {/* Issue Category */}
+                        <div className="border-b border-slate-100 dark:border-slate-800/60 pb-2.5">
+                          <span className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-wider block mb-0.5">Issue Category</span>
+                          <h4 className="text-base font-extrabold text-slate-800 dark:text-white">
+                            {incident.issue_type?.replace('_', ' ')}
+                          </h4>
                         </div>
-                      );
-                    })()}
-                  </div>
+
+                        {/* System Experience Rating */}
+                        {rating > 0 && (
+                          <div className="space-y-1">
+                            <span className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-wider block">System Experience Rating</span>
+                            <div className="flex gap-0.5 text-amber-400" title={`Rating: ${rating} Stars`}>
+                              {[...Array(5)].map((_, i) => (
+                                <Star
+                                  key={i}
+                                  size={16}
+                                  className={i < rating ? "fill-amber-400 text-amber-400 shrink-0" : "text-slate-300 dark:text-slate-700 shrink-0"}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Subject Title */}
+                        {subject && (
+                          <div className="space-y-1">
+                            <span className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-wider block">Subject Title</span>
+                            <p className="text-sm font-extrabold text-slate-800 dark:text-white leading-snug">{subject}</p>
+                          </div>
+                        )}
+
+                        {/* Detailed Description */}
+                        <div className="space-y-1">
+                          <span className="text-[10px] font-black uppercase text-slate-450 dark:text-slate-500 tracking-wider block">Detailed Description</span>
+                          <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap bg-slate-50 dark:bg-slate-800/40 p-3.5 rounded-xl border border-slate-100 dark:border-slate-800">
+                            {message || 'No description provided.'}
+                          </p>
+                        </div>
+
+                        {/* Attachment */}
+                        {attachment && (
+                          <div className="pt-1">
+                            <a
+                              href={`${backendRoot}${attachment}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-blue-600 dark:text-blue-400 transition-colors shadow-sm"
+                            >
+                              <Paperclip size={14} className="text-blue-500" />
+                              View Attachment Image / File
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
 
-                <div className="bg-slate-50/50 dark:bg-slate-800/20 p-4 rounded-xl border border-slate-100 dark:border-slate-800/50 space-y-3 text-xs font-semibold text-slate-600 dark:text-slate-400">
-                  <span className="text-[10px] font-black uppercase text-slate-400 block tracking-wider mb-1">
-                    Reporter Contact
-                  </span>
-
-                  <div className="flex items-center gap-2">
-                    <User size={14} className="text-slate-400" />
-                    <span className="text-slate-800 dark:text-slate-200">
-                      {incident.reporter_name || 'System Operator'}
-                    </span>
+                {/* Reporter Contact Panel */}
+                <div className="space-y-3.5 bg-gradient-to-br from-slate-50 to-blue-50/20 dark:from-slate-900/30 dark:to-slate-950/20 p-4 rounded-2xl border border-blue-100/50 dark:border-slate-800 shadow-sm relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-20 h-20 bg-blue-500/5 dark:bg-blue-450/5 rounded-full blur-xl pointer-events-none" />
+                  
+                  <div className="flex items-center gap-3 bg-white dark:bg-slate-800 p-3 rounded-xl border border-blue-50/60 dark:border-slate-700 shadow-xs">
+                    <div className="w-12 h-12 rounded-full overflow-hidden bg-blue-100 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400 font-bold flex items-center justify-center shrink-0 border-2 border-blue-200 dark:border-blue-900/40 shadow-inner transition-transform hover:scale-105 duration-200">
+                      {incident.reporter_avatar ? (
+                        <img
+                          src={
+                            incident.reporter_avatar.startsWith("http://") || incident.reporter_avatar.startsWith("https://")
+                              ? incident.reporter_avatar
+                              : `${getBackendRootUrl()}${incident.reporter_avatar}`
+                          }
+                          alt="Reporter Avatar"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-base font-black uppercase">
+                          {incident.reporter_name ? incident.reporter_name.charAt(0) : "U"}
+                        </span>
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-950/40 text-[9px] font-black uppercase text-blue-600 dark:text-blue-400 tracking-wider mb-1">
+                        Reporter
+                      </span>
+                      <p className="text-xs font-black text-slate-800 dark:text-white truncate">
+                        {incident.reporter_name || 'System Operator'}
+                      </p>
+                    </div>
                   </div>
 
-                  {incident.customer_phone && (
-                    <div className="flex items-center gap-2">
-                      <Phone size={14} className="text-slate-400" />
-                      <span className="text-slate-800 dark:text-slate-200">{incident.customer_phone}</span>
-                    </div>
-                  )}
+                  <div className="space-y-2 text-xs font-bold text-slate-600 dark:text-slate-400">
+                    {incident.customer_phone ? (
+                      <div className="flex items-center gap-2.5 px-3 py-2 bg-emerald-50/40 dark:bg-emerald-950/10 rounded-xl border border-emerald-100/60 dark:border-emerald-900/20 text-emerald-800 dark:text-emerald-400 transition-colors hover:bg-emerald-100/20">
+                        <Phone size={13} className="text-emerald-500" />
+                        <span className="font-mono text-xs">{incident.customer_phone}</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2.5 px-3 py-2 bg-slate-100/50 dark:bg-slate-800/30 rounded-xl border border-slate-200/50 dark:border-slate-800 text-slate-400">
+                        <Phone size={13} />
+                        <span className="italic text-[11px]">No phone number</span>
+                      </div>
+                    )}
 
-                  {incident.customer_email && (
-                    <div className="flex items-center gap-2">
-                      <Mail size={14} className="text-slate-400" />
-                      <span className="text-slate-800 dark:text-slate-200 truncate">{incident.customer_email}</span>
-                    </div>
-                  )}
+                    {incident.customer_email ? (
+                      <div className="flex items-center gap-2.5 px-3 py-2 bg-indigo-50/40 dark:bg-indigo-950/10 rounded-xl border border-indigo-100/60 dark:border-indigo-900/20 text-indigo-800 dark:text-indigo-400 transition-colors hover:bg-indigo-100/20 min-w-0">
+                        <Mail size={13} className="text-indigo-500 shrink-0" />
+                        <span className="truncate text-xs">{incident.customer_email}</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2.5 px-3 py-2 bg-slate-100/50 dark:bg-slate-800/30 rounded-xl border border-slate-200/50 dark:border-slate-800 text-slate-400">
+                        <Mail size={13} />
+                        <span className="italic text-[11px]">No email</span>
+                      </div>
+                    )}
 
-                  {incident.status === 'OPEN' ? (
-                    <div className="space-y-2 mt-4">
-                      <textarea
-                        value={feedbacks[incident.log_id] || ""}
-                        onChange={(e) => setFeedbacks(prev => ({ ...prev, [incident.log_id]: e.target.value }))}
-                        placeholder="Resolution feedback / notes..."
-                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 text-xs text-slate-800 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none font-medium"
-                        rows={2}
-                      />
-                      <button
-                        onClick={() => handleResolve(incident.log_id, feedbacks[incident.log_id])}
-                        disabled={actionLoading === incident.log_id}
-                        className="w-full btn-primary flex items-center justify-center gap-1.5 py-2 text-xs font-bold shadow-sm"
-                      >
-                        {actionLoading === incident.log_id ? (
-                          <RefreshCw size={13} className="animate-spin" />
-                        ) : (
-                          <CheckCircle size={13} />
-                        )}
-                        Mark as Resolved
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-center gap-1.5 text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 py-2 rounded-lg mt-4 border border-emerald-100 dark:border-emerald-900/30">
-                      <CheckCircle size={14} />
-                      <span>Resolved</span>
-                    </div>
-                  )}
+                    {incident.status === 'RESOLVED' && (
+                      <div className="flex items-center justify-center gap-1.5 text-emerald-700 dark:text-emerald-400 bg-emerald-100/70 dark:bg-emerald-950/30 py-2 rounded-xl border border-emerald-250/70 dark:border-emerald-900/30 text-[10px] uppercase tracking-wider font-black shadow-xs">
+                        <CheckCircle size={13} className="text-emerald-600 dark:text-emerald-400" />
+                        <span>Ticket Resolved</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
+
+              {/* Resolution Actions & Feedback Callout Box */}
+              {(() => {
+                const { feedback } = parseDescription(incident.description);
+                return (
+                  incident.status === 'OPEN' ? (
+                    <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800/80 space-y-3">
+                      <span className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-wider block">
+                        Resolution Notes & Feedback
+                      </span>
+                      <div className="space-y-3">
+                        <textarea
+                          value={feedbacks[incident.log_id] || ""}
+                          onChange={(e) => setFeedbacks(prev => ({ ...prev, [incident.log_id]: e.target.value }))}
+                          placeholder="Type your resolution response to the user here..."
+                          className="w-full bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 text-sm text-slate-800 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-y font-medium min-h-[80px]"
+                          rows={3}
+                        />
+                        <div className="flex justify-end">
+                          <button
+                            onClick={() => handleResolve(incident.log_id, feedbacks[incident.log_id])}
+                            disabled={actionLoading === incident.log_id}
+                            className="w-full sm:w-auto px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 text-white font-bold rounded-xl flex items-center justify-center gap-2 shadow-md transition-all text-xs uppercase tracking-wider active:scale-95"
+                          >
+                            {actionLoading === incident.log_id ? (
+                              <RefreshCw size={14} className="animate-spin" />
+                            ) : (
+                              <CheckCircle size={14} />
+                            )}
+                            Resolve Ticket
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    feedback && (
+                      <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800/80 space-y-2">
+                        <div className="p-4 bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 rounded-2xl space-y-1">
+                          <span className="text-[10px] font-black uppercase text-emerald-600 dark:text-emerald-400 block tracking-wider">
+                            Resolution Feedback
+                          </span>
+                          <p className="text-sm text-slate-700 dark:text-slate-300 font-semibold leading-relaxed">
+                            {feedback}
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  )
+                );
+              })()}
             </div>
           ))
         )}

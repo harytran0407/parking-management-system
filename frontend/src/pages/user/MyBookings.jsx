@@ -75,9 +75,9 @@ export default function MyBookings() {
           plate_number: b.vehicle_plate_number,
           startTime: b.expected_arrival,
           endTime: b.expired_at,
-          totalPrice: b.deposit_paid, // Or estimate pricing
-          depositPaid: b.deposit_paid || 10000,
-          remainingBalance: 0, // Mock details
+          totalPrice: b.estimated_fee || b.deposit_paid || 15000,
+          depositPaid: b.deposit_paid || 15000,
+          remainingBalance: Math.max(0, (b.estimated_fee || 0) - (b.deposit_paid || 0)),
           status: b.status.toLowerCase(),
           qrCodeData: b.qr_code_data
         }));
@@ -92,7 +92,7 @@ export default function MyBookings() {
           plate_number: b.vehicle_plate_number,
           date: b.booking_time ? b.booking_time.substring(0, 10) : "",
           time: `${formatTimeOnly(b.expected_arrival)} - ${formatTimeOnly(b.expired_at)}`,
-          fee: b.deposit_paid || 10000,
+          fee: b.estimated_fee || b.deposit_paid || 15000,
           status: b.status.toLowerCase(),
         }));
         setBookingHistory(list);
@@ -130,22 +130,22 @@ export default function MyBookings() {
     if (
       activeModal === "adjust" &&
       adjustTimeData.startTime &&
-      adjustTimeData.endTime &&
       selectedBooking
     ) {
       const start = new Date(adjustTimeData.startTime).getTime();
-      const end = new Date(adjustTimeData.endTime).getTime();
+      const now = new Date().getTime();
 
-      if (end > start) {
-        const hours = (end - start) / (1000 * 60 * 60);
-        const ratePerHour =
-          selectedBooking.vehicleType === "car" ? 20000 : 5000;
-        setNewPrice(Math.ceil(hours) * ratePerHour);
-      } else {
-        setNewPrice(0);
+      let estimatedFee = 15000; // Base price is 15,000 VND
+      if (now > start) {
+        const durationMs = now - start;
+        const billedHours = Math.ceil(durationMs / (1000 * 60 * 60));
+        if (billedHours > 1) {
+          estimatedFee += (billedHours - 1) * 2000;
+        }
       }
+      setNewPrice(estimatedFee);
     }
-  }, [adjustTimeData, activeModal, selectedBooking]);
+  }, [adjustTimeData.startTime, activeModal, selectedBooking]);
 
   const filteredBookingHistory = useMemo(() => {
     return bookingHistory.filter((item) => {
@@ -200,7 +200,7 @@ export default function MyBookings() {
     try {
       const payload = {
         expectedArrival: new Date(adjustTimeData.startTime).toISOString(),
-        expiredAt: new Date(adjustTimeData.endTime).toISOString(),
+        expiredAt: null,
       };
       const response = await api.put(`/bookings/${selectedBooking.id}/adjust`, payload);
       if (response.data && response.data.success) {
@@ -406,7 +406,7 @@ export default function MyBookings() {
                       onClick={() => openModal("pay", booking)}
                       className="w-full flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm"
                     >
-                      <CreditCard size={14} /> Settle & Checkout
+                      <CreditCard size={14} /> Paid
                     </button>
                     <div className="grid grid-cols-2 gap-2">
                       <button
@@ -562,7 +562,7 @@ export default function MyBookings() {
                   <X size={20} />
                 </button>
                 <h3 className="font-bold text-slate-800 dark:text-white text-xl mb-1 flex items-center justify-center gap-1.5">
-                  <QrCode className="text-blue-500" size={22} /> E-Ticket Validated
+                  <QrCode className="text-blue-500" size={22} /> E-Ticket
                 </h3>
                 <p className="text-slate-400 dark:text-slate-500 text-xs font-mono font-bold mb-6">
                   ID: {selectedBooking.id} | PLATE: {selectedBooking.plate_number}
@@ -579,15 +579,14 @@ export default function MyBookings() {
                 <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-xl p-3 mb-6 text-left flex gap-2.5 items-start text-amber-700 dark:text-amber-400 text-xs font-medium leading-relaxed">
                   <Info className="text-amber-500 shrink-0 mt-0.5" size={16} />
                   <p>
-                    Security camera scans your plate at gate lines. Show this
-                    ticket QR to staff if camera fails.
+                    Note: The gate camera will scan your license plate. Show this QR code to staff if needed.
                   </p>
                 </div>
                 <button
                   onClick={closeModal}
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-md transition-all"
                 >
-                  Close Ticket Window
+                  Close
                 </button>
               </div>
             )}
@@ -598,7 +597,7 @@ export default function MyBookings() {
                   <AlertTriangle size={28} />
                 </div>
                 <h3 className="font-bold text-slate-800 dark:text-white text-xl mb-2">
-                  Cancel Booking Session?
+                  Cancel Booking?
                 </h3>
                 <p className="text-slate-500 dark:text-slate-400 text-sm mb-5 font-medium">
                   Are you sure to release reservation for{" "}
@@ -610,14 +609,14 @@ export default function MyBookings() {
 
                 <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 rounded-xl p-3.5 mb-6 text-left">
                   <p className="text-xs font-bold text-red-600 dark:text-red-400">
-                    Penalty Forfeiture Notice:
+                    Notice:
                   </p>
                   <p className="text-[11px] font-medium text-red-500 mt-1 leading-normal">
-                    Pursuant to regulations, your booking deposit fee of{" "}
+                    Your booking deposit of{" "}
                     <span className="font-bold underline">
                       {selectedBooking.depositPaid.toLocaleString()} VND
                     </span>{" "}
-                    is non-refundable upon cancellation.
+                    is non-refundable if you cancel.
                   </p>
                 </div>
 
@@ -626,7 +625,7 @@ export default function MyBookings() {
                     onClick={closeModal}
                     className="flex-1 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold py-3 rounded-xl transition-colors text-sm"
                   >
-                    Dismiss
+                    Go Back
                   </button>
                   <button
                     disabled={cancelCountdown > 0}
@@ -635,7 +634,7 @@ export default function MyBookings() {
                   >
                     {cancelCountdown > 0
                       ? `Confirm (${cancelCountdown}s)`
-                      : "Confirm Cancel"}
+                      : "Cancel Booking"}
                   </button>
                 </div>
               </div>
@@ -645,7 +644,7 @@ export default function MyBookings() {
               <div className="p-6">
                 <div className="flex justify-between items-center mb-5 border-b border-slate-100 dark:border-slate-800 pb-3">
                   <h3 className="font-bold text-slate-800 dark:text-white text-lg flex items-center gap-1.5">
-                    <Clock className="text-blue-500" size={18} /> Adjust Schedule Window
+                    <Clock className="text-blue-500" size={18} /> Change Schedule
                   </h3>
                   <button
                     onClick={closeModal}
@@ -657,7 +656,7 @@ export default function MyBookings() {
                 <div className="space-y-4 mb-5">
                   <div>
                     <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">
-                      New Arrival Entry:
+                      New Entry Time:
                     </label>
                     <input
                       type="datetime-local"
@@ -671,47 +670,34 @@ export default function MyBookings() {
                       className="w-full bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40"
                     />
                   </div>
-                  <div>
-                    <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">
-                      Estimated Departure Exit:
-                    </label>
-                    <input
-                      type="datetime-local"
-                      value={adjustTimeData.endTime}
-                      onChange={(e) =>
-                        setAdjustTimeData({
-                          ...adjustTimeData,
-                          endTime: e.target.value,
-                        })
-                      }
-                      className="w-full bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40"
-                    />
-                  </div>
                 </div>
 
-                <div className="bg-blue-50 dark:bg-blue-950/20 rounded-2xl p-3.5 mb-6 border border-blue-100 dark:border-blue-900/30 text-xs font-medium space-y-1 text-slate-600 dark:text-slate-400">
+                <div className="bg-blue-50 dark:bg-blue-950/20 rounded-2xl p-3.5 mb-6 border border-blue-100 dark:border-blue-900/30 text-xs font-medium space-y-1.5 text-slate-600 dark:text-slate-400">
                   <div className="flex justify-between">
-                    <span>New Total Calculation:</span>
+                    <span>New Estimated Price:</span>
                     <span className="font-bold text-slate-800 dark:text-slate-200">
-                      {newPrice.toLocaleString()}đ
+                      {newPrice.toLocaleString()} VND
                     </span>
                   </div>
                   <div className="flex justify-between border-b border-blue-100 dark:border-blue-900/40 pb-1.5">
-                    <span>Deposit Deducted:</span>
-                    <span className="text-red-500 font-bold">
-                      -{selectedBooking.depositPaid.toLocaleString()}đ
+                    <span>Deposit Paid:</span>
+                    <span className="text-emerald-500 font-bold">
+                      -{selectedBooking.depositPaid.toLocaleString()} VND
                     </span>
                   </div>
                   <div className="flex justify-between items-center pt-1.5 text-sm">
                     <span className="text-blue-800 dark:text-blue-300 font-bold">
-                      New Remaining Owed:
+                      Remaining Amount:
                     </span>
                     <span className="font-black text-base text-blue-600 dark:text-blue-400">
                       {(newPrice - selectedBooking.depositPaid > 0
                         ? newPrice - selectedBooking.depositPaid
                         : 0
-                      ).toLocaleString()}đ
+                      ).toLocaleString()} VND
                     </span>
+                  </div>
+                  <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-2 border-t border-blue-100 dark:border-blue-900/40 pt-2 font-medium leading-relaxed">
+                    💡 <strong>Rate:</strong> 15,000 VND for the 1st hour, then +2,000 VND for each next hour.
                   </div>
                 </div>
                 <button
@@ -719,7 +705,7 @@ export default function MyBookings() {
                   onClick={handleConfirmAdjust}
                   className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold py-3 rounded-xl shadow-md transition-transform active:scale-95 text-sm"
                 >
-                  Save Modified Schedule
+                  Save Changes
                 </button>
               </div>
             )}
@@ -733,10 +719,10 @@ export default function MyBookings() {
                   <X size={20} />
                 </button>
                 <h3 className="font-bold text-slate-800 dark:text-white text-xl mb-1 flex items-center justify-center gap-1.5">
-                  <CreditCard className="text-emerald-500" size={20} /> Session Settlement
+                  <CreditCard className="text-emerald-500" size={20} /> Pay Remaining Fee
                 </h3>
                 <p className="text-slate-400 dark:text-slate-500 text-xs font-semibold mb-5">
-                  Scanning portal to complete checkout transaction
+                  Scan QR code to pay the remaining balance.
                 </p>
 
                 <div className="bg-white p-3 rounded-2xl inline-block border-2 border-slate-100 mb-4 shadow-sm">
@@ -748,7 +734,7 @@ export default function MyBookings() {
                 </div>
                 <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-3 mb-6 border border-slate-100 dark:border-slate-800/60 text-xs font-bold text-slate-500 dark:text-slate-400">
                   <p>
-                    Amount Due:{" "}
+                    Amount:{" "}
                     <span className="text-emerald-500 text-lg font-black font-mono ml-1">
                       {selectedBooking.remainingBalance.toLocaleString()}đ
                     </span>
@@ -759,13 +745,13 @@ export default function MyBookings() {
                     onClick={closeModal}
                     className="flex-1 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold py-3 rounded-xl transition-colors text-sm"
                   >
-                    Dismiss
+                    Go Back
                   </button>
                   <button
                     onClick={handleConfirmPay}
                     className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 rounded-xl text-sm shadow-md shadow-emerald-500/20"
                   >
-                    I Have Paid Balance
+                    Confirm Paid
                   </button>
                 </div>
               </div>

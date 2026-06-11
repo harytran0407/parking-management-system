@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
@@ -8,8 +8,12 @@ namespace ParkingManagement.Extensions
     {
         public static void AddJwtAuthentication(this IServiceCollection services, IConfiguration configuration)
         {
-            var jwtSettings = configuration.GetSection("Jwt");
-            var key = Encoding.UTF8.GetBytes(jwtSettings["Key"] ?? "ParkingManagement_Super_Secret_Key_2026");
+            // Lấy Secret Key từ biến môi trường (đồng bộ với cách AuthController ký token)
+            var secretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY")
+                ?? configuration["Jwt:Key"]
+                ?? throw new InvalidOperationException("JWT_SECRET_KEY is missing. Please set it in the .env file.");
+
+            var key = Encoding.UTF8.GetBytes(secretKey);
 
             services.AddAuthentication(options =>
             {

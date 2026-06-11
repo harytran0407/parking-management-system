@@ -20,9 +20,5 @@ namespace ParkingManagement.DTOs
         [JsonPropertyName("customer_phone")]
         public string? CustomerPhone { get; set; }
 
-        // BỔ SUNG TRƯỜNG NÀY ĐỂ NHẬN ĐƯỢC ĐÚNG GIÁ TRỊ "usr_001" TỪ POSTMAN
-        [Required]
-        [JsonPropertyName("staff_id")]
-        public string StaffId { get; set; } = null!;
     }
 }

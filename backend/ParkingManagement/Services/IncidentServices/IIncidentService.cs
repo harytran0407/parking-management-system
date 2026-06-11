@@ -5,7 +5,7 @@ using ParkingManagement.DTOs;
 namespace ParkingManagement.Services
 {
     /// <summary>
-    /// Dịch vụ xử lý các sự cố và ngoại lệ trong bãi xe (Mất thẻ, sai biển số, tranh chấp ô đỗ).
+    /// Dịch vụ xử lý các sự cố và ngoại lệ trong bãi xe (Mất thẻ, sai biển số).
     /// </summary>
     public interface IIncidentService
     {
@@ -18,10 +18,5 @@ namespace ParkingManagement.Services
         /// Sửa đổi sai lệch biển số do hệ thống/OCR nhận diện nhầm lúc vào (Correct Mismatch).
         /// </summary>
         Task<MismatchCorrectionResponseDto> CorrectMismatchAsync(MismatchCorrectionRequestDto dto, string staffId);
-
-        /// <summary>
-        /// Giải quyết tranh chấp khi xe vãng lai đỗ nhầm vào ô đã được đặt trước (Resolve Slot Dispute).
-        /// </summary>
-        Task<SlotDisputeResponseDto> ResolveSlotDisputeAsync(SlotDisputeRequestDto dto, string staffId);
     }
 }

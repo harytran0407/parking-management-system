@@ -6,6 +6,7 @@ using ParkingManagement.Data;
 using ParkingManagement.DTOs;
 using ParkingManagement.DTOs.Auth;
 using ParkingManagement.Models;
+using ParkingManagement.Services.EmailServices;
 using ParkingManagement.Utils;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -26,11 +27,14 @@ namespace ParkingManagement.Controllers.AuthController
 
         private readonly IMemoryCache _cache;
 
-        public AuthController(AppDbContext context, IConfiguration configuration, IMemoryCache cache)
+        private readonly IEmailService _emailService;
+
+        public AuthController(AppDbContext context, IConfiguration configuration, IMemoryCache cache, IEmailService emailService)
         {
             _context = context;
             _configuration = configuration;
             _cache = cache;
+            _emailService = emailService;
         }
 
         [HttpPost("register")]
@@ -91,7 +95,7 @@ namespace ParkingManagement.Controllers.AuthController
             string hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password);
             var newUser = new User
             {
-                UserId = "usr_" + DateTime.Now.ToString("yyMMddHHmmssfff"),
+                UserId = Guid.NewGuid().ToString(),
                 FullName = request.FullName,
                 Email = request.Email,
                 Phone = request.PhoneNumber,
@@ -337,7 +341,7 @@ namespace ParkingManagement.Controllers.AuthController
         }
 
         [HttpPost("forgot-password")]
-        public IActionResult ForgotPassword([FromBody] ForgotPasswordRequestDto request)
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequestDto request)
         {
             var userInDb = _context.Users.FirstOrDefault(u => u.Email == request.EmailOrPhone || u.Phone == request.EmailOrPhone);
 
@@ -351,11 +355,36 @@ namespace ParkingManagement.Controllers.AuthController
             var cacheOptions = new MemoryCacheEntryOptions().SetAbsoluteExpiration(TimeSpan.FromMinutes(5));
             _cache.Set($"OTP_{request.EmailOrPhone}", otp, cacheOptions);
 
+            // Gửi OTP qua email thực tế nếu tài khoản có email hợp lệ
+            if (!string.IsNullOrEmpty(userInDb.Email) && ValidationUtils.IsValidEmail(userInDb.Email))
+            {
+                try
+                {
+                    string subject = "Smartpark - Reset Password OTP Verification";
+                    string body = $@"
+                        <div style='font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ddd; border-radius: 8px; max-width: 600px;'>
+                            <h2 style='color: #2563eb; text-align: center;'>Smartpark Verification Code</h2>
+                            <p>Hello,</p>
+                            <p>We received a request to reset your password. Please use the verification code below to proceed:</p>
+                            <div style='text-align: center; margin: 30px 0;'>
+                                <span style='font-size: 28px; font-weight: bold; letter-spacing: 4px; background-color: #f3f4f6; padding: 10px 24px; border-radius: 6px; border: 1px solid #e5e7eb;'>{otp}</span>
+                            </div>
+                            <p>This code is only valid for <strong>5 minutes</strong>. If you did not request this, please ignore this email.</p>
+                            <hr style='border: none; border-top: 1px solid #eee; margin: 20px 0;' />
+                            <p style='font-size: 12px; color: #666; text-align: center;'>This is an automated message, please do not reply directly to this email.</p>
+                        </div>";
+                    await _emailService.SendEmailAsync(userInDb.Email, subject, body);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[EMAIL_ERROR] Failed to send email to {userInDb.Email}: {ex.Message}");
+                }
+            }
+
             return Ok(new
             {
                 success = true,
-                message = "OTP has been sent to your Email or phone number",
-                mock_otp = otp // Chỉ dùng để test, trong thực tế sẽ gửi OTP qua Email hoặc SMS
+                message = "OTP has been sent to your Email or phone number"
             });
         }
 
@@ -761,7 +790,7 @@ namespace ParkingManagement.Controllers.AuthController
                 {
                     userInDb = new User
                     {
-                        UserId = "usr_" + DateTime.Now.ToString("yyMMddHHmmssfff"),
+                        UserId = Guid.NewGuid().ToString(),
                         Username = "user_" + Guid.NewGuid().ToString("N").Substring(0, 8),
                         FullName = userFullName,
                         Email = userEmail,
@@ -883,237 +912,5 @@ namespace ParkingManagement.Controllers.AuthController
                 return StatusCode(500, new { success = false, message = "Lỗi hệ thống: " + ex.Message });
             }
         }
-
-        [Authorize(Roles = "SystemAdmin")]
-        [HttpGet("admin/users")]
-        public async Task<IActionResult> AdminGetUsers([FromQuery] string? search, [FromQuery] string? role, [FromQuery] string? status)
-        {
-            var query = _context.Users.Include(u => u.Role).AsQueryable();
-
-            if (!string.IsNullOrWhiteSpace(search))
-            {
-                string lowerSearch = search.ToLower();
-                query = query.Where(u => u.Username.ToLower().Contains(lowerSearch) ||
-                                         (u.FullName != null && u.FullName.ToLower().Contains(lowerSearch)) ||
-                                         (u.Email != null && u.Email.ToLower().Contains(lowerSearch)) ||
-                                         (u.Phone != null && u.Phone.ToLower().Contains(lowerSearch)));
-            }
-
-            if (!string.IsNullOrWhiteSpace(role) && role != "ALL")
-            {
-                query = query.Where(u => u.Role != null && u.Role.RoleName == role);
-            }
-
-            if (!string.IsNullOrWhiteSpace(status) && status != "ALL")
-            {
-                query = query.Where(u => u.Status == status);
-            }
-
-            var users = await query
-                .OrderByDescending(u => u.CreatedAt)
-                .Select(u => new
-                {
-                    userId = u.UserId,
-                    username = u.Username,
-                    fullName = u.FullName,
-                    email = u.Email,
-                    phone = u.Phone,
-                    role = u.Role != null ? u.Role.RoleName : "ParkingUser",
-                    roleId = u.RoleId,
-                    status = u.Status,
-                    lastLogin = u.LastLogin,
-                    createdAt = u.CreatedAt
-                })
-                .ToListAsync();
-
-            return Ok(new { success = true, data = users });
-        }
-
-        [Authorize(Roles = "SystemAdmin")]
-        [HttpPut("admin/users/{userId}/role")]
-        public async Task<IActionResult> AdminUpdateUserRole(string userId, [FromBody] UpdateUserRoleDto dto)
-        {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.UserId == userId);
-            if (user == null)
-                return NotFound(new { success = false, message = "User not found" });
-
-            if (user.RoleId == 1)
-                return BadRequest(new { success = false, message = "SystemAdmin role is fixed and cannot be modified" });
-
-            if (dto.RoleId == 1)
-                return BadRequest(new { success = false, message = "Cannot assign SystemAdmin role to users" });
-
-            var roleExists = await _context.Roles.AnyAsync(r => r.RoleId == dto.RoleId);
-            if (!roleExists)
-                return BadRequest(new { success = false, message = "Invalid Role ID" });
-
-            // 1. Get currently logged-in Admin's ID from claims
-            var adminId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
-                          ?? User.FindFirst("sub")?.Value 
-                          ?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
-
-            if (string.IsNullOrEmpty(adminId))
-            {
-                adminId = "usr_260601085134364"; // fallback default system admin
-            }
-
-            // 2. Verify admin exists in the database (for FK constraint)
-            var adminExists = await _context.Users.AnyAsync(u => u.UserId == adminId);
-            if (!adminExists)
-            {
-                // Try to find any SystemAdmin user as fallback
-                var systemAdmin = await _context.Users
-                    .Where(u => u.RoleId == 1)
-                    .Select(u => u.UserId)
-                    .FirstOrDefaultAsync();
-                if (systemAdmin != null)
-                {
-                    adminId = systemAdmin;
-                }
-                else
-                {
-                    // Fallback to any user to avoid FK error
-                    var anyUser = await _context.Users
-                        .Select(u => u.UserId)
-                        .FirstOrDefaultAsync();
-                    if (anyUser != null)
-                    {
-                        adminId = anyUser;
-                    }
-                    else
-                    {
-                        return BadRequest(new { success = false, message = "No valid admin or user exists in the database to log the action" });
-                    }
-                }
-            }
-
-            // 3. Save old role ID before changing
-            int? oldRoleId = user.RoleId;
-
-            // 4. Update the role ID and prepare the audit log
-            user.RoleId = dto.RoleId;
-
-            var auditLog = new RoleAuditLog
-            {
-                AdminId = adminId,
-                TargetUserId = userId,
-                OldRoleId = oldRoleId,
-                NewRoleId = dto.RoleId,
-                ChangedAt = DateTime.UtcNow
-            };
-            _context.RoleAuditLogs.Add(auditLog);
-
-            // 5. Save changes atomically
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new 
-                { 
-                    success = false, 
-                    message = "Could not update user role and write audit log. Reason: " + (ex.InnerException?.Message ?? ex.Message) 
-                });
-            }
-
-            return Ok(new { success = true, message = "Role updated successfully" });
-        }
-
-        [Authorize(Roles = "SystemAdmin")]
-        [HttpGet("admin/role-audit-logs")]
-        public async Task<IActionResult> AdminGetRoleAuditLogs()
-        {
-            var roleNames = await _context.Roles
-                .ToDictionaryAsync(r => r.RoleId, r => r.RoleName);
-
-            var dbLogs = await _context.RoleAuditLogs
-                .Include(l => l.Admin)
-                .Include(l => l.TargetUser)
-                .OrderByDescending(l => l.ChangedAt)
-                .ToListAsync();
-
-            var logs = dbLogs.Select(l => new
-            {
-                logId = l.LogId,
-                adminId = l.AdminId,
-                adminName = l.Admin != null ? (l.Admin.FullName ?? l.Admin.Username) : l.AdminId,
-                targetUserId = l.TargetUserId,
-                targetUserName = l.TargetUser != null ? (l.TargetUser.FullName ?? l.TargetUser.Username) : l.TargetUserId,
-                oldRoleId = l.OldRoleId,
-                newRoleId = l.NewRoleId,
-                oldRoleName = l.OldRoleId.HasValue && roleNames.ContainsKey(l.OldRoleId.Value) ? roleNames[l.OldRoleId.Value] : "None",
-                newRoleName = roleNames.ContainsKey(l.NewRoleId) ? roleNames[l.NewRoleId] : "None",
-                changedAt = l.ChangedAt
-            }).ToList();
-
-            return Ok(new { success = true, data = logs });
-        }
-
-        [Authorize(Roles = "SystemAdmin")]
-        [HttpPut("admin/users/{userId}/status")]
-        public async Task<IActionResult> AdminUpdateUserStatus(string userId, [FromBody] UpdateUserStatusDto dto)
-        {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.UserId == userId);
-            if (user == null)
-                return NotFound(new { success = false, message = "User not found" });
-
-            if (user.RoleId == 1)
-                return BadRequest(new { success = false, message = "SystemAdmin status is fixed and cannot be modified" });
-
-            var validStatuses = new[] { "ACTIVE", "INACTIVE", "BANNED" };
-            if (!validStatuses.Contains(dto.Status.ToUpper()))
-                return BadRequest(new { success = false, message = "Invalid status. Must be ACTIVE, INACTIVE, or BANNED" });
-
-            user.Status = dto.Status.ToUpper();
-            await _context.SaveChangesAsync();
-
-            return Ok(new { success = true, message = "User status updated successfully" });
-        }
-
-        [Authorize(Roles = "SystemAdmin")]
-        [HttpDelete("admin/users/{userId}")]
-        public async Task<IActionResult> AdminDeleteUser(string userId)
-        {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.UserId == userId);
-            if (user == null)
-                return NotFound(new { success = false, message = "User not found" });
-
-            // Cannot delete yourself
-            var adminId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
-                          ?? User.FindFirst("sub")?.Value 
-                          ?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
-            if (user.UserId == adminId)
-                return BadRequest(new { success = false, message = "You cannot delete your own admin account" });
-
-            // Cannot delete another SystemAdmin (fixed)
-            if (user.RoleId == 1)
-                return BadRequest(new { success = false, message = "SystemAdmin accounts are fixed and cannot be deleted" });
-
-            try
-            {
-                _context.Users.Remove(user);
-                await _context.SaveChangesAsync();
-                return Ok(new { success = true, message = "User deleted successfully" });
-            }
-            catch (Exception)
-            {
-                return BadRequest(new 
-                { 
-                    success = false, 
-                    message = "Cannot delete this user because they have existing transactions, bookings, vehicles, or system logs. Please suspend them instead." 
-                });
-            }
-        }
-    }
-
-    public class UpdateUserRoleDto
-    {
-        public int RoleId { get; set; }
-    }
-
-    public class UpdateUserStatusDto
-    {
-        public string Status { get; set; } = null!;
     }
 }

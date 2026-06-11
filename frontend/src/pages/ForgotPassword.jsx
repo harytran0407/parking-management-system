@@ -14,7 +14,6 @@ export default function ForgotPassword() {
   // State lưu trữ thông tin (Xóa bỏ hoàn toàn state 'method')
   const [inputValue, setInputValue] = useState(""); // Dùng chung cho cả Email/SĐT
   const [otpCode, setOtpCode] = useState("");
-  const [mockOtp,setMockOtp] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -38,10 +37,6 @@ export default function ForgotPassword() {
 
       if (response.data && response.data.success) {
         toast.success("Verification code has been dispatched successfully!");
-        // luu tru otp ve he thong auto fill
-        if(response.data.mock_otp){
-          setMockOtp(response.data.mock_otp);
-        }
         setStep("otp");
       }
     } catch (err) {
@@ -55,12 +50,6 @@ export default function ForgotPassword() {
   // ============================================================
   // BƯỚC 2: TIẾP NHẬN MÃ OTP
   // ============================================================
-  const handleAutofillOtp = () =>{
-    if(mockOtp){
-      setOtpCode(mockOtp.toString());
-      toast.success("OTP verfication code auto-filed!");
-    }
-  };
   const handleVerifyOtp = (e) => {
     e.preventDefault();
     if (otpCode.length < 4) {
@@ -72,7 +61,6 @@ export default function ForgotPassword() {
 
   const handleRestartFlow = () => {
     setOtpCode("");
-    setMockOtp("");
     setNewPassword("");
     setConfirmPassword("");
     setStep("request");
@@ -178,28 +166,7 @@ export default function ForgotPassword() {
                 Please enter the verification code sent to <br />
                 <span className="text-blue-400 font-mono font-semibold">{inputValue}</span>
               </div>
-              {/* BANNER HIỂN THỊ MÃ OTP DEVELOPMENT MODE & AUTO-FILL */}
-              {mockOtp && (
-                <div className="p-3.5 bg-blue-950/40 border border-blue-500/30 rounded-xl flex flex-col gap-2.5">
-                  <div className="flex items-center gap-1.5 text-blue-400 text-xs font-bold uppercase tracking-wider">
-                    <ShieldAlert className="w-3.5 h-3.5" />
-                    <span>Development Sandbox</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs text-slate-300">
-                      Generated OTP:{" "}
-                      <span className="text-white font-mono font-bold text-sm tracking-widest bg-slate-950 px-2 py-0.5 rounded border border-white/5">{mockOtp}</span>
-                    </p>
-                    <button
-                      type="button"
-                      onClick={handleAutofillOtp}
-                      className="inline-flex items-center gap-1 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-2.5 py-1.5 rounded-lg transition duration-200 active:scale-95 shadow-md shadow-blue-600/20">
-                      <Zap className="w-3 h-3 fill-white" />
-                      <span>Auto-fill</span>
-                    </button>
-                  </div>
-                </div>
-              )}
+
 
               <div className="relative">
                 <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />

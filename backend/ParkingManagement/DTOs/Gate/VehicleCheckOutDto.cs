@@ -14,8 +14,5 @@ namespace ParkingManagement.DTOs
         public string GateOut { get; set; } = null!;
 
         public string? ImageUrlOut { get; set; }
-
-        [Required]
-        public string StaffOutId { get; set; } = null!;
     }
 }

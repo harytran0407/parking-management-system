@@ -52,7 +52,7 @@ export default function AdminLogs() {
   const fetchLogs = async () => {
     try {
       setLoading(true);
-      const response = await api.get("/auth/admin/role-audit-logs");
+      const response = await api.get("/admin/role-audit-logs");
       if (response.data && response.data.success) {
         const mapped = response.data.data.map(mapRoleAuditLogToUiLog);
         setLogs(mapped);

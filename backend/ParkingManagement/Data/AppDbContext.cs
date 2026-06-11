@@ -95,7 +95,7 @@ public partial class AppDbContext : DbContext
                 .HasColumnName("STATUS");
             entity.Property(e => e.VehicleId).HasColumnName("VEHICLE_ID");
             entity.Property(e => e.VehicleUserId)
-                .HasMaxLength(20)
+                .HasMaxLength(36)
                 .HasColumnName("VEHICLE_USER_ID");
 
             entity.HasOne(d => d.Slot).WithMany(p => p.Bookings)
@@ -182,13 +182,13 @@ public partial class AppDbContext : DbContext
                 .HasColumnType("datetime")
                 .HasColumnName("REPORT_TIME");
             entity.Property(e => e.ReportedBy)
-                .HasMaxLength(20)
+                .HasMaxLength(36)
                 .HasColumnName("REPORTED_BY");
             entity.Property(e => e.ResolvedAt)
                 .HasColumnType("datetime")
                 .HasColumnName("RESOLVED_AT");
             entity.Property(e => e.ResolvedBy)
-                .HasMaxLength(20)
+                .HasMaxLength(36)
                 .HasColumnName("RESOLVED_BY");
             entity.Property(e => e.SessionId)
                 .HasMaxLength(20)
@@ -350,10 +350,10 @@ public partial class AppDbContext : DbContext
                 .HasMaxLength(20)
                 .HasColumnName("SLOT_ID");
             entity.Property(e => e.StaffInId)
-                .HasMaxLength(20)
+                .HasMaxLength(36)
                 .HasColumnName("STAFF_IN_ID");
             entity.Property(e => e.StaffOutId)
-                .HasMaxLength(20)
+                .HasMaxLength(36)
                 .HasColumnName("STAFF_OUT_ID");
             entity.Property(e => e.Status)
                 .HasDefaultValueSql("'ACTIVE'")
@@ -487,7 +487,7 @@ public partial class AppDbContext : DbContext
                 .HasMaxLength(100)
                 .HasColumnName("TRANSACTION_ID");
             entity.Property(e => e.UserId)
-                .HasMaxLength(20)
+                .HasMaxLength(36)
                 .HasColumnName("USER_ID");
 
             entity.HasOne(d => d.Booking).WithMany(p => p.Payments)
@@ -597,7 +597,7 @@ public partial class AppDbContext : DbContext
             entity.HasIndex(e => e.Username, "USERNAME").IsUnique();
 
             entity.Property(e => e.UserId)
-                .HasMaxLength(20)
+                .HasMaxLength(36)
                 .HasColumnName("USER_ID");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
@@ -665,7 +665,7 @@ public partial class AppDbContext : DbContext
                 .HasColumnName("VEHICLE_PLATE_NUMBER");
             entity.Property(e => e.VehicleTypeId).HasColumnName("VEHICLE_TYPE_ID");
             entity.Property(e => e.VehicleUserId)
-                .HasMaxLength(20)
+                .HasMaxLength(36)
                 .HasColumnName("VEHICLE_USER_ID");
 
             entity.HasOne(d => d.VehicleType).WithMany(p => p.Vehicles)
@@ -742,16 +742,16 @@ public partial class AppDbContext : DbContext
 
         modelBuilder.Entity<RoleAuditLog>(entity =>
         {
-            entity.HasKey(e => e.LogId).HasName("PRIMARY");
+            entity.HasKey(e => e.RoleLogId).HasName("PRIMARY");
 
             entity.ToTable("ROLE_AUDIT_LOG");
 
-            entity.Property(e => e.LogId).HasColumnName("LOG_ID");
+            entity.Property(e => e.RoleLogId).HasColumnName("ROLE_LOG_ID");
             entity.Property(e => e.AdminId)
-                .HasMaxLength(20)
+                .HasMaxLength(36)
                 .HasColumnName("ADMIN_ID");
             entity.Property(e => e.TargetUserId)
-                .HasMaxLength(20)
+                .HasMaxLength(36)
                 .HasColumnName("TARGET_USER_ID");
             entity.Property(e => e.OldRoleId).HasColumnName("OLD_ROLE_ID");
             entity.Property(e => e.NewRoleId).HasColumnName("NEW_ROLE_ID");

@@ -1,6 +1,6 @@
 import { Routes, Route } from "react-router-dom";
 import {useState} from 'react';
-import {LayoutDashboard,History,LogIn,LogOut,AlertTriangle,Map,} from "lucide-react";
+import {LayoutDashboard,History,LogIn,LogOut,AlertTriangle,Map} from "lucide-react";
 import Sidebar from "../components/Sidebar";
 import Header from "../components/Header";
 import StaffDashboard from "../pages/staff/Dashboard";

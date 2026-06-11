@@ -12,7 +12,7 @@ namespace ParkingManagement.Controllers
 {
     [ApiController]
     [Route("api/v1/manager/staff")]
-    [Authorize(Roles = "ParkingManager")]
+    [Authorize(Roles = "ParkingManager,SystemAdmin")]
     public class StaffController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -140,7 +140,7 @@ namespace ParkingManagement.Controllers
             string hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password);
             var newStaff = new User
             {
-                UserId = "usr_" + DateTime.Now.ToString("yyMMddHHmmssfff"),
+                UserId = Guid.NewGuid().ToString(),
                 FullName = request.FullName,
                 Email = request.Email,
                 Phone = request.PhoneNumber,

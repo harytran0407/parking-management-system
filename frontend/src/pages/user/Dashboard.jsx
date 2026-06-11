@@ -2,13 +2,11 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../utils/api";
-import {MapPin,
+import {
+  MapPin,
   Clock,
-  Building,
   Layers,
-  CheckCircle2,
   AlertTriangle,
-  Info,
   XCircle,
   Calendar,
   Star,
@@ -17,7 +15,6 @@ import {MapPin,
   ChevronRight,
   RefreshCw,
   AlertCircle,
-  Percent,
 } from "lucide-react";
 
 // ==========================================
@@ -206,40 +203,43 @@ export default function UserDashboard() {
     <div className="animate-slide-in w-full h-full space-y-0 ">
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-sm flex flex-col lg:flex-row transition-colors duration-300 h-full ">
         {/* LEFT COMPONENT: IMAGE CAROUSEL SLIDER */}
-        <div className="w-full lg:w-2/5 relative min-h-[340px] lg:min-h-full group overflow-hidden bg-slate-955">
-          <div className="absolute inset-0 flex transition-transform duration-[1200ms] ease-in-out" style={{ transform: `translateX(-${currentImgIndex * 100}%)` }}>
+        <div className="w-full lg:w-2/5 relative min-h-[340px] lg:min-h-full group overflow-hidden bg-slate-950">
+          <div className="absolute inset-0 flex transition-transform duration-[1000ms] cubic-bezier(0.4, 0, 0.2, 1)" style={{ transform: `translateX(-${currentImgIndex * 100}%)` }}>
             {STATIC_IMAGES.map((url, idx) => (
               <img
                 key={idx}
                 src={url}
                 alt="Parking Lot View"
-                className="w-full h-full object-cover shrink-0 select-none transition-transform duration-[1200ms] group-hover:scale-[1.02]"
+                className="w-full h-full object-cover shrink-0 select-none transition-transform duration-[1000ms] group-hover:scale-[1.04]"
               />
             ))}
           </div>
 
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent pointer-events-none z-10"></div>
+          {/* Deep dark gradient overlay at the bottom and top to blend image beautifully */}
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-slate-950/40 pointer-events-none z-10"></div>
+
+
 
           <button
             type="button"
             onClick={handlePrevImage}
-            className="absolute left-3 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/60 text-white p-2 rounded-full backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-all duration-300 z-20 hover:scale-110">
-            <ChevronLeft size={20} />
+            className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-blue-600 text-white p-2.5 rounded-full backdrop-blur-md opacity-0 group-hover:opacity-100 transition-all duration-300 z-20 hover:scale-110 border border-white/10">
+            <ChevronLeft size={18} />
           </button>
           <button
             type="button"
             onClick={handleNextImage}
-            className="absolute right-3 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/60 text-white p-2 rounded-full backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-all duration-300 z-20 hover:scale-110">
-            <ChevronRight size={20} />
+            className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-blue-600 text-white p-2.5 rounded-full backdrop-blur-md opacity-0 group-hover:opacity-100 transition-all duration-300 z-20 hover:scale-110 border border-white/10">
+            <ChevronRight size={18} />
           </button>
 
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
+          <div className="absolute bottom-5 left-1/2 -translate-x-1/2 flex gap-2 z-20">
             {STATIC_IMAGES.map((_, idx) => (
               <button
                 key={idx}
                 type="button"
                 onClick={() => setCurrentImgIndex(idx)}
-                className={`h-2 rounded-full transition-all duration-300 ${currentImgIndex === idx ? "w-5 bg-blue-500" : "w-2 bg-white/50 hover:bg-white"}`}
+                className={`h-1.5 rounded-full transition-all duration-500 ${currentImgIndex === idx ? "w-6 bg-blue-500" : "w-1.5 bg-white/40 hover:bg-white"}`}
               />
             ))}
           </div>
@@ -279,60 +279,48 @@ export default function UserDashboard() {
               </div>
 
               <div>
-                {/* Tiêu đề phân vùng ma trận sức chứa bãi xe */}
-                <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                  <Info size={13} className="text-emerald-600 dark:text-emerald-400" /> Space Capacity
+                <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2.5 flex items-center gap-2">
+                  <Layers size={14} /> Parking Status
                 </p>
+                {(() => {
+                  const totalAvailable = buildingInfo.current_occupancy?.total_available ?? 0;
+                  const isClosed = buildingInfo.status?.toUpperCase() === "MAINTENANCE" || buildingInfo.status?.toUpperCase() === "CLOSED";
+                  
+                  let statusTitle = "Available";
+                  let statusDesc = "Plenty of parking spaces are open for Motorbikes and Cars.";
+                  let statusColorClass = "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/10 border-emerald-100 dark:border-emerald-800/40";
+                  let dotColorClass = "bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.5)]";
 
-                {/* Thiết kế phẳng 2 cột đối xứng tối giản tiếng ồn thị giác */}
-                <div className="grid grid-cols-2 gap-4 font-sans">
-                  {/* HỘP HIỂN THỊ Ô ĐỖ TRỐNG KHẢ DỤNG (FREE SLOTS) */}
-                  <div className="p-4 bg-white dark:bg-[#0b1326] border border-slate-200 dark:border-slate-800 rounded-[8px] flex items-center justify-between transition-colors duration-200">
-                    <div className="space-y-0.5">
-                      <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Available</span>
-                      {buildingInfo.current_occupancy?.total_available === 0 ? (
-                        <span className="text-2xl font-extrabold text-rose-600 dark:text-rose-400 tracking-tight animate-pulse">FULL</span>
-                      ) : (
-                        <span className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 tracking-tight">
-                          {buildingInfo.current_occupancy?.total_available ?? 0}
-                        </span>
-                      )}
-                    </div>
-                    <div className="w-9 h-9 bg-emerald-50 dark:bg-emerald-950/10 text-emerald-600 dark:text-emerald-400 rounded-[8px] flex items-center justify-center shrink-0">
-                      <CheckCircle2 size={16} />
-                    </div>
-                  </div>
+                  if (isClosed) {
+                    statusTitle = "Maintenance / Closed";
+                    statusDesc = "The parking building is temporarily closed for maintenance.";
+                    statusColorClass = "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/10 border-amber-100 dark:border-amber-800/40";
+                    dotColorClass = "bg-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.5)]";
+                  } else if (totalAvailable === 0) {
+                    statusTitle = "Parking Full";
+                    statusDesc = "All parking slots are occupied. Booking is temporarily disabled.";
+                    statusColorClass = "text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/10 border-rose-100 dark:border-rose-800/40";
+                    dotColorClass = "bg-rose-500 shadow-[0_0_12px_rgba(239,68,68,0.5)]";
+                  } else if (totalAvailable <= 10) {
+                    statusTitle = "Limited Spaces";
+                    statusDesc = "Parking spaces are almost full. Book a spot quickly!";
+                    statusColorClass = "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/10 border-amber-100 dark:border-amber-800/40";
+                    dotColorClass = "bg-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.5)]";
+                  }
 
-                  {/* HỘP HIỂN THỊ Ô ĐỖ ĐÃ BỊ CHIẾM (USED SLOTS) */}
-                  <div className="p-4 bg-white dark:bg-[#0b1326] border border-slate-200 dark:border-slate-800 rounded-[8px] flex items-center justify-between transition-colors duration-200">
-                    <div className="space-y-0.5">
-                      <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Occupied</span>
-                      <span className="text-2xl font-extrabold text-slate-950 dark:text-slate-100 tracking-tight">{buildingInfo.current_occupancy?.total_occupied ?? 0}</span>
+                  return (
+                    <div className={`p-4 rounded-2xl border flex gap-3.5 items-start transition-all duration-300 ${statusColorClass}`}>
+                      <div className="relative flex h-3 w-3 mt-1 shrink-0">
+                        <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${dotColorClass}`}></span>
+                        <span className={`relative inline-flex rounded-full h-3 w-3 ${dotColorClass.split(" ")[0]}`}></span>
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-black uppercase tracking-wider leading-none mb-1.5">{statusTitle}</h4>
+                        <p className="text-xs font-semibold opacity-90 leading-normal">{statusDesc}</p>
+                      </div>
                     </div>
-                    <div className="w-9 h-9 bg-slate-50 dark:bg-[#141f38] border border-slate-100 dark:border-slate-800 text-slate-500 dark:text-slate-400 rounded-[8px] flex items-center justify-center shrink-0">
-                      <XCircle size={16} />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-4 px-0.5">
-                  <div className="flex justify-between text-[10px] font-bold text-slate-400 dark:text-slate-500 mb-2 uppercase tracking-wider items-center">
-                    <span className="flex items-center gap-1">
-                      <Percent size={11} className="text-emerald-600 dark:text-emerald-400" /> Fill Rate
-                    </span>
-                    <span className="font-mono text-slate-950 dark:text-slate-200 font-bold">{occupancyPercent}%</span>
-                  </div>
-
-                  {/* Điều chỉnh chiều cao từ h-1 (4px) lên h-2 (8px) để tối ưu khả năng nhận diện màu sắc nhanh */}
-                  <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden border border-slate-200/10">
-                    <div
-                      className={`h-full transition-all duration-1000 ease-out rounded-full ${
-                        occupancyPercent > 85 ? "bg-rose-500" : occupancyPercent > 60 ? "bg-amber-400" : "bg-emerald-500"
-                      }`}
-                      style={{ width: `${occupancyPercent}%` }}
-                    />
-                  </div>
-                </div>
+                  );
+                })()}
               </div>
 
               {/*  MODIFIED: Map pushed lower and lengthened vertically to seamlessly consume empty bottom gaps */}
@@ -423,18 +411,18 @@ export default function UserDashboard() {
 
               {/* ACTION TRIGGER BUTTON */}
               {availableSlotsCount > 0 ? (
-                <div className="pt-1 py-3">
+                <div className="pt-2">
                   <button
                     type="button"
                     onClick={() => navigate("/user/book")}
-                    className="group w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-xl font-bold shadow-lg shadow-blue-500/20 transition-all active:scale-[0.99] text-xs tracking-wide">
-                    <Calendar size={14} className="group-hover:rotate-12 transition-transform" />
-                    BOOK A SLOT NOW
+                    className="group w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white px-4 py-3.5 rounded-xl font-extrabold shadow-[0_0_20px_rgba(37,99,235,0.25)] hover:shadow-[0_0_30px_rgba(37,99,235,0.5)] hover:-translate-y-0.5 transition-all duration-300 active:scale-[0.99] text-xs tracking-wider uppercase">
+                    <Calendar size={15} className="group-hover:rotate-12 transition-transform duration-300" />
+                    Book A Slot Now &rarr;
                   </button>
                 </div>
               ) : (
-                <div className="bg-red-50 border border-red-200 dark:bg-red-950/20 dark:border-red-900/40 p-2.5 rounded-xl flex items-center gap-2 text-red-600 dark:text-red-400 font-bold text-[10px] justify-center uppercase tracking-wider">
-                  <XCircle size={14} /> PARKING LOT IS FULL
+                <div className="bg-rose-50 border border-rose-100 dark:bg-rose-950/20 dark:border-rose-900/30 p-3.5 rounded-xl flex items-center gap-2 text-rose-600 dark:text-rose-400 font-black text-xs justify-center uppercase tracking-wider shadow-inner">
+                  <XCircle size={16} /> Parking Lot is Full
                 </div>
               )}
             </div>

@@ -47,9 +47,7 @@ const slotStyles = {
 export default function BookSlot() {
   const navigate = useNavigate();
 
-  const [step, setStep] = useState(1);
   const [userVehicles, setUserVehicles] = useState([]);
-  const [availableSlotsOverview, setAvailableSlotsOverview] = useState({ car: 0, motorbike: 0 });
 
   const [bookingData, setBookingData] = useState({
     vehicleType: null, // 'car' (type 2) hoặc 'motorbike' (type 1)
@@ -65,77 +63,17 @@ export default function BookSlot() {
   const [newModel, setNewModel] = useState("");
   const [newColor, setNewColor] = useState("");
 
-  const [selectedFloor, setSelectedFloor] = useState(1);
-  const [slots, setSlots] = useState([]);
-  const [floors, setFloors] = useState([]);
-
   // MODAL STATES
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalPhase, setModalPhase] = useState("form");
   const [qrCodeData, setQrCodeData] = useState("");
   const [createdBooking, setCreatedBooking] = useState(null);
+  const [confirmedBooking, setConfirmedBooking] = useState(null); // ADDED BY ANTIGRAVITY
 
   // TIME AND PRICING STATE
   const [timeData, setTimeData] = useState({ startTime: "", endTime: "" });
-  const [totalPrice, setTotalPrice] = useState(0);
-  const DEPOSIT_FEE = 10000;
-
-  // Fetch floors dynamically based on selected vehicle type
-  useEffect(() => {
-    const fetchFloors = async () => {
-      try {
-        const response = await api.get("/parking/floors");
-        if (response.data && response.data.success) {
-          const rawZones = response.data.data || [];
-          const typeId = bookingData.vehicleType === "car" ? 2 : 1;
-          
-          // Filter zones that support the selected vehicle type
-          const relevantZones = rawZones.filter(z => z.vehicle_type_id === typeId);
-          
-          // Extract unique floor numbers
-          const uniqueFloorNums = [...new Set(relevantZones.map(z => z.floor_number))];
-          
-          // Map to floors array
-          const mappedFloors = uniqueFloorNums.sort((a, b) => a - b).map(num => ({
-            id: num,
-            name: `Basement B${num}`
-          }));
-          
-          setFloors(mappedFloors);
-          if (mappedFloors.length > 0) {
-            setSelectedFloor(mappedFloors[0].id);
-            setBookingData(prev => ({
-              ...prev,
-              floorId: mappedFloors[0].id
-            }));
-          }
-        }
-      } catch (err) {
-        console.error("Lỗi lấy danh sách tầng:", err);
-      }
-    };
-    if (bookingData.vehicleType) {
-      fetchFloors();
-    }
-  }, [bookingData.vehicleType]);
-
-  // Load stats and list overview
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const slotsRes = await api.get("/parking/slots?pageSize=500");
-        if (slotsRes.data && slotsRes.data.success) {
-          const list = slotsRes.data.data.slots || [];
-          const carAvailable = list.filter(s => s.vehicle_type_id === 2 && s.status === "AVAILABLE").length;
-          const bikeAvailable = list.filter(s => s.vehicle_type_id === 1 && s.status === "AVAILABLE").length;
-          setAvailableSlotsOverview({ car: carAvailable, motorbike: bikeAvailable });
-        }
-      } catch (err) {
-        console.error("Lỗi lấy thống kê slot:", err);
-      }
-    };
-    fetchStats();
-  }, []);
+  const [priceError, setPriceError] = useState(""); // ADDED BY ANTIGRAVITY FOR REALTIME VALIDATION
+  const DEPOSIT_FEE = 15000; // MODIFIED BY ANTIGRAVITY TO 15,000 VND
 
   // Fetch Vehicles
   useEffect(() => {
@@ -157,108 +95,20 @@ export default function BookSlot() {
     return userVehicles.filter((v) => v.vehicle_type_id === typeId);
   }, [userVehicles, bookingData.vehicleType]);
 
-  // Fetch Floor Grid Slots
-  const fetchFloorGrid = async () => {
-    if (!bookingData.vehicleType) return;
-    try {
-      const typeId = bookingData.vehicleType === "car" ? 2 : 1;
-      const response = await api.get(`/parking/slots?floor=${selectedFloor}&vehicleTypeId=${typeId}&pageSize=100`);
-      if (response.data && response.data.success) {
-        const mapped = (response.data.data.slots || []).map(s => ({
-          id: s.slot_id,
-          name: s.slot_name,
-          status: s.status.toLowerCase()
-        }));
-        setSlots(mapped);
-      }
-    } catch (error) {
-      console.error("Lỗi lấy sơ đồ tầng:", error);
-    }
-  };
-
+  // Validate entry time client-side (ADDED BY ANTIGRAVITY)
   useEffect(() => {
-    fetchFloorGrid();
-  }, [selectedFloor, bookingData.vehicleType]);
-
-  // Stats for Legend
-  const stats = useMemo(() => {
-    return slots.reduce(
-      (acc, slot) => {
-        let effectiveStatus = slot.status;
-        if (
-          bookingData.slotId === slot.id &&
-          selectedFloor === bookingData.floorId
-        ) {
-          effectiveStatus = "reserved";
-        }
-        acc[effectiveStatus] = (acc[effectiveStatus] || 0) + 1;
-        acc.total++;
-        return acc;
-      },
-      {
-        total: 0,
-        available: 0,
-        occupied: 0,
-        reserved: 0,
-        maintenance: 0,
-        staff: 0,
-      }
-    );
-  }, [slots, bookingData.slotId, bookingData.floorId, selectedFloor]);
-
-  const occupancyRatePercentage = useMemo(() => {
-    if (!stats.total || stats.total === 0) return 0;
-    return Math.round(((stats.total - stats.available) / stats.total) * 100);
-  }, [stats.total, stats.available]);
-
-  // Calculate pricing
-  useEffect(() => {
-    if (timeData.startTime && timeData.endTime) {
-      const start = new Date(timeData.startTime).getTime();
-      const end = new Date(timeData.endTime).getTime();
-      if (end > start) {
-        const hours = (end - start) / (1000 * 60 * 60);
-        setTotalPrice(
-          Math.ceil(hours) * (bookingData.vehicleType === "car" ? 20000 : 5000)
-        );
+    if (timeData.startTime) {
+      const selectedTime = new Date(timeData.startTime).getTime();
+      const now = new Date().getTime();
+      if (selectedTime < now - 10 * 60 * 1000) { // 10 minutes buffer for client clock desync
+        setPriceError("Entry time cannot be in the past.");
       } else {
-        setTotalPrice(0);
+        setPriceError("");
       }
-    }
-  }, [timeData.startTime, timeData.endTime, bookingData.vehicleType]);
-
-  const handleSelectSlot = (slot) => {
-    if (slot.status.toLowerCase() !== "available") return;
-
-    if (
-      bookingData.slotId === slot.id &&
-      selectedFloor === bookingData.floorId
-    ) {
-      setBookingData({
-        ...bookingData,
-        slotId: null,
-        slotName: null,
-        floorId: null,
-        vehicleId: "",
-      });
     } else {
-      setBookingData({
-        ...bookingData,
-        slotId: slot.id,
-        slotName: slot.name,
-        floorId: selectedFloor,
-      });
-      setModalPhase("form");
-      setTimeData({ startTime: "", endTime: "" });
-      setTotalPrice(0);
-      setIsAddingNewVehicle(false);
-      setNewPlateNumber("");
-      setNewBrand("");
-      setNewModel("");
-      setNewColor("");
-      setIsModalOpen(true);
+      setPriceError("");
     }
-  };
+  }, [timeData.startTime]);
 
   const selectedVehiclePlate = useMemo(() => {
     if (isAddingNewVehicle && newPlateNumber)
@@ -270,8 +120,7 @@ export default function BookSlot() {
   }, [userVehicles, bookingData.vehicleId, isAddingNewVehicle, newPlateNumber]);
 
   const isFormValid = useMemo(() => {
-    const isTimeFilled =
-      timeData.startTime && timeData.endTime && totalPrice > 0;
+    const isTimeFilled = timeData.startTime && !priceError;
     return isAddingNewVehicle
       ? newPlateNumber.trim().length >= 5 && newBrand.trim() && newModel.trim() && isTimeFilled
       : bookingData.vehicleId !== "" && isTimeFilled;
@@ -281,8 +130,8 @@ export default function BookSlot() {
     newPlateNumber,
     newBrand,
     newModel,
-    timeData,
-    totalPrice,
+    timeData.startTime,
+    priceError,
   ]);
 
   const handleCloseModal = () => {
@@ -302,11 +151,20 @@ export default function BookSlot() {
     setBookingData({
       vehicleType: type,
       vehicleId: "",
-      floorId: 1,
+      floorId: null,
       slotId: null,
       slotName: null,
     });
-    setStep(2);
+    setModalPhase("form");
+    setTimeData({ startTime: "", endTime: "" });
+    setPriceError("");
+    setConfirmedBooking(null);
+    setIsAddingNewVehicle(false);
+    setNewPlateNumber("");
+    setNewBrand("");
+    setNewModel("");
+    setNewColor("");
+    setIsModalOpen(true);
   };
 
   // VNPay QR Code Flow
@@ -335,19 +193,19 @@ export default function BookSlot() {
         }
       }
 
-      // Prepare request
+      // Prepare request (slot_id and expired_at are optional now, resolved by backend)
       const bookingPayload = {
-        slot_id: bookingData.slotId,
+        slot_id: null,
         vehicle_id: Number(finalVehicleId),
         expected_arrival: new Date(timeData.startTime).toISOString(),
-        expired_at: new Date(timeData.endTime).toISOString(),
-        notes: "Deposit reservation payment via VNPay",
+        expired_at: null,
+        notes: `Deposit reservation payment via VNPay (Flat ${DEPOSIT_FEE} VND)`,
       };
 
       // We call the API to create booking directly after initiating the simulated payment.
       setCreatedBooking(bookingPayload);
       
-      const mockQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=Deposit_${DEPOSIT_FEE}_Slot_${bookingData.slotId}_Vehicle_${finalVehicleId}`;
+      const mockQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=Deposit_${DEPOSIT_FEE}_Vehicle_${finalVehicleId}`;
       setQrCodeData(mockQrUrl);
       setModalPhase("payment");
     } catch (error) {
@@ -361,8 +219,8 @@ export default function BookSlot() {
     try {
       const response = await api.post("/bookings", createdBooking);
       if (response.data && response.data.success) {
+        setConfirmedBooking(response.data.data); // Save backend returned data
         setModalPhase("success");
-        fetchFloorGrid();
       }
     } catch (error) {
       console.error("Lỗi xác minh thanh toán:", error);
@@ -370,196 +228,65 @@ export default function BookSlot() {
     }
   };
 
-  if (step === 1) {
-    return (
-      <div className="animate-slide-in h-[calc(100vh-8rem)] flex flex-col">
-        <div className="mb-6 flex items-center gap-4">
-          <button
-            onClick={() => navigate("/user")}
-            className="p-2 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition"
-          >
-            <ArrowLeft className="w-5 h-5 text-slate-600 dark:text-slate-300" />
-          </button>
-          <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
-            Choose Vehicle Type
-          </h2>
-        </div>
-        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6 pb-6">
-          <button
-            onClick={() => handleSelectVehicleType("motorbike")}
-            className="group relative rounded-3xl overflow-hidden border-2 border-transparent hover:border-blue-500 transition-all shadow-sm flex flex-col"
-          >
-            <div className="absolute inset-0 z-0">
-              <img
-                src="https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&q=80&w=1000"
-                alt="Motorbike"
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/60 to-transparent"></div>
-            </div>
-            <div className="relative z-10 flex-1 flex flex-col justify-end p-8 text-left">
-              <div className="bg-blue-600/90 w-16 h-16 rounded-2xl flex items-center justify-center mb-6 text-white shadow-lg">
-                <Bike size={32} />
-              </div>
-              <h3 className="text-4xl font-bold text-white mb-2">Motorbike</h3>
-              <div className="inline-flex items-center gap-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-full px-5 py-2.5 w-max mt-4">
-                <span className="text-white font-medium">
-                  {availableSlotsOverview.motorbike} slots available
-                </span>
-              </div>
-            </div>
-          </button>
-
-          <button
-            onClick={() => handleSelectVehicleType("car")}
-            className="group relative rounded-3xl overflow-hidden border-2 border-transparent hover:border-blue-500 transition-all shadow-sm flex flex-col"
-          >
-            <div className="absolute inset-0 z-0">
-              <img
-                src="https://images.unsplash.com/photo-1590674899484-d5640e854abe?auto=format&fit=crop&q=80&w=1000"
-                alt="Car"
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/60 to-transparent"></div>
-            </div>
-            <div className="relative z-10 flex-1 flex flex-col justify-end p-8 text-left">
-              <div className="bg-blue-600/90 w-16 h-16 rounded-2xl flex items-center justify-center mb-6 text-white shadow-lg">
-                <Car size={32} />
-              </div>
-              <h3 className="text-4xl font-bold text-white mb-2">Automobile</h3>
-              <div className="inline-flex items-center gap-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-full px-5 py-2.5 w-max mt-4">
-                <span className="text-white font-medium">
-                  {availableSlotsOverview.car} slots available
-                </span>
-              </div>
-            </div>
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="animate-fade-in h-[calc(100vh-8rem)] flex flex-col relative">
+    <div className="animate-slide-in h-[calc(100vh-8rem)] flex flex-col relative">
       <div className="mb-6 flex items-center gap-4">
         <button
-          onClick={() => setStep(1)}
-          className="p-2 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 transition"
+          onClick={() => navigate("/user")}
+          className="p-2 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition"
         >
           <ArrowLeft className="w-5 h-5 text-slate-600 dark:text-slate-300" />
         </button>
-        <h2 className="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
-          Select Location{" "}
-          <span className="text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/50 px-3 py-1 rounded-lg text-lg capitalize">
-            ({bookingData.vehicleType})
-          </span>
+        <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
+          Choose Vehicle Type
         </h2>
       </div>
-
-      <div className="flex-1 flex flex-col lg:flex-row gap-6 overflow-hidden">
-        {/* FLOOR GRID MAP */}
-        <div className="flex-1 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden shadow-sm">
-          <div className="flex gap-3 p-4 border-b border-slate-100 dark:border-slate-800 overflow-x-auto custom-scrollbar">
-            {floors.map((floor) => (
-              <button
-                key={floor.id}
-                onClick={() => setSelectedFloor(floor.id)}
-                className={`whitespace-nowrap px-6 py-2.5 rounded-xl font-semibold transition-all ${selectedFloor === floor.id ? "bg-slate-800 dark:bg-blue-600 text-white shadow-md" : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"}`}
-              >
-                {floor.name}
-              </button>
-            ))}
+      <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6 pb-6">
+        <button
+          onClick={() => handleSelectVehicleType("motorbike")}
+          className="group relative rounded-3xl overflow-hidden border border-slate-200 dark:border-slate-800 hover:border-blue-500 transition-all duration-300 hover:shadow-[0_0_30px_rgba(59,130,246,0.3)] hover:-translate-y-1 hover:scale-[1.01] flex flex-col"
+        >
+          <div className="absolute inset-0 z-0">
+            <img
+              src="https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?auto=format&fit=crop&q=80&w=1000"
+              alt="Motorbike"
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/50 to-transparent"></div>
           </div>
-
-          <div className="flex-1 p-6 overflow-y-auto custom-scrollbar bg-slate-50/50 dark:bg-slate-950/40">
-            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-3">
-              {slots.map((slot) => {
-                const isSelected =
-                  bookingData.slotId === slot.id &&
-                  selectedFloor === bookingData.floorId;
-                let colorClasses = isSelected
-                  ? "bg-blue-600 text-white ring-4 ring-blue-500/30 scale-105 shadow-lg z-10 border-blue-600 dark:bg-blue-600 dark:border-blue-400 dark:text-white cursor-pointer"
-                  : slotStyles[slot.status]?.card || slotStyles.available.card;
-
-                return (
-                  <button
-                    key={slot.id}
-                    onClick={() => handleSelectSlot(slot)}
-                    className={`relative aspect-square rounded-2xl flex items-center justify-center font-black text-lg border-2 transition-all duration-200 ${colorClasses}`}
-                  >
-                    {slot.name}
-                    {isSelected && (
-                      <CheckCircle
-                        size={14}
-                        className="absolute -top-1 -right-1 text-white bg-blue-600 rounded-full"
-                      />
-                    )}
-                  </button>
-                );
-              })}
+          <div className="relative z-10 flex-1 flex flex-col justify-end p-8 text-left">
+            <div className="bg-blue-600/90 w-16 h-16 rounded-2xl flex items-center justify-center mb-6 text-white shadow-lg group-hover:scale-110 group-hover:bg-blue-500 transition-all duration-300">
+              <Bike size={32} />
             </div>
+            <h3 className="text-4xl font-black text-white tracking-tight">Motorbike</h3>
+            <p className="text-blue-400 font-bold text-sm mt-1.5 opacity-90 group-hover:opacity-100 group-hover:text-blue-300 transition-colors flex items-center gap-1">
+              Book Space &rarr;
+            </p>
           </div>
-        </div>
+        </button>
 
-        {/* SIDE LEGEND */}
-        <div className="w-full lg:w-80 flex flex-col gap-6">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 shadow-sm rounded-3xl">
-            <h3 className="font-bold text-slate-800 dark:text-white mb-4 uppercase text-sm tracking-wider">
-              Legend
-            </h3>
-            <ul className="space-y-4">
-              {[
-                {
-                  label: "Available",
-                  key: "available",
-                  count: stats.available,
-                },
-                { label: "Occupied", key: "occupied", count: stats.occupied },
-                { label: "Reserved", key: "reserved", count: stats.reserved },
-                {
-                  label: "Maintenance",
-                  key: "maintenance",
-                  count: stats.maintenance,
-                },
-              ].map((item) => {
-                const currentStyle = slotStyles[item.key] || slotStyles.available;
-                return (
-                  <li
-                    key={item.key}
-                    className="flex items-center justify-between font-semibold text-sm"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span
-                        className={`w-3.5 h-3.5 rounded-md border ${currentStyle.badge}`}
-                      ></span>
-                      <span className="text-slate-700 dark:text-slate-300">
-                        {item.label}
-                      </span>
-                    </div>
-                    <span
-                      className={`font-bold font-mono text-base ${currentStyle.text}`}
-                    >
-                      {item.count || 0}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
+        <button
+          onClick={() => handleSelectVehicleType("car")}
+          className="group relative rounded-3xl overflow-hidden border border-slate-200 dark:border-slate-800 hover:border-blue-500 transition-all duration-300 hover:shadow-[0_0_30px_rgba(59,130,246,0.3)] hover:-translate-y-1 hover:scale-[1.01] flex flex-col"
+        >
+          <div className="absolute inset-0 z-0">
+            <img
+              src="https://images.unsplash.com/photo-1617788138017-80ad40651399?auto=format&fit=crop&q=80&w=1000"
+              alt="Car"
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/50 to-transparent"></div>
           </div>
-
-          <div className="bg-gradient-to-br from-blue-600 to-blue-800 dark:from-slate-800 dark:to-slate-900 rounded-3xl p-6 text-white relative overflow-hidden shadow-sm">
-            <p className="text-blue-200 dark:text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">
-              Occupancy Rate
+          <div className="relative z-10 flex-1 flex flex-col justify-end p-8 text-left">
+            <div className="bg-blue-600/90 w-16 h-16 rounded-2xl flex items-center justify-center mb-6 text-white shadow-lg group-hover:scale-110 group-hover:bg-blue-500 transition-all duration-300">
+              <Car size={32} />
+            </div>
+            <h3 className="text-4xl font-black text-white tracking-tight">Car</h3>
+            <p className="text-blue-400 font-bold text-sm mt-1.5 opacity-90 group-hover:opacity-100 group-hover:text-blue-300 transition-colors flex items-center gap-1">
+              Book Space &rarr;
             </p>
-            <p className="text-4xl font-black text-white mb-1">
-              {occupancyRatePercentage}%
-            </p>
-            <p className="text-sm text-blue-100 dark:text-slate-300">
-              {stats.available} slots remaining
-            </p>
-            <MapPin className="absolute -right-4 -bottom-4 text-white/10 dark:text-white/5 w-32 h-32" />
           </div>
-        </div>
+        </button>
       </div>
 
       {/* BOOKING MODAL */}
@@ -568,8 +295,7 @@ export default function BookSlot() {
           <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden relative flex flex-col">
             <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
               <h2 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                <MapPin size={20} className="text-blue-600" /> Slot{" "}
-                {bookingData.slotName} - Floor {bookingData.floorId}
+                <MapPin size={20} className="text-blue-600" /> Book Parking Slot - {bookingData.vehicleType === "car" ? "Car" : "Motorbike"}
               </h2>
               {modalPhase === "form" && (
                 <button
@@ -592,7 +318,7 @@ export default function BookSlot() {
                         ) : (
                           <Bike size={16} />
                         )}{" "}
-                        Vehicle Information:
+                        Vehicle Info:
                       </label>
                       <button
                         type="button"
@@ -631,7 +357,7 @@ export default function BookSlot() {
                         className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-800 dark:text-white font-mono font-bold focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
                         <option value="" disabled>
-                          -- CHOOSE LICENSE PLATE --
+                          -- Choose License Plate --
                         </option>
                         {filteredVehicles.map((v) => (
                           <option key={v.vehicle_id} value={v.vehicle_id}>
@@ -644,7 +370,7 @@ export default function BookSlot() {
                         <input
                           type="text"
                           required
-                          placeholder="ENTER PLATE (e.g., 29A-999.99)"
+                          placeholder="Enter Plate (e.g., 29A-999.99)"
                           value={newPlateNumber}
                           onChange={(e) =>
                             setNewPlateNumber(e.target.value.toUpperCase())
@@ -699,36 +425,23 @@ export default function BookSlot() {
                       className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-800 dark:text-white focus:outline-none"
                     />
                   </div>
-                  <div>
-                    <label className="text-sm font-semibold text-slate-600 dark:text-slate-300 mb-1.5 block flex items-center gap-2">
-                      <Clock size={16} /> Expected Exit Time:
-                    </label>
-                    <input
-                      type="datetime-local"
-                      value={timeData.endTime}
-                      onChange={(e) =>
-                        setTimeData({ ...timeData, endTime: e.target.value })
-                      }
-                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-800 dark:text-white focus:outline-none"
-                    />
-                  </div>
+                  {priceError && (
+                    <p className="text-xs text-red-500 font-semibold mt-1">
+                      ⚠️ {priceError}
+                    </p>
+                  )}
 
                   <div className="bg-blue-50 dark:bg-blue-500/10 rounded-2xl p-4 border border-blue-100 dark:border-blue-500/20">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-slate-600 dark:text-slate-300 font-medium">
-                        Estimated Fee:
-                      </span>
-                      <span className="font-bold text-slate-800 dark:text-white">
-                        {totalPrice.toLocaleString()} VND
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center pt-2 border-t border-blue-200 dark:border-blue-500/20">
+                    <div className="flex justify-between items-center">
                       <span className="text-blue-800 dark:text-blue-300 font-bold">
-                        Reservation Deposit:
+                        Deposit Fee:
                       </span>
                       <span className="font-black text-xl text-blue-600 dark:text-blue-400">
                         {DEPOSIT_FEE.toLocaleString()} VND
                       </span>
+                    </div>
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-2.5 border-t border-blue-200 dark:border-blue-500/20 pt-2 font-medium leading-relaxed">
+                      💡 <strong>Rate:</strong> 15,000 VND for the 1st hour, then +2,000 VND for each next hour. Pay the rest when you leave.
                     </div>
                   </div>
 
@@ -737,7 +450,7 @@ export default function BookSlot() {
                     onClick={handleInitiatePayment}
                     className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 dark:disabled:bg-slate-800 disabled:text-slate-400 py-3.5 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-all font-bold mt-2"
                   >
-                    <CreditCard size={20} /> PAY DEPOSIT
+                    <CreditCard size={20} /> Pay Deposit
                   </button>
                 </div>
               )}
@@ -749,8 +462,7 @@ export default function BookSlot() {
                     Scan to Pay Deposit
                   </h3>
                   <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">
-                    Please transfer the exact amount below for automatic
-                    confirmation.
+                    Please scan the QR code to transfer deposit.
                   </p>
                   <div className="bg-white p-4 rounded-2xl inline-block border-2 border-slate-200 mb-6 shadow-sm">
                     <img
@@ -771,7 +483,7 @@ export default function BookSlot() {
                     onClick={handlePaymentSuccess}
                     className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3.5 rounded-xl shadow-lg"
                   >
-                    I Have Transferred Successfully
+                    I Have Transferred
                   </button>
                 </div>
               )}
@@ -786,15 +498,29 @@ export default function BookSlot() {
                     Booking Successful!
                   </h3>
                   <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">
-                    Here is your e-ticket for vehicle{" "}
+                    Your e-ticket for vehicle{" "}
                     <span className="font-mono font-bold text-slate-700 dark:text-slate-300">
                       {selectedVehiclePlate}
                     </span>
                     .
                   </p>
+
+                  {confirmedBooking && (
+                    <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-4 mb-5 border border-slate-200 dark:border-slate-700 text-left">
+                      <div className="flex justify-between items-center mb-2 text-sm">
+                        <span className="text-slate-500 dark:text-slate-400 font-semibold">Assigned Slot:</span>
+                        <span className="font-black text-slate-800 dark:text-white font-mono text-base bg-blue-50 dark:bg-blue-900/40 px-2 py-0.5 rounded">{confirmedBooking.slot_name || "N/A"}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-slate-500 dark:text-slate-400 font-semibold">Floor:</span>
+                        <span className="font-bold text-slate-800 dark:text-white">{confirmedBooking.floor_name || "N/A"}</span>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="bg-white p-4 rounded-2xl inline-block border-4 border-emerald-500 mb-4 shadow-xl">
                     <img
-                      src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=Ticket_Valid_Slot_${bookingData.slotId}_Plate_${selectedVehiclePlate}`}
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=Ticket_Valid_Slot_${confirmedBooking?.slot_id}_Plate_${selectedVehiclePlate}`}
                       alt="Ticket QR"
                       className="w-48 h-48"
                     />
@@ -805,9 +531,7 @@ export default function BookSlot() {
                       size={18}
                     />
                     <p className="text-xs font-medium text-amber-700 dark:text-amber-400 leading-relaxed">
-                      Important Note: Security camera will scan your plate at
-                      the gate. If failure occurs, present this QR ticket to the
-                      staff.
+                      Note: The gate camera will scan your license plate. Show this QR code to staff if needed.
                     </p>
                   </div>
                   <button
@@ -817,7 +541,7 @@ export default function BookSlot() {
                     }}
                     className="w-full bg-slate-800 hover:bg-slate-900 dark:bg-blue-600 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg"
                   >
-                    OK, Go to My Bookings
+                    Go to My Bookings
                   </button>
                 </div>
               )}

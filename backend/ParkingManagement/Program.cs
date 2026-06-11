@@ -3,7 +3,11 @@ using ParkingManagement.Data;
 using ParkingManagement.Repositories;
 using ParkingManagement.Services.BuildingServices;
 using ParkingManagement.Services;
+using ParkingManagement.Services.BookingServices;
 using ParkingManagement.Extensions;
+using ParkingManagement.Models;
+using ParkingManagement.Services.EmailServices;
+
 
 var builder = WebApplication.CreateBuilder(args);
 // ── .ENV Reader ───────────────────────────────────────────────────────────────
@@ -62,6 +66,7 @@ builder.Services.AddScoped<IParkingService, ParkingService>();
 
 // ── Booking module ───────────────────────────────────────────────────────────────────────
 builder.Services.AddScoped<IBookingRepository, BookingRepository>();
+builder.Services.AddScoped<IBookingService, BookingService>(); /* ADDED BY ANTIGRAVITY */
 
 // ── Incident module ───────────────────────────────────────────────────────────────────────
 builder.Services.AddScoped<IIncidentRepository, IncidentRepository>();
@@ -81,6 +86,10 @@ builder.Services.AddScoped<IFloorAllocationService, FloorAllocationService>();
 
 // ── Auth & JWT ─────────────────────────────────────────-────────────────────────
 builder.Services.AddJwtAuthentication(builder.Configuration);
+
+// ── Email module ──────────────────────────────────────────────────────────────
+builder.Services.Configure<MailSettings>(builder.Configuration.GetSection("MailSettings"));
+builder.Services.AddTransient<IEmailService, EmailService>();
 
 // ── Slot management module ────────────────────────────────────────────────────
 builder.Services.AddScoped<ISlotManagementRepository, SlotManagementRepository>();
