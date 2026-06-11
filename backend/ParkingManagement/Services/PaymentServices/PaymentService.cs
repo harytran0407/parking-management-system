@@ -17,14 +17,10 @@ namespace ParkingManagement.Services
 
         public async Task<object> CreateReservationPaymentAsync(CreatePaymentRequest request, string userId)
         {
-            // 1. Lấy thông tin đặt chỗ thực tế từ DB
             var booking = await _paymentRepository.GetBookingByIdAsync(request.BookingId);
             if (booking == null) throw new Exception("Không tìm thấy thông tin đặt chỗ.");
 
-            // 2. LẤY SỐ TIỀN THỰC TẾ: 
-            // Bạn hãy kiểm tra xem biến 'booking' của bạn có trường lưu giá không (ví dụ: booking.Amount, booking.Price, hoặc booking.TotalPrice)
-            // Nếu có, hãy thay số 50000 bằng trường đó. Ví dụ dưới đây giả định là booking.Amount hoặc một mức giá cơ bản từ hệ thống của bạn:
-            decimal realAmount = 50000; // <-- THAY BẰNG: booking.Price hoặc số tiền tính toán thực tế của lượt đặt này từ DB
+            decimal realAmount = 50000; // Tạm thời hardcode
 
             string paymentId = "pay_" + Guid.NewGuid().ToString().Substring(0, 8);
 
@@ -33,7 +29,7 @@ namespace ParkingManagement.Services
                 PaymentId = paymentId,
                 PaymentType = "BOOKING",
                 BookingId = request.BookingId,
-                AmountDue = realAmount,   // Gán số tiền thực tế lấy từ lượt đặt chỗ vào đây
+                AmountDue = realAmount,   
                 AmountPaid = 0,
                 ChangeDue = 0,
                 PaymentMethod = request.PaymentMethod,
@@ -44,7 +40,7 @@ namespace ParkingManagement.Services
 
             await _paymentRepository.CreatePaymentAsync(payment);
 
-            // 3. Nhân với 100 theo đúng quy định số tiền của cấu trúc VNPay (Ví dụ: 50000đ thành 5000000)
+            
             long vnpAmount = (long)(realAmount * 100);
             string paymentUrl = $"https://payment.vnpay.vn/v2/vpcpay.html?vnp_TxnRef={paymentId}&vnp_Amount={vnpAmount}";
 
