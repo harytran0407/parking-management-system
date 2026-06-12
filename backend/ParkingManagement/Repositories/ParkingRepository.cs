@@ -41,6 +41,41 @@ namespace ParkingManagement.Repositories
                 .FirstOrDefaultAsync();
         }
 
+        public async Task<Booking?> GetActiveBookingAsync(string licensePlate, int vehicleTypeId, string? bookingId = null)
+        {
+            var query = _context.Bookings
+                .Include(b => b.Vehicle)
+                .Where(b => b.Status == "CONFIRMED" || b.Status == "PENDING");
+
+            if (!string.IsNullOrWhiteSpace(bookingId))
+            {
+                query = query.Where(b => b.BookingId == bookingId);
+            }
+            else
+            {
+                // Give a 2 hour window for arrival
+                var now = DateTime.UtcNow;
+                var minArrival = now.AddHours(-2);
+                var maxArrival = now.AddHours(2);
+                query = query.Where(b => b.Vehicle != null 
+                                         && b.Vehicle.VehiclePlateNumber == licensePlate 
+                                         && b.Vehicle.VehicleTypeId == vehicleTypeId
+                                         && b.ExpectedArrival >= minArrival 
+                                         && b.ExpectedArrival <= maxArrival);
+            }
+
+            return await query.OrderBy(b => b.ExpectedArrival).FirstOrDefaultAsync();
+        }
+
+        public async Task<Booking?> GetBookingWithPaymentsAsync(string bookingId)
+        {
+            if (string.IsNullOrWhiteSpace(bookingId)) return null;
+
+            return await _context.Bookings
+                .Include(b => b.Payments)
+                .FirstOrDefaultAsync(b => b.BookingId == bookingId);
+        }
+
         public async Task CreateSessionAsync(ParkingSession session)
         {
             if (session == null) throw new ArgumentNullException(nameof(session));
