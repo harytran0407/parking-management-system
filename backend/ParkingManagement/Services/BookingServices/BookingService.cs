@@ -45,21 +45,7 @@ public class BookingService : IBookingService
             throw new ArgumentException("Booking duration must be at least 30 minutes.");
         }
 
-        string slotId = request.SlotId ?? "";
-        if (string.IsNullOrEmpty(slotId))
-        {
-            // If slot is not selected, we fallback to default slot lookup or default info
-            // For now, let's find a slot of type car (type id 2) as default
-            var availableSlot = await _parkingRepo.FindFirstAvailableSlotAsync(2);
-            slotId = availableSlot?.SlotId ?? throw new InvalidOperationException("No available slots for price estimate.");
-        }
-
-        var slot = await _context.ParkingSlots
-            .Include(s => s.Zone)
-            .ThenInclude(z => z.VehicleType)
-            .FirstOrDefaultAsync(s => s.SlotId == slotId)
-            ?? throw new KeyNotFoundException($"Parking slot {slotId} not found");
-
+        // Capacity-based: we just return an estimate without allocating a slot.
         decimal estimatedFee = 15000m;
         var billedHours = (int)Math.Ceiling(duration.TotalMinutes / 60.0);
         if (billedHours > 1)
@@ -69,9 +55,9 @@ public class BookingService : IBookingService
 
         return new BookingPriceResponse
         {
-            SlotId = slot.SlotId,
-            SlotName = slot.SlotName,
-            VehicleTypeName = slot.Zone.VehicleType.VehicleTypeName,
+            SlotId = "",
+            SlotName = "Assigned at Check-in",
+            VehicleTypeName = "Determined at Check-in",
             ExpectedArrival = request.ExpectedArrival,
             ExpiredAt = expiredAt,
             BasePrice = 15000m,
@@ -114,40 +100,32 @@ public class BookingService : IBookingService
         {
             try
             {
-                // ─── AUTO-ASSIGN SLOT IF NULL (ADDED BY ANTIGRAVITY) ───
-                string? slotId = request.SlotId;
-                if (string.IsNullOrEmpty(slotId))
+                // ─── CAPACITY CHECK (NO RESERVATION) ───
+                var availableSlot = await _parkingRepo.FindFirstAvailableSlotAsync(vehicle.VehicleTypeId);
+                if (availableSlot == null)
                 {
-                    var availableSlot = await _parkingRepo.FindFirstAvailableSlotAsync(vehicle.VehicleTypeId);
-                    slotId = availableSlot?.SlotId ?? throw new InvalidOperationException("No available slots for this vehicle type.");
+                    throw new InvalidOperationException("Parking lot is currently full for this vehicle type. Cannot book at this time.");
                 }
-
-                var slot = await _context.ParkingSlots
-                    .Include(s => s.Zone)
-                    .ThenInclude(z => z.VehicleType)
-                    .FirstOrDefaultAsync(s => s.SlotId == slotId)
-                    ?? throw new KeyNotFoundException("Parking slot not found.");
-
-                if (slot.Status != "AVAILABLE")
-                {
-                    throw new InvalidOperationException("Slot is not available. Please choose another one.");
-                }
-
-                // Reserve the slot
-                slot.Status = "RESERVED";
-                slot.LastUpdated = DateTime.UtcNow;
 
                 var bookingId = "BKG-" + Guid.NewGuid().ToString("N").Substring(0, 10).ToUpper();
 
                 // Expiry defaults to 2 hours after arrival if not provided
                 DateTime expiredAt = request.ExpiredAt ?? request.ExpectedArrival.AddHours(2);
 
+                var duration = expiredAt - request.ExpectedArrival;
+                decimal estimatedFee = 15000m;
+                var billedHours = (int)Math.Ceiling(duration.TotalMinutes / 60.0);
+                if (billedHours > 1)
+                {
+                    estimatedFee += (billedHours - 1) * 2000m;
+                }
+
                 var booking = new Booking
                 {
                     BookingId = bookingId,
                     VehicleUserId = userId,
                     VehicleId = request.VehicleId,
-                    SlotId = slotId,
+                    SlotId = null, // Will be assigned dynamically at check-in
                     ExpectedArrival = request.ExpectedArrival,
                     ExpiredAt = expiredAt,
                     BookingTime = DateTime.UtcNow,
@@ -157,13 +135,12 @@ public class BookingService : IBookingService
 
                 _context.Bookings.Add(booking);
 
-                // Add payment record (Reservation deposit fee is fixed at 15,000 VND)
                 var payment = new Payment
                 {
                     PaymentId = "PAY-" + Guid.NewGuid().ToString("N").Substring(0, 10).ToUpper(),
                     PaymentType = "BOOKING",
-                    AmountDue = 15000m, /* MODIFIED BY ANTIGRAVITY: 15,000 VND */
-                    AmountPaid = 15000m, /* MODIFIED BY ANTIGRAVITY: 15,000 VND */
+                    AmountDue = estimatedFee,
+                    AmountPaid = estimatedFee,
                     PaymentMethod = "VNPAY",
                     PaymentTime = DateTime.UtcNow,
                     Status = "SUCCESS",
@@ -178,19 +155,6 @@ public class BookingService : IBookingService
 
                 // Explicitly load relations for mapping response
                 await _context.Entry(booking).Reference(b => b.Vehicle).LoadAsync();
-                await _context.Entry(booking).Reference(b => b.Slot).LoadAsync();
-                if (booking.Slot != null)
-                {
-                    await _context.Entry(booking.Slot).Reference(s => s.Zone).LoadAsync();
-                    if (booking.Slot.Zone != null)
-                    {
-                        await _context.Entry(booking.Slot.Zone).Reference(z => z.VehicleType).LoadAsync();
-                        if (booking.Slot.Zone.VehicleType != null)
-                        {
-                            await _context.Entry(booking.Slot.Zone.VehicleType).Collection(vt => vt.PricingPolicies).LoadAsync();
-                        }
-                    }
-                }
 
                 return MapToBookingResponse(booking);
             }
@@ -382,6 +346,52 @@ public class BookingService : IBookingService
         return MapToBookingResponse(booking);
     }
 
+    public async Task<BookingResponse> PayBookingAsync(string bookingId, string userId)
+    {
+        var booking = await _context.Bookings
+            .Include(b => b.Vehicle)
+                .ThenInclude(v => v.VehicleType)
+            .Include(b => b.Slot)
+                .ThenInclude(s => s.Zone)
+                    .ThenInclude(z => z.VehicleType)
+                        .ThenInclude(vt => vt.PricingPolicies)
+            .Include(b => b.Payments)
+            .FirstOrDefaultAsync(b => b.BookingId == bookingId && b.VehicleUserId == userId)
+            ?? throw new KeyNotFoundException("Booking not found.");
+
+        if (booking.Status != "CONFIRMED" && booking.Status != "PENDING" && booking.Status != "ACTIVE")
+        {
+            throw new InvalidOperationException("Cannot pay for a booking that is not in active or confirmed status.");
+        }
+
+        // Calculate remaining amount
+        var responseDto = MapToBookingResponse(booking);
+        var remainingAmount = responseDto.EstimatedFee - responseDto.DepositPaid;
+
+        if (remainingAmount > 0)
+        {
+            var payment = new Payment
+            {
+                PaymentId = "PAY-" + Guid.NewGuid().ToString("N").Substring(0, 10).ToUpper(),
+                PaymentType = "BOOKING_BALANCE",
+                AmountDue = remainingAmount,
+                AmountPaid = remainingAmount,
+                PaymentMethod = "VNPAY",
+                PaymentTime = DateTime.UtcNow,
+                Status = "SUCCESS",
+                BookingId = booking.BookingId,
+                UserId = userId
+            };
+            _context.Payments.Add(payment);
+        }
+
+        booking.Status = "COMPLETED";
+
+        await _context.SaveChangesAsync();
+
+        return MapToBookingResponse(booking);
+    }
+
     // ─── PRIVATE HELPER METHODS FOR MAPPING & ESTIMATIONS ────────────────────────────────────────────────────────
 
     private static BookingResponse MapToBookingResponse(Booking b)
@@ -389,14 +399,19 @@ public class BookingService : IBookingService
         decimal estimatedFee = 15000m; // Base price is 15,000 VND
 
         DateTime referenceTime = DateTime.UtcNow;
-        if (b.Status?.Equals("COMPLETED", StringComparison.OrdinalIgnoreCase) == true && b.ExpiredAt.HasValue)
+        if (b.ExpiredAt.HasValue)
         {
             referenceTime = b.ExpiredAt.Value;
         }
 
+        if (b.Status != "COMPLETED" && b.Status != "CANCELLED" && DateTime.UtcNow > referenceTime)
+        {
+            referenceTime = DateTime.UtcNow;
+        }
+
         if (b.Status?.Equals("CANCELLED", StringComparison.OrdinalIgnoreCase) == true)
         {
-            estimatedFee = b.Payments.Where(p => p.Status == "SUCCESS").Sum(p => (decimal?)p.AmountPaid) ?? 15000m;
+            estimatedFee = b.Payments?.Where(p => p.Status == "SUCCESS").Sum(p => (decimal?)p.AmountPaid) ?? 15000m;
         }
         else if (referenceTime > b.ExpectedArrival)
         {
@@ -416,9 +431,9 @@ public class BookingService : IBookingService
             VehiclePlateNumber = b.Vehicle != null ? b.Vehicle.VehiclePlateNumber : "N/A",
             VehicleType = b.Vehicle?.VehicleType != null ? b.Vehicle.VehicleType.VehicleTypeName : "Car",
             SlotId = b.SlotId,
-            SlotName = b.Slot != null ? b.Slot.SlotName : "N/A",
+            SlotName = b.Slot != null ? b.Slot.SlotName : "Assigned at Check-in",
             FloorNumber = b.Slot?.Zone?.FloorNumber,
-            FloorName = b.Slot?.Zone != null ? $"Basement B{b.Slot.Zone.FloorNumber}" : "Basement B1",
+            FloorName = b.Slot?.Zone != null ? $"Basement B{b.Slot.Zone.FloorNumber}" : "TBD",
             ZoneName = b.Slot?.Zone?.ZoneName,
             ExpectedArrival = b.ExpectedArrival,
             ExpiredAt = b.ExpiredAt,
@@ -426,8 +441,8 @@ public class BookingService : IBookingService
             Status = b.Status,
             Notes = b.Notes,
             EstimatedFee = estimatedFee,
-            DepositPaid = b.Payments.Where(p => p.Status == "SUCCESS").Sum(p => (decimal?)p.AmountPaid) ?? 0m,
-            QrCodeData = $"Ticket_Valid_Slot_{b.SlotId}_Plate_{b.Vehicle?.VehiclePlateNumber}"
+            DepositPaid = b.Payments?.Where(p => p.Status == "SUCCESS").Sum(p => (decimal?)p.AmountPaid) ?? 0m,
+            QrCodeData = $"Ticket_Valid_BKG_{b.BookingId}_Plate_{b.Vehicle?.VehiclePlateNumber}"
         };
     }
 }
