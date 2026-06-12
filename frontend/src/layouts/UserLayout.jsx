@@ -9,25 +9,27 @@ import Profile from "../pages/user/Profile";
 import MyBookings from "../pages/user/MyBookings";
 import MyVehicles from "../pages/user/MyVehicles";
 import Issues from "../pages/user/Issues";
+import { useLanguage } from "../hooks/useLanguage";
 
 export default function UserLayout() {
+  const { language } = useLanguage();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const navigationItems = [
-    { path: "/user", label: "Parking Info", icon: <Car size={20} /> },
-    { path: "/user/book", label: "Book a Slot", icon: <Calendar size={20} /> },
+    { path: "/user", label: language === "en" ? "Parking Info" : "Thông tin đỗ xe", icon: <Car size={20} /> },
+    { path: "/user/book", label: language === "en" ? "Book a Slot" : "Đặt vị trí đỗ", icon: <Calendar size={20} /> },
     {
       path: "/user/bookings",
-      label: "My Bookings",
+      label: language === "en" ? "My Bookings" : "Lịch sử đặt chỗ",
       icon: <History size={20} />,
     },
     {
       path: "/user/vehicle",
-      label: "My Vehicles",
+      label: language === "en" ? "My Vehicles" : "Phương tiện của tôi",
       icon: <CarFront size={20} />,
     },
     {
       path: "/user/issues",
-      label: "Issues",
+      label: language === "en" ? "Issues" : "Báo cáo sự cố",
       icon: <MessageSquare size={20} />,
     },
   ];

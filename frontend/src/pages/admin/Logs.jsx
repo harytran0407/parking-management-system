@@ -16,8 +16,10 @@ import {
   SlidersHorizontal
 } from "lucide-react";
 import { toast } from "sonner";
+import { useLanguage } from "../../hooks/useLanguage";
 
 export default function AdminLogs() {
+  const { language } = useLanguage();
   const [search, setSearch] = useState("");
   const [selectedLog, setSelectedLog] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -36,7 +38,9 @@ export default function AdminLogs() {
       operator: apiLog.admin_name || apiLog.admin_id,
       targetUserName: targetName,
       ipAddress: "127.0.0.1",
-      message: `System role changed for user ${targetName} from ${oldRole} to ${newRole}`,
+      message: language === "en" 
+        ? `Role updated for ${targetName} from ${oldRole} to ${newRole}`
+        : `Quyền của người dùng ${targetName} thay đổi từ ${oldRole} sang ${newRole}`,
       details: {
         action: "ROLE_CHANGE",
         previousRole: oldRole,
@@ -66,21 +70,25 @@ export default function AdminLogs() {
 
   useEffect(() => {
     fetchLogs();
-  }, []);
+  }, [language]); // Reload to update localized messages
 
   const handleRefresh = () => {
     setIsRefreshing(true);
     fetchLogs().finally(() => {
       setTimeout(() => {
         setIsRefreshing(false);
-        toast.success("Role audit logs updated in real-time.");
+        toast.success(
+          language === "en" ? "Audit logs updated." : "Đã cập nhật lịch sử hoạt động phân quyền."
+        );
       }, 600);
     });
   };
 
   const handleClear = () => {
     setLogs([]);
-    toast.success("Role audit logs cleared locally.");
+    toast.success(
+      language === "en" ? "Logs list cleared locally." : "Đã xóa danh sách hiển thị tạm thời."
+    );
   };
 
   const handleExport = () => {
@@ -101,7 +109,7 @@ export default function AdminLogs() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    toast.success("Audit Logs downloaded as CSV.");
+    toast.success(language === "en" ? "CSV report downloaded!" : "Báo cáo CSV tải xuống thành công!");
   };
 
   const getRoleBadgeColor = (role) => {
@@ -134,37 +142,39 @@ export default function AdminLogs() {
         <div>
           <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
             <Terminal size={22} className="text-blue-600" />
-            Role Audit Logs
+            {language === "en" ? "Role Audit Logs" : "Nhật Ký Phân Quyền"}
           </h2>
           <p className="text-xs text-slate-550 dark:text-slate-400 mt-1">
-            Track and monitor administrator role assignments and history.
+            {language === "en"
+              ? "Track and monitor administrator role assignments and history."
+              : "Theo dõi và giám sát lịch sử phân chia vai trò quản trị hệ thống."}
           </p>
         </div>
 
-        <div className="flex gap-2 w-full sm:w-auto">
+        <div className="flex gap-2 w-full sm:w-auto text-xs font-bold">
           <button
             onClick={handleRefresh}
             disabled={isRefreshing}
-            className="flex-1 sm:flex-none p-2 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-xl transition-all flex items-center justify-center gap-1.5 text-xs font-bold"
+            className="flex-1 sm:flex-none p-2.5 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-655 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-xl transition-all flex items-center justify-center gap-1.5"
           >
             <RefreshCw size={14} className={isRefreshing ? "animate-spin" : ""} />
-            Refresh
+            {language === "en" ? "Refresh" : "Làm Mới"}
           </button>
           <button
             onClick={handleExport}
             disabled={filteredLogs.length === 0}
-            className="flex-1 sm:flex-none p-2 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-xl transition-all flex items-center justify-center gap-1.5 text-xs font-bold"
+            className="flex-1 sm:flex-none p-2.5 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-655 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-xl transition-all flex items-center justify-center gap-1.5"
           >
             <Download size={14} />
-            Export CSV
+            {language === "en" ? "Export CSV" : "Xuất File CSV"}
           </button>
           <button
             onClick={handleClear}
             disabled={logs.length === 0}
-            className="flex-1 sm:flex-none p-2 bg-red-50 hover:bg-red-100/80 dark:bg-red-955/20 text-red-650 border border-red-200 dark:border-red-900/30 rounded-xl transition-all flex items-center justify-center gap-1.5 text-xs font-bold"
+            className="flex-1 sm:flex-none p-2.5 bg-red-50 hover:bg-red-100/80 dark:bg-red-955/20 text-red-650 border border-red-200 dark:border-red-900/30 rounded-xl transition-all flex items-center justify-center gap-1.5"
           >
             <Trash2 size={14} />
-            Clear List
+            {language === "en" ? "Clear List" : "Xóa Danh Sách"}
           </button>
         </div>
       </div>
@@ -175,10 +185,10 @@ export default function AdminLogs() {
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
-            placeholder="Search by operator, target user..."
+            placeholder={language === "en" ? "Search operator, user..." : "Tìm người thực hiện, người bị ảnh hưởng..."}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-xl text-xs text-slate-800 dark:text-white placeholder-slate-450 focus:outline-none focus:border-blue-500 transition-colors"
+            className="w-full pl-9 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-xl text-xs text-slate-800 dark:text-white placeholder-slate-450 focus:outline-none focus:border-blue-500 transition-colors"
           />
         </div>
       </div>
@@ -189,19 +199,19 @@ export default function AdminLogs() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider border-b border-slate-100 dark:border-slate-800/80">
-                <th className="py-3 px-4">Timestamp</th>
-                <th className="py-3 px-4">Operator</th>
-                <th className="py-3 px-4">Target User</th>
-                <th className="py-3 px-4 text-center">Previous Role</th>
-                <th className="py-3 px-4 text-center">New Role</th>
-                <th className="py-3 px-4 text-center">Details</th>
+                <th className="py-3 px-4">{language === "en" ? "Timestamp" : "Thời gian"}</th>
+                <th className="py-3 px-4">{language === "en" ? "Operator" : "Người thực hiện"}</th>
+                <th className="py-3 px-4">{language === "en" ? "Target User" : "Tài khoản bị ảnh hưởng"}</th>
+                <th className="py-3 px-4 text-center">{language === "en" ? "Previous Role" : "Quyền hạn cũ"}</th>
+                <th className="py-3 px-4 text-center">{language === "en" ? "New Role" : "Quyền hạn mới"}</th>
+                <th className="py-3 px-4 text-center">{language === "en" ? "Details" : "Chi tiết"}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 text-xs">
               {filteredLogs.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-12 text-center text-slate-400 text-xs font-medium">
-                    No role audit records match search criteria.
+                    {language === "en" ? "No audit logs found." : "Không có nhật ký nào được ghi nhận."}
                   </td>
                 </tr>
               ) : (
@@ -247,7 +257,7 @@ export default function AdminLogs() {
                         <div className="flex justify-center items-center">
                           <button
                             onClick={() => setSelectedLog(log)}
-                            title="View Details"
+                            title={language === "en" ? "View Details" : "Xem chi tiết"}
                             className="p-1.5 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
                           >
                             <Eye size={14} />
@@ -267,7 +277,7 @@ export default function AdminLogs() {
       {selectedLog && createPortal(
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-sm" onClick={() => setSelectedLog(null)} />
-          <div className="relative w-full max-w-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-xl z-10 text-slate-700 dark:text-slate-300">
+          <div className="relative w-full max-w-xl max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-xl z-10 text-slate-700 dark:text-slate-350">
             <button
               onClick={() => setSelectedLog(null)}
               className="absolute top-4 right-4 text-slate-400 hover:text-slate-655"
@@ -276,11 +286,11 @@ export default function AdminLogs() {
             </button>
 
             <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-100 dark:border-slate-800">
-              <div className="p-2 bg-slate-50 dark:bg-slate-800 text-slate-500 rounded-lg">
+              <div className="p-2 bg-slate-50 dark:bg-slate-800 text-slate-550 rounded-lg">
                 <Activity size={18} />
               </div>
               <h3 className="text-sm font-bold text-slate-850 dark:text-white uppercase tracking-wider">
-                Role Audit Log Details
+                {language === "en" ? "Role Audit Log Details" : "Chi Tiết Nhật Ký Phân Quyền"}
               </h3>
             </div>
 
@@ -291,18 +301,24 @@ export default function AdminLogs() {
                   <strong className="text-slate-850 dark:text-white">{selectedLog.id}</strong>
                 </div>
                 <div>
-                  <span className="block text-[10px] text-slate-450 dark:text-slate-500 uppercase tracking-wider">Timestamp</span>
+                  <span className="block text-[10px] text-slate-450 dark:text-slate-500 uppercase tracking-wider">
+                    {language === "en" ? "Timestamp" : "Thời gian"}
+                  </span>
                   <strong className="text-slate-850 dark:text-white">{new Date(selectedLog.timestamp).toLocaleString()}</strong>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <span className="block text-[10px] text-slate-450 dark:text-slate-500 uppercase tracking-wider">Operator</span>
+                  <span className="block text-[10px] text-slate-450 dark:text-slate-500 uppercase tracking-wider">
+                    {language === "en" ? "Operator" : "Người thực hiện"}
+                  </span>
                   <strong className="text-slate-850 dark:text-white font-mono">{selectedLog.operator}</strong>
                 </div>
                 <div>
-                  <span className="block text-[10px] text-slate-450 dark:text-slate-500 uppercase tracking-wider">Target User</span>
+                  <span className="block text-[10px] text-slate-450 dark:text-slate-500 uppercase tracking-wider font-mono">
+                    {language === "en" ? "Target User" : "Tài khoản bị ảnh hưởng"}
+                  </span>
                   <strong className="text-slate-850 dark:text-white font-mono">
                     {selectedLog.targetUserName ? selectedLog.targetUserName : selectedLog.details?.targetUserId || "-"}
                   </strong>
@@ -311,13 +327,17 @@ export default function AdminLogs() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <span className="block text-[10px] text-slate-450 dark:text-slate-500 uppercase tracking-wider">Previous Role</span>
+                  <span className="block text-[10px] text-slate-450 dark:text-slate-500 uppercase tracking-wider">
+                    {language === "en" ? "Previous Role" : "Quyền hạn cũ"}
+                  </span>
                   <span className={`inline-block mt-0.5 px-2.5 py-1 rounded-full text-xs font-semibold tracking-wide ${getRoleBadgeColor(selectedLog.details?.previousRole)}`}>
                     {selectedLog.details?.previousRole || "None"}
                   </span>
                 </div>
                 <div>
-                  <span className="block text-[10px] text-slate-450 dark:text-slate-500 uppercase tracking-wider">New Role</span>
+                  <span className="block text-[10px] text-slate-450 dark:text-slate-500 uppercase tracking-wider">
+                    {language === "en" ? "New Role" : "Quyền hạn mới"}
+                  </span>
                   <span className={`inline-block mt-0.5 px-2.5 py-1 rounded-full text-xs font-semibold tracking-wide ${getRoleBadgeColor(selectedLog.details?.newRole)}`}>
                     {selectedLog.details?.newRole || "None"}
                   </span>
@@ -325,15 +345,19 @@ export default function AdminLogs() {
               </div>
 
               <div>
-                <span className="block text-[10px] text-slate-450 dark:text-slate-500 uppercase tracking-wider">Log Message</span>
+                <span className="block text-[10px] text-slate-450 dark:text-slate-500 uppercase tracking-wider">
+                  {language === "en" ? "Log Message" : "Nội dung thông báo"}
+                </span>
                 <p className="bg-slate-50 dark:bg-slate-800/60 p-2.5 rounded-lg border border-slate-200/50 dark:border-slate-800/80 text-slate-800 dark:text-slate-200 mt-1 leading-normal font-medium">
                   {selectedLog.message}
                 </p>
               </div>
 
               <div>
-                <span className="block text-[10px] text-slate-450 dark:text-slate-500 uppercase tracking-wider">Event Details Payload</span>
-                <pre className="bg-slate-950 dark:bg-slate-950 text-emerald-400 p-3 rounded-lg mt-1 font-mono text-[10px] leading-relaxed overflow-x-auto whitespace-pre-wrap max-h-48 border border-slate-850">
+                <span className="block text-[10px] text-slate-450 dark:text-slate-500 uppercase tracking-wider">
+                  {language === "en" ? "Event Details Payload" : "Chi tiết dữ liệu JSON"}
+                </span>
+                <pre className="bg-slate-950 dark:bg-slate-950 text-emerald-450 p-3 rounded-lg mt-1 font-mono text-[10px] leading-relaxed overflow-x-auto whitespace-pre-wrap max-h-48 border border-slate-850">
                   {JSON.stringify(selectedLog.details, null, 2)}
                 </pre>
               </div>

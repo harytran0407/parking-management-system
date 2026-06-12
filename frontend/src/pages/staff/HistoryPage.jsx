@@ -196,7 +196,7 @@ export default function HistoryPage() {
                     </div>
                 )}
 
-                <div className="overflow-y-auto flex-1 min-h-0 relative">
+                <div className="overflow-auto flex-1 min-h-0 relative">
                     <table className="w-full text-left text-xs border-collapse relative">
                         <thead>
                             <tr className="text-slate-500 dark:text-slate-400 uppercase font-bold text-[10px] tracking-wider border-b border-slate-100 dark:border-slate-800 sticky top-0 bg-white dark:bg-slate-900 z-10 shadow-[0_1px_0_0_rgba(241,245,249,1)] dark:shadow-[0_1px_0_0_rgba(30,41,59,1)]">

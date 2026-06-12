@@ -241,7 +241,7 @@ export default function ManagerPricing() {
          ============================================================ */}
       {isAddModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="card w-full max-w-lg shadow-2xl relative animate-slide-in bg-white dark:bg-slate-900">
+          <div className="card w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl relative animate-slide-in bg-white dark:bg-slate-900">
             <button
               onClick={() => setIsAddModalOpen(false)}
               className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg transition-all"
@@ -366,7 +366,7 @@ export default function ManagerPricing() {
          ============================================================ */}
       {isEditModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="card w-full max-w-lg shadow-2xl relative animate-slide-in bg-white dark:bg-slate-900">
+          <div className="card w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl relative animate-slide-in bg-white dark:bg-slate-900">
             <button
               onClick={() => setIsEditModalOpen(false)}
               className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg transition-all"

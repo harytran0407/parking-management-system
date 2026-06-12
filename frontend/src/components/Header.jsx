@@ -4,10 +4,12 @@ import { Bell, Sun, Moon, User, LogOut, KeyRound } from "lucide-react";
 import ChangePasswordModal from "./ChangePasswordModal";
 import { useTheme } from "../hooks/useTheme";
 import { useAuth } from "../hooks/useAuth";
+import { useLanguage } from "../hooks/useLanguage";
 
 export default function Header({ title, isSidebarCollapsed, setIsSidebarCollapsed }) {
   const { theme, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
+  const { language, toggleLanguage } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -18,33 +20,55 @@ export default function Header({ title, isSidebarCollapsed, setIsSidebarCollapse
   const dropdownRef = useRef(null);
 
   // ==========================================
-  // DYNAMIC PATH MAPPING (GIỮ NGUYÊN VẸN CỦA BẠN)
+  // DYNAMIC PATH MAPPING WITH MULTI-LANGUAGE
   // ==========================================
   const pageTitles = {
-    "/user": "Parking Info",
-    "/user/book": "Booking Slot",
-    "/user/bookings": "Booking Sessions",
-    "/user/vehicle": "My Vehicles",
-    "/user/issues": "Reports",
-    "/user/profile": "Edit My Profile",
-
-    "/staff/checkin": "Gate Entry Operation",
-    "/staff/checkout": "Gate Exit & Payment",
-    "/staff/incidents": "Incident Handling",
-    "/staff": "Dashboard",
-    "/staff/slots": "Slots and Gate Management",
-
-    "/admin": "Admin Dashboard",
-    "/admin/users": "User Accounts & Roles",
-    "/admin/logs": "Role Audit Logs",
-    "/admin/settings": "System Configuration",
-
-    "/manager": "Manager Dashboard",
-    "/manager/slots": "Parking Slots Management",
-    "/manager/building": "Building Information",
-    "/manager/pricing": "Pricing Configuration",
-    "/manager/staff": "Staff Attendants",
-    "/manager/issues": "Reported Issues",
+    en: {
+      "/user": "Parking Info",
+      "/user/book": "Book Slot",
+      "/user/bookings": "Booking Sessions",
+      "/user/vehicle": "My Vehicles",
+      "/user/issues": "Reports",
+      "/user/profile": "Edit My Profile",
+      "/staff/checkin": "Gate Entry Operation",
+      "/staff/checkout": "Gate Exit & Payment",
+      "/staff/incidents": "Incident Handling",
+      "/staff": "Dashboard",
+      "/staff/slots": "Slots and Gate Management",
+      "/admin": "Admin Dashboard",
+      "/admin/users": "User Accounts & Roles",
+      "/admin/logs": "Role Audit Logs",
+      "/admin/settings": "System Settings",
+      "/manager": "Manager Dashboard",
+      "/manager/slots": "Parking Slots Management",
+      "/manager/building": "Building Information",
+      "/manager/pricing": "Pricing Configuration",
+      "/manager/staff": "Staff Attendants",
+      "/manager/issues": "Reported Issues",
+    },
+    vi: {
+      "/user": "Thông tin đỗ xe",
+      "/user/book": "Đặt vị trí đỗ",
+      "/user/bookings": "Lịch sử đặt chỗ",
+      "/user/vehicle": "Phương tiện của tôi",
+      "/user/issues": "Báo cáo sự cố",
+      "/user/profile": "Hồ sơ cá nhân",
+      "/staff/checkin": "Cho xe vào cổng",
+      "/staff/checkout": "Thanh toán xe ra",
+      "/staff/incidents": "Báo cáo sự cố",
+      "/staff": "Bảng điều khiển",
+      "/staff/slots": "Giám sát ô đỗ",
+      "/admin": "Bảng điều khiển Admin",
+      "/admin/users": "Quản lý tài khoản",
+      "/admin/logs": "Nhật ký phân quyền",
+      "/admin/settings": "Cấu hình hệ thống",
+      "/manager": "Bảng điều khiển Quản lý",
+      "/manager/slots": "Quản lý vị trí đỗ",
+      "/manager/building": "Thông tin tòa nhà",
+      "/manager/pricing": "Cấu hình bảng giá",
+      "/manager/staff": "Danh sách nhân viên",
+      "/manager/issues": "Sự cố phản hồi",
+    }
   };
 
   // CLEAR AVATAR LINK (GIỮ NGUYÊN VẸN CỦA BẠN)
@@ -57,13 +81,20 @@ export default function Header({ title, isSidebarCollapsed, setIsSidebarCollapse
   // ROLE-BASED CONTEXT RESOLUTION (GIỮ NGUYÊN VẸN CỦA BẠN)
   // ==========================================
   const getFallbackTitle = () => {
-    if (user?.role === "SystemAdmin") return "System Admin Dashboard";
-    if (user?.role === "ParkingStaff") return "Operator Dashboard";
-    if (user?.role === "ParkingManager") return "Manager Dashboard";
-    return "Driver Dashboard";
+    if (language === "en") {
+      if (user?.role === "SystemAdmin") return "System Admin Dashboard";
+      if (user?.role === "ParkingStaff") return "Operator Dashboard";
+      if (user?.role === "ParkingManager") return "Manager Dashboard";
+      return "Driver Dashboard";
+    } else {
+      if (user?.role === "SystemAdmin") return "Bảng điều khiển Admin";
+      if (user?.role === "ParkingStaff") return "Bảng điều khiển nhân viên";
+      if (user?.role === "ParkingManager") return "Bảng điều khiển Quản lý";
+      return "Bảng điều khiển Khách hàng";
+    }
   };
 
-  const currentTitle = title || pageTitles[location.pathname] || getFallbackTitle();
+  const currentTitle = title || pageTitles[language][location.pathname] || getFallbackTitle();
   const targetProfileRoute = 
     user?.role === "SystemAdmin" ? "/admin/profile" :
     user?.role === "ParkingManager" ? "/manager/profile" :
@@ -103,6 +134,16 @@ export default function Header({ title, isSidebarCollapsed, setIsSidebarCollapse
 
       {/* RIGHT AREA: UTILITIES & AVATAR POPOVER */}
       <div className="flex items-center gap-3 lg:gap-3.5 ml-auto">
+        {/* Language Toggle */}
+        <button
+          onClick={toggleLanguage}
+          className="px-3 py-2 bg-slate-50 border border-slate-200 text-xs font-black text-slate-700 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-all focus:outline-none flex items-center gap-1.5"
+          title={language === "en" ? "Switch to Vietnamese" : "Chuyển sang Tiếng Anh"}
+        >
+          <span>🌐</span>
+          <span>{language === "en" ? "EN" : "VI"}</span>
+        </button>
+
         {/* Theme Toggle */}
         <button
           onClick={toggleTheme}
@@ -145,7 +186,11 @@ export default function Header({ title, isSidebarCollapsed, setIsSidebarCollapse
                         ? "bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400"
                         : "bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400"
                     }`}>
-                    {user?.role || "Guest"}
+                    {user?.role === "SystemAdmin" ? (language === "en" ? "System Admin" : "Quản trị viên") :
+                     user?.role === "ParkingManager" ? (language === "en" ? "Facility Manager" : "Quản lý Bãi xe") :
+                     user?.role === "ParkingStaff" ? (language === "en" ? "Gate Staff" : "Nhân viên Cổng") :
+                     user?.role === "ParkingUser" ? (language === "en" ? "Customer" : "Khách hàng") :
+                     (user?.role || (language === "en" ? "Guest" : "Khách"))}
                   </span>
                 </div>
               </div>
@@ -156,7 +201,7 @@ export default function Header({ title, isSidebarCollapsed, setIsSidebarCollapse
                   onClick={handleEditProfile}
                   className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800/60 rounded-xl transition-colors text-left hover:text-slate-800 dark:hover:text-slate-200">
                   <User size={14} className="text-slate-400 dark:text-slate-500" />
-                  Profile Settings
+                  {language === "en" ? "Profile Settings" : "Cài đặt hồ sơ"}
                 </button>
 
                 {/* 🚀 ĐÃ SỬA: Đổi điều kiện kiểm tra sang biến logic cục bộ isGoogleAccount */}
@@ -169,7 +214,7 @@ export default function Header({ title, isSidebarCollapsed, setIsSidebarCollapse
                     }}
                     className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800/60 rounded-xl transition-colors text-left hover:text-slate-800 dark:hover:text-slate-200 mt-0.5">
                     <KeyRound size={14} className="text-slate-400 dark:text-slate-500" />
-                    Change Password
+                    {language === "en" ? "Change Password" : "Đổi mật khẩu"}
                   </button>
                 )}
 
@@ -178,7 +223,7 @@ export default function Header({ title, isSidebarCollapsed, setIsSidebarCollapse
                   onClick={handleLogout}
                   className="w-full flex items-center gap-2.5 px-3 py-2.5 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl transition-colors text-left mt-0.5">
                   <LogOut size={14} />
-                  Account Sign Out
+                  {language === "en" ? "Account Sign Out" : "Đăng xuất tài khoản"}
                 </button>
               </div>
             </div>

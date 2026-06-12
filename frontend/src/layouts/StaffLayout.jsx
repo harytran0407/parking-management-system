@@ -11,45 +11,47 @@ import CheckOutPage from "../pages/staff/CheckOutPage";
 import HistoryPage from "../pages/staff/HistoryPage";
 import IncidentHandlingPage from '../pages/staff/IncidentHandling';
 import SlotGateManagementPage from '../pages/staff/SlotGateManagement';
+import { useLanguage } from "../hooks/useLanguage";
 
 export default function StaffLayout() {
   // Navigation mapping based on ParkingStaff capabilities defined in USER_STORIES.md
+  const { language } = useLanguage();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const navigationItems = [
     {
       path: "/staff",
-      label: "Dashboard",
+      label: language === "en" ? "Dashboard" : "Bảng điều khiển",
       icon: <LayoutDashboard size={20} />,
     },
     {
       path: "/staff/checkin",
-      label: "Check-In",
+      label: language === "en" ? "Check-In" : "Cho xe vào",
       icon: <LogIn size={20} />,
     },
     {
       path: "/staff/checkout",
-      label: "Check-Out",
+      label: language === "en" ? "Check-Out" : "Cho xe ra",
       icon: <LogOut size={20} />,
     },
     {
         path: "/staff/history", // Đường dẫn menu
-        label: "Parking History",
+        label: language === "en" ? "Parking History" : "Lịch sử đỗ xe",
         icon: <History size={20} />,
     },
     {
       path: "/staff/incidents",
-      label: "Incident Handling",
+      label: language === "en" ? "Incident Handling" : "Báo cáo sự cố",
       icon: <AlertTriangle size={20} />,
     },
     {
       path: "/staff/slots",
-      label: "Slot & Gate Management",
+      label: language === "en" ? "Slot & Gate Management" : "Giám sát ô đỗ",
       icon: <Map size={20} />,
     },
   ];
 
   return (
-    <div className="main-container flex h-screen bg-gray-100">
+    <div className="main-container flex h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white transition-colors duration-300">
       <Sidebar
         navigationItems={navigationItems}
         isCollapsed={isSidebarCollapsed}
@@ -63,7 +65,7 @@ export default function StaffLayout() {
           setIsSidebarCollapsed={setIsSidebarCollapsed}
         />
 
-          <main className="page-content flex-1 flex flex-col min-h-0 bg-gray-50 p-6 overflow-hidden">
+          <main className="page-content flex-1 flex flex-col min-h-0 bg-slate-50 dark:bg-slate-950 p-4 md:p-6 overflow-y-auto transition-colors duration-300">
               <Routes>
                   <Route path="/" element={<StaffDashboard />} />
                   <Route path="/checkin" element={<CheckInPage />} />

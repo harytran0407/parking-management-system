@@ -8,14 +8,16 @@ import AdminUsers from '../pages/admin/Users'
 import AdminLogs from '../pages/admin/Logs'
 import AdminSettings from '../pages/admin/Settings'
 import Profile from '../pages/user/Profile'
+import { useLanguage } from '../hooks/useLanguage'
 
 export default function AdminLayout() {
+  const { language } = useLanguage();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const navigationItems = [
-    { path: '/admin', label: 'Dashboard', icon: <BarChart3 size={20} /> },
-    { path: '/admin/users', label: 'Users', icon: <Users size={20} /> },
-    { path: '/admin/logs', label: 'System Logs', icon: <Terminal size={20} /> },
-    { path: '/admin/settings', label: 'Settings', icon: <Settings size={20} /> },
+    { path: '/admin', label: language === 'en' ? 'Dashboard' : 'Bảng điều khiển', icon: <BarChart3 size={20} /> },
+    { path: '/admin/users', label: language === 'en' ? 'Users' : 'Tài khoản', icon: <Users size={20} /> },
+    { path: '/admin/logs', label: language === 'en' ? 'System Logs' : 'Nhật ký phân quyền', icon: <Terminal size={20} /> },
+    { path: '/admin/settings', label: language === 'en' ? 'Settings' : 'Cấu hình hệ thống', icon: <Settings size={20} /> },
   ]
 
   return (
@@ -31,7 +33,7 @@ export default function AdminLayout() {
           isSidebarCollapsed={isSidebarCollapsed}
           setIsCollapsed={setIsSidebarCollapsed}
         />
-        <main className="page-content flex-1 flex flex-col min-h-0 bg-slate-50 dark:bg-slate-950 p-6 overflow-auto transition-colors duration-300">
+        <main className="page-content flex-1 flex flex-col min-h-0 bg-slate-50 dark:bg-slate-950 p-4 md:p-6 overflow-auto transition-colors duration-300">
           <Routes>
             <Route path="/" element={<AdminDashboard />} />
             <Route path="/users" element={<AdminUsers />} />

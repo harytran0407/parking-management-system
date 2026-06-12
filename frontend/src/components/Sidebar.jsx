@@ -3,8 +3,10 @@ import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import AboutUsModal from "./AboutUsModal";
 import { Menu, X, PanelLeftClose, PanelLeftOpen, Info } from "lucide-react"; // ĐÃ BỔ SUNG: Thêm icon Info cho nhãn About us
+import { useLanguage } from "../hooks/useLanguage";
 
 export default function Sidebar({ navigationItems = [], isCollapsed, setIsCollapsed }) {
+  const { language } = useLanguage();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   //  ĐÃ BỔ SUNG: Khởi tạo trạng thái quản lý đóng/mở cục bộ của Modal quy định bãi xe
@@ -125,7 +127,9 @@ export default function Sidebar({ navigationItems = [], isCollapsed, setIsCollap
               <div className="transition-transform duration-200 group-hover:scale-105 shrink-0 text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400">
                 <Info size={18} />
               </div>
-              <span className={`leading-none whitespace-nowrap ${isCollapsed ? "lg:hidden" : "block"}`}>About us</span>
+              <span className={`leading-none whitespace-nowrap ${isCollapsed ? "lg:hidden" : "block"}`}>
+                {language === "en" ? "About us" : "Giới thiệu"}
+              </span>
             </div>
 
             {/* HOVER-TO-REVEAL TOOLTIP KÍNH MỜ CHO NÚT ABOUT US KHI SIDEBAR THU GỌN */}
@@ -133,7 +137,7 @@ export default function Sidebar({ navigationItems = [], isCollapsed, setIsCollap
               className={`absolute left-full ml-3 bg-slate-100/80 dark:bg-slate-900/80 text-slate-800 dark:text-slate-200 text-xs font-extrabold px-3.5 py-2 rounded-xl shadow-xl border border-slate-200/60 dark:border-slate-800/80 backdrop-blur-md opacity-0 pointer-events-none group-hover:opacity-100 transition-all duration-200 z-[9999] translate-x-2 group-hover:translate-x-0 whitespace-nowrap
                 ${isCollapsed ? "hidden lg:block" : "hidden"}
               `}>
-              About us
+              {language === "en" ? "About us" : "Giới thiệu"}
             </div>
           </button>
 

@@ -25,6 +25,9 @@ namespace ParkingManagement.Services
                 throw new InvalidOperationException("ACTIVE_SESSION_EXISTS");
             }
 
+            var booking = await _parkingRepository.GetActiveBookingAsync(dto.LicensePlateIn, dto.VehicleTypeId, dto.BookingId);
+            string? actualBookingId = booking?.BookingId;
+
             string selectedSlotId = await ResolveSlotIdAsync(dto.SlotId, dto.VehicleTypeId);
 
             var initialSlotInfo = await _parkingRepository.GetSlotByIdAsync(selectedSlotId);
@@ -54,7 +57,7 @@ namespace ParkingManagement.Services
                     ImageUrlIn = dto.ImageUrlIn,
                     StaffInId = staffId,
                     SlotId = selectedSlotId,
-                    BookingId = dto.BookingId,
+                    BookingId = actualBookingId,
                     Status = "ACTIVE",
                     PaymentStatus = "PENDING"
                 };
@@ -65,6 +68,12 @@ namespace ParkingManagement.Services
                 slotToUpdate.LastUpdated = checkInTime;
 
                 await _parkingRepository.UpdateSlotAsync(slotToUpdate);
+
+                if (booking != null)
+                {
+                    booking.Status = "ACTIVE";
+                    booking.SlotId = selectedSlotId;
+                }
             });
 
             return MapToCheckInResponseDto(sessionId, checkInTime, dto.LicensePlateIn, selectedSlotId, initialSlotInfo);
@@ -92,10 +101,24 @@ namespace ParkingManagement.Services
                 policy,
                 operatingHours
             );
+
+            decimal finalFee = feeResult.CurrentFee;
+            Booking? booking = null;
+
+            if (!string.IsNullOrEmpty(session.BookingId))
+            {
+                booking = await _parkingRepository.GetBookingWithPaymentsAsync(session.BookingId);
+                if (booking != null)
+                {
+                    decimal depositPaid = booking.Payments?.Where(p => p.Status == "SUCCESS").Sum(p => (decimal?)p.AmountPaid) ?? 0m;
+                    finalFee -= depositPaid;
+                    if (finalFee < 0) finalFee = 0;
+                }
+            }
         
             await _parkingRepository.SaveChangesWithTransactionAsync(async () =>
             {
-                UpdateSessionForCheckOut(session, checkOutDto, staffId, checkOutTime, durationMinutes, feeResult.CurrentFee);
+                UpdateSessionForCheckOut(session, checkOutDto, staffId, checkOutTime, durationMinutes, finalFee);
                 await _parkingRepository.UpdateSessionAsync(session);
         
                 if (!string.IsNullOrEmpty(session.SlotId))
@@ -110,9 +133,14 @@ namespace ParkingManagement.Services
                         await _parkingRepository.UpdateSlotAsync(slot);
                     }
                 }
+
+                if (booking != null)
+                {
+                    booking.Status = "COMPLETED";
+                }
             });
         
-            return MapToCheckOutResponseDto(session, feeResult.CurrentFee, durationMinutes, checkOutTime);
+            return MapToCheckOutResponseDto(session, finalFee, durationMinutes, checkOutTime);
         }
 
         public async Task<ActiveSessionResponseDto> GetActiveSessionByLicensePlateAsync(string licensePlate)
@@ -136,6 +164,17 @@ namespace ParkingManagement.Services
                     operatingHours
                 );
                 currentFee = feeResult.CurrentFee;
+
+                if (!string.IsNullOrEmpty(session.BookingId))
+                {
+                    var booking = await _parkingRepository.GetBookingWithPaymentsAsync(session.BookingId);
+                    if (booking != null)
+                    {
+                        decimal depositPaid = booking.Payments?.Where(p => p.Status == "SUCCESS").Sum(p => (decimal?)p.AmountPaid) ?? 0m;
+                        currentFee -= depositPaid;
+                        if (currentFee < 0) currentFee = 0;
+                    }
+                }
             }
 
             return MapToActiveSessionResponseDto(session, durationMinutes, currentFee);
@@ -170,6 +209,20 @@ namespace ParkingManagement.Services
                 policy,
                 operatingHours
             );
+
+            decimal finalFee = feeResult.CurrentFee;
+            if (!string.IsNullOrEmpty(session.BookingId))
+            {
+                var booking = await _parkingRepository.GetBookingWithPaymentsAsync(session.BookingId);
+                if (booking != null)
+                {
+                    decimal depositPaid = booking.Payments?.Where(p => p.Status == "SUCCESS").Sum(p => (decimal?)p.AmountPaid) ?? 0m;
+                    finalFee -= depositPaid;
+                    if (finalFee < 0) finalFee = 0;
+                }
+            }
+            // Overwrite feeResult.CurrentFee to reflect actual amount to pay
+            feeResult.CurrentFee = finalFee;
 
             return MapToPreCheckOutResponseDto(session, policy, feeResult);
         }

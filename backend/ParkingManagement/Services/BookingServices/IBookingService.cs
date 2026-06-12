@@ -26,4 +26,6 @@ public interface IBookingService
     Task<List<BookingResponse>> GetBookingHistoryAsync(string userId);
 
     Task<BookingResponse> AdjustBookingAsync(string bookingId, string userId, AdjustBookingRequest request);
+
+    Task<BookingResponse> PayBookingAsync(string bookingId, string userId);
 }

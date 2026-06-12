@@ -15,37 +15,12 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import api from "../../utils/api";
+import { useLanguage } from "../../hooks/useLanguage";
 
-const slotStyles = {
-  available: {
-    card: "bg-emerald-50/80 border-emerald-500 text-emerald-800 dark:bg-emerald-950/20 dark:border-emerald-500 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 cursor-pointer",
-    badge: "bg-emerald-500 border-emerald-600 dark:border-emerald-400",
-    text: "text-emerald-600 dark:text-emerald-400",
-  },
-  occupied: {
-    card: "bg-red-50/90 border-red-500 text-red-700 dark:bg-red-950/40 dark:border-red-500 dark:text-red-400 cursor-not-allowed font-black opacity-90 shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)]",
-    badge: "bg-red-500 border-red-600 dark:border-red-400",
-    text: "text-red-600 dark:text-red-400",
-  },
-  reserved: {
-    card: "bg-amber-50/90 border-amber-500 text-amber-800 dark:bg-amber-950/20 dark:border-amber-500 dark:text-amber-400 cursor-not-allowed",
-    badge: "bg-amber-500 border-amber-600 dark:border-amber-400",
-    text: "text-amber-600 dark:text-amber-400",
-  },
-  staff: {
-    card: "bg-purple-50/90 border-purple-500 text-purple-800 dark:bg-purple-950/20 dark:border-purple-500 dark:text-purple-400 cursor-not-allowed",
-    badge: "bg-purple-500 border-purple-600 dark:border-purple-400",
-    text: "text-purple-600 dark:text-purple-400",
-  },
-  maintenance: {
-    card: "bg-slate-100 border-slate-300 text-slate-500 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-500 cursor-not-allowed stripes-bg",
-    badge: "bg-slate-400 border-slate-500 dark:border-slate-600",
-    text: "text-slate-500 dark:text-slate-400",
-  },
-};
 
 export default function BookSlot() {
   const navigate = useNavigate();
+  const { language } = useLanguage();
 
   const [userVehicles, setUserVehicles] = useState([]);
 
@@ -72,8 +47,8 @@ export default function BookSlot() {
 
   // TIME AND PRICING STATE
   const [timeData, setTimeData] = useState({ startTime: "", endTime: "" });
-  const [priceError, setPriceError] = useState(""); // ADDED BY ANTIGRAVITY FOR REALTIME VALIDATION
-  const DEPOSIT_FEE = 15000; // MODIFIED BY ANTIGRAVITY TO 15,000 VND
+  const [priceError, setPriceError] = useState("");
+  const [calculatedFee, setCalculatedFee] = useState(15000);
 
   // Fetch Vehicles
   useEffect(() => {
@@ -95,20 +70,41 @@ export default function BookSlot() {
     return userVehicles.filter((v) => v.vehicle_type_id === typeId);
   }, [userVehicles, bookingData.vehicleType]);
 
-  // Validate entry time client-side (ADDED BY ANTIGRAVITY)
+  // Validate times and calculate fee
   useEffect(() => {
+    let error = "";
     if (timeData.startTime) {
-      const selectedTime = new Date(timeData.startTime).getTime();
+      const selectedStart = new Date(timeData.startTime).getTime();
       const now = new Date().getTime();
-      if (selectedTime < now - 10 * 60 * 1000) { // 10 minutes buffer for client clock desync
-        setPriceError("Entry time cannot be in the past.");
+      if (selectedStart < now - 10 * 60 * 1000) {
+        error = "Entry time cannot be in the past.";
+      }
+    }
+    
+    if (timeData.startTime && timeData.endTime) {
+      const start = new Date(timeData.startTime).getTime();
+      const end = new Date(timeData.endTime).getTime();
+      
+      if (end <= start) {
+        error = "Exit time must be after entry time.";
+      } else if (end - start < 30 * 60 * 1000) {
+        error = "Booking duration must be at least 30 minutes.";
       } else {
-        setPriceError("");
+        // Calculate fee
+        let fee = 15000;
+        const durationMs = end - start;
+        const billedHours = Math.ceil(durationMs / (1000 * 60 * 60));
+        if (billedHours > 1) {
+          fee += (billedHours - 1) * 2000;
+        }
+        setCalculatedFee(fee);
       }
     } else {
-      setPriceError("");
+      setCalculatedFee(15000); // Default minimum fee
     }
-  }, [timeData.startTime]);
+    
+    setPriceError(error);
+  }, [timeData.startTime, timeData.endTime]);
 
   const selectedVehiclePlate = useMemo(() => {
     if (isAddingNewVehicle && newPlateNumber)
@@ -120,7 +116,7 @@ export default function BookSlot() {
   }, [userVehicles, bookingData.vehicleId, isAddingNewVehicle, newPlateNumber]);
 
   const isFormValid = useMemo(() => {
-    const isTimeFilled = timeData.startTime && !priceError;
+    const isTimeFilled = timeData.startTime && timeData.endTime && !priceError;
     return isAddingNewVehicle
       ? newPlateNumber.trim().length >= 5 && newBrand.trim() && newModel.trim() && isTimeFilled
       : bookingData.vehicleId !== "" && isTimeFilled;
@@ -131,6 +127,7 @@ export default function BookSlot() {
     newBrand,
     newModel,
     timeData.startTime,
+    timeData.endTime,
     priceError,
   ]);
 
@@ -198,14 +195,14 @@ export default function BookSlot() {
         slot_id: null,
         vehicle_id: Number(finalVehicleId),
         expected_arrival: new Date(timeData.startTime).toISOString(),
-        expired_at: null,
-        notes: `Deposit reservation payment via VNPay (Flat ${DEPOSIT_FEE} VND)`,
+        expired_at: new Date(timeData.endTime).toISOString(),
+        notes: `Pre-paid reservation via VNPay (MOCK) (${calculatedFee.toLocaleString()} VND)`,
       };
 
       // We call the API to create booking directly after initiating the simulated payment.
       setCreatedBooking(bookingPayload);
       
-      const mockQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=Deposit_${DEPOSIT_FEE}_Vehicle_${finalVehicleId}`;
+      const mockQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=PrePay_${calculatedFee}_Vehicle_${finalVehicleId}`;
       setQrCodeData(mockQrUrl);
       setModalPhase("payment");
     } catch (error) {
@@ -292,10 +289,10 @@ export default function BookSlot() {
       {/* BOOKING MODAL */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-fade-in">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden relative flex flex-col">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden relative flex flex-col max-h-[95vh]">
             <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
               <h2 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                <MapPin size={20} className="text-blue-600" /> Book Parking Slot - {bookingData.vehicleType === "car" ? "Car" : "Motorbike"}
+                <MapPin size={20} className="text-blue-600" /> {language === "en" ? "Book Parking Slot" : "Đặt chỗ đỗ xe"} - {bookingData.vehicleType === "car" ? (language === "en" ? "Car" : "Ô tô") : (language === "en" ? "Motorbike" : "Xe máy")}
               </h2>
               {modalPhase === "form" && (
                 <button
@@ -307,7 +304,7 @@ export default function BookSlot() {
               )}
             </div>
 
-            <div className="p-6">
+            <div className="p-6 overflow-y-auto">
               {modalPhase === "form" && (
                 <div className="space-y-4 animate-fade-in">
                   <div>
@@ -412,18 +409,33 @@ export default function BookSlot() {
                     )}
                   </div>
 
-                  <div>
-                    <label className="text-sm font-semibold text-slate-600 dark:text-slate-300 mb-1.5 block flex items-center gap-2">
-                      <Clock size={16} /> Entry Time:
-                    </label>
-                    <input
-                      type="datetime-local"
-                      value={timeData.startTime}
-                      onChange={(e) =>
-                        setTimeData({ ...timeData, startTime: e.target.value })
-                      }
-                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-800 dark:text-white focus:outline-none"
-                    />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-semibold text-slate-600 dark:text-slate-300 mb-1.5 block flex items-center gap-2">
+                        <Clock size={16} /> Entry Time:
+                      </label>
+                      <input
+                        type="datetime-local"
+                        value={timeData.startTime}
+                        onChange={(e) =>
+                          setTimeData({ ...timeData, startTime: e.target.value })
+                        }
+                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-semibold text-slate-600 dark:text-slate-300 mb-1.5 block flex items-center gap-2">
+                        <Clock size={16} /> Est. Exit Time:
+                      </label>
+                      <input
+                        type="datetime-local"
+                        value={timeData.endTime}
+                        onChange={(e) =>
+                          setTimeData({ ...timeData, endTime: e.target.value })
+                        }
+                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                      />
+                    </div>
                   </div>
                   {priceError && (
                     <p className="text-xs text-red-500 font-semibold mt-1">
@@ -434,14 +446,14 @@ export default function BookSlot() {
                   <div className="bg-blue-50 dark:bg-blue-500/10 rounded-2xl p-4 border border-blue-100 dark:border-blue-500/20">
                     <div className="flex justify-between items-center">
                       <span className="text-blue-800 dark:text-blue-300 font-bold">
-                        Deposit Fee:
+                        Estimated Total:
                       </span>
                       <span className="font-black text-xl text-blue-600 dark:text-blue-400">
-                        {DEPOSIT_FEE.toLocaleString()} VND
+                        {calculatedFee.toLocaleString()} VND
                       </span>
                     </div>
                     <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-2.5 border-t border-blue-200 dark:border-blue-500/20 pt-2 font-medium leading-relaxed">
-                      💡 <strong>Rate:</strong> 15,000 VND for the 1st hour, then +2,000 VND for each next hour. Pay the rest when you leave.
+                      💡 <strong>Rate:</strong> 15,000 VND for the 1st hour, then +2,000 VND for each next hour.
                     </div>
                   </div>
 
@@ -475,7 +487,7 @@ export default function BookSlot() {
                     <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
                       Amount:{" "}
                       <span className="text-blue-600 dark:text-blue-400 font-bold text-lg">
-                        {DEPOSIT_FEE.toLocaleString()} VND
+                        {calculatedFee.toLocaleString()} VND
                       </span>
                     </p>
                   </div>
@@ -490,58 +502,128 @@ export default function BookSlot() {
 
               {/* SUCCESS E-TICKET */}
               {modalPhase === "success" && (
-                <div className="text-center animate-fade-in">
-                  <div className="w-16 h-16 bg-emerald-100 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="animate-fade-in flex flex-col items-center">
+                  <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-950/40 text-emerald-500 rounded-full flex items-center justify-center mb-4 shadow-md shadow-emerald-500/10 animate-bounce">
                     <CheckCircle2 size={32} />
                   </div>
-                  <h3 className="font-bold text-slate-800 dark:text-white text-xl mb-2">
-                    Booking Successful!
+                  
+                  <h3 className="font-black text-slate-800 dark:text-white text-2xl mb-1 tracking-tight text-center">
+                    {language === "en" ? "Booking Successful!" : "Đặt Chỗ Thành Công!"}
                   </h3>
-                  <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">
-                    Your e-ticket for vehicle{" "}
-                    <span className="font-mono font-bold text-slate-700 dark:text-slate-300">
-                      {selectedVehiclePlate}
-                    </span>
-                    .
+                  <p className="text-slate-500 dark:text-slate-400 text-xs mb-5 font-medium text-center">
+                    {language === "en" ? "Here is your digital parking pass." : "Dưới đây là thẻ đỗ xe điện tử của bạn."}
                   </p>
 
-                  {confirmedBooking && (
-                    <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-4 mb-5 border border-slate-200 dark:border-slate-700 text-left">
-                      <div className="flex justify-between items-center mb-2 text-sm">
-                        <span className="text-slate-500 dark:text-slate-400 font-semibold">Assigned Slot:</span>
-                        <span className="font-black text-slate-800 dark:text-white font-mono text-base bg-blue-50 dark:bg-blue-900/40 px-2 py-0.5 rounded">{confirmedBooking.slot_name || "N/A"}</span>
+                  <div className="w-full bg-gradient-to-b from-slate-50 to-slate-100/50 dark:from-slate-800/50 dark:to-slate-900/60 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-xl overflow-hidden relative">
+                    <div className="bg-gradient-to-r from-emerald-500 to-teal-600 px-5 py-3.5 text-white flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        {bookingData.vehicleType === "car" ? <Car size={18} /> : <Bike size={18} />}
+                        <span className="font-black text-xs tracking-wider uppercase">
+                          {bookingData.vehicleType === "car" ? (language === "en" ? "CAR PASS" : "VÉ Ô TÔ") : (language === "en" ? "BIKE PASS" : "VÉ XE MÁY")}
+                        </span>
                       </div>
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-slate-500 dark:text-slate-400 font-semibold">Floor:</span>
-                        <span className="font-bold text-slate-800 dark:text-white">{confirmedBooking.floor_name || "N/A"}</span>
+                      <span className="text-[10px] font-black font-mono bg-white/20 px-2 py-0.5 rounded">
+                        #{confirmedBooking?.booking_id || "N/A"}
+                      </span>
+                    </div>
+
+                    <div className="p-5 space-y-4">
+                      <div className="text-center bg-white dark:bg-slate-950 rounded-2xl p-3 border border-slate-200 dark:border-slate-850 shadow-inner">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">
+                          {language === "en" ? "LICENSE PLATE" : "BIỂN SỐ XE"}
+                        </p>
+                        <p className="font-mono font-black text-2xl text-slate-800 dark:text-slate-100 tracking-wider">
+                          {selectedVehiclePlate}
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-white/80 dark:bg-slate-950/50 rounded-2xl p-3 border border-slate-150 dark:border-slate-800">
+                          <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">
+                            {language === "en" ? "ASSIGNED SLOT" : "VỊ TRÍ ĐỖ"}
+                          </p>
+                          <p className="font-black text-sm text-slate-800 dark:text-white font-mono bg-blue-50/50 dark:bg-blue-900/30 px-2 py-1 rounded inline-block">
+                            {confirmedBooking?.slot_name || "Assigned at Check-in"}
+                          </p>
+                        </div>
+                        <div className="bg-white/80 dark:bg-slate-950/50 rounded-2xl p-3 border border-slate-150 dark:border-slate-805">
+                          <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">
+                            {language === "en" ? "FLOOR LEVEL" : "TẦNG HẦM"}
+                          </p>
+                          <p className="font-black text-sm text-slate-800 dark:text-white uppercase mt-1">
+                            {confirmedBooking?.floor_name || "TBD"}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="bg-white/40 dark:bg-slate-950/20 rounded-2xl p-3 border border-slate-150 dark:border-slate-800/60 space-y-2 text-xs">
+                        <div className="flex justify-between items-center">
+                          <span className="text-slate-400 dark:text-slate-500 font-bold flex items-center gap-1">
+                            <Clock size={12} /> {language === "en" ? "Arrival:" : "Vào:"}
+                          </span>
+                          <span className="font-mono font-bold text-slate-700 dark:text-slate-300">
+                            {timeData.startTime ? new Date(timeData.startTime).toLocaleString("vi-VN", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" }) : "—"}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center border-t border-slate-100 dark:border-slate-800/60 pt-2">
+                          <span className="text-slate-400 dark:text-slate-500 font-bold flex items-center gap-1">
+                            <Clock size={12} /> {language === "en" ? "Est. Departure:" : "Dự kiến ra:"}
+                          </span>
+                          <span className="font-mono font-bold text-slate-700 dark:text-slate-300">
+                            {timeData.endTime ? new Date(timeData.endTime).toLocaleString("vi-VN", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" }) : "—"}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-between items-center text-xs px-1.5 pt-1">
+                        <span className="text-slate-400 dark:text-slate-500 font-bold">
+                          {language === "en" ? "Deposit Paid:" : "Tiền cọc đã trả:"}
+                        </span>
+                        <span className="font-black text-emerald-600 dark:text-emerald-400 text-sm">
+                          {calculatedFee.toLocaleString()} VND
+                        </span>
                       </div>
                     </div>
-                  )}
 
-                  <div className="bg-white p-4 rounded-2xl inline-block border-4 border-emerald-500 mb-4 shadow-xl">
-                    <img
-                      src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=Ticket_Valid_Slot_${confirmedBooking?.slot_id}_Plate_${selectedVehiclePlate}`}
-                      alt="Ticket QR"
-                      className="w-48 h-48"
-                    />
+                    <div className="relative h-4 my-1 flex items-center justify-center">
+                      <div className="absolute left-[-8px] w-4 h-4 rounded-full bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-750 z-10"></div>
+                      <div className="w-[calc(100%-1.5rem)] border-b-2 border-dashed border-slate-200 dark:border-slate-800"></div>
+                      <div className="absolute right-[-8px] w-4 h-4 rounded-full bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-750 z-10"></div>
+                    </div>
+
+                    <div className="p-5 flex flex-col items-center">
+                      <div className="bg-white p-3.5 rounded-2xl inline-block border border-slate-200 dark:border-slate-800 shadow-md relative group">
+                        <img
+                          src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=Ticket_Valid_Slot_${confirmedBooking?.slot_id}_Plate_${selectedVehiclePlate}`}
+                          alt="Ticket QR"
+                          className="w-40 h-40 object-contain"
+                        />
+                      </div>
+                      
+                      <span className="mt-3.5 inline-flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full border border-emerald-200/50 dark:border-emerald-900/30">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
+                        {language === "en" ? "ACTIVE / PAID" : "XÁC NHẬN / ĐÃ TRẢ CỌC"}
+                      </span>
+                    </div>
                   </div>
-                  <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-xl p-3 mb-6 text-left flex gap-3 items-start">
-                    <Info
-                      className="text-amber-500 shrink-0 mt-0.5"
-                      size={18}
-                    />
-                    <p className="text-xs font-medium text-amber-700 dark:text-amber-400 leading-relaxed">
-                      Note: The gate camera will scan your license plate. Show this QR code to staff if needed.
+
+                  <div className="w-full bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-2xl p-3.5 mt-5 text-left flex gap-3 items-start shadow-sm">
+                    <Info className="text-amber-500 shrink-0 mt-0.5 animate-pulse" size={18} />
+                    <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 leading-relaxed">
+                      {language === "en" 
+                        ? "Note: The gate camera will automatically scan your license plate at entry. Show this QR code to staff if verification fails."
+                        : "Lưu ý: Camera tại cổng sẽ tự động quét biển số xe khi vào. Hãy xuất trình mã QR này cho nhân viên nếu không khớp tự động."}
                     </p>
                   </div>
+
                   <button
                     onClick={() => {
                       handleCloseModal();
                       navigate("/user/bookings");
                     }}
-                    className="w-full bg-slate-800 hover:bg-slate-900 dark:bg-blue-600 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg"
+                    className="w-full bg-slate-800 hover:bg-slate-900 dark:bg-blue-600 dark:hover:bg-blue-700 text-white font-black py-3.5 rounded-2xl transition-all shadow-lg shadow-slate-950/10 dark:shadow-blue-900/20 mt-6 flex items-center justify-center gap-2"
                   >
-                    Go to My Bookings
+                    {language === "en" ? "Go to My Bookings" : "Xem lịch sử đặt chỗ"} &rarr;
                   </button>
                 </div>
               )}

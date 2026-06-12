@@ -19,8 +19,10 @@ import {
 } from "lucide-react";
 import api from "../../utils/api";
 import { toast } from "sonner";
+import { useLanguage } from "../../hooks/useLanguage";
 
 export default function AdminUsers() {
+  const { language } = useLanguage();
   const [usersList, setUsersList] = useState([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
@@ -192,14 +194,22 @@ export default function AdminUsers() {
 
     try {
       await api.put(`/admin/users/${uId}/status`, { status: newStatus });
-      toast.success(`User "${uName}" is now ${newStatus.toLowerCase()}.`);
+      if (language === "en") {
+        toast.success(`User "${uName}" is now ${newStatus === "ACTIVE" ? "active" : "suspended"}.`);
+      } else {
+        toast.success(`Người dùng "${uName}" hiện đã ${newStatus === "ACTIVE" ? "hoạt động" : "bị khóa"}.`);
+      }
     } catch (err) {
       console.error("Failed to update status on server:", err);
       // Revert on error
       setUsersList((prev) =>
         prev.map((u) => ((u.user_id || u.userId) === uId ? { ...u, status: user.status } : u))
       );
-      toast.error(`Failed to update status for "${uName}".`);
+      if (language === "en") {
+        toast.error(`Failed to update status for "${uName}".`);
+      } else {
+        toast.error(`Cập nhật trạng thái cho "${uName}" thất bại.`);
+      }
     }
   };
 
@@ -234,7 +244,11 @@ export default function AdminUsers() {
 
     try {
       await api.put(`/admin/users/${uId}/role`, { role_id: newRoleId });
-      toast.success(`Successfully assigned role to "${uName}".`);
+      if (language === "en") {
+        toast.success(`Successfully assigned role to "${uName}".`);
+      } else {
+        toast.success(`Đã gán vai trò mới cho "${uName}" thành công.`);
+      }
     } catch (err) {
       console.error("[Role Update Failed]:", err);
       // Revert optimistic update on failure
@@ -249,16 +263,27 @@ export default function AdminUsers() {
       const msg = err?.response?.data?.message || err?.message || "Unknown error";
 
       if (status === 401) {
-        toast.error("Session expired. Please log out and log in again.");
+        if (language === "en") {
+          toast.error("Session expired. Please log out and log in again.");
+        } else {
+          toast.error("Phiên đăng nhập hết hạn. Vui lòng đăng xuất và đăng nhập lại.");
+        }
       } else if (status === 403) {
-        toast.error("Access denied. Only SystemAdmin can change roles.");
+        if (language === "en") {
+          toast.error("Access denied. Only SystemAdmin can change roles.");
+        } else {
+          toast.error("Từ chối truy cập. Chỉ Quản trị viên mới được thay đổi vai trò.");
+        }
       } else if (err?.success === false && err?.message) {
-        // Handle unwrapped server response error
-        toast.error(`Server Error: ${err.message}`);
+        toast.error(language === "en" ? `Server Error: ${err.message}` : `Lỗi Máy chủ: ${err.message}`);
       } else if (!status || status === 0) {
-        toast.error("Cannot reach server. Make sure backend is running on port 5077.");
+        if (language === "en") {
+          toast.error("Cannot reach server. Make sure backend is running on port 5077.");
+        } else {
+          toast.error("Không thể kết nối đến máy chủ. Hãy đảm bảo backend đang chạy tại cổng 5077.");
+        }
       } else {
-        toast.error(`Failed to update role: ${msg}`);
+        toast.error(language === "en" ? `Failed to update role: ${msg}` : `Cập nhật vai trò thất bại: ${msg}`);
       }
     }
   };
@@ -275,19 +300,26 @@ export default function AdminUsers() {
       if (response.data && response.data.success) {
         // Remove from list
         setUsersList((prev) => prev.filter((u) => (u.user_id || u.userId) !== uId));
-        toast.success(`User "${uName}" deleted successfully!`);
+        if (language === "en") {
+          toast.success(`User "${uName}" deleted successfully!`);
+        } else {
+          toast.success(`Đã xóa người dùng "${uName}" thành công!`);
+        }
         setIsDeleteModalOpen(false);
         setUserToDelete(null);
       }
     } catch (err) {
       console.error("[User Delete Failed]:", err);
       const msg = err?.response?.data?.message || err?.message || "Unknown error";
-      toast.error(`Failed to delete user: ${msg}`);
+      if (language === "en") {
+        toast.error(`Failed to delete user: ${msg}`);
+      } else {
+        toast.error(`Xóa người dùng thất bại: ${msg}`);
+      }
     } finally {
       setDeleting(false);
     }
   };
-
 
   // Add User handler (Creating Managers/Staff directly)
   const handleAddUserSubmit = async (e) => {
@@ -296,7 +328,7 @@ export default function AdminUsers() {
     setFormSuccess("");
 
     if (!newUsername || !newFullName || !newEmail || !newPhone || !newPassword) {
-      setFormError("Please fill out all required fields.");
+      setFormError(language === "en" ? "Please fill out all required fields." : "Vui lòng điền đầy đủ các thông tin bắt buộc.");
       return;
     }
 
@@ -310,7 +342,7 @@ export default function AdminUsers() {
         role: newRole,
       });
 
-      setFormSuccess("Account created successfully!");
+      setFormSuccess(language === "en" ? "Account created successfully!" : "Tạo tài khoản thành công!");
 
       // Reload from server after creation
       fetchUsers();
@@ -329,7 +361,7 @@ export default function AdminUsers() {
 
     } catch (err) {
       console.error(err);
-      let errMsg = "Failed to create user. Verify field constraints.";
+      let errMsg = language === "en" ? "Failed to create user. Verify field constraints." : "Tạo người dùng thất bại. Vui lòng kiểm tra các ràng buộc.";
       
       // Extract detailed validation errors from ASP.NET Core ModelState
       if (err.errors) {
@@ -358,16 +390,64 @@ export default function AdminUsers() {
     }
   };
 
+  const getRoleLabel = (role) => {
+    switch (role) {
+      case "SystemAdmin":
+        return language === "en" ? "System Admin" : "Quản trị viên";
+      case "ParkingManager":
+        return language === "en" ? "Facility Manager" : "Quản lý Bãi xe";
+      case "ParkingStaff":
+        return language === "en" ? "Gate Staff" : "Nhân viên Cổng";
+      case "ParkingUser":
+        return language === "en" ? "Customer Driver" : "Khách hàng";
+      default:
+        return role;
+    }
+  };
+
+  const getRoleFilterLabel = (role) => {
+    if (role === "ALL") {
+      return language === "en" ? "ALL ROLES" : "TẤT CẢ VAI TRÒ";
+    }
+    switch (role) {
+      case "SystemAdmin":
+        return language === "en" ? "Admin" : "Admin";
+      case "ParkingManager":
+        return language === "en" ? "Manager" : "Quản lý";
+      case "ParkingStaff":
+        return language === "en" ? "Staff" : "Nhân viên";
+      case "ParkingUser":
+        return language === "en" ? "User" : "Khách hàng";
+      default:
+        return role;
+    }
+  };
+
+  const getStatusFilterLabel = (status) => {
+    if (status === "ALL") {
+      return language === "en" ? "ALL" : "TẤT CẢ";
+    }
+    if (status === "ACTIVE") {
+      return language === "en" ? "ACTIVE" : "HOẠT ĐỘNG";
+    }
+    if (status === "BANNED") {
+      return language === "en" ? "BANNED" : "ĐÃ KHÓA";
+    }
+    return status;
+  };
+
   return (
     <div className="space-y-6 animate-slide-in font-sans pb-12">
       {/* HEADER PARTITION */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
         <div>
           <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-            User Accounts & Roles
+            {language === "en" ? "User Accounts & Roles" : "Tài khoản & Vai trò"}
           </h2>
           <p className="text-xs text-slate-550 dark:text-slate-400 mt-1">
-            Browse registered system accounts, assign core administrative permissions, or lock access.
+            {language === "en" 
+              ? "Browse registered system accounts, assign core administrative permissions, or lock access."
+              : "Xem các tài khoản đã đăng ký, phân quyền quản trị cốt lõi, hoặc khóa quyền truy cập."}
           </p>
         </div>
 
@@ -376,7 +456,7 @@ export default function AdminUsers() {
           className="bg-blue-600 hover:bg-blue-500 text-xs font-bold px-4 py-2.5 rounded-xl shadow-md transition-all flex items-center gap-2 hover:scale-[1.02] active:scale-95 text-white"
         >
           <UserPlus size={16} />
-          Create Staff/Manager
+          {language === "en" ? "Create Staff/Manager" : "Tạo Nhân viên/Quản lý"}
         </button>
       </div>
 
@@ -387,7 +467,7 @@ export default function AdminUsers() {
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
-            placeholder="Search by name, email, phone..."
+            placeholder={language === "en" ? "Search by name, email, phone..." : "Tìm kiếm theo tên, email, số điện thoại..."}
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
@@ -398,9 +478,9 @@ export default function AdminUsers() {
         </div>
 
         {/* Filters Selectors */}
-        <div className="flex flex-wrap gap-2 w-full lg:w-auto">
-          {/* Role Filters */}
-          <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+        <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto max-w-full">
+          {/* Role Filters - Desktop (Tabs) */}
+          <div className="hidden sm:flex overflow-x-auto max-w-full bg-slate-100 dark:bg-slate-800 p-1 rounded-xl no-scrollbar whitespace-nowrap">
             {["ALL", "SystemAdmin", "ParkingManager", "ParkingStaff", "ParkingUser"].map((role) => (
               <button
                 key={role}
@@ -408,19 +488,35 @@ export default function AdminUsers() {
                   setSelectedRole(role);
                   setCurrentPage(1);
                 }}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap shrink-0
                   ${selectedRole === role
                     ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-white shadow-sm"
                     : "text-slate-500 hover:text-slate-750 dark:text-slate-400 dark:hover:text-slate-200"
                   }`}
               >
-                {role === "ALL" ? "ALL ROLES" : role.replace("Parking", "").replace("System", "")}
+                {getRoleFilterLabel(role)}
               </button>
             ))}
           </div>
 
-          {/* Status filter */}
-          <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+          {/* Role Filters - Mobile (Dropdown) */}
+          <select
+            value={selectedRole}
+            onChange={(e) => {
+              setSelectedRole(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="block sm:hidden w-full px-3.5 py-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-350 focus:outline-none focus:ring-2 focus:ring-blue-500/10 cursor-pointer uppercase tracking-wider"
+          >
+            {["ALL", "SystemAdmin", "ParkingManager", "ParkingStaff", "ParkingUser"].map((role) => (
+              <option key={role} value={role} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">
+                {getRoleFilterLabel(role)}
+              </option>
+            ))}
+          </select>
+
+          {/* Status filter - Desktop (Tabs) */}
+          <div className="hidden sm:flex overflow-x-auto max-w-full bg-slate-100 dark:bg-slate-800 p-1 rounded-xl no-scrollbar whitespace-nowrap">
             {["ALL", "ACTIVE", "BANNED"].map((status) => (
               <button
                 key={status}
@@ -428,16 +524,32 @@ export default function AdminUsers() {
                   setSelectedStatus(status);
                   setCurrentPage(1);
                 }}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap shrink-0
                   ${selectedStatus === status
                     ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-white shadow-sm"
                     : "text-slate-500 hover:text-slate-750 dark:text-slate-400 dark:hover:text-slate-200"
                   }`}
               >
-                {status}
+                {getStatusFilterLabel(status)}
               </button>
             ))}
           </div>
+
+          {/* Status filter - Mobile (Dropdown) */}
+          <select
+            value={selectedStatus}
+            onChange={(e) => {
+              setSelectedStatus(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="block sm:hidden w-full px-3.5 py-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-350 focus:outline-none focus:ring-2 focus:ring-blue-500/10 cursor-pointer uppercase tracking-wider"
+          >
+            {["ALL", "ACTIVE", "BANNED"].map((status) => (
+              <option key={status} value={status} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">
+                {getStatusFilterLabel(status)}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -445,7 +557,9 @@ export default function AdminUsers() {
       {loading ? (
         <div className="h-64 flex flex-col justify-center items-center gap-3">
           <Loader2 className="animate-spin text-blue-600" size={32} />
-          <span className="text-xs text-slate-450">Loading user database...</span>
+          <span className="text-xs text-slate-450">
+            {language === "en" ? "Loading user database..." : "Đang tải dữ liệu người dùng..."}
+          </span>
         </div>
       ) : (
         <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
@@ -453,19 +567,19 @@ export default function AdminUsers() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider border-b border-slate-100 dark:border-slate-800/80">
-                  <th className="py-3 px-4">User Details</th>
-                  <th className="py-3 px-4">Contact Info</th>
-                  <th className="py-3 px-4 text-center">System Role</th>
-                  <th className="py-3 px-4 text-center">Status</th>
-                  <th className="py-3 px-4 text-center">Last Activity</th>
-                  <th className="py-3 px-4 text-center">Actions</th>
+                  <th className="py-3 px-4">{language === "en" ? "User Details" : "Thông tin Người dùng"}</th>
+                  <th className="py-3 px-4">{language === "en" ? "Contact Info" : "Thông tin Liên hệ"}</th>
+                  <th className="py-3 px-4 text-center">{language === "en" ? "System Role" : "Vai trò Hệ thống"}</th>
+                  <th className="py-3 px-4 text-center">{language === "en" ? "Status" : "Trạng thái"}</th>
+                  <th className="py-3 px-4 text-center">{language === "en" ? "Last Activity" : "Hoạt động Cuối"}</th>
+                  <th className="py-3 px-4 text-center">{language === "en" ? "Actions" : "Hành động"}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 text-xs">
                 {filteredUsers.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="py-12 text-center text-slate-400 text-xs font-medium">
-                      No accounts found matching filter parameters.
+                      {language === "en" ? "No accounts found matching filter parameters." : "Không tìm thấy tài khoản nào khớp với bộ lọc."}
                     </td>
                   </tr>
                 ) : (
@@ -485,7 +599,7 @@ export default function AdminUsers() {
                             </div>
                             <div>
                               <strong className="block text-sm font-bold text-slate-900 dark:text-white leading-tight">
-                                {uFullName || "Unconfigured Profile"}
+                                {uFullName || (language === "en" ? "Unconfigured Profile" : "Hồ sơ Chưa cấu hình")}
                               </strong>
                               <span className="text-xs text-slate-400 dark:text-slate-500 font-semibold font-mono mt-0.5 block">
                                 @{user.username}
@@ -498,18 +612,18 @@ export default function AdminUsers() {
                         <td className="py-3 px-4 space-y-1 text-slate-600 dark:text-slate-400 font-semibold text-xs">
                           <div className="flex items-center gap-2">
                             <Mail size={14} className="text-slate-400 shrink-0" />
-                            <span>{user.email || "No Email"}</span>
+                            <span>{user.email || (language === "en" ? "No Email" : "Không có Email")}</span>
                           </div>
                           <div className="flex items-center gap-2">
                             <Phone size={14} className="text-slate-400 shrink-0" />
-                            <span className="font-mono">{user.phone || "No Phone"}</span>
+                            <span className="font-mono">{user.phone || (language === "en" ? "No Phone" : "Không có SĐT")}</span>
                           </div>
                         </td>
 
                         {/* Role Badge */}
                         <td className="py-3 px-4 text-center">
                           <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-semibold tracking-wide ${getRoleBadgeColor(user.role)}`}>
-                            {user.role}
+                            {getRoleLabel(user.role)}
                           </span>
                         </td>
 
@@ -518,31 +632,35 @@ export default function AdminUsers() {
                           <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold
                             ${user.status === "ACTIVE"
                               ? "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/30"
-                              : "bg-red-50 text-red-700 border border-red-200 dark:bg-red-950/20 dark:text-red-400 dark:border-red-900/30"
+                              : "bg-red-50 text-red-700 border border-red-200 dark:bg-red-955/20 dark:text-red-400 dark:border-red-900/30"
                             }`}>
                             <span className={`w-1.5 h-1.5 rounded-full ${user.status === "ACTIVE" ? "bg-emerald-500" : "bg-red-500"}`} />
-                            {user.status}
+                            {user.status === "ACTIVE" 
+                              ? (language === "en" ? "ACTIVE" : "HOẠT ĐỘNG") 
+                              : (language === "en" ? "BANNED" : "ĐÃ KHÓA")}
                           </span>
                         </td>
 
                         {/* Last Login timestamps */}
-                        <td className="py-3 px-4 text-center text-xs text-slate-500 dark:text-slate-400 font-semibold">
-                          {uLastLogin ? new Date(uLastLogin).toLocaleString() : "Never logged in"}
+                        <td className="py-3 px-4 text-center text-xs text-slate-550 dark:text-slate-400 font-semibold">
+                          {uLastLogin 
+                            ? new Date(uLastLogin).toLocaleString(language === "en" ? "en-US" : "vi-VN") 
+                            : (language === "en" ? "Never logged in" : "Chưa từng đăng nhập")}
                         </td>
 
                         {/* Action buttons */}
                         <td className="py-3 px-4 text-center">
                           <div className="flex justify-center items-center">
                             {user.role === "SystemAdmin" || uRoleId === 1 ? (
-                              <span className="text-slate-400 dark:text-slate-600 font-bold text-[10px] tracking-wider uppercase inline-flex items-center justify-center gap-1 select-none py-2 bg-slate-50 dark:bg-slate-800/40 px-2.5 rounded-lg border border-slate-100 dark:border-slate-800/80">
-                                <ShieldCheck size={13} className="text-purple-500" /> Locked
+                              <span className="text-slate-400 dark:text-slate-655 font-bold text-[10px] tracking-wider uppercase inline-flex items-center justify-center gap-1 select-none py-2 bg-slate-50 dark:bg-slate-800/40 px-2.5 rounded-lg border border-slate-100 dark:border-slate-800/80">
+                                <ShieldCheck size={13} className="text-purple-500" /> {language === "en" ? "Locked" : "Bảo vệ"}
                               </span>
                             ) : (
                               <div className="relative">
                                 <button
                                   onClick={() => setActiveDropdownUserId(activeDropdownUserId === uId ? null : uId)}
                                   className="p-2 text-slate-450 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all active:scale-95"
-                                  title="Actions"
+                                  title={language === "en" ? "Actions" : "Hành động"}
                                 >
                                   <MoreVertical size={16} />
                                 </button>
@@ -568,7 +686,7 @@ export default function AdminUsers() {
                                         className="w-full px-3.5 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-800/60 text-slate-700 dark:text-slate-300 flex items-center gap-2.5 transition-colors font-medium text-xs"
                                       >
                                         <Key size={14} className="text-blue-500 shrink-0" />
-                                        <span>Assign Role</span>
+                                        <span>{language === "en" ? "Assign Role" : "Gán vai trò"}</span>
                                       </button>
 
                                       {/* Action 2: Change Status */}
@@ -586,12 +704,12 @@ export default function AdminUsers() {
                                         {user.status === "BANNED" ? (
                                           <>
                                             <UserCheck size={14} className="text-emerald-500 shrink-0" />
-                                            <span>Activate User</span>
+                                            <span>{language === "en" ? "Activate User" : "Kích hoạt"}</span>
                                           </>
                                         ) : (
                                           <>
                                             <Ban size={14} className="text-amber-500 shrink-0" />
-                                            <span>Suspend User</span>
+                                            <span>{language === "en" ? "Suspend User" : "Khóa người dùng"}</span>
                                           </>
                                         )}
                                       </button>
@@ -605,10 +723,10 @@ export default function AdminUsers() {
                                           setUserToDelete(user);
                                           setIsDeleteModalOpen(true);
                                         }}
-                                        className="w-full px-3.5 py-2 text-left hover:bg-red-50 dark:hover:bg-red-950/20 text-red-600 dark:text-red-500 flex items-center gap-2.5 transition-colors font-semibold text-xs"
+                                        className="w-full px-3.5 py-2 text-left hover:bg-red-50 dark:hover:bg-red-955/20 text-red-600 dark:text-red-500 flex items-center gap-2.5 transition-colors font-semibold text-xs"
                                       >
                                         <Trash2 size={14} className="text-red-600 dark:text-red-500 shrink-0" />
-                                        <span>Delete Account</span>
+                                        <span>{language === "en" ? "Delete Account" : "Xóa tài khoản"}</span>
                                       </button>
                                     </div>
                                   </>
@@ -630,7 +748,7 @@ export default function AdminUsers() {
             <div className="flex flex-col sm:flex-row items-center gap-4">
               {/* Show X Entries Selector */}
               <div className="flex items-center gap-2">
-                <span>Show</span>
+                <span>{language === "en" ? "Show" : "Hiển thị"}</span>
                 <select
                   value={pageSize}
                   onChange={(e) => {
@@ -644,13 +762,14 @@ export default function AdminUsers() {
                   <option value={10}>10</option>
                   <option value={20}>20</option>
                 </select>
-                <span>entries</span>
+                <span>{language === "en" ? "entries" : "mục"}</span>
               </div>
               
               {/* Stats */}
               <span>
-                Showing {totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1} to{" "}
-                {Math.min(currentPage * pageSize, totalItems)} of {totalItems} entries
+                {language === "en" 
+                  ? `Showing ${totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1} to ${Math.min(currentPage * pageSize, totalItems)} of ${totalItems} entries`
+                  : `Hiển thị từ ${totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1} đến ${Math.min(currentPage * pageSize, totalItems)} trong tổng số ${totalItems} mục`}
               </span>
             </div>
 
@@ -662,7 +781,7 @@ export default function AdminUsers() {
                   onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
                   className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 disabled:hover:bg-transparent transition-all cursor-pointer font-bold select-none text-[10px] uppercase tracking-wider text-slate-700 dark:text-slate-350"
                 >
-                  Prev
+                  {language === "en" ? "Prev" : "Trước"}
                 </button>
 
                 {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
@@ -684,7 +803,7 @@ export default function AdminUsers() {
                   onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
                   className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 disabled:hover:bg-transparent transition-all cursor-pointer font-bold select-none text-[10px] uppercase tracking-wider text-slate-700 dark:text-slate-350"
                 >
-                  Next
+                  {language === "en" ? "Next" : "Sau"}
                 </button>
               </div>
             )}
@@ -696,7 +815,7 @@ export default function AdminUsers() {
       {isEditRoleOpen && selectedUser && createPortal(
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-sm" onClick={() => setIsEditRoleOpen(false)} />
-          <div className="relative w-full max-w-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-xl z-10 text-slate-700 dark:text-slate-300">
+          <div className="relative w-full max-w-sm max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-xl z-10 text-slate-700 dark:text-slate-300">
             <button
               onClick={() => setIsEditRoleOpen(false)}
               className="absolute top-4 right-4 text-slate-400 hover:text-slate-655"
@@ -705,34 +824,45 @@ export default function AdminUsers() {
             </button>
 
             <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-100 dark:border-slate-800">
-              <div className="p-2 bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 rounded-lg">
+              <div className="p-2 bg-blue-50 dark:bg-blue-955/30 text-blue-600 dark:text-blue-400 rounded-lg">
                 <ShieldCheck size={18} />
               </div>
               <h3 className="text-sm font-bold text-slate-850 dark:text-white uppercase tracking-wider">
-                Assign System Role
+                {language === "en" ? "Assign System Role" : "Gán Vai trò Hệ thống"}
               </h3>
             </div>
 
             <p className="text-xs text-slate-550 dark:text-slate-400 mb-4 leading-relaxed">
-              Modifying roles alters permission boundaries. User: <strong className="text-slate-800 dark:text-white">@{selectedUser.username}</strong>
+              {language === "en" 
+                ? "Modifying roles alters permission boundaries. User: " 
+                : "Thay đổi vai trò sẽ thay đổi quyền hạn tương ứng. Tài khoản: "} 
+              <strong className="text-slate-850 dark:text-white">@{selectedUser.username}</strong>
             </p>
 
             <form onSubmit={handleUpdateRoleSubmit} className="space-y-4">
               <div>
-                <label className="block text-slate-400 dark:text-slate-500 mb-1 uppercase text-[10px] font-bold tracking-wider">Select Role Grade</label>
+                <label className="block text-slate-400 dark:text-slate-500 mb-1 uppercase text-[10px] font-bold tracking-wider">
+                  {language === "en" ? "Select Role Grade" : "Chọn Cấp bậc Vai trò"}
+                </label>
                 <select
                   value={targetRoleId}
                   onChange={(e) => setTargetRoleId(e.target.value)}
                   className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-white focus:outline-none text-xs"
                 >
-                  <option value="2">Parking Manager (Facility Manager)</option>
-                  <option value="3">Parking Staff (Gate Attendant / Staff)</option>
-                  <option value="4">Parking User (Regular Customer Driver)</option>
+                  <option value="2">
+                    {language === "en" ? "Parking Manager (Facility Manager)" : "Quản lý Bãi xe (ParkingManager)"}
+                  </option>
+                  <option value="3">
+                    {language === "en" ? "Parking Staff (Gate Attendant / Staff)" : "Nhân viên Cổng (ParkingStaff)"}
+                  </option>
+                  <option value="4">
+                    {language === "en" ? "Parking User (Regular Customer Driver)" : "Khách gửi xe (ParkingUser)"}
+                  </option>
                 </select>
               </div>
 
               <button type="submit" className="w-full bg-blue-600 hover:bg-blue-500 text-xs uppercase tracking-wider py-2.5 rounded-xl font-bold mt-2 text-white transition-all hover:scale-[1.01] active:scale-95 shadow-sm">
-                Apply Role Change
+                {language === "en" ? "Apply Role Change" : "Áp dụng Thay đổi"}
               </button>
             </form>
           </div>
@@ -744,7 +874,7 @@ export default function AdminUsers() {
       {isAddModalOpen && createPortal(
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-sm" onClick={() => setIsAddModalOpen(false)} />
-          <div className="relative w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-xl z-10 text-slate-700 dark:text-slate-300">
+          <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-xl z-10 text-slate-700 dark:text-slate-300">
             <button
               onClick={() => setIsAddModalOpen(false)}
               className="absolute top-4 right-4 text-slate-400 hover:text-slate-655"
@@ -753,11 +883,11 @@ export default function AdminUsers() {
             </button>
 
             <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-100 dark:border-slate-800">
-              <div className="p-2 bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 rounded-lg">
+              <div className="p-2 bg-blue-50 dark:bg-blue-955/30 text-blue-600 dark:text-blue-400 rounded-lg">
                 <UserPlus size={18} />
               </div>
               <h3 className="text-sm font-bold text-slate-850 dark:text-white uppercase tracking-wider">
-                Create System Account
+                {language === "en" ? "Create System Account" : "Tạo Tài khoản Hệ thống"}
               </h3>
             </div>
 
@@ -775,7 +905,9 @@ export default function AdminUsers() {
             <form onSubmit={handleAddUserSubmit} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-slate-400 dark:text-slate-500 mb-1 uppercase text-[10px] font-bold tracking-wider">Username</label>
+                  <label className="block text-slate-400 dark:text-slate-500 mb-1 uppercase text-[10px] font-bold tracking-wider">
+                    {language === "en" ? "Username" : "Tên đăng nhập"}
+                  </label>
                   <input
                     type="text"
                     required
@@ -786,7 +918,9 @@ export default function AdminUsers() {
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-400 dark:text-slate-500 mb-1 uppercase text-[10px] font-bold tracking-wider">Full Name</label>
+                  <label className="block text-slate-400 dark:text-slate-500 mb-1 uppercase text-[10px] font-bold tracking-wider">
+                    {language === "en" ? "Full Name" : "Họ và Tên"}
+                  </label>
                   <input
                     type="text"
                     required
@@ -799,7 +933,9 @@ export default function AdminUsers() {
               </div>
 
               <div>
-                <label className="block text-slate-400 dark:text-slate-500 mb-1 uppercase text-[10px] font-bold tracking-wider">Email Address</label>
+                <label className="block text-slate-400 dark:text-slate-500 mb-1 uppercase text-[10px] font-bold tracking-wider">
+                  {language === "en" ? "Email Address" : "Địa chỉ Email"}
+                </label>
                 <input
                   type="email"
                   required
@@ -811,7 +947,9 @@ export default function AdminUsers() {
               </div>
 
               <div>
-                <label className="block text-slate-400 dark:text-slate-500 mb-1 uppercase text-[10px] font-bold tracking-wider">Phone Number</label>
+                <label className="block text-slate-400 dark:text-slate-500 mb-1 uppercase text-[10px] font-bold tracking-wider">
+                  {language === "en" ? "Phone Number" : "Số điện thoại"}
+                </label>
                 <input
                   type="text"
                   required
@@ -824,7 +962,9 @@ export default function AdminUsers() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-slate-400 dark:text-slate-500 mb-1 uppercase text-[10px] font-bold tracking-wider">Temporary Password</label>
+                  <label className="block text-slate-400 dark:text-slate-500 mb-1 uppercase text-[10px] font-bold tracking-wider">
+                    {language === "en" ? "Temporary Password" : "Mật khẩu Tạm thời"}
+                  </label>
                   <input
                     type="password"
                     required
@@ -835,20 +975,26 @@ export default function AdminUsers() {
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-400 dark:text-slate-500 mb-1 uppercase text-[10px] font-bold tracking-wider">System Role</label>
+                  <label className="block text-slate-400 dark:text-slate-500 mb-1 uppercase text-[10px] font-bold tracking-wider">
+                    {language === "en" ? "System Role" : "Vai trò Hệ thống"}
+                  </label>
                   <select
                     value={newRole}
                     onChange={(e) => setNewRole(e.target.value)}
                     className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/10 text-xs"
                   >
-                    <option value="ParkingStaff">ParkingStaff (Staff)</option>
-                    <option value="ParkingManager">ParkingManager (Manager)</option>
+                    <option value="ParkingStaff">
+                      {language === "en" ? "ParkingStaff (Staff)" : "ParkingStaff (Nhân viên)"}
+                    </option>
+                    <option value="ParkingManager">
+                      {language === "en" ? "ParkingManager (Manager)" : "ParkingManager (Quản lý)"}
+                    </option>
                   </select>
                 </div>
               </div>
 
               <button type="submit" className="w-full bg-blue-600 hover:bg-blue-500 text-xs font-bold uppercase tracking-wider py-3 rounded-xl text-white shadow-md transition-all hover:scale-[1.01] active:scale-95 mt-4">
-                Register Account
+                {language === "en" ? "Register Account" : "Đăng ký Tài khoản"}
               </button>
             </form>
           </div>
@@ -886,10 +1032,10 @@ export default function AdminUsers() {
               </div>
               <div>
                 <h3 className="text-sm font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">
-                  Permanently Delete User
+                  {language === "en" ? "Permanently Delete User" : "Xóa Tài khoản Vĩnh viễn"}
                 </h3>
                 <p className="text-[10px] text-red-500 dark:text-red-400 font-bold uppercase tracking-wider mt-0.5">
-                  Critical Security Action
+                  {language === "en" ? "Critical Security Action" : "Hành động Bảo mật Nghiêm trọng"}
                 </p>
               </div>
             </div>
@@ -897,14 +1043,18 @@ export default function AdminUsers() {
             <div className="space-y-4">
               <div className="bg-red-50/50 dark:bg-red-955/10 border border-red-100 dark:border-red-900/40 p-3.5 rounded-xl">
                 <p className="text-xs text-red-700 dark:text-red-400 leading-relaxed font-semibold">
-                  Warning: You are about to permanently delete the user account for{" "}
+                  {language === "en" 
+                    ? "Warning: You are about to permanently delete the user account for " 
+                    : "Cảnh báo: Bạn sắp sửa xóa vĩnh viễn tài khoản người dùng cho "} 
                   <span className="font-mono text-slate-900 dark:text-white bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-red-200 dark:border-red-900">
                     @{userToDelete.username}
                   </span>{" "}
-                  ({userToDelete.fullName || userToDelete.full_name || "Unconfigured Name"}).
+                  ({userToDelete.fullName || userToDelete.full_name || (language === "en" ? "Unconfigured Name" : "Tên chưa thiết lập")}).
                 </p>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2">
-                  This action will delete user credentials and profile records. If this user has active system dependencies (like bookings or transactions), the database will reject the deletion to preserve audit history.
+                  {language === "en"
+                    ? "This action will delete user credentials and profile records. If this user has active system dependencies (like bookings or transactions), the database will reject the deletion to preserve audit history."
+                    : "Hành động này sẽ xóa vĩnh viễn thông tin đăng nhập và hồ sơ người dùng. Nếu người dùng này có các ràng buộc hệ thống đang hoạt động (như đặt chỗ hoặc giao dịch), cơ sở dữ liệu sẽ từ chối xóa để bảo toàn lịch sử đối soát hệ thống."}
                 </p>
               </div>
 
@@ -918,7 +1068,7 @@ export default function AdminUsers() {
                   }}
                   className="flex-1 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-xl transition-all active:scale-95 disabled:opacity-50"
                 >
-                  Cancel
+                  {language === "en" ? "Cancel" : "Hủy bỏ"}
                 </button>
                 <button
                   type="button"
@@ -929,12 +1079,12 @@ export default function AdminUsers() {
                   {deleting ? (
                     <>
                       <Loader2 size={14} className="animate-spin" />
-                      Deleting...
+                      {language === "en" ? "Deleting..." : "Đang xóa..."}
                     </>
                   ) : (
                     <>
                       <Trash2 size={14} />
-                      Confirm Delete
+                      {language === "en" ? "Confirm Delete" : "Xác nhận Xóa"}
                     </>
                   )}
                 </button>

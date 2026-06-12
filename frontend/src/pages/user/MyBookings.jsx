@@ -49,6 +49,7 @@ export default function MyBookings() {
     startTime: "",
     endTime: "",
   });
+  const [adjustError, setAdjustError] = useState("");
   const [newPrice, setNewPrice] = useState(0);
 
   // Load dashboard, active and history bookings
@@ -130,14 +131,26 @@ export default function MyBookings() {
     if (
       activeModal === "adjust" &&
       adjustTimeData.startTime &&
+      adjustTimeData.endTime &&
       selectedBooking
     ) {
       const start = new Date(adjustTimeData.startTime).getTime();
+      const end = new Date(adjustTimeData.endTime).getTime();
       const now = new Date().getTime();
 
+      let error = "";
+      if (start < now - 10 * 60 * 1000) {
+        error = "Entry time cannot be in the past.";
+      } else if (end <= start) {
+        error = "Exit time must be after entry time.";
+      } else if (end - start < 30 * 60 * 1000) {
+        error = "Booking duration must be at least 30 minutes.";
+      }
+      setAdjustError(error);
+
       let estimatedFee = 15000; // Base price is 15,000 VND
-      if (now > start) {
-        const durationMs = now - start;
+      if (!error) {
+        const durationMs = end - start;
         const billedHours = Math.ceil(durationMs / (1000 * 60 * 60));
         if (billedHours > 1) {
           estimatedFee += (billedHours - 1) * 2000;
@@ -145,7 +158,7 @@ export default function MyBookings() {
       }
       setNewPrice(estimatedFee);
     }
-  }, [adjustTimeData.startTime, activeModal, selectedBooking]);
+  }, [adjustTimeData.startTime, adjustTimeData.endTime, activeModal, selectedBooking]);
 
   const filteredBookingHistory = useMemo(() => {
     return bookingHistory.filter((item) => {
@@ -167,6 +180,7 @@ export default function MyBookings() {
       // format datetime local
       const pad = (n) => n.toString().padStart(2, '0');
       const toLocalISO = (dString) => {
+        if (!dString) return "";
         const d = new Date(dString);
         return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
       };
@@ -174,6 +188,7 @@ export default function MyBookings() {
         startTime: toLocalISO(booking.startTime),
         endTime: toLocalISO(booking.endTime),
       });
+      setAdjustError("");
       setNewPrice(booking.totalPrice);
     }
   };
@@ -199,8 +214,8 @@ export default function MyBookings() {
   const handleConfirmAdjust = async () => {
     try {
       const payload = {
-        expectedArrival: new Date(adjustTimeData.startTime).toISOString(),
-        expiredAt: null,
+        expected_arrival: new Date(adjustTimeData.startTime).toISOString(),
+        expired_at: new Date(adjustTimeData.endTime).toISOString(),
       };
       const response = await api.put(`/bookings/${selectedBooking.id}/adjust`, payload);
       if (response.data && response.data.success) {
@@ -215,20 +230,19 @@ export default function MyBookings() {
 
   const handleConfirmPay = async () => {
     try {
-      setBookings(
-        bookings.map((b) =>
-          b.id === selectedBooking.id
-            ? { ...b, status: "completed", remainingBalance: 0 }
-            : b
-        )
-      );
-      closeModal();
+      const response = await api.put(`/bookings/${selectedBooking.id}/pay`);
+      if (response.data && response.data.success) {
+        await loadBookingDashboard();
+        closeModal();
+      }
     } catch (error) {
       console.error("Lỗi xử lý thanh toán:", error);
+      alert(error.response?.data?.message || "Failed to complete payment.");
     }
   };
 
   const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
     const options = {
       weekday: "short",
       month: "short",
@@ -654,22 +668,45 @@ export default function MyBookings() {
                   </button>
                 </div>
                 <div className="space-y-4 mb-5">
-                  <div>
-                    <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">
-                      New Entry Time:
-                    </label>
-                    <input
-                      type="datetime-local"
-                      value={adjustTimeData.startTime}
-                      onChange={(e) =>
-                        setAdjustTimeData({
-                          ...adjustTimeData,
-                          startTime: e.target.value,
-                        })
-                      }
-                      className="w-full bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40"
-                    />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">
+                        New Entry Time:
+                      </label>
+                      <input
+                        type="datetime-local"
+                        value={adjustTimeData.startTime}
+                        onChange={(e) =>
+                          setAdjustTimeData({
+                            ...adjustTimeData,
+                            startTime: e.target.value,
+                          })
+                        }
+                        className="w-full bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">
+                        New Exit Time:
+                      </label>
+                      <input
+                        type="datetime-local"
+                        value={adjustTimeData.endTime}
+                        onChange={(e) =>
+                          setAdjustTimeData({
+                            ...adjustTimeData,
+                            endTime: e.target.value,
+                          })
+                        }
+                        className="w-full bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                      />
+                    </div>
                   </div>
+                  {adjustError && (
+                    <p className="text-[10px] text-red-500 font-semibold mt-1.5">
+                      ⚠️ {adjustError}
+                    </p>
+                  )}
                 </div>
 
                 <div className="bg-blue-50 dark:bg-blue-950/20 rounded-2xl p-3.5 mb-6 border border-blue-100 dark:border-blue-900/30 text-xs font-medium space-y-1.5 text-slate-600 dark:text-slate-400">
@@ -701,7 +738,7 @@ export default function MyBookings() {
                   </div>
                 </div>
                 <button
-                  disabled={newPrice <= 0}
+                  disabled={newPrice <= 0 || !!adjustError}
                   onClick={handleConfirmAdjust}
                   className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold py-3 rounded-xl shadow-md transition-transform active:scale-95 text-sm"
                 >

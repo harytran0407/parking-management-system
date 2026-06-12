@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
+import { LanguageProvider } from "./context/LanguageContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { toast, Toaster } from "sonner";
 import LandingPage from "./pages/LandingPage";
@@ -31,58 +32,59 @@ function App() {
         }}
       />
       <GlobalHttpListener />
-      <AuthProvider>
-        <Routes>
-          {/* ============================================================
-              PUBLIC ROUTES (Tuyến đường công khai)
-             ============================================================ */}
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+      <LanguageProvider>
+        <AuthProvider>
+          <Routes>
+            {/* ============================================================
+                PUBLIC ROUTES (Tuyến đường công khai)
+               ============================================================ */}
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/forbidden" element={<Forbidden />} />
 
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/forbidden" element={<Forbidden />} />
+            {/* ============================================================
+                PROTECTED ROUTES 
+               ============================================================ */}
+            <Route
+              path="/manager/*"
+              element={
+                <ProtectedRoute allowedRoles={["ParkingManager"]}>
+                  <ManagerLayout />
+                </ProtectedRoute>
+              }
+            />
 
-          {/* ============================================================
-              PROTECTED ROUTES 
-             ============================================================ */}
-          <Route
-            path="/manager/*"
-            element={
-              <ProtectedRoute allowedRoles={["ParkingManager"]}>
-                <ManagerLayout />
-              </ProtectedRoute>
-            }
-          />
+            <Route
+              path="/staff/*"
+              element={
+                <ProtectedRoute allowedRoles={["ParkingStaff"]}>
+                  <StaffLayout />
+                </ProtectedRoute>
+              }
+            />
 
-          <Route
-            path="/staff/*"
-            element={
-              <ProtectedRoute allowedRoles={["ParkingStaff"]}>
-                <StaffLayout />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/user/*"
-            element={
-              <ProtectedRoute allowedRoles={["ParkingUser"]}>
-                <UserLayout />
-              </ProtectedRoute>
-            }
-          />
-          
-          <Route
-            path="/admin/*"
-            element={
-              <ProtectedRoute allowedRoles={["SystemAdmin"]}>
-                <AdminLayout />
-              </ProtectedRoute>
-            }
-          />
-        </Routes>
-      </AuthProvider>
+            <Route
+              path="/user/*"
+              element={
+                <ProtectedRoute allowedRoles={["ParkingUser"]}>
+                  <UserLayout />
+                </ProtectedRoute>
+              }
+            />
+            
+            <Route
+              path="/admin/*"
+              element={
+                <ProtectedRoute allowedRoles={["SystemAdmin"]}>
+                  <AdminLayout />
+                </ProtectedRoute>
+              }
+            />
+          </Routes>
+        </AuthProvider>
+      </LanguageProvider>
     </Router>
   );
 }
