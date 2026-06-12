@@ -49,6 +49,10 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<SlotStatusLog> SlotStatusLogs { get; set; }
 
+    public virtual DbSet<SystemSetting> SystemSettings { get; set; }
+
+    public virtual DbSet<SystemLog> SystemLogs { get; set; }
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
 
@@ -455,7 +459,7 @@ public partial class AppDbContext : DbContext
                 .HasPrecision(10, 2)
                 .HasColumnName("AMOUNT_PAID");
             entity.Property(e => e.BookingId).HasColumnName("BOOKING_ID");
-            entity.Property(e => e.CardId).HasColumnName("MONTHLY_PASS_ID");
+            entity.Property(e => e.MonthlyPassId).HasColumnName("MONTHLY_PASS_ID");
             entity.Property(e => e.ChangeDue)
                 .HasPrecision(10, 2)
                 .HasDefaultValueSql("'0.00'")
@@ -695,13 +699,8 @@ public partial class AppDbContext : DbContext
 
         modelBuilder.Entity<SlotStatusLog>(entity =>
         {
-            // Map với bảng tên viết hoa và có gạch dưới
             entity.ToTable("SLOT_STATUS_LOGS");
-
-            // Chỉ định khóa chính
             entity.HasKey(e => e.LogId);
-
-            // Map các thuộc tính của Class sang tên cột Snake Case
             entity.Property(e => e.LogId).HasColumnName("log_id").HasMaxLength(50);
             entity.Property(e => e.SlotId).HasColumnName("slot_id").HasMaxLength(50);
             entity.Property(e => e.OldStatus).HasColumnName("old_status").HasMaxLength(20);
@@ -714,14 +713,9 @@ public partial class AppDbContext : DbContext
 
         modelBuilder.Entity<RoleAuditLog>(entity =>
         {
-            // 1. Chỉ định đúng tên bảng
             entity.ToTable("ROLE_AUDIT_LOG");
-
-            // 2. Chỉ định khóa chính và tên cột của nó
             entity.HasKey(e => e.RoleLogId);
             entity.Property(e => e.RoleLogId).HasColumnName("ROLE_LOG_ID");
-
-            // 3. MAP TÊN CỘT CHUẨN XÁC VỚI MYSQL
             entity.Property(e => e.AdminId)
                 .HasColumnName("ADMIN_ID")
                 .HasMaxLength(36);
@@ -741,7 +735,6 @@ public partial class AppDbContext : DbContext
                 .HasColumnType("datetime")
                 .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
-            // 4. Cấu hình Khóa ngoại
             entity.HasOne(d => d.Admin)
                 .WithMany()
                 .HasForeignKey(d => d.AdminId)
@@ -751,6 +744,57 @@ public partial class AppDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(d => d.TargetUserId)
                 .HasConstraintName("FK_AUDIT_TARGET");
+        });
+
+        modelBuilder.Entity<SystemSetting>(entity =>
+        {
+            entity.ToTable("SYSTEM_SETTING");
+            entity.HasKey(e => e.SettingId);
+
+            entity.Property(e => e.SettingId).HasColumnName("SETTING_ID");
+
+            entity.Property(e => e.SettingKey)
+                .HasColumnName("SETTING_KEY")
+                .IsRequired()
+                .HasMaxLength(100);
+
+            entity.HasIndex(e => e.SettingKey).IsUnique(); 
+
+            entity.Property(e => e.SettingValue)
+                .HasColumnName("SETTING_VALUE")
+                .IsRequired();
+            entity.Property(e => e.Description)
+                .HasColumnName("DESCRIPTION")
+                .HasMaxLength(255);
+
+            entity.Property(e => e.UpdatedAt)
+                .HasColumnName("UPDATE_AT") 
+                .HasColumnType("datetime")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP");
+        });
+
+        modelBuilder.Entity<SystemLog>(entity =>
+        {
+            entity.ToTable("SYSTEM_LOGS");
+            entity.HasKey(e => e.LogId);
+            entity.Property(e => e.LogId).HasColumnName("LOG_ID");
+            entity.Property(e => e.LogLevel)
+                .HasColumnName("LOG_LEVEL")
+                .IsRequired()
+                .HasMaxLength(50);
+
+            entity.Property(e => e.Message)
+                .HasColumnName("MESSAGE")
+                .IsRequired();
+
+            entity.Property(e => e.Source)
+                .HasColumnName("SOURCE")
+                .HasMaxLength(150);
+
+            entity.Property(e => e.CreatedAt)
+                .HasColumnName("CREATE_AT") 
+                .HasColumnType("datetime")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP");
         });
 
         var dateTimeConverter = new Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<DateTime, DateTime>(

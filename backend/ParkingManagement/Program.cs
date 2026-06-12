@@ -121,6 +121,7 @@ builder.Services.AddScoped<IBookingService, BookingService>();
 
 builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
+builder.Services.AddScoped<ISystemConfigService, SystemConfigService>();
 
 var app = builder.Build();
 
