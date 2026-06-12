@@ -5,6 +5,7 @@ using ParkingManagement.Data;
 using ParkingManagement.DTOs.Admin;
 using ParkingManagement.Models;
 using System.Security.Claims;
+using ParkingManagement.Services;
 namespace ParkingManagement.Controllers
 {
     [Route("api/v1/admin")]
@@ -13,10 +14,12 @@ namespace ParkingManagement.Controllers
     public class AdminController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly ISystemConfigService _configService;
 
-        public AdminController(AppDbContext context)
+        public AdminController(AppDbContext context, ISystemConfigService configService)
         {
             _context = context;
+            _configService = configService;
         }
 
         // ==========================================
@@ -288,6 +291,72 @@ namespace ParkingManagement.Controllers
             {
                 success = true,
                 data = users
+            });
+        }
+
+        // ==========================================
+        // 6. SYSTEM CONFIGURATION: XEM THÔNG SỐ CỦA CẤU HÌNH
+        // ==========================================
+        [HttpGet("settings")]
+        public async Task<IActionResult> GetSystemSettings()
+        {
+            var settings = await _configService.GetAllSettingsAsync();
+            return Ok(new
+            {
+                success = true,
+                data = settings
+            });
+        }
+
+        // ==========================================
+        // 7. SYSTEM CONFIGURATION: CẬP NHẬT THÔNG SỐ CỦA CẤU HÌNH
+        // ==========================================
+        [HttpPut("settings/{key}")]
+        public async Task<IActionResult> UpdateSystemSetting([FromRoute] string key, [FromBody] UpdateSystemSettingDto request)
+        {
+            if (string.IsNullOrWhiteSpace(request.SettingValue))
+            {
+                return BadRequest(new { success = false, message = "Setting value cannot be empty." });
+            }
+
+            var isUpdated = await _configService.UpdateSettingAsync(key, request);
+            if (!isUpdated)
+            {
+                return NotFound(new { success = false, message = "Setting key not found." });
+            }
+
+            return Ok(new
+            {
+                success = true,
+                message = "System setting updated successfully."
+            });
+        }
+
+        // ==========================================
+        // 8. SYSTEM LOGS: XEM VÀ LỌC LỊCH SỬ HỆ THỐNG
+        // ==========================================
+        [HttpGet("logs")]
+        public async Task<IActionResult> GetSystemLogs(
+            [FromQuery] string? level = null,
+            [FromQuery] int page = 1,
+            [FromQuery] int page_size = 20)
+        {
+            var (logs, totalItems, totalPages) = await _configService.GetSystemLogsAsync(level, page, page_size);
+
+            return Ok(new
+            {
+                success = true,
+                data = new
+                {
+                    items = logs,
+                    pagination = new
+                    {
+                        page = page,
+                        page_size = page_size,
+                        total_items = totalItems,
+                        total_pages = totalPages
+                    }
+                }
             });
         }
     }
