@@ -40,7 +40,6 @@ namespace ParkingManagement.Services
 
             await _paymentRepository.CreatePaymentAsync(payment);
 
-            
             long vnpAmount = (long)(realAmount * 100);
             string paymentUrl = $"https://payment.vnpay.vn/v2/vpcpay.html?vnp_TxnRef={paymentId}&vnp_Amount={vnpAmount}";
 

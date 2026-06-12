@@ -61,7 +61,7 @@ export default function CheckInPage() {
         if (!webcamRef.current || isLoading) return;
 
         setIsLoading(true);
-        toast.dismiss(); 
+        toast.dismiss();
         setScanResult(null);
 
         const imageSrc = webcamRef.current.getScreenshot();
@@ -90,7 +90,7 @@ export default function CheckInPage() {
             const isDuplicate = await checkIsPlateDuplicate(aiPlate);
             if (isDuplicate) {
                 setScanResult(null);
-                toast.error(`Xe hiện đang ở trong bãi, vui lòng kiểm tra lại biển số.`);
+                toast.error(`This vehicle is currently parked. Please verify the license plate number and try again.`);
                 setIsLoading(false);
                 return;
             }
@@ -102,7 +102,6 @@ export default function CheckInPage() {
                 camera_in: camIn,
                 gate_in: gateIn,
                 image_url_in: `/uploads/plates/client_captured_${new Date().getTime()}.jpg`,
-                // staff_in_id LẤY TỪ JWT TOKEN — không cần gửi từ frontend
                 slot_id: null,
                 booking_id: null
             };
@@ -117,6 +116,7 @@ export default function CheckInPage() {
                     type: "EntryConfirmed",
                     plate: sessionData.license_plate_in || aiPlate,
                     sessionId: sessionData.session_id,
+                    ticketCode: sessionData.ticket_code || "N/A",
                     slot: sessionData.slot_name || "N/A",
                     floor: sessionData.floor !== undefined ? `Floor ${sessionData.floor}` : "N/A",
                     zone: sessionData.zone || "Unassigned Zone",
@@ -134,19 +134,16 @@ export default function CheckInPage() {
         }
     }, [selectedVehicleType, isLoading]);
 
-    /**
-     * WORKFLOW ACTION SUBMITTERS FOR MANUAL LOGIC
-     */
+
     const handleManualCheckInSubmit = async () => {
         if (!plateNumber || isLoading) return;
 
         setIsLoading(true);
         toast.dismiss(); // Xóa tất cả toast cũ
 
-        // KIỂM TRA TRÙNG BIỂN SỐ TRƯỚC KHI MANUAL CHECK-IN
         const isDuplicate = await checkIsPlateDuplicate(plateNumber);
         if (isDuplicate) {
-            toast.error(`Xe hiện đang ở trong bãi, vui lòng kiểm tra lại biển số.`);
+            toast.error(`Duplicate License Plate: The vehicle with license plate [${formattedPlate}] is already parked in the parking lot.`);
             setIsLoading(false);
             return;
         }
@@ -160,7 +157,6 @@ export default function CheckInPage() {
                 camera_in: camIn,
                 gate_in: gateIn,
                 image_url_in: "/uploads/plates/manual_entry.jpg",
-                // staff_in_id LẤY TỪ JWT TOKEN — không cần gửi từ frontend
                 slot_id: null,
                 booking_id: null
             };
@@ -172,6 +168,7 @@ export default function CheckInPage() {
                 setScanResult({
                     type: "EntryConfirmed",
                     plate: data.license_plate_in,
+                    ticketCode: data.ticket_code || "N/A",
                     slot: data.slot_name || "N/A",
                     floor: data.floor !== undefined ? `Floor ${data.floor}` : "N/A",
                     zone: data.zone || "Unassigned Zone",
@@ -198,7 +195,7 @@ export default function CheckInPage() {
             const isDuplicate = await checkIsPlateDuplicate(formattedPlate);
             if (isDuplicate) {
                 setScanResult(null);
-                toast.error(`Trùng biển số: Xe với biển số [${formattedPlate}] hiện đang ở trong bãi xe.`);
+                toast.error(`Duplicate License Plate: The vehicle with license plate [${formattedPlate}] is already parked in the parking lot.`);
                 setIsLoading(false);
                 return;
             }
@@ -280,7 +277,7 @@ export default function CheckInPage() {
                     </div>
 
                     {/* LIVE CAMERA CONTAINER */}
-                    <div className="relative bg-slate-950 border border-slate-200 dark:border-slate-800 flex-1 min-h-[220px] sm:min-h-[300px] lg:min-h-0 flex items-center justify-center overflow-hidden rounded-lg transition-colors duration-200">
+                    <div className="relative bg-slate-950 border border-slate-200 dark:border-slate-800 flex-1 min-h-[220px] sm:min-h-[300px] lg:min-h-0 flex items-center justify-center overflow-hidden transition-colors duration-200">
                         {isStreamConnected ? (
                             <Webcam
                                 audio={false}
@@ -393,6 +390,7 @@ export default function CheckInPage() {
 
                                             {/* BANNER SLOT ĐƯỢC CHUYỂN ĐỔI THEO ĐÚNG KHỐI BANNER TÍNH TIỀN CỦA CHECK-OUT */}
                                             <div className="relative overflow-hidden rounded-lg bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-950 dark:to-slate-900 border border-slate-800 p-4 text-white shadow-md dark:shadow-inner">
+                                                
                                                 <div className="space-y-1 text-center">
                                                     <div className="text-[10px] font-bold uppercase tracking-wider text-slate-300 dark:text-slate-500">Assigned Slot</div>
                                                     <div className="font-mono text-yellow-400 text-3xl xl:text-4xl font-black tracking-wider drop-shadow-[0_2px_8px_rgba(234,179,8,0.2)]">
@@ -410,6 +408,18 @@ export default function CheckInPage() {
                                                         <span className="text-white dark:text-slate-200 px-1.5 py-0.5 rounded text-[11px] font-mono font-bold ml-1">
                                                             {scanResult.zone}
                                                         </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="relative overflow-hidden rounded-lg bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-950 dark:to-slate-900 border border-slate-800 p-4 text-white shadow-md dark:shadow-inner">
+                                                <div className="flex items-center justify-between w-full">
+                                                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-300 dark:text-slate-500">
+                                                        Ticket Code:
+                                                    </div>
+
+                                                    <div className="font-mono text-yellow-400 text-md xl:text-md font-black tracking-wider drop-shadow-[0_2px_8px_rgba(234,179,8,0.2)]">
+                                                        {scanResult.ticketCode}
                                                     </div>
                                                 </div>
                                             </div>

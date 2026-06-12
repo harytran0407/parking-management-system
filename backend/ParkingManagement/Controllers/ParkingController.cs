@@ -45,6 +45,7 @@ namespace ParkingManagement.Controllers
             string? staffId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
                            ?? User.FindFirst("sub")?.Value;
 
+
             if (string.IsNullOrEmpty(staffId))
             {
                 return StatusCode(StatusCodes.Status401Unauthorized, new
@@ -104,7 +105,7 @@ namespace ParkingManagement.Controllers
                 return BadRequest(new { success = false, error_code = "INVALID_TICKET", message = "Invalid data submitted." });
             }
 
-            string? staffId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+            string? staffId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
                            ?? User.FindFirst("sub")?.Value;
 
             if (string.IsNullOrEmpty(staffId))
@@ -187,6 +188,51 @@ namespace ParkingManagement.Controllers
                     success = false,
                     error_code = "DATABASE_UPDATE_FAILED",
                     message = "Lỗi kết nối cơ sở dữ liệu, hành động chưa được ghi nhận.",
+                    details = ex.Message
+                });
+            }
+        }
+
+        /// <summary>
+        /// Get Active Session by Ticket Code 
+        /// </summary>
+        [HttpGet("tickets/{ticket_code}/active")]
+        [Authorize(Roles = "ParkingStaff,ParkingManager")]
+        [ProducesResponseType(typeof(ActiveSessionResponseDto), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetActiveSessionByTicketCode([FromRoute(Name = "ticket_code")] string ticketCode)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(ticketCode))
+                {
+                    return BadRequest(new
+                    {
+                        success = false,
+                        error_code = "INVALID_TICKET",
+                        message = "Mã vé không được để trống."
+                    });
+                }
+
+                var response = await _parkingService.GetActiveSessionByTicketCodeAsync(ticketCode);
+
+                return Ok(response);
+            }
+            catch (InvalidOperationException ex) when (ex.Message == "INVALID_TICKET")
+            {
+                return NotFound(new
+                {
+                    success = false,
+                    error_code = "INVALID_TICKET",
+                    message = "Không tìm thấy thông tin lượt gửi xe nào khớp với mã vé này hoặc vé đã được thanh toán."
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new
+                {
+                    success = false,
+                    error_code = "DATABASE_QUERY_FAILED",
+                    message = "Lỗi hệ thống khi tra cứu mã vé.",
                     details = ex.Message
                 });
             }

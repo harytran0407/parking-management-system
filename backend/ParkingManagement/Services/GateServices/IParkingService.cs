@@ -23,6 +23,8 @@ namespace ParkingManagement.Services
         /// </summary>
         Task<ActiveSessionResponseDto> GetActiveSessionByLicensePlateAsync(string licensePlate);
 
+        Task<ActiveSessionResponseDto> GetActiveSessionByTicketCodeAsync(string ticketCode);
+
         Task<ActiveSessionResponseDto> GetActiveSessionBySlotNameAsync(string slotName);
 
         /// <summary>

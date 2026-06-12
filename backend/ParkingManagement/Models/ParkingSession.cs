@@ -47,6 +47,8 @@ public partial class ParkingSession
 
     public string? BookingId { get; set; }
 
+    public string? TicketCode { get; set; }
+
     public virtual Booking? Booking { get; set; }
 
     public virtual ICollection<IncidentLog> IncidentLogs { get; set; } = new List<IncidentLog>();
@@ -62,4 +64,6 @@ public partial class ParkingSession
     public virtual Vehicle? Vehicle { get; set; }
 
     public virtual VehicleType VehicleType { get; set; } = null!;
+
+
 }
