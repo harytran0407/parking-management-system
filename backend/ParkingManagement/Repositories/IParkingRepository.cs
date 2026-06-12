@@ -22,6 +22,16 @@ namespace ParkingManagement.Repositories
         Task<ParkingSlot?> FindFirstAvailableSlotAsync(int vehicleTypeId);
 
         /// <summary>
+        /// Retrieves an active booking for a vehicle by license plate and vehicle type, or by booking ID.
+        /// </summary>
+        Task<Booking?> GetActiveBookingAsync(string licensePlate, int vehicleTypeId, string? bookingId = null);
+
+        /// <summary>
+        /// Retrieves a booking with its payments.
+        /// </summary>
+        Task<Booking?> GetBookingWithPaymentsAsync(string bookingId);
+
+        /// <summary>
         /// Thêm mới một bản ghi phiên gửi xe (ParkingSession) vào cơ sở dữ liệu khi phương tiện vào bãi (Check-in).
         /// </summary>
         Task CreateSessionAsync(ParkingSession session);
