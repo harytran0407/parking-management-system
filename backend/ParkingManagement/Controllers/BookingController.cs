@@ -151,4 +151,17 @@ public class BookingController : ControllerBase
         var data = await _service.AdjustBookingAsync(bookingId, userId, request);
         return Ok(new { success = true, message = "Booking schedule adjusted successfully.", data });
     }
+
+    // PUT: api/v1/bookings/{bookingId}/pay
+    [HttpPut("{bookingId}/pay")]
+    [Authorize]
+    [ProducesResponseType(typeof(BookingResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> PayBooking(string bookingId)
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? throw new UnauthorizedAccessException("Invalid token");
+
+        var data = await _service.PayBookingAsync(bookingId, userId);
+        return Ok(new { success = true, message = "Booking paid successfully.", data });
+    }
 }
