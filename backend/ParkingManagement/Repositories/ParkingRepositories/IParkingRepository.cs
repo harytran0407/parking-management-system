@@ -54,8 +54,6 @@ namespace ParkingManagement.Repositories
         /// <summary>
         /// Tìm kiếm phiên gửi xe đang hoạt động (ACTIVE) trong bãi dựa trên mã vé xe/mã gửi xe (TicketCode).
         /// </summary>
-        /// <param name="ticketCode">Mã định danh của vé xe hoặc UID thẻ từ.</param>
-        /// <returns>Trả về thực thể ParkingSession nếu tìm thấy, ngược lại trả về null.</returns>
         Task<ParkingSession?> GetActiveSessionByTicketCodeAsync(string ticketCode);
 
         /// <summary>
@@ -93,11 +91,38 @@ namespace ParkingManagement.Repositories
         /// </summary>
         Task<(List<ParkingSlot> Slots, int TotalCount, Dictionary<string, int> StatusCounts)> GetPagedSlotsWithStatusAsync(SlotQueryFilterDto filter);
 
+        /// <summary>
+        /// Lấy thông tin cấu hình khung giờ hoạt động bãi xe áp dụng cho ngày chỉ định.
+        /// </summary>
         Task<string> GetOperatingHoursForDayAsync(DateTime referenceTime);
 
         /// <summary>
         /// Lấy lịch sử gửi xe của một phương tiện dựa trên biển số xe, khoảng thời gian và loại phương tiện, đồng thời hỗ trợ phân trang kết quả trả về.
         /// </summary>
         Task<(List<ParkingSession> Items, int TotalCount)> GetParkingHistoryAsync(string? licensePlate, DateTime? fromDate, DateTime? toDate, string? vehicleType, string? status, int page, int pageSize);
+
+        // ==========================================
+        // Booking Services 
+        // ==========================================
+
+        /// <summary>
+        /// Tìm kiếm đơn đặt chỗ (Booking) hợp lệ đang hoạt động dựa trên biển số xe và thời gian hiện tại.
+        /// </summary>
+        Task<Booking?> GetValidBookingByLicensePlateAsync(string licensePlate, DateTime currentTime);
+
+        /// <summary>
+        /// Kiểm tra xem biển số xe này hiện tại có đơn đặt chỗ (Booking) nào đang hoạt động hay không.
+        /// </summary>
+        Task<bool> HasActiveBookingByLicensePlateAsync(string licensePlate, DateTime currentTime);
+
+        /// <summary>
+        /// Cập nhật trạng thái mới cho một đơn đặt chỗ (Booking) cụ thể trong cơ sở dữ liệu.
+        /// </summary>
+        Task UpdateBookingStatusAsync(string bookingId, string status);
+
+        /// <summary>
+        /// Tìm kiếm phiên gửi xe đang hoạt động (ACTIVE) liên kết với mã đơn đặt chỗ (BookingId).
+        /// </summary>
+        Task<ParkingSession?> GetActiveSessionByBookingIdAsync(string bookingId);
     }
 }

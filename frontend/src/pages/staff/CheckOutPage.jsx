@@ -14,9 +14,9 @@ const PYTHON_STREAM_URL = import.meta.env.VITE_PYTHON_STREAM_URL;
 export default function CheckOutPage() {
     const webcamRef = useRef(null);
     const [capturedImage, setCapturedImage] = useState(null);
-    const [plateNumber, setPlateNumber] = useState(""); // Lưu biển số từ camera quét được
-    const [manualInput, setManualInput] = useState(""); // Dự phòng tìm kiếm bằng biển số trực tiếp
-    const [ticketCodeInput, setTicketCodeInput] = useState(""); // Ô nhập mã vé để đối chiếu sau khi quét
+    const [plateNumber, setPlateNumber] = useState(""); 
+    const [manualInput, setManualInput] = useState(""); 
+    const [ticketCodeInput, setTicketCodeInput] = useState(""); 
     const [selectedVehicleType, setSelectedVehicleType] = useState(1);
     const [scanResult, setScanResult] = useState(null);
 
@@ -27,6 +27,8 @@ export default function CheckOutPage() {
 
     const [pendingCameraPlate, setPendingCameraPlate] = useState("");
     const [isPlateMatched, setIsPlateMatched] = useState(false);
+
+    const [activeBookingId, setActiveBookingId] = useState(null);
 
     const vehicleTypes = [
         { id: 1, name: "Motorbike" },
@@ -71,30 +73,38 @@ export default function CheckOutPage() {
     };
 
     const populateScanResult = (activeSession, displayPlate, customType = "ExitPending") => {
+        const sessionId = activeSession.session_id || activeSession.sessionId;
+        const licensePlateIn = activeSession.license_plate_in || activeSession.licensePlateIn;
+        const slotName = activeSession.slot_name || activeSession.slotName;
+        const checkInTime = activeSession.check_in_time || activeSession.checkInTime;
+        const durationMinutes = activeSession.duration_minutes || activeSession.durationMinutes;
+        const currentFee = activeSession.current_fee !== undefined ? activeSession.current_fee : activeSession.currentFee;
+        const vehicleTypeId = activeSession.vehicle_type_id || activeSession.vehicleTypeId;
+
         setScanResult({
             type: customType,
-            sessionId: activeSession.session_id,
-            plate: displayPlate || activeSession.license_plate_in || "N/A",
-            slot: activeSession.slot_name || "N/A",
+            sessionId: sessionId,
+            plate: displayPlate || licensePlateIn || "N/A",
+            slot: slotName || "N/A",
             floor: activeSession.floor !== undefined ? `Floor ${activeSession.floor}` : "N/A",
             zone: activeSession.zone || "Unassigned Zone",
-            timeIn: activeSession.check_in_time ? new Date(activeSession.check_in_time).toLocaleString("vi-VN") : "N/A",
-            duration: activeSession.duration_minutes !== undefined ? `${activeSession.duration_minutes} mins` : "0 mins",
-            price: activeSession.current_fee || 0,
-            vehicleModel: vehicleTypes.find(v => v.id === (activeSession.vehicle_type_id || selectedVehicleType))?.name || "Vehicle"
+            timeIn: checkInTime ? new Date(checkInTime).toLocaleString("vi-VN") : "N/A",
+            duration: durationMinutes !== undefined ? `${durationMinutes} mins` : "0 mins",
+            price: currentFee || 0,
+            vehicleModel: vehicleTypes.find(v => v.id === (vehicleTypeId || selectedVehicleType))?.name || "Vehicle"
         });
     };
 
-    // BẢN DỰ PHÒNG: Tìm thủ công bằng biển số trực tiếp (không thông qua luồng check vé)
     const handleManualSearchSubmit = async () => {
         if (!manualInput || isLoading) return;
 
         setIsLoading(true);
         toast.dismiss();
         setScanResult(null);
-        setTicketCodeInput(""); 
+        setTicketCodeInput("");
         setPendingCameraPlate("");
         setIsPlateMatched(false);
+        setActiveBookingId(null);
 
         const formattedPlate = manualInput.toUpperCase().trim();
         setPlateNumber(formattedPlate);
@@ -104,26 +114,35 @@ export default function CheckOutPage() {
         if (activeSession) {
             setPendingCameraPlate(formattedPlate);
 
-            setScanResult({
-                type: "AwaitingVerification",
-                plate: formattedPlate,
-                slot: "Awaiting Ticket...",
-                floor: "N/A",
-                zone: "N/A",
-                timeIn: "Awaiting Ticket...",
-                duration: "0 mins",
-                price: 0,
-                vehicleModel: "Checking..."
-            });
+            const bookingId = activeSession.booking_id || activeSession.bookingId;
 
-            toast.info(`Manual plate entered: [${formattedPlate}]. Please scan or enter Ticket Code to verify.`);
+            if (bookingId) {
+                // LUỒNG XE ĐẶT TRƯỚC (BOOKING)
+                setActiveBookingId(bookingId);
+                setIsPlateMatched(true);
+                populateScanResult(activeSession, formattedPlate, "ExitPending");
+                toast.success(`Booking Recognized! Vehicle [${formattedPlate}] verified via Reservation ID: ${bookingId}.`);
+            } else {
+                // LUỒNG XE VÃNG LAI
+                setScanResult({
+                    type: "AwaitingVerification",
+                    plate: formattedPlate,
+                    slot: "Awaiting Ticket...",
+                    floor: "N/A",
+                    zone: "N/A",
+                    timeIn: "Awaiting Ticket...",
+                    duration: "0 mins",
+                    price: 0,
+                    vehicleModel: "Checking..."
+                });
+                toast.info(`Manual plate entered: [${formattedPlate}]. Please scan or enter Ticket Code to verify.`);
+            }
         } else {
             toast.error(`Plate [${formattedPlate}] is not registered inside the parking lot.`);
         }
         setIsLoading(false);
     };
 
-    // BƯỚC 1: Xe chạy vào vùng checkout -> Bấm nút hoặc Enter để quét camera nhận diện biển số trước
     const handleCaptureAndRecognize = useCallback(async () => {
         if (!webcamRef.current || isLoading) return;
 
@@ -133,6 +152,7 @@ export default function CheckOutPage() {
         setTicketCodeInput("");
         setPendingCameraPlate("");
         setIsPlateMatched(false);
+        setActiveBookingId(null);
 
         const imageSrc = webcamRef.current.getScreenshot();
         if (!imageSrc) {
@@ -159,21 +179,30 @@ export default function CheckOutPage() {
             if (activeSession) {
                 setPendingCameraPlate(aiPlate);
 
-                setScanResult({
-                    type: "AwaitingVerification",
-                    plate: aiPlate,
-                    slot: "Awaiting Ticket...",
-                    floor: "N/A",
-                    zone: "N/A",
-                    timeIn: "Awaiting Ticket...",
-                    duration: "0 mins",
-                    price: 0,
-                    vehicleModel: "Checking..."
-                });
+                const bookingId = activeSession.booking_id || activeSession.bookingId;
 
-                toast.info(`Camera detected: [${aiPlate}]. Please scan or enter Ticket Code to verify.`);
+                if (bookingId) {
+                    // LUỒNG XE ĐẶT TRƯỚC (BOOKING)
+                    setActiveBookingId(bookingId);
+                    setIsPlateMatched(true);
+                    populateScanResult(activeSession, aiPlate, "ExitPending");
+                    toast.success(`Booking Recognized! Vehicle [${aiPlate}] verified via Reservation ID: ${bookingId}.`);
+                } else {
+                    // LUỒNG XE VÃNG LAI
+                    setScanResult({
+                        type: "AwaitingVerification",
+                        plate: aiPlate,
+                        slot: "Awaiting Ticket...",
+                        floor: "N/A",
+                        zone: "N/A",
+                        timeIn: "Awaiting Ticket...",
+                        duration: "0 mins",
+                        price: 0,
+                        vehicleModel: "Checking..."
+                    });
+                    toast.info(`Camera detected: [${aiPlate}]. Please scan or enter Ticket Code to verify.`);
+                }
             } else {
-                
                 toast.error(`Plate [${aiPlate}] detected by camera is not registered inside the parking lot.`);
             }
 
@@ -185,7 +214,6 @@ export default function CheckOutPage() {
         }
     }, [isLoading]);
 
-    // BƯỚC 2: Nhân viên nhập mã vé/quét mã vé -> Kiểm tra thông tin vé có khớp với biển số vừa quét không
     const handleTicketSearchSubmit = async () => {
         if (!ticketCodeInput || isLoading) return;
         if (!pendingCameraPlate) {
@@ -200,24 +228,23 @@ export default function CheckOutPage() {
         const activeSession = await fetchSessionByTicketCode(formattedTicket);
 
         if (activeSession) {
-            const originalPlate = (activeSession.license_plate_in || "").toUpperCase().trim();
+            const originalPlate = (activeSession.license_plate_in || activeSession.licensePlateIn || "").toUpperCase().trim();
 
-            // Thực hiện so khớp nghiêm ngặt giữa biển số gốc trong vé và biển số camera vừa quét
             if (pendingCameraPlate === originalPlate) {
                 setIsPlateMatched(true);
-                populateScanResult(activeSession, pendingCameraPlate, "ExitPending"); // Khớp -> sang màn hình tính tiền cho ra
+                populateScanResult(activeSession, pendingCameraPlate, "ExitPending"); 
                 toast.success(`Verification Successful: License plate [${pendingCameraPlate}] matches the parking record.`);
             } else {
                 setIsPlateMatched(false);
                 setScanResult({
                     type: "MismatchBlock",
-                    plate: originalPlate, // Biển số gốc trong vé
+                    plate: originalPlate, 
                     slot: "BLOCKED",
                     floor: "Mismatched Data",
                     zone: "Security Triggered",
                     timeIn: "N/A",
                     duration: "N/A",
-                    price: activeSession.current_fee || 0,
+                    price: (activeSession.current_fee !== undefined ? activeSession.current_fee : activeSession.currentFee) || 0,
                     vehicleModel: "Mismatch"
                 });
                 toast.error(`License Plate Mismatch: Camera detected [${pendingCameraPlate}], but the parking record shows [${originalPlate}]. Please verify the vehicle before proceeding.`);
@@ -228,32 +255,50 @@ export default function CheckOutPage() {
         setIsLoading(false);
     };
 
-    // BƯỚC 3: Ấn Xác nhận thanh toán để đóng phiên cho xe ra gạt barie
     const handleConfirmCheckOut = async () => {
-        if (!scanResult || scanResult.type !== "ExitPending" || isLoading) return;
+        if (!scanResult || isLoading) return;
+        if (scanResult.type !== "ExitPending" && !activeBookingId) return;
 
         setIsLoading(true);
+        toast.dismiss(); 
         const { camOut, gateOut } = getOpConfig();
 
         try {
+            const finalTicketCode = activeBookingId
+                ? null
+                : (ticketCodeInput && ticketCodeInput.trim() ? ticketCodeInput.toUpperCase().trim() : null);
+
             const bodyData = {
-                ticket_code: ticketCodeInput.toUpperCase().trim(),
-                license_plate_out: pendingCameraPlate || scanResult.plate,
+                ticket_code: finalTicketCode,
+                booking_id: activeBookingId || null,
+                license_plate_out: (pendingCameraPlate || scanResult.plate || "").toUpperCase().trim(),
                 camera_out: camOut,
                 gate_out: gateOut,
                 image_url_out: `/uploads/plates/checkout_captured_${Date.now()}.jpg`,
             };
-
             const response = await api.post(`/parking/check-out`, bodyData);
-
-            if (response.data?.status === "COMPLETED" || response.data?.payment_status === "PAID" || response.data?.success) {
-                toast.success(`Vehicle ${bodyData.license_plate_out} successfully checked out!`);
-                resetTerminal(true);
+            if (
+                response.status === 200 ||
+                response.status === 201 ||
+                response.data?.success === true ||
+                response.data?.status === "COMPLETED" ||
+                response.data?.payment_status === "PAID"
+            ) {
+                toast.success(`Vehicle [${bodyData.license_plate_out}] successfully checked out!`);
+                resetTerminal(true); 
             } else {
-                throw new Error("Unable to complete vehicle exit. Please try again.");
+                throw new Error("Unable to complete vehicle exit. Server returned uncompleted status.");
             }
         } catch (error) {
-            toast.error(error.response?.data?.message || "Vehicle exit validation failed. Please check the license plate and parking information.");
+
+            if (error.response && error.response.data) {
+                const backendMessage = error.response.data?.message || error.response.data?.Message || error.response.data;
+                toast.error(typeof backendMessage === "string" ? backendMessage : "Backend validation rejected this checkout request.");
+            } else if (error.request) {
+                toast.error("No response from parking server. Please check if your Backend .NET API is running.");
+            } else {
+                toast.error(`Request Setup Error: ${error.message}`);
+            }
         } finally {
             setIsLoading(false);
         }
@@ -267,10 +312,10 @@ export default function CheckOutPage() {
         setIsPlateMatched(false);
         setPlateNumber("");
         setCapturedImage(null);
+        setActiveBookingId(null);
         if (!keepSuccessToast) {
             toast.dismiss();
         }
-        
     };
 
     useEffect(() => {
@@ -313,7 +358,7 @@ export default function CheckOutPage() {
 
         window.addEventListener("keydown", handleGlobalKeyDown);
         return () => window.removeEventListener("keydown", handleGlobalKeyDown);
-    }, [scanResult, handleCaptureAndRecognize, manualInput, ticketCodeInput, plateNumber, isPlateMatched, pendingCameraPlate]);
+    }, [scanResult, handleCaptureAndRecognize, manualInput, ticketCodeInput, plateNumber, isPlateMatched, pendingCameraPlate, activeBookingId]);
 
     return (
         <div className="w-full flex-1 text-slate-800 dark:text-slate-100 bg-slate-50 dark:bg-slate-950 flex flex-col font-sans box-border select-none p-4 transition-colors duration-200">
@@ -390,15 +435,15 @@ export default function CheckOutPage() {
                         <div className="flex gap-2 items-end">
                             <div className="flex-1">
                                 <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">
-                                    Ticket Code
+                                    Ticket Code {activeBookingId && <span className="text-emerald-500 text-[9px] lowercase font-normal">( Not required )</span>}
                                 </label>
                                 <div className="relative">
                                     <input
                                         type="text"
-                                        placeholder="Enter ticket code..." 
+                                        placeholder="Enter ticket code..."
                                         value={ticketCodeInput}
                                         onChange={(e) => setTicketCodeInput(e.target.value.toUpperCase())}
-                                        disabled={!pendingCameraPlate}
+                                        disabled={!pendingCameraPlate || !!activeBookingId}
                                         className="w-full border border-slate-200 dark:border-slate-800 rounded-lg pl-9 pr-3 py-2 text-xs font-mono font-bold bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 tracking-wider focus:outline-none focus:border-slate-400 dark:focus:border-slate-700 focus:bg-white dark:focus:bg-slate-950 transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600 placeholder:font-sans placeholder:font-normal h-10 disabled:opacity-60 disabled:cursor-not-allowed"
                                     />
                                     <Ticket size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
@@ -406,7 +451,7 @@ export default function CheckOutPage() {
                             </div>
                             <button
                                 onClick={handleTicketSearchSubmit}
-                                disabled={isLoading || !ticketCodeInput || !pendingCameraPlate}
+                                disabled={isLoading || !ticketCodeInput || !pendingCameraPlate || !!activeBookingId}
                                 className="bg-slate-800 dark:bg-slate-100 dark:hover:bg-slate-200 hover:bg-slate-700 dark:text-slate-700 text-slate-200 px-4 h-10 rounded-lg text-xs font-bold transition-all border dark:border-slate-200 border-slate-700/50 disabled:bg-slate-50 dark:disabled:bg-slate-900 disabled:text-slate-300 dark:disabled:text-slate-600 disabled:border-slate-100 dark:disabled:border-slate-800 tracking-wide flex items-center justify-center gap-1 shrink-0 active:scale-98"
                             >
                                 <Search size={12} /> Verify Ticket
@@ -450,12 +495,28 @@ export default function CheckOutPage() {
                                             <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase block tracking-wider mb-0.5">Camera Scan</span>
                                             <span className="text-base xl:text-lg font-bold text-slate-800 dark:text-slate-200 font-mono">{pendingCameraPlate || "Awaiting..."}</span>
                                         </div>
-                                        <div className={`border rounded-lg px-3 py-2 transition-colors duration-200 ${scanResult.type === "MismatchBlock" ? "bg-rose-50 border-rose-200 dark:bg-rose-950/20 dark:border-rose-900" : "bg-slate-50 dark:bg-slate-950 border-slate-100 dark:border-slate-800"}`}>
-                                            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase block tracking-wider mb-0.5">
-                                                {scanResult.type === "MismatchBlock" ? "Ticket Plate (Error)" : "Ticket Plate"}
+
+                                        <div className={`border rounded-lg px-3 py-2 transition-colors duration-200 ${scanResult.type === "MismatchBlock"
+                                                ? "bg-rose-50 border-rose-200 dark:bg-rose-950/20 dark:border-rose-900"
+                                                : activeBookingId
+                                                    ? "bg-blue-100 border-blue-200 dark:bg-blue-950/100 dark:border-blue-900/60"
+                                                    : "bg-slate-50 dark:bg-slate-950 border-slate-100 dark:border-slate-800"
+                                            }`}>
+                                            <span className={`text-[10px] font-bold uppercase block tracking-wider mb-0.5 ${scanResult.type === "MismatchBlock"
+                                                    ? "text-rose-400 dark:text-rose-500"
+                                                    : activeBookingId
+                                                        ? "text-blue-500 dark:text-blue-400"
+                                                        : "text-slate-400 dark:text-slate-500"
+                                                }`}>
+                                                {scanResult.type === "MismatchBlock" ? "Ticket Plate (Error)" : activeBookingId ? "Mode" : "Ticket Plate"}
                                             </span>
-                                            <span className={`text-base xl:text-lg font-bold font-mono truncate block ${scanResult.type === "MismatchBlock" ? "text-rose-600 dark:text-rose-400" : "text-slate-800 dark:text-slate-200"}`}>
-                                                {scanResult.type === "AwaitingVerification" ? "" : scanResult.plate}
+                                            <span className={`text-base xl:text-lg font-bold font-mono truncate block ${scanResult.type === "MismatchBlock"
+                                                    ? "text-rose-600 dark:text-rose-400"
+                                                    : activeBookingId
+                                                        ? "text-blue-600 dark:text-blue-400 tracking-wide font-sans font-black" 
+                                                        : "text-slate-800 dark:text-slate-200"
+                                                }`}>
+                                                {scanResult.type === "AwaitingVerification" ? "" : activeBookingId ? "BOOKING" : scanResult.plate}
                                             </span>
                                         </div>
                                     </div>
@@ -464,7 +525,7 @@ export default function CheckOutPage() {
                                     <div className={`relative overflow-hidden rounded-lg p-4 text-white shadow-md dark:shadow-inner border ${scanResult.type === "MismatchBlock" ? "bg-rose-700 border-rose-800" : "bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-950 dark:to-slate-900 border border-slate-800"}`}>
                                         <div className="space-y-1 text-center">
                                             <div className="text-[10px] font-bold uppercase tracking-wider text-slate-300 dark:text-slate-400">
-                                                {scanResult.type === "MismatchBlock" ? "Security Action" : "Total Fee"}
+                                                {scanResult.type === "MismatchBlock" ? "Security Action" : activeBookingId ? "Booking Fee" : "Total Fee"}
                                             </div>
                                             <div className={`font-mono text-3xl xl:text-4xl font-black tracking-wider ${scanResult.type === "MismatchBlock" ? "text-white" : "text-yellow-400 drop-shadow-[0_2px_8px_rgba(234,179,8,0.2)]"}`}>
                                                 {scanResult.type === "MismatchBlock" ? "BLOCKED" : `${scanResult.price.toLocaleString("vi-VN")} VND`}

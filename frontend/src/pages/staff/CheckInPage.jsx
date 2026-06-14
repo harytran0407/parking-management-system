@@ -23,7 +23,6 @@ export default function CheckInPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [isStreamConnected, setIsStreamConnected] = useState(true);
 
-    // Lightbox image modal state
     const [isLightboxOpen, setIsLightboxOpen] = useState(false);
 
     const vehicleTypes = [
@@ -86,7 +85,6 @@ export default function CheckInPage() {
 
             setPlateNumber(aiPlate);
 
-            // KIỂM TRA TRÙNG BIỂN SỐ TRƯỚC KHI THỰC HIỆN CHECK-IN
             const isDuplicate = await checkIsPlateDuplicate(aiPlate);
             if (isDuplicate) {
                 setScanResult(null);
@@ -102,21 +100,24 @@ export default function CheckInPage() {
                 camera_in: camIn,
                 gate_in: gateIn,
                 image_url_in: `/uploads/plates/client_captured_${new Date().getTime()}.jpg`,
-                slot_id: null,
-                booking_id: null
             };
 
+            console.log("[API Check-In] Gửi Body Data lên Backend:", bodyData);
             const response = await api.post(`/parking/check-in`, bodyData);
+            console.log("[API Check-In] Kết quả phản hồi từ Backend:", response.data);
 
             if (response.data && response.data.success) {
                 const sessionData = response.data.data;
                 toast.success(`Successfully checked in vehicle: ${aiPlate}`);
 
+                const hasBooking = sessionData.booking_id !== null && sessionData.booking_id !== undefined && sessionData.booking_id !== "";
+
                 setScanResult({
                     type: "EntryConfirmed",
+                    isBooking: hasBooking, 
                     plate: sessionData.license_plate_in || aiPlate,
                     sessionId: sessionData.session_id,
-                    ticketCode: sessionData.ticket_code || "N/A",
+                    ticketCode: hasBooking ? null : (sessionData.ticket_code || "N/A"), 
                     slot: sessionData.slot_name || "N/A",
                     floor: sessionData.floor !== undefined ? `Floor ${sessionData.floor}` : "N/A",
                     zone: sessionData.zone || "Unassigned Zone",
@@ -139,11 +140,11 @@ export default function CheckInPage() {
         if (!plateNumber || isLoading) return;
 
         setIsLoading(true);
-        toast.dismiss(); // Xóa tất cả toast cũ
+        toast.dismiss();
 
         const isDuplicate = await checkIsPlateDuplicate(plateNumber);
         if (isDuplicate) {
-            toast.error(`Duplicate License Plate: The vehicle with license plate [${formattedPlate}] is already parked in the parking lot.`);
+            toast.error(`Duplicate License Plate: The vehicle with license plate [${plateNumber}] is already parked in the parking lot.`);
             setIsLoading(false);
             return;
         }
@@ -161,14 +162,21 @@ export default function CheckInPage() {
                 booking_id: null
             };
 
+            console.log("[API Check-In] Gửi Body Data lên Backend:", bodyData);
             const response = await api.post(`/parking/check-in`, bodyData);
+            console.log("[API Check-In] Kết quả phản hồi từ Backend:", response.data);
+
             if (response.data && response.data.success) {
                 const data = response.data.data;
                 toast.success(`Manual Check-In recorded for: ${plateNumber}`);
+
+                const hasBooking = data.booking_id !== null && data.booking_id !== undefined && data.booking_id !== "";
+
                 setScanResult({
                     type: "EntryConfirmed",
+                    isBooking: hasBooking, 
                     plate: data.license_plate_in,
-                    ticketCode: data.ticket_code || "N/A",
+                    ticketCode: hasBooking ? null : (data.ticket_code || "N/A"),
                     slot: data.slot_name || "N/A",
                     floor: data.floor !== undefined ? `Floor ${data.floor}` : "N/A",
                     zone: data.zone || "Unassigned Zone",
@@ -187,11 +195,10 @@ export default function CheckInPage() {
         if (!targetPlate || targetPlate.trim() === "" || isLoading) return;
 
         setIsLoading(true);
-        toast.dismiss(); // Xóa tất cả toast cũ
+        toast.dismiss(); 
         const formattedPlate = targetPlate.toUpperCase().trim();
 
         try {
-            // Đầu tiên kiểm tra xem xe này có đang ở trong bãi không
             const isDuplicate = await checkIsPlateDuplicate(formattedPlate);
             if (isDuplicate) {
                 setScanResult(null);
@@ -220,7 +227,7 @@ export default function CheckInPage() {
         setScanResult(null);
         setPlateNumber("");
         setCapturedImage(null);
-        toast.dismiss(); // Xóa sạch các thông báo cũ trên màn hình
+        toast.dismiss(); 
     };
 
 
@@ -340,99 +347,106 @@ export default function CheckInPage() {
                             <h3 className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Entry Session Info</h3>
                         </div>
 
-                        {/* Vùng nội dung kết quả */}
                         <div className="flex-1 flex flex-col min-h-0 justify-start overflow-y-auto pr-1 space-y-4 class-scroll-em-di">
                             {scanResult ? (
                                 <>
                                     {/* ẢNH SNAPSHOT INBOUND */}
                                     <div
                                         onClick={() => setIsLightboxOpen(true)}
-                                        className="bg-slate-100 dark:bg-slate-950 h-[130px] xl:h-[160px] 2xl:h-[200px] shrink-0 border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm dark:shadow-md relative group cursor-zoom-in rounded-lg transition-colors duration-200"
-                                        title="Click to zoom picture snapshot"
+                                        className="bg-slate-100 dark:bg-slate-950 h-[130px] xl:h-[160px] 2xl:h-[200px] shrink-0 border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm relative group cursor-zoom-in rounded-lg"
                                     >
                                         <img
                                             src={capturedImage || "https://placehold.co/600x400/0f172a/64748b?text=Snapshot+Inbound"}
                                             alt="Captured Gate Target Area"
                                             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 opacity-90 dark:opacity-80"
                                         />
-                                        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 dark:from-slate-950/80 via-transparent to-transparent pointer-events-none" />
-                                        <div className="absolute bottom-2 right-2 bg-white/90 dark:bg-slate-900/90 rounded-md p-1.5 text-slate-700 dark:text-slate-200 opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm border border-slate-200 dark:border-slate-700 shadow-sm">
+                                        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 via-transparent to-transparent pointer-events-none" />
+                                        <div className="absolute bottom-2 right-2 bg-white/90 dark:bg-slate-900/90 rounded-md p-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <Maximize2 size={12} />
                                         </div>
                                     </div>
 
-                                    {/* THÔNG TIN XE HOẶC TRẠNG THÁI PENDING */}
-                                    {scanResult.type === "ManualEntryPending" && (
+                                    {/* LOGIC ĐỔI MÀU Ô THÔNG TIN BIỂN SỐ VÀ CÁC KHỐI PHÍA DƯỚI */}
+                                    <div className="space-y-4">
                                         <div className="grid grid-cols-2 gap-3">
-                                            <div className="bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-lg px-3 py-2 transition-colors duration-200">
-                                                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase block tracking-wider mb-0.5">License Plate</span>
-                                                <span className="text-base xl:text-lg font-bold text-white-600 dark:text-white-400 font-mono">{scanResult.plate}</span>
-                                            </div>
-                                            <div className="bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-lg px-3 py-2 transition-colors duration-200">
-                                                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase block tracking-wider mb-0.5">Type</span>
-                                                <span className="text-base xl:text-lg font-bold text-white-600 dark:text-white-400 font-mono truncate block">{scanResult.vehicleModel}</span>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {scanResult.type === "EntryConfirmed" && (
-                                        <div className="space-y-4">
-                                            <div className="grid grid-cols-2 gap-3">
-                                                <div className="bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-lg px-3 py-2 transition-colors duration-200">
-                                                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase block tracking-wider mb-0.5">License Plate</span>
-                                                    <span className="text-base xl:text-lg font-bold text-white-600 dark:text-white-400 font-mono">{scanResult.plate}</span>
-                                                </div>
-                                                <div className="bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-lg px-3 py-2 transition-colors duration-200">
-                                                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase block tracking-wider mb-0.5">Type</span>
-                                                    <span className="text-base xl:text-lg font-bold text-white-600 dark:text-white-400 font-mono truncate block">{scanResult.vehicleModel}</span>
-                                                </div>
+                                            {/* Ô LICENSE PLATE */}
+                                            <div className={`border rounded-lg px-3 py-2 transition-all duration-300 ${scanResult.isBooking
+                                                    ? "bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800/60"
+                                                    : "bg-slate-50 dark:bg-slate-950 border-slate-100 dark:border-slate-800"
+                                                }`}>
+                                                <span className={`text-[10px] font-bold uppercase block tracking-wider mb-0.5 ${scanResult.isBooking ? "text-blue-500 dark:text-blue-400" : "text-slate-400 dark:text-slate-500"
+                                                    }`}>License Plate</span>
+                                                <span className={`text-base xl:text-lg font-bold font-mono ${scanResult.isBooking ? "text-blue-700 dark:text-blue-300" : "text-slate-800 dark:text-slate-100"
+                                                    }`}>{scanResult.plate}</span>
                                             </div>
 
-                                            {/* BANNER SLOT ĐƯỢC CHUYỂN ĐỔI THEO ĐÚNG KHỐI BANNER TÍNH TIỀN CỦA CHECK-OUT */}
-                                            <div className="relative overflow-hidden rounded-lg bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-950 dark:to-slate-900 border border-slate-800 p-4 text-white shadow-md dark:shadow-inner">
-                                                
-                                                <div className="space-y-1 text-center">
-                                                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-300 dark:text-slate-500">Assigned Slot</div>
-                                                    <div className="font-mono text-yellow-400 text-3xl xl:text-4xl font-black tracking-wider drop-shadow-[0_2px_8px_rgba(234,179,8,0.2)]">
-                                                        {scanResult.slot}
-                                                    </div>
-                                                </div>
-
-                                                {/* LOGISTIC INFO PANEL */}
-                                                <div className="mt-4 grid grid-cols-2 gap-2 border-t border-slate-700/50 dark:border-slate-800 pt-3 text-xs">
-                                                    <div className="flex items-center gap-1.5 font-medium text-white dark:text-white">
-                                                        <MapPin size={13} className="text-slate-400 dark:text-white shrink-0" />
-                                                        <span className="truncate">{scanResult.floor}</span>
-                                                    </div>
-                                                    <div className="text-right font-semibold text-slate-300 dark:text-slate-400 flex items-center justify-end gap-1">
-                                                        <span className="text-white dark:text-slate-200 px-1.5 py-0.5 rounded text-[11px] font-mono font-bold ml-1">
-                                                            {scanResult.zone}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div className="relative overflow-hidden rounded-lg bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-950 dark:to-slate-900 border border-slate-800 p-4 text-white shadow-md dark:shadow-inner">
-                                                <div className="flex items-center justify-between w-full">
-                                                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-300 dark:text-slate-500">
-                                                        Ticket Code:
-                                                    </div>
-
-                                                    <div className="font-mono text-yellow-400 text-md xl:text-md font-black tracking-wider drop-shadow-[0_2px_8px_rgba(234,179,8,0.2)]">
-                                                        {scanResult.ticketCode}
-                                                    </div>
-                                                </div>
+                                            {/* Ô TYPE VEHICLE */}
+                                            <div className={`border rounded-lg px-3 py-2 transition-all duration-300 ${scanResult.isBooking
+                                                    ? "bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800/60"
+                                                    : "bg-slate-50 dark:bg-slate-950 border-slate-100 dark:border-slate-800"
+                                                }`}>
+                                                <span className={`text-[10px] font-bold uppercase block tracking-wider mb-0.5 ${scanResult.isBooking ? "text-blue-500 dark:text-blue-400" : "text-slate-400 dark:text-slate-500"
+                                                    }`}>Type</span>
+                                                <span className={`text-base xl:text-lg font-bold font-mono truncate block ${scanResult.isBooking ? "text-blue-700 dark:text-blue-300" : "text-slate-800 dark:text-slate-100"
+                                                    }`}>{scanResult.vehicleModel}</span>
                                             </div>
                                         </div>
-                                    )}
+
+                                        {/* HIỂN THỊ THÔNG TIN SLOT ĐỖ NẾU ĐÃ CONFIRMED */}
+                                        {scanResult.type === "EntryConfirmed" && (
+                                            <>
+                                                <div className="relative overflow-hidden rounded-lg bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-950 dark:to-slate-900 border border-slate-800 p-4 text-white shadow-md">
+                                                    <div className="space-y-1 text-center">
+                                                        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-300 dark:text-slate-500">Assigned Slot</div>
+                                                        <div className="font-mono text-yellow-400 text-3xl xl:text-4xl font-black tracking-wider">
+                                                            {scanResult.slot}
+                                                        </div>
+                                                    </div>
+                                                    <div className="mt-4 grid grid-cols-2 gap-2 border-t border-slate-700/50 pt-3 text-xs">
+                                                        <div className="flex items-center gap-1.5 font-medium text-white">
+                                                            <MapPin size={13} className="text-slate-400 shrink-0" />
+                                                            <span className="truncate">{scanResult.floor}</span>
+                                                        </div>
+                                                        <div className="text-right font-semibold text-slate-300 flex items-center justify-end gap-1">
+                                                            <span className="text-white px-1.5 py-0.5 rounded text-[11px] font-mono font-bold ">
+                                                                {scanResult.zone}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* ĐIỀU KIỆN RẼ NHÁNH: BOOKING THÌ HIỂN THỊ BADGE BOOKING - XE THƯỜNG THÌ HIỂN THỊ Ô TICKET CODE */}
+                                                {scanResult.isBooking ? (
+                                                    <div className="relative overflow-hidden rounded-lg bg-blue-600 dark:bg-blue-700 border border-blue-700 dark:border-blue-800 p-4 text-white shadow-md text-center animate-fadeIn">
+                                                        <div className="flex items-center justify-center gap-2 font-black text-xs xl:text-sm uppercase tracking-wider">
+                                                            <CheckCircle2 size={17} className="text-blue-100 animate-pulse" /> Booked Vehicle
+                                                        </div>
+                                                        <p className="text-[10px] text-blue-100 mt-1.5 leading-relaxed">
+                                                            Valid reservation found. No regular ticket issued.
+                                                        </p>
+                                                    </div>
+                                                ) : (
+                                                    <div className="relative overflow-hidden rounded-lg bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-950 dark:to-slate-900 border border-slate-800 p-4 text-white shadow-md">
+                                                        <div className="flex items-center justify-between w-full">
+                                                            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-300 dark:text-slate-500">
+                                                                Ticket Code:
+                                                            </div>
+                                                            <div className="font-mono text-yellow-400 text-md xl:text-md font-black tracking-wider">
+                                                                {scanResult.ticketCode}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </>
+                                        )}
+                                    </div>
                                 </>
                             ) : (
-                                /* IDLE EMPTY PLACEHOLDER */
-                                <div className="flex-1 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-lg flex flex-col items-center justify-center text-center p-5 text-slate-400 dark:text-slate-600 bg-slate-50/50 dark:bg-slate-950/40 my-auto transition-colors duration-200">
-                                    <CarFront size={32} className="mb-2 opacity-40 text-slate-400" />
+                                <div className="flex-1 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-lg flex flex-col items-center justify-center text-center p-5 text-slate-400 dark:text-slate-600 bg-slate-50/50 dark:bg-slate-950/40 my-auto">
+                                    <CarFront size={32} className="mb-2 opacity-40" />
                                     <p className="text-xs font-black uppercase tracking-widest text-slate-600 dark:text-slate-400">Ready to Scan</p>
-                                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-1.5 max-w-[200px] leading-normal">
-                                        Press <kbd className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 px-1 py-0.5 rounded text-[10px] font-mono font-bold shadow-sm">[Enter]</kbd> or click Scan Plate to start.
+                                    <p className="text-xs text-slate-400 mt-1.5 max-w-[200px]">
+                                        Press <kbd className="bg-white border text-slate-700 px-1 py-0.5 rounded text-[10px] font-mono font-bold shadow-sm">[Enter]</kbd> to start.
                                     </p>
                                 </div>
                             )}
@@ -440,20 +454,20 @@ export default function CheckInPage() {
                     </div>
 
                     {/* ACTION PANEL BOUNDARY TRIGGERS */}
-                    <div className="space-y-2 pt-4 border-t border-slate-100 dark:border-slate-800 shrink-0 transition-colors duration-200">
+                    <div className="space-y-2 pt-4 border-t border-slate-100 dark:border-slate-800 shrink-0">
                         {scanResult ? (
                             <>
                                 {scanResult.type === "ManualEntryPending" && (
                                     <>
                                         <button
                                             onClick={handleManualCheckInSubmit}
-                                            className="w-full bg-blue-600 hover:bg-blue-400 dark:hover:bg-blue-500 text-white py-2.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all active:scale-98 shadow-md shadow-blue-600/10 dark:shadow-lg dark:shadow-blue-950/30"
+                                            className="w-full bg-blue-600 hover:bg-blue-400 text-white py-2.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all"
                                         >
                                             Confirm <span className="font-mono font-normal opacity-70 text-[10px] ml-1">[Enter]</span>
                                         </button>
                                         <button
                                             onClick={resetTerminal}
-                                            className="w-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 py-2 rounded-lg text-xs font-bold uppercase tracking-wide transition-all active:scale-98 shadow-sm"
+                                            className="w-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-500 py-2 rounded-lg text-xs font-bold uppercase tracking-wide transition-all"
                                         >
                                             Cancel <span className="font-mono font-normal opacity-70 text-[10px] ml-1">[Esc]</span>
                                         </button>
@@ -463,14 +477,14 @@ export default function CheckInPage() {
                                 {scanResult.type === "EntryConfirmed" && (
                                     <button
                                         onClick={resetTerminal}
-                                        className="w-full bg-slate-900 dark:bg-slate-600 hover:bg-slate-600 dark:hover:bg-slate-500 text-white py-2.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all active:scale-98 shadow-md"
+                                        className="w-full bg-slate-900 dark:bg-slate-600 hover:bg-slate-600 text-white py-2.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all"
                                     >
                                         Next Scan <span className="font-mono font-normal opacity-80 text-[10px] ml-1">[Enter]</span>
                                     </button>
                                 )}
                             </>
                         ) : (
-                            <button disabled className="w-full bg-slate-50 dark:bg-slate-950 text-slate-400 dark:text-slate-600 py-2.5 rounded-lg text-xs font-bold uppercase tracking-widest border border-slate-200 dark:border-slate-800 cursor-not-allowed text-center transition-colors duration-200">
+                            <button disabled className="w-full bg-slate-50 dark:bg-slate-950 text-slate-400 py-2.5 rounded-lg text-xs font-bold uppercase tracking-widest border border-slate-200 dark:border-slate-800 cursor-not-allowed text-center">
                                 System Ready
                             </button>
                         )}

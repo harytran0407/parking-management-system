@@ -3,7 +3,6 @@ using System.Text.Json.Serialization;
 
 namespace ParkingManagement.DTOs
 {
-    // Lớp bọc ngoài cùng của Response
     public class CheckInResponseDto
     {
         [JsonPropertyName("success")]
@@ -13,7 +12,6 @@ namespace ParkingManagement.DTOs
         public CheckInResultDataDto Data { get; set; } = null!;
     }
 
-    // Lớp chứa dữ liệu chi tiết bên trong thuộc tính "data"
     public class CheckInResultDataDto
     {
         [JsonPropertyName("ticket_code")]
@@ -45,5 +43,8 @@ namespace ParkingManagement.DTOs
 
         [JsonPropertyName("payment_status")]
         public string PaymentStatus { get; set; } = null!;
+
+        [JsonPropertyName("booking_id")]
+        public string? BookingId { get; set; }
     }
 }
