@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Camera, Edit2, Save, X, ArrowLeft, User, Mail, Phone, Check, RefreshCw, AlertCircle } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth"; // Gọi trực tiếp bộ kết nối bảo mật Context toàn cục
+import { useLanguage } from "../../hooks/useLanguage";
 
 
 // Hàm tiện ích bóc tách lấy URL gốc của Server cho phần avatar, dọn sạch cụm /api/v1 vướng víu
@@ -18,6 +19,7 @@ export default function Profile() {
 
   // Trích xuất các cổng chức năng và dữ liệu người dùng từ useAuth
   const { user, updateUser, fetchProfile, updateProfileApi } = useAuth();
+  const { language } = useLanguage();
 
   // 1. STATE LƯU THÔNG TIN PROFILE (Đã ẩn Username và Email đóng băng theo thiết kế mẫu)
   const [profile, setProfile] = useState({
@@ -77,7 +79,7 @@ export default function Profile() {
         console.error("Profile synchronization crashed:", error);
         setStatus({
           type: "error",
-          message: error.message || "Cannot connect to server to fetch account info.",
+          message: error.message || (language === "en" ? "Cannot connect to server to fetch account info." : "Không thể kết nối đến máy chủ để lấy thông tin tài khoản."),
         });
       } finally {
         setLoading(false);
@@ -122,11 +124,11 @@ export default function Profile() {
   // 4. LUỒNG SUBMIT ĐẨY DỮ LIỆU LÊN BACKEND THÔNG QUA MULTIPART FORMDATA
   const handleSaveAll = async () => {
     if (!profile.full_name.trim()) {
-      alert("Họ và tên không được để trống!");
+      alert(language === "en" ? "Full name cannot be empty!" : "Họ và tên không được để trống!");
       return;
     }
     if (!profile.phone.trim()) {
-      alert("Số điện thoại không được để trống!");
+      alert(language === "en" ? "Phone number cannot be empty!" : "Số điện thoại không được để trống!");
       return;
     }
 
@@ -151,14 +153,14 @@ export default function Profile() {
           avatar_url: response.data?.avatar_url || profile.avatar_url,
         });
 
-        setStatus({ type: "success", message: "Profile saved to database successfully!" });
+        setStatus({ type: "success", message: language === "en" ? "Profile saved to database successfully!" : "Thông tin cá nhân đã được lưu thành công!" });
         setTimeout(() => navigate(-1), 800); // Trì hoãn nhẹ 0.8s đóng modal để khách kịp nhìn thấy banner thông báo
       }
     } catch (error) {
       console.error("Save profile workflow failure:", error);
       setStatus({
         type: "error",
-        message: error.message || "Business logic error or duplicate phone identifier.",
+        message: error.message || (language === "en" ? "Business logic error or duplicate phone identifier." : "Lỗi xử lý hoặc số điện thoại đã tồn tại."),
       });
     } finally {
       setSubmitting(false);
@@ -171,7 +173,7 @@ export default function Profile() {
     return (
       <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm text-white space-y-3">
         <RefreshCw className="w-7 h-7 text-blue-500 animate-spin" />
-        <p className="text-sm text-stone-300 font-medium">Loading account details...</p>
+        <p className="text-sm text-stone-300 font-medium">{language === "en" ? "Loading account details..." : "Đang tải thông tin tài khoản..."}</p>
       </div>
     );
   }
@@ -184,7 +186,7 @@ export default function Profile() {
           <button type="button" onClick={() => navigate(-1)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-500 transition-colors">
             <ArrowLeft size={24} />
           </button>
-          <h2 className="text-xl font-bold text-slate-800 dark:text-white">Account Info</h2>
+          <h2 className="text-xl font-bold text-slate-800 dark:text-white">{language === "en" ? "Account Info" : "Thông tin tài khoản"}</h2>
           <button type="button" onClick={() => navigate(-1)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-500 transition-colors">
             <X size={24} />
           </button>
@@ -214,14 +216,14 @@ export default function Profile() {
                 <Camera className="text-white" size={28} />
               </div>
             </div>
-            <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">Tap to change photo</p>
+            <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">{language === "en" ? "Tap to change photo" : "Nhấn để đổi ảnh đại diện"}</p>
           </div>
 
           <div className="space-y-4">
             {/* FIELD: FULL NAME (EDITABLE) */}
             <div className="group">
               <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-2">
-                <User size={14} /> Full Name
+                <User size={14} /> {language === "en" ? "Full Name" : "Họ và tên"}
               </label>
               <div className="flex items-center gap-3">
                 <input
@@ -247,7 +249,7 @@ export default function Profile() {
             {/* FIELD: EMAIL (READ-ONLY KHÓA CỨNG AN TOÀN ĐỊNH DANH) */}
             <div className="group opacity-50">
               <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-2">
-                <Mail size={14} /> Email Address (Read-only)
+                <Mail size={14} /> {language === "en" ? "Email Address (Read-only)" : "Địa chỉ Email (Chỉ đọc)"}
               </label>
               <div className="flex items-center gap-3 border-b-2 border-slate-200 dark:border-slate-700 py-1">
                 <input type="email" value={profile.email} disabled className="flex-1 bg-transparent text-slate-400 font-medium focus:outline-none cursor-not-allowed" />
@@ -258,7 +260,7 @@ export default function Profile() {
             {/* FIELD: PHONE NUMBER (EDITABLE) */}
             <div className="group">
               <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-2">
-                <Phone size={14} /> Phone Number
+                <Phone size={14} /> {language === "en" ? "Phone Number" : "Số điện thoại"}
               </label>
               <div className="flex items-center gap-3">
                 <input
@@ -291,7 +293,7 @@ export default function Profile() {
             disabled={submitting}
             className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-blue-500/30 transition-transform active:scale-95 disabled:cursor-not-allowed">
             {submitting ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Save size={20} />}
-            {submitting ? "SAVING PROGRESS..." : "SAVE CHANGES"}
+            {submitting ? (language === "en" ? "SAVING PROGRESS..." : "ĐANG LƯU...") : (language === "en" ? "SAVE CHANGES" : "LƯU THAY ĐỔI")}
           </button>
         </div>
       </div>

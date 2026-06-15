@@ -68,6 +68,10 @@ builder.Services.AddScoped<IParkingService, ParkingService>();
 builder.Services.AddScoped<IBookingRepository, BookingRepository>();
 builder.Services.AddScoped<IBookingService, BookingService>(); /* ADDED BY ANTIGRAVITY */
 
+// ── Payment module ───────────────────────────────────────────────────────────────────────
+builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
+builder.Services.AddScoped<IPaymentService, PaymentService>();
+
 // ── Incident module ───────────────────────────────────────────────────────────────────────
 builder.Services.AddScoped<IIncidentRepository, IncidentRepository>();
 builder.Services.AddScoped<IIncidentService, IncidentService>();
@@ -102,6 +106,9 @@ builder.Services.AddScoped<IPricingPolicyService, PricingPolicyService>();
 // ── Dashboard module ──────────────────────────────────────────────────────────
 builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
+
+// ── SystemConfig module ───────────────────────────────────────────────────────
+builder.Services.AddScoped<ISystemConfigService, SystemConfigService>();
 
 var app = builder.Build();
 if (app.Environment.IsDevelopment())

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace ParkingManagement.Models;
@@ -46,6 +46,8 @@ public partial class ParkingSession
     public int? VehicleId { get; set; }
 
     public string? BookingId { get; set; }
+
+    public string? TicketCode { get; set; }
 
     public virtual Booking? Booking { get; set; }
 

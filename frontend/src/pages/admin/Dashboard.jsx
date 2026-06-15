@@ -19,7 +19,9 @@ import {
   UserCheck,
   Activity,
   ChevronRight,
-  HelpCircle
+  HelpCircle,
+  Server,
+  Database
 } from "lucide-react";
 import api from "../../utils/api";
 import { useLanguage } from "../../hooks/useLanguage";
@@ -35,6 +37,33 @@ export default function AdminDashboard() {
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [data, setData] = useState(null);
   const [totalUsers, setTotalUsers] = useState(0);
+  const [systemHealth, setSystemHealth] = useState(null);
+  const [latestLogs, setLatestLogs] = useState([]);
+  const [hoveredHourIndex, setHoveredHourIndex] = useState(null);
+  const [hoveredHourX, setHoveredHourX] = useState(0);
+  const [hoveredHourY, setHoveredHourY] = useState(0);
+
+  const getRelativeTimeString = (dateStr) => {
+    if (!dateStr) return "";
+    try {
+      const utcStr = dateStr.endsWith("Z") ? dateStr : dateStr + "Z";
+      const date = new Date(utcStr);
+      const now = new Date();
+      const diffMs = now.getTime() - date.getTime();
+      if (diffMs < 0) return language === "en" ? "Just now" : "Vừa xong";
+      const diffSecs = Math.floor(diffMs / 1000);
+      const diffMins = Math.floor(diffSecs / 60);
+      const diffHours = Math.floor(diffMins / 60);
+      const diffDays = Math.floor(diffHours / 24);
+
+      if (diffSecs < 60) return language === "en" ? "Just now" : "Vừa xong";
+      if (diffMins < 60) return language === "en" ? `${diffMins} mins ago` : `${diffMins} phút trước`;
+      if (diffHours < 24) return language === "en" ? `${diffHours} hours ago` : `${diffHours} giờ trước`;
+      return language === "en" ? `${diffDays} days ago` : `${diffDays} ngày trước`;
+    } catch {
+      return "";
+    }
+  };
 
   // High fidelity fallback mockup matching exact API DTO shape
   const demoData = {
@@ -59,20 +88,30 @@ export default function AdminDashboard() {
       occupancy_rate_percent: 59.6,
     },
     peak_hours: [
-      { hour: 7, check_ins: 18 },
-      { hour: 8, check_ins: 45 },
-      { hour: 9, check_ins: 32 },
-      { hour: 10, check_ins: 14 },
-      { hour: 11, check_ins: 22 },
+      { hour: 0, check_ins: 4 },
+      { hour: 1, check_ins: 2 },
+      { hour: 2, check_ins: 1 },
+      { hour: 3, check_ins: 0 },
+      { hour: 4, check_ins: 0 },
+      { hour: 5, check_ins: 3 },
+      { hour: 6, check_ins: 8 },
+      { hour: 7, check_ins: 25 },
+      { hour: 8, check_ins: 48 },
+      { hour: 9, check_ins: 36 },
+      { hour: 10, check_ins: 18 },
+      { hour: 11, check_ins: 20 },
       { hour: 12, check_ins: 28 },
-      { hour: 13, check_ins: 16 },
+      { hour: 13, check_ins: 15 },
       { hour: 14, check_ins: 12 },
       { hour: 15, check_ins: 19 },
-      { hour: 16, check_ins: 26 },
+      { hour: 16, check_ins: 32 },
       { hour: 17, check_ins: 54 },
       { hour: 18, check_ins: 42 },
-      { hour: 19, check_ins: 20 },
+      { hour: 19, check_ins: 22 },
       { hour: 20, check_ins: 15 },
+      { hour: 21, check_ins: 12 },
+      { hour: 22, check_ins: 8 },
+      { hour: 23, check_ins: 6 },
     ],
     breakdown_by_vehicle_type: [
       {
@@ -171,6 +210,21 @@ export default function AdminDashboard() {
         to: period === "custom" ? endDate : demoData.to,
       });
       setTotalUsers(38);
+      setSystemHealth({
+        dbStatus: "ONLINE",
+        vnpayStatus: "ONLINE",
+        apiStatus: "ONLINE",
+        apiLatencyMs: 15,
+        errorCount24H: 0,
+        warningCount24H: 2
+      });
+      setLatestLogs([
+        { logId: 1, logLevel: "INFO", message: "System configuration setting 'is247' updated to 'true'.", source: "Settings", createdAt: new Date(Date.now() - 2 * 60 * 1000).toISOString() },
+        { logId: 2, logLevel: "INFO", message: "Vehicle 30A-888.99 (Car) entered the parking lot at Gate 1", source: "ParkingGate", createdAt: new Date(Date.now() - 5 * 60 * 1000).toISOString() },
+        { logId: 3, logLevel: "INFO", message: "Booking BK-9042 paid successfully via VNPAY", source: "Payment", createdAt: new Date(Date.now() - 12 * 60 * 1000).toISOString() },
+        { logId: 4, logLevel: "INFO", message: "Vehicle 59L-777.77 (Motorbike) entered the parking lot at Gate 1", source: "ParkingGate", createdAt: new Date(Date.now() - 25 * 60 * 1000).toISOString() },
+        { logId: 5, logLevel: "WARNING", message: "Floor B2 is almost full (Occupancy reached 92%)", source: "OccupancyTracker", createdAt: new Date(Date.now() - 45 * 60 * 1000).toISOString() }
+      ]);
       return;
     }
 
@@ -178,15 +232,36 @@ export default function AdminDashboard() {
       setLoading(true);
       setError("");
 
-      // Lấy tổng số lượng tài khoản đăng ký
+      // 1. Fetch system health
       try {
-        const userResponse = await api.get("/admin/users", { params: { page: 1, page_size: 1 } });
-        if (userResponse.data?.success) {
-          setTotalUsers(userResponse.data.data.pagination.total_items || 0);
+        const healthRes = await api.get("/admin/system-health");
+        if (healthRes.data?.success) {
+          setSystemHealth(healthRes.data.data);
+          if (healthRes.data.data.totalUsers) {
+            setTotalUsers(healthRes.data.data.totalUsers);
+          }
         }
-      } catch (userErr) {
-        console.warn("[Admin Dashboard Users Count Fetch Failed]:", userErr);
-        setTotalUsers(18);
+      } catch (healthErr) {
+        console.warn("[Admin Dashboard Health Fetch Failed]:", healthErr);
+        setSystemHealth({
+          dbStatus: "OFFLINE",
+          vnpayStatus: "CONFIG_REQUIRED",
+          apiStatus: "ONLINE",
+          apiLatencyMs: 999,
+          errorCount24H: 0,
+          warningCount24H: 0
+        });
+      }
+
+      // 2. Fetch latest 5 system logs
+      try {
+        const logsRes = await api.get("/admin/logs", { params: { page: 1, page_size: 5 } });
+        if (logsRes.data?.success) {
+          setLatestLogs(logsRes.data.data.items || []);
+        }
+      } catch (logsErr) {
+        console.warn("[Admin Dashboard Logs Fetch Failed]:", logsErr);
+        setLatestLogs([]);
       }
 
       // Lấy thống kê bãi xe
@@ -230,6 +305,21 @@ export default function AdminDashboard() {
         to: period === "custom" ? endDate : demoData.to,
       });
       setTotalUsers(42);
+      setSystemHealth({
+        dbStatus: "ONLINE",
+        vnpayStatus: "ONLINE",
+        apiStatus: "ONLINE",
+        apiLatencyMs: 15,
+        errorCount24H: 0,
+        warningCount24H: 2
+      });
+      setLatestLogs([
+        { logId: 1, logLevel: "INFO", message: "System configuration setting 'is247' updated to 'true'.", source: "Settings", createdAt: new Date(Date.now() - 2 * 60 * 1000).toISOString() },
+        { logId: 2, logLevel: "INFO", message: "Vehicle 30A-888.99 (Car) entered the parking lot at Gate 1", source: "ParkingGate", createdAt: new Date(Date.now() - 5 * 60 * 1000).toISOString() },
+        { logId: 3, logLevel: "INFO", message: "Booking BK-9042 paid successfully via VNPAY", source: "Payment", createdAt: new Date(Date.now() - 12 * 60 * 1000).toISOString() },
+        { logId: 4, logLevel: "INFO", message: "Vehicle 59L-777.77 (Motorbike) entered the parking lot at Gate 1", source: "ParkingGate", createdAt: new Date(Date.now() - 25 * 60 * 1000).toISOString() },
+        { logId: 5, logLevel: "WARNING", message: "Floor B2 is almost full (Occupancy reached 92%)", source: "OccupancyTracker", createdAt: new Date(Date.now() - 45 * 60 * 1000).toISOString() }
+      ]);
     } finally {
       setLoading(false);
     }
@@ -314,6 +404,35 @@ export default function AdminDashboard() {
   const peakHourRecord = data?.peak_hours?.length
     ? [...data.peak_hours].sort((a, b) => b.check_ins - a.check_ins)[0]
     : null;
+
+  const chartWidth = 500;
+  const chartHeight = 140;
+  const paddingLeft = 15;
+  const paddingRight = 15;
+  const paddingTop = 10;
+  const paddingBottom = 10;
+
+  const drawWidth = chartWidth - paddingLeft - paddingRight;
+  const drawHeight = chartHeight - paddingTop - paddingBottom;
+
+  let linePath = "";
+  let areaPath = "";
+
+  if (data?.peak_hours?.length) {
+    linePath = data.peak_hours.map((p, i) => {
+      const x = paddingLeft + (i / 23) * drawWidth;
+      const y = paddingTop + drawHeight - (p.check_ins / maxCheckIns) * drawHeight;
+      return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
+    }).join(' ');
+
+    areaPath = `M ${paddingLeft} ${paddingTop + drawHeight} ` +
+      data.peak_hours.map((p, i) => {
+        const x = paddingLeft + (i / 23) * drawWidth;
+        const y = paddingTop + drawHeight - (p.check_ins / maxCheckIns) * drawHeight;
+        return `L ${x} ${y}`;
+      }).join(' ') +
+      ` L ${paddingLeft + drawWidth} ${paddingTop + drawHeight} Z`;
+  }
 
   return (
     <div className="space-y-6 animate-slide-in font-sans pb-10">
@@ -470,6 +589,132 @@ export default function AdminDashboard() {
         </div>
       ) : data ? (
         <>
+          {/* SYSTEM HEALTH TELEMETRY SECTION */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {/* Server Status Card */}
+            <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-between group">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 rounded-xl">
+                  <Server size={20} />
+                </div>
+                <div>
+                  <span className="block text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">
+                    {language === "en" ? "API GATEWAY STATUS" : "TRẠNG THÁI SERVER"}
+                  </span>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="text-sm font-black text-slate-850 dark:text-white">
+                      ONLINE
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-slate-400 dark:text-slate-500 block">
+                    Latency: {systemHealth?.apiLatencyMs || 12}ms
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Database Status Card */}
+            <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-between group">
+              <div className="flex items-center gap-3">
+                <div className={`p-3 rounded-xl ${
+                  systemHealth?.dbStatus === "ONLINE"
+                    ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-450"
+                    : "bg-red-50 dark:bg-red-950/30 text-red-650 dark:text-red-450"
+                }`}>
+                  <Database size={20} />
+                </div>
+                <div>
+                  <span className="block text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">
+                    {language === "en" ? "DATABASE CONNECTIVITY" : "KẾT NỐI DATABASE"}
+                  </span>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className={`w-2 h-2 rounded-full ${
+                      systemHealth?.dbStatus === "ONLINE" ? "bg-emerald-500 animate-pulse" : "bg-red-500"
+                    }`} />
+                    <span className="text-sm font-black text-slate-850 dark:text-white">
+                      {systemHealth?.dbStatus || "ONLINE"}
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-slate-400 dark:text-slate-500 block">
+                    {systemHealth?.dbStatus === "ONLINE"
+                      ? (language === "en" ? "All pools synchronized" : "Mọi kết nối ổn định")
+                      : (language === "en" ? "Connection timeout" : "Mất kết nối")}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* VNPay Gateway Status Card */}
+            <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-between group">
+              <div className="flex items-center gap-3">
+                <div className={`p-3 rounded-xl ${
+                  systemHealth?.vnpayStatus === "ONLINE"
+                    ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-450"
+                    : "bg-amber-50 dark:bg-amber-950/30 text-amber-650 dark:text-amber-450"
+                }`}>
+                  <CreditCard size={20} />
+                </div>
+                <div>
+                  <span className="block text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">
+                    VNPAY GATEWAY
+                  </span>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className={`w-2 h-2 rounded-full ${
+                      systemHealth?.vnpayStatus === "ONLINE" ? "bg-emerald-500 animate-pulse" : "bg-amber-500"
+                    }`} />
+                    <span className="text-sm font-black text-slate-850 dark:text-white">
+                      {systemHealth?.vnpayStatus === "ONLINE" ? "ONLINE" : (language === "en" ? "NOT CONFIG" : "CHƯA CẤU HÌNH")}
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-slate-400 dark:text-slate-500 block">
+                    {systemHealth?.vnpayStatus === "ONLINE"
+                      ? (language === "en" ? "API key synchronized" : "Đã đồng bộ API key")
+                      : (language === "en" ? "Check settings page" : "Kiểm tra trang cấu hình")}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Warning / Error Counter Card */}
+            <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-between group">
+              <div className="flex items-center gap-3">
+                <div className={`p-3 rounded-xl ${
+                  (systemHealth?.errorCount24H || 0) > 0
+                    ? "bg-red-50 dark:bg-red-950/30 text-red-650 dark:text-red-400"
+                    : (systemHealth?.warningCount24H || 0) > 0
+                      ? "bg-amber-50 dark:bg-amber-950/30 text-amber-655 dark:text-amber-400"
+                      : "bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400"
+                }`}>
+                  <AlertCircle size={20} />
+                </div>
+                <div>
+                  <span className="block text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">
+                    {language === "en" ? "TELEMETRY ALERTS (24H)" : "CẢNH BÁO HỆ THỐNG (24H)"}
+                  </span>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-sm font-black text-slate-800 dark:text-white flex items-center gap-1">
+                      {systemHealth?.errorCount24H || 0} <span className="text-[10px] font-semibold text-rose-505 uppercase">Errors</span>
+                    </span>
+                    <span className="text-slate-300 dark:text-slate-700">|</span>
+                    <span className="text-sm font-black text-slate-800 dark:text-white flex items-center gap-1">
+                      {systemHealth?.warningCount24H || 0} <span className="text-[10px] font-semibold text-amber-500 uppercase">Warns</span>
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-slate-400 dark:text-slate-500 block">
+                    {((systemHealth?.errorCount24H || 0) + (systemHealth?.warningCount24H || 0)) > 0 ? (
+                      <a href="/admin/logs" className="text-blue-550 dark:text-blue-400 font-bold hover:underline flex items-center gap-0.5">
+                        {language === "en" ? "View issue logs" : "Xem log sự cố"} &rarr;
+                      </a>
+                    ) : (
+                      language === "en" ? "Healthy status" : "Mọi thứ bình thường"
+                    )}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* 3. CORE METRIC STAT CARDS */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {/* Card 1: Parking Space Full (%) */}
@@ -662,39 +907,123 @@ export default function AdminDashboard() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <div className="h-40 flex items-end justify-between gap-1 pt-4 px-1 border-b border-slate-100 dark:border-slate-800/80 relative">
-                      {/* Grid helper lines */}
-                      <div className="absolute left-0 right-0 bottom-1/3 border-b border-dashed border-slate-100 dark:border-slate-850 pointer-events-none" />
-                      <div className="absolute left-0 right-0 bottom-2/3 border-b border-dashed border-slate-100 dark:border-slate-850 pointer-events-none" />
+                    <div className="relative h-40 w-full pt-4">
+                      {/* Interactive SVG Chart */}
+                      <svg
+                        viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+                        className="w-full h-full overflow-visible"
+                        onMouseMove={(e) => {
+                          if (!data?.peak_hours?.length) return;
+                          const svg = e.currentTarget;
+                          const rect = svg.getBoundingClientRect();
+                          const clientX = e.clientX - rect.left;
+                          
+                          // Scale clientX to SVG coordinate space
+                          const svgX = (clientX / rect.width) * chartWidth;
+                          
+                          // Find nearest point index
+                          const rX = svgX - paddingLeft;
+                          let index = Math.round((rX / drawWidth) * 23);
+                          if (index < 0) index = 0;
+                          if (index > 23) index = 23;
+                          
+                          const xVal = paddingLeft + (index / 23) * drawWidth;
+                          const yVal = paddingTop + drawHeight - (data.peak_hours[index].check_ins / maxCheckIns) * drawHeight;
+                          
+                          setHoveredHourIndex(index);
+                          setHoveredHourX(xVal);
+                          setHoveredHourY(yVal);
+                        }}
+                        onMouseLeave={() => setHoveredHourIndex(null)}
+                      >
+                        <defs>
+                          <linearGradient id="chartAreaGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.25" />
+                            <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.0" />
+                          </linearGradient>
+                        </defs>
 
-                      {data.peak_hours.map((p) => {
-                        const heightPercent = (p.check_ins / maxCheckIns) * 100;
-                        const isPeak = p.check_ins === maxCheckIns && p.check_ins > 0;
-                        return (
-                          <div key={p.hour} className="flex-1 flex flex-col items-center group relative">
-                            {/* Hover tooltip widget */}
-                            <div className="absolute bottom-full mb-2 bg-slate-900 text-white text-[9px] font-bold px-2 py-1 rounded shadow-lg opacity-0 group-hover:opacity-100 transition duration-150 pointer-events-none z-20 whitespace-nowrap">
-                              {p.check_ins} {language === "en" ? "check-ins" : "xe vào"}
-                            </div>
-                            
-                            {/* Custom rendered bar */}
-                            <div 
-                              style={{ height: `${Math.max(heightPercent, 5)}%` }}
-                              className={`w-full rounded-t transition-all duration-300 relative overflow-hidden group-hover:brightness-95
-                                ${
-                                  isPeak
-                                    ? "bg-gradient-to-t from-blue-600 to-indigo-500 shadow-md shadow-blue-500/20"
-                                    : "bg-slate-200 dark:bg-slate-800 group-hover:bg-blue-400 dark:group-hover:bg-slate-700"
-                                }`}
+                        {/* Horizontal Grid helper lines */}
+                        <line x1={paddingLeft} y1={paddingTop} x2={paddingLeft + drawWidth} y2={paddingTop} className="stroke-slate-100 dark:stroke-slate-800/40" strokeDasharray="3 3" />
+                        <line x1={paddingLeft} y1={paddingTop + drawHeight / 3} x2={paddingLeft + drawWidth} y2={paddingTop + drawHeight / 3} className="stroke-slate-100 dark:stroke-slate-800/40" strokeDasharray="3 3" />
+                        <line x1={paddingLeft} y1={paddingTop + (2 * drawHeight) / 3} x2={paddingLeft + drawWidth} y2={paddingTop + (2 * drawHeight) / 3} className="stroke-slate-100 dark:stroke-slate-800/40" strokeDasharray="3 3" />
+                        <line x1={paddingLeft} y1={paddingTop + drawHeight} x2={paddingLeft + drawWidth} y2={paddingTop + drawHeight} className="stroke-slate-200 dark:stroke-slate-800" strokeWidth="1" />
+
+                        {/* Area Fill path */}
+                        <path d={areaPath} fill="url(#chartAreaGradient)" />
+
+                        {/* Spline/Line path */}
+                        <path
+                          d={linePath}
+                          fill="none"
+                          className="stroke-blue-500 dark:stroke-blue-400"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+
+                        {/* Hover vertical guideline */}
+                        {hoveredHourIndex !== null && (
+                          <line
+                            x1={hoveredHourX}
+                            y1={paddingTop}
+                            x2={hoveredHourX}
+                            y2={paddingTop + drawHeight}
+                            className="stroke-slate-350 dark:stroke-slate-700"
+                            strokeWidth="1"
+                            strokeDasharray="3 3"
+                          />
+                        )}
+
+                        {/* Hover point highlights */}
+                        {hoveredHourIndex !== null && (
+                          <>
+                            <circle
+                              cx={hoveredHourX}
+                              cy={hoveredHourY}
+                              r="7"
+                              className="fill-blue-500/30 animate-pulse"
                             />
-                            
-                            {/* Label */}
-                            <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 mt-2 block tracking-tight font-mono">
-                              {String(p.hour).padStart(2, "0")}h
-                            </span>
+                            <circle
+                              cx={hoveredHourX}
+                              cy={hoveredHourY}
+                              r="4.5"
+                              className="fill-blue-600 dark:fill-blue-500 stroke-white dark:stroke-slate-900"
+                              strokeWidth="1.5"
+                            />
+                          </>
+                        )}
+                      </svg>
+
+                      {/* Tooltip Overlay */}
+                      {hoveredHourIndex !== null && data?.peak_hours?.[hoveredHourIndex] && (
+                        <div
+                          className="absolute bg-slate-900/95 dark:bg-slate-950/95 text-white text-[10px] p-2.5 rounded-xl shadow-xl border border-slate-700/40 pointer-events-none z-30 -translate-x-1/2 -translate-y-full transition-all duration-75 whitespace-nowrap"
+                          style={{
+                            left: `${(hoveredHourX / chartWidth) * 100}%`,
+                            top: `${(hoveredHourY / chartHeight) * 100 - 10}px`
+                          }}
+                        >
+                          <div className="font-bold text-slate-400 flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block" />
+                            {String(data.peak_hours[hoveredHourIndex].hour).padStart(2, "0")}:00 - {String((data.peak_hours[hoveredHourIndex].hour + 1) % 24).padStart(2, "0")}:00
                           </div>
-                        );
-                      })}
+                          <div className="text-[11px] font-black text-slate-100 mt-1">
+                            {data.peak_hours[hoveredHourIndex].check_ins} {language === "en" ? "check-ins" : "lượt xe vào"}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* X-axis Labels */}
+                    <div className="flex justify-between text-[9px] font-bold text-slate-400 dark:text-slate-500 px-4 mt-2 font-mono border-t border-slate-50 dark:border-slate-800/40 pt-1.5">
+                      <span>00:00</span>
+                      <span>04:00</span>
+                      <span>08:00</span>
+                      <span>12:00</span>
+                      <span>16:00</span>
+                      <span>20:00</span>
+                      <span>23:00</span>
                     </div>
                   </div>
                 )}
@@ -703,17 +1032,13 @@ export default function AdminDashboard() {
               <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/60 flex justify-between items-center text-[10px] text-slate-450 font-semibold">
                 <span>
                   {language === "en"
-                    ? "Horizontal: Hours of Day (00h - 24h) | Vertical: Check-ins Count"
-                    : "Trục ngang: Giờ trong ngày (00h - 24h) | Trục dọc: Số lượt check-in"}
+                    ? "Horizontal: Hours of Day (00h - 23h) | Vertical: Check-ins Count"
+                    : "Trục ngang: Giờ trong ngày (00h - 23h) | Trục dọc: Số lượt check-in"}
                 </span>
                 <div className="flex gap-4">
                   <span className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded bg-gradient-to-br from-blue-600 to-indigo-500 inline-block" />
-                    {language === "en" ? "Peak Traffic" : "Cao điểm"}
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded bg-slate-200 dark:bg-slate-800 inline-block" />
-                    {language === "en" ? "Normal Traffic" : "Thường nhật"}
+                    <span className="w-4 h-0.5 bg-blue-500 dark:bg-blue-400 inline-block align-middle mr-1" />
+                    {language === "en" ? "Vehicle Check-ins" : "Lượt xe vào"}
                   </span>
                 </div>
               </div>
@@ -914,12 +1239,12 @@ export default function AdminDashboard() {
               <div className="flex justify-between items-center mb-6">
                 <div>
                   <h3 className="text-sm font-extrabold text-slate-800 dark:text-white uppercase tracking-wider">
-                    {language === "en" ? "Recent Parking Activity" : "Nhật Ký Đỗ Xe Mới Nhất"}
+                    {language === "en" ? "Recent System Activity" : "Nhật Ký Hoạt Động Hệ Thống"}
                   </h3>
                   <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium mt-0.5 block">
                     {language === "en"
                       ? "Real-time log of check-ins, check-outs, and payments from all gates."
-                      : "Danh sách lượt vào/ra và các giao dịch đặt chỗ mới ghi nhận."}
+                      : "Danh sách hoạt động, lượt vào/ra và các giao dịch đặt chỗ ghi nhận thực tế."}
                   </span>
                 </div>
                 <div className="p-1.5 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 rounded-lg">
@@ -928,39 +1253,44 @@ export default function AdminDashboard() {
               </div>
 
               <div className="space-y-3">
-                {recentActivities[language].map((act) => (
-                  <div
-                    key={act.id}
-                    className="flex justify-between items-start p-3 bg-slate-50/50 dark:bg-[#0b1326]/30 border border-slate-100/80 dark:border-slate-850 rounded-xl"
-                  >
-                    <div className="flex gap-3 min-w-0">
-                      <div className="mt-1 shrink-0">
-                        {act.type === "checkout" ? (
-                          <span className="flex w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                        ) : act.type === "checkin" ? (
-                          <span className="flex w-2.5 h-2.5 rounded-full bg-blue-500" />
-                        ) : act.type === "payment" ? (
-                          <span className="flex w-2.5 h-2.5 rounded-full bg-purple-500" />
-                        ) : (
-                          <span className="flex w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-xs text-slate-700 dark:text-slate-300 font-semibold leading-normal break-words">
-                          {act.event}
-                        </p>
-                        <span className="text-[10px] text-slate-400 font-mono block mt-0.5">
-                          {act.time}
-                        </span>
+                {latestLogs.length === 0 ? (
+                  <div className="h-44 flex flex-col justify-center items-center text-slate-405 dark:text-slate-500 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
+                    <Activity size={24} className="stroke-1 mb-1.5 text-slate-400" />
+                    <span className="text-[11px]">
+                      {language === "en" ? "No recent activity found." : "Không có hoạt động nào gần đây."}
+                    </span>
+                  </div>
+                ) : (
+                  latestLogs.map((log) => (
+                    <div
+                      key={log.logId}
+                      className="flex justify-between items-start p-3 bg-slate-50/50 dark:bg-[#0b1326]/30 border border-slate-100/80 dark:border-slate-850 rounded-xl"
+                    >
+                      <div className="flex gap-3 min-w-0">
+                        <div className="mt-1 shrink-0">
+                          {log.logLevel === "ERROR" ? (
+                            <span className="flex w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse" />
+                          ) : log.logLevel === "WARNING" ? (
+                            <span className="flex w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
+                          ) : (
+                            <span className="flex w-2.5 h-2.5 rounded-full bg-blue-500" />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs text-slate-700 dark:text-slate-300 font-semibold leading-normal break-words">
+                            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wide mr-1.5">
+                              [{log.source || "System"}]
+                            </span>
+                            {log.message}
+                          </p>
+                          <span className="text-[10px] text-slate-400 font-mono block mt-0.5">
+                            {getRelativeTimeString(log.createdAt)}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                    {act.amount && (
-                      <span className="text-xs font-black text-slate-800 dark:text-white shrink-0 ml-2">
-                        +{formatCurrency(act.amount)}
-                      </span>
-                    )}
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </div>
           </div>

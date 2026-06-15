@@ -5,6 +5,9 @@ namespace ParkingManagement.DTOs
     public class VehicleCheckOutDto
     {
         [Required]
+        public string TicketCode { get; set; } = null!;
+
+        [Required]
         public string LicensePlateOut { get; set; } = null!;
 
         [Required]

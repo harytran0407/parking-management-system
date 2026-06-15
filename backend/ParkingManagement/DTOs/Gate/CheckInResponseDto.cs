@@ -16,6 +16,9 @@ namespace ParkingManagement.DTOs
     // Lớp chứa dữ liệu chi tiết bên trong thuộc tính "data"
     public class CheckInResultDataDto
     {
+        [JsonPropertyName("ticket_code")]
+        public string? TicketCode { get; set; }
+
         [JsonPropertyName("session_id")]
         public string SessionId { get; set; } = null!;
 

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Settings,
   Database,
@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useLanguage } from "../../hooks/useLanguage";
+import api from "../../utils/api";
 
 export default function AdminSettings() {
   const { language } = useLanguage();
@@ -38,13 +39,87 @@ export default function AdminSettings() {
   const [autoBarrierOpen, setAutoBarrierOpen] = useState(true); // Open gate automatically on valid ocr
   const [ocrSensitivity, setOcrSensitivity] = useState("HIGH"); // HIGH | MEDIUM | LOW
 
-  const handleSaveSettings = (e) => {
+  // Fetch settings from API on mount
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const response = await api.get("/admin/settings");
+        if (response.data && response.data.success) {
+          const list = response.data.data;
+          list.forEach((s) => {
+            const val = s.setting_value;
+            switch (s.setting_key) {
+              case "lostTicketFee":
+                setLostTicketFee(val);
+                break;
+              case "overtimePenaltyRate":
+                setOvertimePenaltyRate(val);
+                break;
+              case "maxSpeedLimit":
+                setMaxSpeedLimit(val);
+                break;
+              case "is247":
+                setIs247(val === "true");
+                break;
+              case "holdWindow":
+                setHoldWindow(val);
+                break;
+              case "minBookingDuration":
+                setMinBookingDuration(val);
+                break;
+              case "advanceBookingLimitDays":
+                setAdvanceBookingLimitDays(val);
+                break;
+              case "autoLPR":
+                setAutoLPR(val === "true");
+                break;
+              case "autoBarrierOpen":
+                setAutoBarrierOpen(val === "true");
+                break;
+              case "ocrSensitivity":
+                setOcrSensitivity(val);
+                break;
+              default:
+                break;
+            }
+          });
+        }
+      } catch (error) {
+        console.error("Failed to load settings:", error);
+      }
+    };
+    fetchSettings();
+  }, []);
+
+  const handleSaveSettings = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      const payload = {
+        lostTicketFee: lostTicketFee.toString(),
+        overtimePenaltyRate: overtimePenaltyRate.toString(),
+        maxSpeedLimit: maxSpeedLimit.toString(),
+        is247: is247.toString(),
+        holdWindow: holdWindow.toString(),
+        minBookingDuration: minBookingDuration.toString(),
+        advanceBookingLimitDays: advanceBookingLimitDays.toString(),
+        autoLPR: autoLPR.toString(),
+        autoBarrierOpen: autoBarrierOpen.toString(),
+        ocrSensitivity: ocrSensitivity.toString(),
+      };
+
+      const promises = Object.entries(payload).map(([key, value]) =>
+        api.put(`/admin/settings/${key}`, { setting_value: value })
+      );
+
+      await Promise.all(promises);
       toast.success(language === "en" ? "Settings saved successfully!" : "Đã lưu thiết lập thành công!");
-    }, 1000);
+    } catch (error) {
+      console.error("Failed to save settings:", error);
+      toast.error(language === "en" ? "Failed to save settings." : "Lưu thiết lập thất bại.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDatabaseBackup = () => {

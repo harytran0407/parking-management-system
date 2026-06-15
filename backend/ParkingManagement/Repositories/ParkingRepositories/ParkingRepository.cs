@@ -82,6 +82,23 @@ namespace ParkingManagement.Repositories
 
             await _context.ParkingSessions.AddAsync(session);
             await _context.SaveChangesAsync();
+
+            try
+            {
+                var systemLog = new SystemLog
+                {
+                    LogLevel = "INFO",
+                    Message = $"Vehicle '{session.LicensePlateIn}' successfully checked-in at Slot '{session.SlotId}'. Session: '{session.SessionId}', TicketCode: '{session.TicketCode}'.",
+                    Source = "ParkingGate",
+                    CreatedAt = DateTime.UtcNow
+                };
+                await _context.SystemLogs.AddAsync(systemLog);
+                await _context.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[ParkingRepository Error]: Could not log check-in. Reason: {ex.Message}");
+            }
         }
 
         public async Task UpdateSessionAsync(ParkingSession session)
@@ -90,6 +107,23 @@ namespace ParkingManagement.Repositories
 
             _context.ParkingSessions.Update(session);
             await _context.SaveChangesAsync();
+
+            try
+            {
+                var systemLog = new SystemLog
+                {
+                    LogLevel = "INFO",
+                    Message = $"Vehicle '{session.LicensePlateIn}' session updated. Status: '{session.Status}', PaymentStatus: '{session.PaymentStatus}', Checkout Time: '{session.CheckOutTime}', Fee: {session.TotalFee:N0} VND.",
+                    Source = "ParkingGate",
+                    CreatedAt = DateTime.UtcNow
+                };
+                await _context.SystemLogs.AddAsync(systemLog);
+                await _context.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[ParkingRepository Error]: Could not log check-out/update. Reason: {ex.Message}");
+            }
         }
 
         public async Task<ParkingSlot?> GetSlotByIdAsync(string slotId)
@@ -150,6 +184,16 @@ namespace ParkingManagement.Repositories
                 .Include(s => s.Slot)
                     .ThenInclude(sl => sl!.Zone)
                 .FirstOrDefaultAsync(s => s.LicensePlateIn == licensePlate && s.Status == "ACTIVE");
+        }
+
+        public async Task<ParkingSession?> GetActiveSessionByTicketCodeAsync(string ticketCode)
+        {
+            if (string.IsNullOrWhiteSpace(ticketCode)) return null;
+
+            return await _context.ParkingSessions
+                .Include(s => s.Slot)
+                    .ThenInclude(sl => sl!.Zone)
+                .FirstOrDefaultAsync(s => s.TicketCode == ticketCode && s.Status == "ACTIVE");
         }
 
         public async Task<bool> UpdateSessionAndSlotAsync(ParkingSession session, string slotId)

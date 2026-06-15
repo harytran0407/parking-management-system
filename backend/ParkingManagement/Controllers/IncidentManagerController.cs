@@ -70,53 +70,5 @@ namespace ParkingManagement.Controllers
                 data = logs
             });
         }
-
-        // PUT: api/v1/manager/incidents/{logId}/resolve
-        [HttpPut("{logId:int}/resolve")]
-        public async Task<IActionResult> ResolveIncident(int logId, [FromBody] ResolveIncidentRequest? request)
-        {
-            var log = await _context.IncidentLogs.FirstOrDefaultAsync(i => i.LogId == logId);
-            if (log == null)
-            {
-                return NotFound(new { success = false, message = "Incident log not found" });
-            }
-
-            if (log.Status == "RESOLVED")
-            {
-                return BadRequest(new { success = false, message = "Incident log is already resolved" });
-            }
-
-            // Extract manager ID from claims or default to usr_001 for testing
-            string managerId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "usr_001";
-
-            log.Status = "RESOLVED";
-            log.ResolvedBy = managerId;
-            log.ResolvedAt = DateTime.UtcNow;
-
-            if (request != null && !string.IsNullOrWhiteSpace(request.Feedback))
-            {
-                log.Description = (log.Description ?? "") + $"\n[Feedback: {request.Feedback.Trim()}]";
-            }
-
-            await _context.SaveChangesAsync();
-
-            return Ok(new
-            {
-                success = true,
-                message = "Incident marked as resolved successfully",
-                data = new
-                {
-                    log_id = log.LogId,
-                    status = log.Status,
-                    resolved_by = log.ResolvedBy,
-                    resolved_at = log.ResolvedAt
-                }
-            });
-        }
-    }
-
-    public class ResolveIncidentRequest
-    {
-        public string? Feedback { get; set; }
     }
 }

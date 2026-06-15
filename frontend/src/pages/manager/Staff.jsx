@@ -13,6 +13,8 @@ export default function ManagerStaff() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [selectedStaff, setSelectedStaff] = useState(null)
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false)
+  const [staffToToggle, setStaffToToggle] = useState(null)
 
   // Forms state
   const [addForm, setAddForm] = useState({
@@ -77,8 +79,11 @@ export default function ManagerStaff() {
 
     setFormSubmitting(true)
     try {
+      const emailPrefix = addForm.email.split('@')[0];
+      const generatedUsername = emailPrefix + '_' + Math.random().toString(36).substring(2, 6);
+
       const response = await api.post('/manager/staff', {
-        username: addForm.username,
+        username: generatedUsername,
         full_name: addForm.fullName,
         email: addForm.email,
         phone_number: addForm.phoneNumber,
@@ -146,10 +151,13 @@ export default function ManagerStaff() {
 
   // Handle Toggle Status (ACTIVE/BANNED)
   const handleToggleStatus = async (staff) => {
-    const newStatus = staff.status === 'ACTIVE' ? 'BANNED' : 'ACTIVE'
+    const target = staff || staffToToggle;
+    if (!target) return;
+    const newStatus = target.status === 'ACTIVE' ? 'BANNED' : 'ACTIVE'
     
+    setFormSubmitting(true)
     try {
-      const response = await api.put(`/manager/staff/${staff.user_id}/status`, {
+      const response = await api.put(`/manager/staff/${target.user_id}/status`, {
         status: newStatus
       })
 
@@ -157,12 +165,16 @@ export default function ManagerStaff() {
         toast.success(`Staff status updated to ${newStatus} successfully`)
         // Update local state directly to be fast and smooth
         setStaffList(prev => 
-          prev.map(item => item.user_id === staff.user_id ? { ...item, status: newStatus } : item)
+          prev.map(item => item.user_id === target.user_id ? { ...item, status: newStatus } : item)
         )
+        setIsConfirmModalOpen(false)
+        setStaffToToggle(null)
       }
     } catch (error) {
       console.error('Toggle status error:', error)
       toast.error(error.message || 'Failed to update staff status')
+    } finally {
+      setFormSubmitting(false)
     }
   }
 
@@ -242,7 +254,6 @@ export default function ManagerStaff() {
               <thead>
                 <tr>
                   <th className="table-header">Staff Details</th>
-                  <th className="table-header">Username</th>
                   <th className="table-header">Contact Information</th>
                   <th className="table-header">Status</th>
                   <th className="table-header">Created At</th>
@@ -259,19 +270,24 @@ export default function ManagerStaff() {
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-lg border border-blue-200 dark:border-blue-800 overflow-hidden">
                           {staff.avatar_url ? (
-                            <img src={staff.avatar_url} alt={staff.full_name} className="w-full h-full object-cover" />
+                            <img
+                              src={
+                                staff.avatar_url.startsWith("http://") || staff.avatar_url.startsWith("https://")
+                                  ? staff.avatar_url
+                                  : `${(import.meta.env.VITE_API_BASE_URL || "http://localhost:5077").replace("/api/v1", "")}${staff.avatar_url}`
+                              }
+                              alt={staff.full_name}
+                              className="w-full h-full object-cover"
+                            />
                           ) : (
                             (staff.full_name || staff.username || 'S').charAt(0).toUpperCase()
                           )}
                         </div>
                         <div>
                           <p className="font-semibold text-slate-800 dark:text-white">{staff.full_name || 'N/A'}</p>
-                          <p className="text-xs text-slate-400 dark:text-slate-500">Staff Agent</p>
+                          <p className="text-xs text-slate-400 dark:text-slate-500 font-mono">@{staff.username}</p>
                         </div>
                       </div>
-                    </td>
-                    <td className="table-cell font-mono font-semibold text-slate-700 dark:text-slate-300">
-                      @{staff.username}
                     </td>
                     <td className="table-cell">
                       <div className="space-y-1">
@@ -309,11 +325,14 @@ export default function ManagerStaff() {
                           <Edit size={16} />
                         </button>
                         <button
-                          onClick={() => handleToggleStatus(staff)}
+                          onClick={() => {
+                            setStaffToToggle(staff);
+                            setIsConfirmModalOpen(true);
+                          }}
                           className={`p-1.5 rounded-lg transition-all ${
                             staff.status === 'ACTIVE'
                               ? 'text-slate-500 hover:text-red-600 hover:bg-red-50 dark:text-slate-400 dark:hover:text-red-400 dark:hover:bg-slate-800'
-                              : 'text-red-600 bg-red-50 hover:bg-red-100 dark:text-red-400 dark:bg-red-950/20 dark:hover:bg-red-950/40'
+                              : 'text-red-600 bg-red-50 hover:bg-red-100 dark:text-red-400 dark:bg-red-950/20 dark:hover:bg-red-955/45'
                           }`}
                           title={staff.status === 'ACTIVE' ? 'Deactivate / Ban Staff' : 'Activate Staff'}
                         >
@@ -352,29 +371,16 @@ export default function ManagerStaff() {
             </div>
 
             <form onSubmit={handleAddSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="label">Username *</label>
-                  <input
-                    type="text"
-                    required
-                    value={addForm.username}
-                    onChange={(e) => setAddForm(prev => ({ ...prev, username: e.target.value.trim() }))}
-                    className="input-field"
-                    placeholder="e.g. johndoe"
-                  />
-                </div>
-                <div>
-                  <label className="label">Full Name *</label>
-                  <input
-                    type="text"
-                    required
-                    value={addForm.fullName}
-                    onChange={(e) => setAddForm(prev => ({ ...prev, fullName: e.target.value }))}
-                    className="input-field"
-                    placeholder="e.g. John Doe"
-                  />
-                </div>
+              <div>
+                <label className="label">Full Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={addForm.fullName}
+                  onChange={(e) => setAddForm(prev => ({ ...prev, fullName: e.target.value }))}
+                  className="input-field"
+                  placeholder="e.g. John Doe"
+                />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -531,6 +537,72 @@ export default function ManagerStaff() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================
+          CONFIRM STATUS CHANGE MODAL
+         ============================================================ */}
+      {isConfirmModalOpen && staffToToggle && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="card w-full max-w-md shadow-2xl relative animate-slide-in border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
+            <button
+              onClick={() => {
+                setIsConfirmModalOpen(false);
+                setStaffToToggle(null);
+              }}
+              className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg transition-all"
+            >
+              <X size={18} />
+            </button>
+            <div className="flex items-start gap-4 mb-6">
+              <div className={`p-3 rounded-xl shrink-0 ${
+                staffToToggle.status === 'ACTIVE' 
+                  ? 'bg-red-100 text-red-650 dark:bg-red-950/40 dark:text-red-400' 
+                  : 'bg-emerald-100 text-emerald-650 dark:bg-emerald-950/40 dark:text-emerald-400'
+              }`}>
+                <Shield size={24} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="text-base font-bold text-slate-800 dark:text-white mb-1">
+                  Confirm Action
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
+                  {staffToToggle.status === 'ACTIVE' 
+                    ? `Are you sure you want to deactivate @${staffToToggle.username}?`
+                    : `Are you sure you want to activate @${staffToToggle.username}?`
+                  }
+                </p>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsConfirmModalOpen(false);
+                  setStaffToToggle(null);
+                }}
+                className="btn-secondary text-xs"
+                disabled={formSubmitting}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleToggleStatus()}
+                className={`px-4 py-2 text-white font-bold rounded-lg text-xs transition-all flex items-center gap-1.5 ${
+                  staffToToggle.status === 'ACTIVE'
+                    ? 'bg-red-600 hover:bg-red-750 shadow-md shadow-red-500/20'
+                    : 'bg-emerald-600 hover:bg-emerald-700 shadow-md shadow-emerald-500/20'
+                }`}
+                disabled={formSubmitting}
+              >
+                {formSubmitting && <RefreshCw size={12} className="animate-spin" />}
+                {staffToToggle.status === 'ACTIVE' ? 'Deactivate Account' : 'Activate Account'}
+              </button>
+            </div>
           </div>
         </div>
       )}

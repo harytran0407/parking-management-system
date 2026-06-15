@@ -53,7 +53,7 @@ export default function ManagerBuilding() {
         address: formData.address,
         weekday_hours: formData.weekdayHours || undefined,
         weekend_hours: formData.weekendHours || undefined,
-        is_24_7: formData.is247
+        is_24_7: false
       })
 
       if (response.data && response.data.success) {
@@ -126,10 +126,7 @@ export default function ManagerBuilding() {
               <div className="flex items-center gap-2">
                 <Clock size={16} className="text-slate-400" />
                 <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                  {buildingData?.operation_hours?.is_24_7 
-                    ? '24 Hours / 7 Days continuous operation' 
-                    : `Weekdays: ${buildingData?.operation_hours?.weekday_hours} • Weekends: ${buildingData?.operation_hours?.weekend_hours}`
-                  }
+                  Weekdays: {buildingData?.operation_hours?.weekday_hours} • Weekends: {buildingData?.operation_hours?.weekend_hours}
                 </span>
               </div>
             </div>
@@ -155,11 +152,6 @@ export default function ManagerBuilding() {
                   style={{ width: `${buildingData.current_occupancy.occupancy_rate}%` }}
                 />
               </div>
-
-              <div className="flex justify-between items-center text-xs font-bold text-slate-400 pt-2 font-mono">
-                <span>Usage: {buildingData.current_occupancy.occupancy_rate}%</span>
-                <span>Available: {buildingData.current_occupancy.total_available} Slots</span>
-              </div>
             </div>
           </div>
         )}
@@ -169,7 +161,7 @@ export default function ManagerBuilding() {
       <div className="w-full lg:w-96">
         <div className="card h-full">
           <h3 className="subsection-title flex items-center gap-2">
-            Configure Parameters
+            Adjust Building Info
           </h3>
           <p className="text-xs text-slate-400 mb-6">
             Modify general operating hours, location details, and names. Changes apply instantly.
@@ -200,47 +192,32 @@ export default function ManagerBuilding() {
               />
             </div>
 
-            <div className="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800 cursor-pointer flex items-center gap-3">
-              <input
-                type="checkbox"
-                id="is247"
-                checked={formData.is247}
-                onChange={(e) => setFormData(prev => ({ ...prev, is247: e.target.checked }))}
-                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-              />
-              <label htmlFor="is247" className="text-sm font-semibold text-slate-800 dark:text-slate-200 cursor-pointer">
-                Operate 24 Hours / 7 Days
-              </label>
-            </div>
-
-            {!formData.is247 && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-slide-in">
-                <div>
-                  <label className="label">Weekday Hours *</label>
-                  <input
-                    type="text"
-                    required
-                    pattern="^\d{2}:\d{2}\s*-\s*\d{2}:\d{2}$"
-                    value={formData.weekdayHours}
-                    onChange={(e) => setFormData(prev => ({ ...prev, weekdayHours: e.target.value }))}
-                    className="input-field font-mono"
-                    placeholder="06:00 - 22:00"
-                  />
-                </div>
-                <div>
-                  <label className="label">Weekend Hours *</label>
-                  <input
-                    type="text"
-                    required
-                    pattern="^\d{2}:\d{2}\s*-\s*\d{2}:\d{2}$"
-                    value={formData.weekendHours}
-                    onChange={(e) => setFormData(prev => ({ ...prev, weekendHours: e.target.value }))}
-                    className="input-field font-mono"
-                    placeholder="08:00 - 20:00"
-                  />
-                </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-slide-in">
+              <div>
+                <label className="label">Mon - Fri Hours *</label>
+                <input
+                  type="text"
+                  required
+                  pattern="^\d{2}:\d{2}\s*-\s*\d{2}:\d{2}$"
+                  value={formData.weekdayHours}
+                  onChange={(e) => setFormData(prev => ({ ...prev, weekdayHours: e.target.value }))}
+                  className="input-field font-mono"
+                  placeholder="06:00 - 22:00"
+                />
               </div>
-            )}
+              <div>
+                <label className="label">Weekend Hours *</label>
+                <input
+                  type="text"
+                  required
+                  pattern="^\d{2}:\d{2}\s*-\s*\d{2}:\d{2}$"
+                  value={formData.weekendHours}
+                  onChange={(e) => setFormData(prev => ({ ...prev, weekendHours: e.target.value }))}
+                  className="input-field font-mono"
+                  placeholder="08:00 - 20:00"
+                />
+              </div>
+            </div>
 
             <button
               type="submit"

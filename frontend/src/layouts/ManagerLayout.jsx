@@ -21,7 +21,7 @@ export default function ManagerLayout() {
     { path: '/manager/building', label: language === 'en' ? 'Building Info' : 'Thông tin Tòa nhà', icon: <Building2 size={20} /> },
     { path: '/manager/pricing', label: language === 'en' ? 'Pricing' : 'Cấu hình giá', icon: <DollarSign size={20} /> },
     { path: '/manager/staff', label: language === 'en' ? 'Staff Management' : 'Quản lý nhân viên', icon: <Users size={20} /> },
-    { path: '/manager/issues', label: language === 'en' ? 'Issues' : 'Sự cố phản hồi', icon: <AlertCircle size={20} />, badge: '3' },
+    { path: '/manager/issues', label: language === 'en' ? 'Issues' : 'Sự cố phản hồi', icon: <AlertCircle size={20} />},
   ]
 
   return (

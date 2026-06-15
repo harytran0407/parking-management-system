@@ -594,8 +594,20 @@ export default function AdminUsers() {
                         {/* User Info details */}
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-500 to-indigo-600 text-white font-extrabold flex items-center justify-center shrink-0 uppercase text-xs shadow-sm">
-                              {uFullName ? uFullName[0] : user.username ? user.username[0] : "U"}
+                            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-500 to-indigo-600 text-white font-extrabold flex items-center justify-center shrink-0 uppercase text-xs shadow-sm overflow-hidden">
+                              {user.avatar_url ? (
+                                <img
+                                  src={
+                                    user.avatar_url.startsWith("http://") || user.avatar_url.startsWith("https://")
+                                      ? user.avatar_url
+                                      : `${(import.meta.env.VITE_API_BASE_URL || "http://localhost:5077").replace("/api/v1", "")}${user.avatar_url}`
+                                  }
+                                  alt={uFullName || user.username}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                uFullName ? uFullName[0] : user.username ? user.username[0] : "U"
+                              )}
                             </div>
                             <div>
                               <strong className="block text-sm font-bold text-slate-900 dark:text-white leading-tight">

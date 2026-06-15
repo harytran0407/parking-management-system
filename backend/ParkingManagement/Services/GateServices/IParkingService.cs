@@ -24,6 +24,11 @@ namespace ParkingManagement.Services
         Task<ActiveSessionResponseDto> GetActiveSessionByLicensePlateAsync(string licensePlate);
 
         /// <summary>
+        /// Tìm kiếm thông tin phiên gửi xe đang hoạt động (ACTIVE) bằng mã vé (TicketCode).
+        /// </summary>
+        Task<ActiveSessionResponseDto> GetActiveSessionByTicketCodeAsync(string ticketCode);
+
+        /// <summary>
         /// Tìm kiếm thông tin phiên gửi xe đang hoạt động (ACTIVE) bằng tên ô đỗ.
         /// </summary>
         Task<ActiveSessionResponseDto> GetActiveSessionBySlotNameAsync(string slotName);

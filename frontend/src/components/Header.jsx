@@ -189,7 +189,7 @@ export default function Header({ title, isSidebarCollapsed, setIsSidebarCollapse
                     {user?.role === "SystemAdmin" ? (language === "en" ? "System Admin" : "Quản trị viên") :
                      user?.role === "ParkingManager" ? (language === "en" ? "Facility Manager" : "Quản lý Bãi xe") :
                      user?.role === "ParkingStaff" ? (language === "en" ? "Gate Staff" : "Nhân viên Cổng") :
-                     user?.role === "ParkingUser" ? (language === "en" ? "Customer" : "Khách hàng") :
+                     user?.role === "ParkingUser" ? (language === "en" ? "User" : "Khách hàng") :
                      (user?.role || (language === "en" ? "Guest" : "Khách"))}
                   </span>
                 </div>

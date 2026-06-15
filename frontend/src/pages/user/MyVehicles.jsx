@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { Car, Trash2, Edit3, Plus, Search, FileText, RefreshCw, MapPin, Info, CalendarDays, X, HelpCircle } from "lucide-react";
 import api from "../../utils/api";
+import { useLanguage } from "../../hooks/useLanguage";
 
 export default function MyVehicles() {
+  const { language } = useLanguage();
   const [vehicles, setVehicles] = useState([]);
   const [selectedVehicleId, setSelectedVehicleId] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -12,9 +14,12 @@ export default function MyVehicles() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
+  const [vehicleTypes, setVehicleTypes] = useState([]);
+  const [pricingPolicies, setPricingPolicies] = useState([]);
+
   const [newVehicle, setNewVehicle] = useState({
     vehicle_plate_number: "",
-    vehicle_type_id: 1,
+    vehicle_type_id: "",
     brand: "",
     model: "",
     color: "",
@@ -24,7 +29,7 @@ export default function MyVehicles() {
   const [editVehicle, setEditVehicle] = useState({
     id: "",
     vehicle_plate_number: "",
-    vehicle_type_id: 1,
+    vehicle_type_id: "",
     brand: "",
     model: "",
     color: "",
@@ -32,29 +37,36 @@ export default function MyVehicles() {
   });
 
   // Fetch Vehicles
-  const fetchVehicles = async () => {
+  const fetchVehicles = async (currentPolicies = pricingPolicies) => {
     setApiLoading(true);
     setApiError("");
     try {
       const response = await api.get("/vehicles");
       if (response.data && response.data.success) {
-        const mapped = response.data.data.map((v) => ({
-          id: v.vehicle_id,
-          name: v.vehicle_description || `${v.brand} ${v.model}`,
-          brand: v.brand || "Generic",
-          model: v.model || "Vehicle",
-          plate_number: v.vehicle_plate_number,
-          vehicle_type: v.vehicle_type_name || (v.vehicle_type_id === 2 ? "Automobile" : "Motorbike"),
-          vehicle_type_id: v.vehicle_type_id,
-          colorName: v.color || "Black",
-          colorHex: getColorHex(v.color),
-          tier: "Pay-per-use",
-          price: v.vehicle_type_id === 2 ? "20,000 VND/hr" : "5,000 VND/hr",
-          isDocumentsValidated: true,
-          expiryDate: "Active Pass",
-          vehicle_description: v.vehicle_description || "",
-          activities: [], // Empty for now or can join logs in future iterations
-        }));
+        const mapped = response.data.data.map((v) => {
+          const policy = currentPolicies.find((p) => p.vehicle_type_id === v.vehicle_type_id);
+          const priceText = policy
+            ? `${parseFloat(policy.hourly_rate).toLocaleString()} VND/${language === "en" ? "hr" : "giờ"}`
+            : (v.vehicle_type_id === 2 ? (language === "en" ? "20,000 VND/hr" : "20.000 VND/giờ") : (language === "en" ? "5,000 VND/hr" : "5.000 VND/giờ"));
+
+          return {
+            id: v.vehicle_id,
+            name: v.vehicle_description || `${v.brand} ${v.model}`,
+            brand: v.brand || (language === "en" ? "Generic" : "Hãng khác"),
+            model: v.model || (language === "en" ? "Vehicle" : "Phương tiện"),
+            plate_number: v.vehicle_plate_number,
+            vehicle_type: v.vehicle_type_name || (v.vehicle_type_id === 2 ? (language === "en" ? "Car / Automobile" : "Ô tô") : (language === "en" ? "Motorbike" : "Xe máy")),
+            vehicle_type_id: v.vehicle_type_id,
+            colorName: v.color || (language === "en" ? "Black" : "Đen"),
+            colorHex: getColorHex(v.color),
+            tier: language === "en" ? "Pay-per-use" : "Lượt",
+            price: priceText,
+            isDocumentsValidated: true,
+            expiryDate: language === "en" ? "Active Pass" : "Vé đang hoạt động",
+            vehicle_description: v.vehicle_description || "",
+            activities: [], // Empty for now or can join logs in future iterations
+          };
+        });
         setVehicles(mapped);
         if (mapped.length > 0) {
           setSelectedVehicleId((prev) => (prev && mapped.find((x) => x.id === prev) ? prev : mapped[0].id));
@@ -64,15 +76,40 @@ export default function MyVehicles() {
       }
     } catch (err) {
       console.error(err);
-      setApiError(err.message || "Failed to load vehicles.");
+      setApiError(err.message || (language === "en" ? "Failed to load vehicles." : "Không thể tải danh sách xe."));
     } finally {
       setApiLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchVehicles();
-  }, []);
+    const loadMetadataAndVehicles = async () => {
+      let activePolicies = [];
+      try {
+        const [typesRes, pricingRes] = await Promise.all([
+          api.get("/admin/vehicle-types"),
+          api.get("/admin/pricing")
+        ]);
+        if (typesRes.data && typesRes.data.success) {
+          setVehicleTypes(typesRes.data.data);
+          if (typesRes.data.data.length > 0) {
+            setNewVehicle(prev => ({
+              ...prev,
+              vehicle_type_id: prev.vehicle_type_id || typesRes.data.data[0].vehicle_type_id
+            }));
+          }
+        }
+        if (pricingRes.data && pricingRes.data.success) {
+          activePolicies = pricingRes.data.data;
+          setPricingPolicies(activePolicies);
+        }
+      } catch (err) {
+        console.error("Error fetching vehicle metadata:", err);
+      }
+      await fetchVehicles(activePolicies);
+    };
+    loadMetadataAndVehicles();
+  }, [language]);
 
   const getColorHex = (color) => {
     if (!color) return "#0F172A";
@@ -131,7 +168,7 @@ export default function MyVehicles() {
       }
     } catch (err) {
       console.error(err);
-      setApiError(err.message || "Registration failed. Please make sure plate number is unique.");
+      setApiError(err.message || (language === "en" ? "Registration failed. Please make sure plate number is unique." : "Đăng ký thất bại. Vui lòng kiểm tra lại xem biển số xe đã được dùng chưa."));
     } finally {
       setApiLoading(false);
     }
@@ -157,14 +194,14 @@ export default function MyVehicles() {
       }
     } catch (err) {
       console.error(err);
-      setApiError(err.message || "Failed to update vehicle details.");
+      setApiError(err.message || (language === "en" ? "Failed to update vehicle details." : "Cập nhật thông tin xe thất bại."));
     } finally {
       setApiLoading(false);
     }
   };
 
   const handleDeleteVehicle = async (id, name) => {
-    if (window.confirm(`Are you sure you want to delete "${name}"?`)) {
+    if (window.confirm(language === "en" ? `Are you sure you want to delete "${name}"?` : `Bạn có chắc muốn xóa xe "${name}" không?`)) {
       setApiError("");
       try {
         const response = await api.delete(`/vehicles/${id}`);
@@ -173,7 +210,7 @@ export default function MyVehicles() {
         }
       } catch (err) {
         console.error(err);
-        alert(err.message || "Failed to delete vehicle. It may be currently parked.");
+        alert(err.message || (language === "en" ? "Failed to delete vehicle. It may be currently parked." : "Xóa xe thất bại. Xe có thể đang đỗ trong bãi."));
       }
     }
   };
@@ -194,14 +231,14 @@ export default function MyVehicles() {
       <div className="w-full lg:w-80 bg-white dark:bg-slate-900 border-b lg:border-b-0 lg:border-r border-slate-200 dark:border-slate-800 flex flex-col flex-shrink-0 h-auto lg:h-full">
         <div className="p-4 border-b border-slate-100 dark:border-slate-800 space-y-3">
           <div>
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white">My Vehicles</h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400">{vehicles.length} Units Connected</p>
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white">{language === "en" ? "My Vehicles" : "Xe của tôi"}</h2>
+            <p className="text-xs text-slate-550 dark:text-slate-400">{language === "en" ? `${vehicles.length} Units Connected` : `${vehicles.length} xe đã kết nối`}</p>
           </div>
           <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl">
             <Search size={16} className="text-slate-400" />
             <input
               type="text"
-              placeholder="Search plate or brand..."
+              placeholder={language === "en" ? "Search plate or brand..." : "Tìm biển số hoặc hãng xe..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-transparent text-sm text-slate-900 dark:text-white border-none outline-none p-0 focus:ring-0"
@@ -238,9 +275,9 @@ export default function MyVehicles() {
           })}
           <button
             onClick={() => setIsAddModalOpen(true)}
-            className="w-full p-4 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 flex items-center justify-center gap-2 transform active:scale-95 transition-all">
+            className="w-full p-4 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 flex items-center justify-center gap-2 transform active:scale-95 transition-all text-xs font-bold uppercase tracking-wider">
             <Plus size={18} />
-            Add New Vehicle
+            {language === "en" ? "Add New Vehicle" : "Thêm xe mới"}
           </button>
         </div>
       </div>
@@ -265,8 +302,8 @@ export default function MyVehicles() {
                       {selectedVehicle.plate_number}
                     </span>
                   </div>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 flex items-center gap-1.5 font-medium">
-                    <span>Asset Profile</span>
+                  <p className="text-sm text-slate-550 dark:text-slate-400 flex items-center gap-1.5 font-medium">
+                    <span>{language === "en" ? "Asset Profile" : "Thông tin phương tiện"}</span>
                     <span className="text-slate-300 dark:text-slate-700">•</span>
                     <span className="text-blue-600 dark:text-blue-400 font-semibold">{selectedVehicle.vehicle_type}</span>
                   </p>
@@ -281,7 +318,7 @@ export default function MyVehicles() {
                 <button
                   onClick={openEditModal}
                   className="flex items-center gap-2 px-5 py-3 bg-slate-900 hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-500 text-white text-sm font-bold rounded-xl transition-all shadow-sm">
-                  <Edit3 size={16} /> Edit Details
+                  <Edit3 size={16} /> {language === "en" ? "Edit Details" : "Sửa thông tin"}
                 </button>
               </div>
             </div>
@@ -294,8 +331,8 @@ export default function MyVehicles() {
                     <FileText size={20} />
                   </div>
                   <div>
-                    <p className="text-xs text-slate-400 dark:text-slate-500 uppercase tracking-wider font-semibold">Verification</p>
-                    <p className="text-sm font-bold text-slate-800 dark:text-white mt-0.5">{selectedVehicle.isDocumentsValidated ? "Approved & Valid" : "Under Verification"}</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500 uppercase tracking-wider font-semibold">{language === "en" ? "Verification" : "Xác minh"}</p>
+                    <p className="text-sm font-bold text-slate-800 dark:text-white mt-0.5">{selectedVehicle.isDocumentsValidated ? (language === "en" ? "Approved & Valid" : "Đã duyệt & Hợp lệ") : (language === "en" ? "Under Verification" : "Đang xác minh")}</p>
                   </div>
                 </div>
               </div>
@@ -305,7 +342,7 @@ export default function MyVehicles() {
                     <CalendarDays size={20} />
                   </div>
                   <div>
-                    <p className="text-xs text-slate-400 dark:text-slate-500 uppercase tracking-wider font-semibold">Pass Subscription</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500 uppercase tracking-wider font-semibold">{language === "en" ? "Pass Subscription" : "Đăng ký vé"}</p>
                     <p className="text-sm font-bold text-slate-800 dark:text-white mt-0.5">{selectedVehicle.expiryDate}</p>
                   </div>
                 </div>
@@ -314,26 +351,26 @@ export default function MyVehicles() {
 
             <div className="bg-white dark:bg-slate-900 rounded-[2rem] p-6 border border-slate-100 dark:border-slate-800">
               <h3 className="text-sm font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-4 flex items-center gap-2">
-                <Info size={16} /> Technical Specifications
+                <Info size={16} /> {language === "en" ? "Technical Specifications" : "Thông số kỹ thuật"}
               </h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                 <div>
-                  <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">License Plate</p>
+                  <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">{language === "en" ? "License Plate" : "Biển số xe"}</p>
                   <p className="text-base font-mono font-black text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-100 dark:border-slate-700 inline-block">
                     {selectedVehicle.plate_number}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">Vehicle Type</p>
+                  <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">{language === "en" ? "Vehicle Type" : "Loại xe"}</p>
                   <p className="text-base font-bold text-slate-800 dark:text-white">{selectedVehicle.vehicle_type}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">Billing Type</p>
+                  <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">{language === "en" ? "Billing Type" : "Hình thức thu phí"}</p>
                   <p className="text-base font-bold text-slate-800 dark:text-white">{selectedVehicle.tier}</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">{selectedVehicle.price}</p>
+                  <p className="text-xs text-slate-550 dark:text-slate-400">{selectedVehicle.price}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">Color Finish</p>
+                  <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">{language === "en" ? "Color Finish" : "Màu sơn"}</p>
                   <div className="flex items-center gap-2 mt-1">
                     <span
                       className="w-4 h-4 rounded-full border border-white dark:border-slate-800 shadow-sm ring-2 ring-slate-200 dark:ring-slate-700"
@@ -348,14 +385,16 @@ export default function MyVehicles() {
         ) : (
           <div className="h-full flex flex-col items-center justify-center text-center p-12 bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800">
             <Car size={64} className="text-slate-300 dark:text-slate-700 mb-4 animate-bounce" />
-            <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-2">No Vehicles Registered</h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm mb-6">
-              Connect your vehicle profile to start booking slots, purchasing monthly passes, and receiving instant gate notifications.
+            <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-2">{language === "en" ? "No Vehicles Registered" : "Chưa đăng ký xe nào"}</h3>
+            <p className="text-sm text-slate-550 dark:text-slate-400 max-w-sm mb-6">
+              {language === "en"
+                ? "Connect your vehicle profile to start booking slots, purchasing monthly passes, and receiving instant gate notifications."
+                : "Liên kết phương tiện của bạn để bắt đầu đặt chỗ, mua vé tháng và nhận thông tin thông báo ra vào cổng tức thời."}
             </p>
             <button
               onClick={() => setIsAddModalOpen(true)}
               className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-all shadow-md">
-              Register First Vehicle
+              {language === "en" ? "Register First Vehicle" : "Đăng ký xe đầu tiên"}
             </button>
           </div>
         )}
@@ -369,7 +408,7 @@ export default function MyVehicles() {
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden transform animate-scale-in">
             <div className="flex items-center justify-between p-6 border-b border-slate-100 dark:border-slate-800">
               <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <Plus className="text-blue-600" size={24} /> Connect New Vehicle
+                <Plus className="text-blue-600" size={24} /> {language === "en" ? "Connect New Vehicle" : "Liên kết xe mới"}
               </h3>
               <button onClick={() => setIsAddModalOpen(false)} className="p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full">
                 <X size={20} />
@@ -381,18 +420,18 @@ export default function MyVehicles() {
               )}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 mb-1">Display Label</label>
+                  <label className="block text-xs font-bold text-slate-400 mb-1">{language === "en" ? "Display Label" : "Tên xe / Ghi chú"}</label>
                   <input
                     type="text"
                     required
                     value={newVehicle.vehicle_description}
                     onChange={(e) => setNewVehicle({ ...newVehicle, vehicle_description: e.target.value })}
-                    placeholder="e.g., My Camry"
+                    placeholder={language === "en" ? "e.g., My Camry" : "Ví dụ: Xe Camry của tôi"}
                     className={inputThemeClasses}
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 mb-1">License Plate</label>
+                  <label className="block text-xs font-bold text-slate-400 mb-1">{language === "en" ? "License Plate" : "Biển số xe"}</label>
                   <input
                     type="text"
                     required
@@ -410,7 +449,7 @@ export default function MyVehicles() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 mb-1">Brand</label>
+                  <label className="block text-xs font-bold text-slate-400 mb-1">{language === "en" ? "Brand" : "Hãng sản xuất"}</label>
                   <input
                     type="text"
                     required
@@ -421,7 +460,7 @@ export default function MyVehicles() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 mb-1">Model</label>
+                  <label className="block text-xs font-bold text-slate-400 mb-1">{language === "en" ? "Model" : "Dòng xe"}</label>
                   <input
                     type="text"
                     required
@@ -434,7 +473,7 @@ export default function MyVehicles() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 mb-1">Type</label>
+                  <label className="block text-xs font-bold text-slate-400 mb-1">{language === "en" ? "Type" : "Loại phương tiện"}</label>
                   <select
                     value={newVehicle.vehicle_type_id}
                     onChange={(e) =>
@@ -444,12 +483,11 @@ export default function MyVehicles() {
                       })
                     }
                     className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm rounded-xl text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 cursor-pointer">
-                    <option value={1} className="bg-white dark:bg-slate-800">
-                      Motorbike
-                    </option>
-                    <option value={2} className="bg-white dark:bg-slate-800">
-                      Car / Automobile
-                    </option>
+                    {vehicleTypes.map((t) => (
+                      <option key={t.vehicle_type_id} value={t.vehicle_type_id} className="bg-white dark:bg-slate-800">
+                        {t.vehicle_type_name}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div>
@@ -488,7 +526,7 @@ export default function MyVehicles() {
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden transform animate-scale-in">
             <div className="flex items-center justify-between p-6 border-b border-slate-100 dark:border-slate-800">
               <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <Edit3 className="text-blue-600" size={22} /> Edit Vehicle Details
+                <Edit3 className="text-blue-600" size={22} /> {language === "en" ? "Edit Vehicle Details" : "Sửa thông tin phương tiện"}
               </h3>
               <button onClick={() => setIsEditModalOpen(false)} className="p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full">
                 <X size={20} />
@@ -501,7 +539,7 @@ export default function MyVehicles() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 mb-1">Display Label</label>
+                  <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 mb-1">{language === "en" ? "Display Label" : "Tên xe hiển thị"}</label>
                   <input 
                     type="text" 
                     required 
@@ -511,7 +549,7 @@ export default function MyVehicles() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 mb-1">License Plate</label>
+                  <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 mb-1">{language === "en" ? "License Plate" : "Biển kiểm soát"}</label>
                   <input
                     type="text"
                     required
@@ -528,17 +566,17 @@ export default function MyVehicles() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 mb-1">Brand Name</label>
+                  <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 mb-1">{language === "en" ? "Brand Name" : "Hãng xe"}</label>
                   <input type="text" required value={editVehicle.brand} onChange={(e) => setEditVehicle({ ...editVehicle, brand: e.target.value })} className={inputThemeClasses} />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 mb-1">Model Version</label>
+                  <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 mb-1">{language === "en" ? "Model Version" : "Dòng xe"}</label>
                   <input type="text" required value={editVehicle.model} onChange={(e) => setEditVehicle({ ...editVehicle, model: e.target.value })} className={inputThemeClasses} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 mb-1">Classification</label>
+                  <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 mb-1">{language === "en" ? "Classification" : "Phân loại xe"}</label>
                   <select
                     value={editVehicle.vehicle_type_id}
                     onChange={(e) =>
@@ -548,16 +586,15 @@ export default function MyVehicles() {
                       })
                     }
                     className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm rounded-xl text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 cursor-pointer">
-                    <option value={1} className="bg-white dark:bg-slate-800">
-                      Motorbike
-                    </option>
-                    <option value={2} className="bg-white dark:bg-slate-800">
-                      Car / Automobile
-                    </option>
+                    {vehicleTypes.map((t) => (
+                      <option key={t.vehicle_type_id} value={t.vehicle_type_id} className="bg-white dark:bg-slate-800">
+                        {t.vehicle_type_name}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 mb-1">Color Finish</label>
+                  <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 mb-1">{language === "en" ? "Color Finish" : "Màu sơn"}</label>
                   <input type="text" required value={editVehicle.color} onChange={(e) => setEditVehicle({ ...editVehicle, color: e.target.value })} className={inputThemeClasses} />
                 </div>
               </div>
@@ -567,13 +604,13 @@ export default function MyVehicles() {
                   disabled={apiLoading}
                   onClick={() => setIsEditModalOpen(false)}
                   className="px-5 py-2.5 border border-slate-200 dark:border-slate-700 text-sm font-semibold rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition active:scale-95 disabled:opacity-50">
-                  Cancel
+                  {language === "en" ? "Cancel" : "Hủy"}
                 </button>
                 <button
                   type="submit"
                   disabled={apiLoading}
                   className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-xl transition shadow-md active:scale-95 disabled:opacity-50">
-                  Save Changes
+                  {language === "en" ? "Save Changes" : "Lưu thay đổi"}
                 </button>
               </div>
             </form>

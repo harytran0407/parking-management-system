@@ -16,7 +16,6 @@ import {
   AlertCircle,
   ChevronDown,
   ChevronUp,
-  Sparkles,
   PlusCircle,
   History
 } from "lucide-react";
@@ -28,10 +27,29 @@ const getBackendRootUrl = () => {
 import { useNavigate } from "react-router-dom";
 import api from "../../utils/api";
 import { useAuth } from "../../hooks/useAuth";
+import { useLanguage } from "../../hooks/useLanguage";
 
 export default function Issues() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { language } = useLanguage();
+
+  const getIssueTypeLabel = (type) => {
+    switch (type) {
+      case "SYSTEM_ERROR": return language === "en" ? "System & App Error" : "Lỗi ứng dụng & hệ thống";
+      case "LOST_TICKET": return language === "en" ? "Lost Ticket" : "Mất thẻ xe";
+      case "WRONG_SLOT": return language === "en" ? "Wrong Slot Occupancy" : "Chỗ đỗ xe bị chiếm";
+      default: return language === "en" ? "Other Feedback / General Inquiry" : "Ý kiến khác / Giải đáp chung";
+    }
+  };
+
+  const getTicketStatusLabel = (status) => {
+    switch (status) {
+      case "RESOLVED": return language === "en" ? "Resolved" : "Đã xử lý";
+      case "PENDING": return language === "en" ? "Pending" : "Đang chờ";
+      default: return language === "en" ? "In Review" : "Đang duyệt";
+    }
+  };
 
   // ==========================================
   // STATE MANAGEMENT
@@ -87,19 +105,19 @@ export default function Issues() {
     const currentRating = hoverRating || formData.rating;
     switch (currentRating) {
       case 1:
-        return "Terrible 😞";
+        return language === "en" ? "Terrible 😞" : "Rất tệ 😞";
       case 2:
-        return "Bad 🙁";
+        return language === "en" ? "Bad 🙁" : "Tệ 🙁";
       case 3:
-        return "Average 😐";
+        return language === "en" ? "Average 😐" : "Bình thường 😐";
       case 4:
-        return "Good 🙂";
+        return language === "en" ? "Good 🙂" : "Tốt 🙂";
       case 5:
-        return "Excellent! 😄";
+        return language === "en" ? "Excellent! 😄" : "Tuyệt vời! 😄";
       default:
-        return "Select your rating";
+        return language === "en" ? "Select your rating" : "Chọn mức độ đánh giá";
     }
-  }, [hoverRating, formData.rating]);
+  }, [hoverRating, formData.rating, language]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -109,14 +127,14 @@ export default function Issues() {
     if (!description) {
       return { rating: 0, subject: "", message: "", attachment: "", feedback: "" };
     }
-    
+
     // Extract attachment
     let attachment = "";
     const attachmentMatch = description.match(/\[Attachment:\s*([^\]]+)\]/);
     if (attachmentMatch) {
       attachment = attachmentMatch[1];
     }
-    
+
     // Clean description by removing the attachment part
     let cleanedDesc = description.replace(/\[Attachment:\s*[^\]]+\]/, "").trim();
 
@@ -139,7 +157,7 @@ export default function Issues() {
     // Extract subject and message
     let subject = "";
     let message = cleanedDesc;
-    
+
     // If there is a subject colon message structure: "Subject: Message"
     const colonIndex = cleanedDesc.indexOf(":");
     if (colonIndex > 0) {
@@ -169,7 +187,7 @@ export default function Issues() {
     if (!file) return;
 
     if (file.size > 5 * 1024 * 1024) {
-      setFileError("File size exceeds 5MB limit.");
+      setFileError(language === "en" ? "File size exceeds 5MB limit." : "Kích thước tập tin vượt quá giới hạn 5MB.");
       return;
     }
 
@@ -192,7 +210,7 @@ export default function Issues() {
       }
     } catch (err) {
       console.error("Upload error:", err);
-      setFileError(err.response?.data?.message || "Failed to upload file.");
+      setFileError(err.response?.data?.message || (language === "en" ? "Failed to upload file." : "Không thể tải tập tin lên."));
       setFileName("");
     } finally {
       setUploadingFile(false);
@@ -209,12 +227,12 @@ export default function Issues() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (formData.rating === 0) {
-      alert("Please select a rating before submitting.");
+      alert(language === "en" ? "Please select a rating before submitting." : "Vui lòng chọn mức độ đánh giá trước khi gửi.");
       return;
     }
 
     if (!formData.customerPhone.trim() || !formData.customerEmail.trim()) {
-      alert("Contact Phone and Contact Email are required.");
+      alert(language === "en" ? "Contact Phone and Contact Email are required." : "Số điện thoại và email liên hệ không được để trống.");
       return;
     }
 
@@ -240,7 +258,7 @@ export default function Issues() {
     } catch (error) {
       console.error("Failed to submit feedback:", error);
       setStatus("idle");
-      
+
       let errorMsg = error?.message || error?.response?.data?.message;
       if (!errorMsg && error?.errors) {
         // Parse ASP.NET ValidationProblemDetails structure
@@ -250,7 +268,7 @@ export default function Issues() {
       if (!errorMsg) {
         errorMsg = error?.toString() || "Unknown error";
       }
-      alert("Error submitting issue: " + errorMsg);
+      alert((language === "en" ? "Error submitting issue: " : "Lỗi khi gửi yêu cầu hỗ trợ: ") + errorMsg);
     }
   };
 
@@ -261,10 +279,12 @@ export default function Issues() {
           <CheckCircle2 size={40} />
         </div>
         <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">
-          Ticket Submitted Successfully!
+          {language === "en" ? "Ticket Submitted Successfully!" : "Đã gửi yêu cầu hỗ trợ thành công!"}
         </h2>
         <p className="text-slate-500 dark:text-slate-400 mb-8 max-w-md text-center text-sm">
-          Thank you for helping us improve. Our technical staff has logged your ticket and is reviewing the issue.
+          {language === "en"
+            ? "Thank you for helping us improve. Our technical staff has logged your ticket and is reviewing the issue."
+            : "Cảm ơn bạn đã đóng góp ý kiến để cải thiện hệ thống. Nhân viên kỹ thuật đã ghi nhận và đang tiến hành xử lý."}
         </p>
         <div className="flex flex-col gap-3 w-full max-w-sm">
           <button
@@ -274,7 +294,7 @@ export default function Issues() {
             }}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl transition-all shadow-md active:scale-[0.99] flex items-center justify-center gap-2 text-sm"
           >
-            Return to Support Center
+            {language === "en" ? "Return to Support Center" : "Quay lại Trung tâm hỗ trợ"}
           </button>
         </div>
       </div>
@@ -287,10 +307,12 @@ export default function Issues() {
       <div>
         <h2 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight flex items-center gap-2">
           <HelpCircle className="text-blue-500" />
-          Support Center
+          {language === "en" ? "Support Center" : "Trung tâm hỗ trợ"}
         </h2>
         <p className="text-sm font-medium text-slate-400 dark:text-slate-500 mt-1">
-          Submit support tickets and track resolution status in real-time.
+          {language === "en"
+            ? "Submit support tickets and track resolution status in real-time."
+            : "Gửi các yêu cầu hỗ trợ và theo dõi kết quả xử lý trực tiếp."}
         </p>
       </div>
 
@@ -298,21 +320,20 @@ export default function Issues() {
       <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 md:p-8 shadow-sm border border-slate-200 dark:border-slate-800">
         <h3 className="text-lg font-black text-slate-800 dark:text-white mb-6 flex items-center gap-2">
           <PlusCircle className="text-blue-500" size={20} />
-          File a Support Request
+          {language === "en" ? "File a Support Request" : "Báo cáo sự cố / Gửi hỗ trợ"}
         </h3>
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Rating Overall */}
           <div>
             <div className="flex justify-between items-center mb-3">
               <h3 className="text-sm font-bold text-slate-800 dark:text-white">
-                Overall System Experience
+                {language === "en" ? "Overall System Experience" : "Trải nghiệm hệ thống chung"}
               </h3>
               <span
-                className={`text-xs font-bold px-2 py-0.5 rounded-md ${
-                  formData.rating > 0
+                className={`text-xs font-bold px-2 py-0.5 rounded-md ${formData.rating > 0
                     ? "bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400"
                     : "text-slate-400"
-                }`}
+                  }`}
               >
                 {ratingLabel}
               </span>
@@ -329,11 +350,10 @@ export default function Issues() {
                 >
                   <Star
                     size={28}
-                    className={`transition-colors duration-200 ${
-                      star <= (hoverRating || formData.rating)
+                    className={`transition-colors duration-200 ${star <= (hoverRating || formData.rating)
                         ? "fill-amber-400 text-amber-400"
                         : "fill-transparent text-slate-300 dark:text-slate-600"
-                    }`}
+                      }`}
                   />
                 </button>
               ))}
@@ -343,14 +363,14 @@ export default function Issues() {
           {/* Category Cards Selector */}
           <div>
             <h3 className="text-sm font-bold text-slate-800 dark:text-white mb-3 flex items-center gap-1.5">
-              Issue Category
+              {language === "en" ? "Issue Category" : "Phân loại sự cố"}
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               {[
-                { value: "SYSTEM_ERROR", label: "System & App Error", description: "Bugs, scanners, or transaction errors", icon: ShieldAlert },
-                { value: "LOST_TICKET", label: "Lost Ticket ", description: "Lost cards, card replacements", icon: AlertTriangle },
-                { value: "WRONG_SLOT", label: "Wrong Slot Occupancy", description: "Another vehicle parked in your assigned slot", icon: AlertCircle },
-                { value: "OTHER", label: "Other Feedback / General Inquiry", description: "General inquiries, suggestions, or other issues", icon: HelpCircle }
+                { value: "SYSTEM_ERROR", label: language === "en" ? "System & App Error" : "Lỗi ứng dụng & hệ thống", description: language === "en" ? "Bugs, scanners, or transaction errors" : "Lỗi phần mềm, máy quét hoặc giao dịch", icon: ShieldAlert },
+                { value: "LOST_TICKET", label: language === "en" ? "Lost Ticket" : "Mất thẻ xe", description: language === "en" ? "Lost cards, card replacements" : "Mất thẻ, cấp đổi thẻ mới", icon: AlertTriangle },
+                { value: "WRONG_SLOT", label: language === "en" ? "Wrong Slot Occupancy" : "Chỗ đỗ xe bị chiếm", description: language === "en" ? "Another vehicle parked in your assigned slot" : "Xe khác đang đỗ ở vị trí của bạn", icon: AlertCircle },
+                { value: "OTHER", label: language === "en" ? "Other Feedback / General Inquiry" : "Ý kiến khác / Giải đáp chung", description: language === "en" ? "General inquiries, suggestions, or other issues" : "Thắc mắc, góp ý hoặc các vấn đề khác", icon: HelpCircle }
               ].map((cat) => {
                 const Icon = cat.icon;
                 const isSelected = formData.issueType === cat.value;
@@ -359,17 +379,15 @@ export default function Issues() {
                     key={cat.value}
                     type="button"
                     onClick={() => setFormData({ ...formData, issueType: cat.value })}
-                    className={`text-left p-4 rounded-2xl border-2 transition-all duration-200 flex items-start gap-3.5 relative overflow-hidden ${
-                      isSelected 
-                        ? "border-blue-500 bg-blue-50/10 dark:bg-blue-950/20 dark:border-blue-400 shadow-sm" 
+                    className={`text-left p-4 rounded-2xl border-2 transition-all duration-200 flex items-start gap-3.5 relative overflow-hidden ${isSelected
+                        ? "border-blue-500 bg-blue-50/10 dark:bg-blue-950/20 dark:border-blue-400 shadow-sm"
                         : "border-slate-100 dark:border-slate-800 hover:border-slate-200 dark:hover:border-slate-700 bg-slate-50/30 dark:bg-slate-800/20"
-                    }`}
+                      }`}
                   >
-                    <div className={`p-2.5 rounded-xl shrink-0 transition-colors ${
-                      isSelected 
-                        ? "bg-blue-600 text-white" 
+                    <div className={`p-2.5 rounded-xl shrink-0 transition-colors ${isSelected
+                        ? "bg-blue-600 text-white"
                         : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400"
-                    }`}>
+                      }`}>
                       <Icon size={18} />
                     </div>
                     <div className="min-w-0">
@@ -389,7 +407,7 @@ export default function Issues() {
           {/* Subject Title */}
           <div>
             <h3 className="text-sm font-bold text-slate-800 dark:text-white mb-2">
-              Subject Title
+              {language === "en" ? "Subject Title" : "Tiêu đề yêu cầu"}
             </h3>
             <input
               type="text"
@@ -397,7 +415,7 @@ export default function Issues() {
               required
               value={formData.subject}
               onChange={handleChange}
-              placeholder="Brief summary (e.g. QR code won't scan on Basement 2)"
+              placeholder={language === "en" ? "Brief summary (e.g. QR code won't scan on Basement 2)" : "Tóm tắt ngắn gọn (ví dụ: Không quét được mã QR ở tầng hầm 2)"}
               className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 focus:border-blue-500 dark:focus:border-blue-500 rounded-2xl px-5 py-3.5 text-slate-800 dark:text-white focus:outline-none transition-all placeholder:text-slate-400 text-sm font-medium"
             />
           </div>
@@ -405,7 +423,7 @@ export default function Issues() {
           {/* Detailed Message */}
           <div>
             <h3 className="text-sm font-bold text-slate-800 dark:text-white mb-2">
-              Detailed Message
+              {language === "en" ? "Detailed Message" : "Mô tả chi tiết sự cố"}
             </h3>
             <textarea
               name="message"
@@ -413,7 +431,7 @@ export default function Issues() {
               rows={4}
               value={formData.message}
               onChange={handleChange}
-              placeholder="Please describe in detail what happened, any error codes displayed, or steps to reproduce..."
+              placeholder={language === "en" ? "Please describe in detail what happened, any error codes displayed, or steps to reproduce..." : "Vui lòng mô tả chi tiết chuyện gì đã xảy ra, mã lỗi hiển thị (nếu có), hoặc các bước dẫn tới lỗi..."}
               className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 focus:border-blue-500 dark:focus:border-blue-500 rounded-2xl px-5 py-4 text-slate-800 dark:text-white focus:outline-none transition-all placeholder:text-slate-400 text-sm font-medium resize-y"
             ></textarea>
           </div>
@@ -422,9 +440,9 @@ export default function Issues() {
           <div>
             <h3 className="text-sm font-bold text-slate-800 dark:text-white mb-2 flex items-center gap-1.5">
               <Paperclip size={16} className="text-blue-500" />
-              Attach File/Screenshot (Optional)
+              {language === "en" ? "Attach File/Screenshot (Optional)" : "Đính kèm tệp/Ảnh chụp màn hình (Tùy chọn)"}
             </h3>
-            
+
             <div className="border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl p-4 bg-slate-50/50 dark:bg-slate-900/40 hover:bg-slate-50 dark:hover:bg-slate-900/60 transition-colors flex flex-col items-center justify-center text-center relative">
               <input
                 type="file"
@@ -433,11 +451,13 @@ export default function Issues() {
                 className="absolute inset-0 opacity-0 cursor-pointer"
                 disabled={uploadingFile}
               />
-              
+
               {uploadingFile ? (
                 <div className="flex flex-col items-center gap-2 py-2">
                   <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-                  <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Uploading attachment...</span>
+                  <span className="text-xs text-slate-550 dark:text-slate-450 font-medium">
+                    {language === "en" ? "Uploading attachment..." : "Đang tải tệp lên..."}
+                  </span>
                 </div>
               ) : attachmentUrl ? (
                 <div className="w-full flex items-center justify-between bg-white dark:bg-slate-800/85 p-3 rounded-xl border border-slate-100 dark:border-slate-700/50 relative z-10">
@@ -447,7 +467,9 @@ export default function Issues() {
                     </div>
                     <div className="text-left truncate">
                       <p className="text-xs font-bold text-slate-800 dark:text-white truncate">{fileName}</p>
-                      <p className="text-[10px] text-slate-400 font-medium">Ready to attach</p>
+                      <p className="text-[10px] text-slate-400 font-medium">
+                        {language === "en" ? "Ready to attach" : "Sẵn sàng đính kèm"}
+                      </p>
                     </div>
                   </div>
                   <button
@@ -463,10 +485,10 @@ export default function Issues() {
                 <div className="py-2">
                   <Upload size={24} className="text-slate-400 mx-auto mb-2" />
                   <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    Click or drag file here to attach
+                    {language === "en" ? "Click or drag file here to attach" : "Nhấp hoặc kéo tệp vào đây để đính kèm"}
                   </p>
-                  <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">
-                    Max file size: 5MB (PNG, JPG, JPEG, PDF, TXT, DOC)
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
+                    {language === "en" ? "Max file size: 5MB (PNG, JPG, JPEG, PDF, TXT, DOC)" : "Kích thước tối đa: 5MB (PNG, JPG, JPEG, PDF, TXT, DOC)"}
                   </p>
                 </div>
               )}
@@ -483,7 +505,7 @@ export default function Issues() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <h3 className="text-sm font-bold text-slate-800 dark:text-white mb-2 flex items-center gap-1">
-                Contact Phone <span className="text-red-500">*</span>
+                {language === "en" ? "Contact Phone" : "Số điện thoại liên hệ"} <span className="text-red-500">*</span>
               </h3>
               <input
                 type="text"
@@ -497,7 +519,7 @@ export default function Issues() {
             </div>
             <div>
               <h3 className="text-sm font-bold text-slate-800 dark:text-white mb-2 flex items-center gap-1">
-                Contact Email <span className="text-red-500">*</span>
+                {language === "en" ? "Contact Email" : "Email liên hệ"} <span className="text-red-500">*</span>
               </h3>
               <input
                 type="email"
@@ -518,7 +540,7 @@ export default function Issues() {
               onClick={handleDiscard}
               className="px-5 py-2.5 rounded-xl font-bold text-sm text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
             >
-              Discard
+              {language === "en" ? "Discard" : "Xóa nháp"}
             </button>
             <button
               type="submit"
@@ -530,7 +552,7 @@ export default function Issues() {
               }
               className="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 text-white font-bold py-2.5 px-5 rounded-xl flex items-center justify-center gap-2 shadow-md transition-all text-sm active:scale-95"
             >
-              {status === "submitting" ? "Submitting..." : "Submit Ticket"}
+              {status === "submitting" ? (language === "en" ? "Submitting..." : "Đang gửi...") : (language === "en" ? "Submit Ticket" : "Gửi yêu cầu")}
               {status !== "submitting" && <Send size={14} />}
             </button>
           </div>
@@ -541,16 +563,20 @@ export default function Issues() {
       <div className="space-y-6">
         <h3 className="text-lg font-black text-slate-800 dark:text-white mb-2 flex items-center gap-2">
           <History className="text-blue-500" size={20} />
-          My Support Tickets
+          {language === "en" ? "My Support Tickets" : "Lịch sử yêu cầu hỗ trợ"}
         </h3>
-        
+
         <div className="space-y-4">
           {tickets.length === 0 ? (
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-12 text-center shadow-xs">
               <ShieldAlert size={48} className="text-slate-300 dark:text-slate-700 mx-auto mb-3" />
-              <h4 className="text-base font-black text-slate-800 dark:text-white">No Tickets Submitted</h4>
+              <h4 className="text-base font-black text-slate-800 dark:text-white">
+                {language === "en" ? "No Tickets Submitted" : "Chưa gửi yêu cầu nào"}
+              </h4>
               <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 max-w-xs mx-auto">
-                You haven't submitted any support requests yet. Fill the form above to log your first ticket.
+                {language === "en"
+                  ? "You haven't submitted any support requests yet. Fill the form above to log your first ticket."
+                  : "Bạn chưa gửi bất kỳ yêu cầu hỗ trợ nào. Điền vào mẫu bên trên để gửi yêu cầu đầu tiên."}
               </p>
             </div>
           ) : (
@@ -562,11 +588,10 @@ export default function Issues() {
               return (
                 <div
                   key={ticket.log_id}
-                  className={`bg-white dark:bg-slate-900 border transition-all duration-200 rounded-3xl p-5 shadow-xs relative overflow-hidden ${
-                    isExpanded
+                  className={`bg-white dark:bg-slate-900 border transition-all duration-200 rounded-3xl p-5 shadow-xs relative overflow-hidden ${isExpanded
                       ? "border-blue-500/50 dark:border-blue-500/30 ring-1 ring-blue-500/20"
                       : "border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-sm"
-                  }`}
+                    }`}
                 >
                   {/* Collapsed Header Click Box */}
                   <div
@@ -578,21 +603,20 @@ export default function Issues() {
                         #TCK-{ticket.log_id}
                       </span>
                       <h4 className="font-extrabold text-slate-800 dark:text-white uppercase text-[10px] tracking-wider font-sans">
-                        {ticket.issue_type?.replace('_', ' ')}
+                        {getIssueTypeLabel(ticket.issue_type)}
                       </h4>
                       <span className="text-[10px] text-slate-400 font-medium">
-                        {ticket.report_time ? new Date(ticket.report_time).toLocaleDateString() : 'N/A'}
+                        {ticket.report_time ? new Date(ticket.report_time).toLocaleDateString(language === "en" ? "en-US" : "vi-VN") : 'N/A'}
                       </span>
                     </div>
                     <div className="flex items-center gap-3">
                       <span
-                        className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ${
-                          ticket.status === "RESOLVED"
+                        className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ${ticket.status === "RESOLVED"
                             ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/20 dark:text-emerald-400"
                             : "bg-blue-50 text-blue-600 dark:bg-blue-950/20 dark:text-blue-400"
-                        }`}
+                          }`}
                       >
-                        {ticket.status}
+                        {getTicketStatusLabel(ticket.status)}
                       </span>
                       {isExpanded ? (
                         <ChevronUp size={16} className="text-slate-400" />
@@ -609,13 +633,13 @@ export default function Issues() {
                       <div className="flex items-center gap-2 border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20 rounded-xl p-3">
                         <div className="flex items-center gap-1.5 text-[9px] font-black uppercase text-slate-400 dark:text-slate-400 tracking-wider">
                           <Clock size={12} />
-                          Status:
+                          {language === "en" ? "Status:" : "Trạng thái:"}
                         </div>
                         <div className="flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-white">
-                          <span className="text-blue-500">Reported</span>
+                          <span className="text-blue-500">{language === "en" ? "Reported" : "Đã gửi"}</span>
                           <span className="text-slate-300 dark:text-slate-700">→</span>
                           <span className={ticket.status === "RESOLVED" ? "text-emerald-500" : "text-slate-400 dark:text-slate-500"}>
-                            {ticket.status === "RESOLVED" ? "Resolved" : "In Review"}
+                            {ticket.status === "RESOLVED" ? (language === "en" ? "Resolved" : "Đã xử lý") : (language === "en" ? "In Review" : "Đang duyệt")}
                           </span>
                         </div>
                       </div>
@@ -623,14 +647,18 @@ export default function Issues() {
                       {/* Subject */}
                       {subject && (
                         <div className="space-y-0.5">
-                          <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wide block">Subject Title</span>
+                          <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wide block">
+                            {language === "en" ? "Subject Title" : "Tiêu đề yêu cầu"}
+                          </span>
                           <p className="font-extrabold text-sm text-slate-800 dark:text-white leading-snug">{subject}</p>
                         </div>
                       )}
 
                       {/* Detailed Description */}
                       <div className="space-y-1">
-                        <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wide block">Detailed Description</span>
+                        <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wide block">
+                          {language === "en" ? "Detailed Description" : "Mô tả chi tiết"}
+                        </span>
                         <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap bg-slate-50 dark:bg-slate-800/40 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800">
                           {message}
                         </p>
@@ -639,7 +667,9 @@ export default function Issues() {
                       {/* Star experience rating row */}
                       {rating > 0 && (
                         <div className="space-y-1">
-                          <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wide block">Experience Rating</span>
+                          <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wide block">
+                            {language === "en" ? "Experience Rating" : "Đánh giá trải nghiệm"}
+                          </span>
                           <div className="flex gap-0.5 text-amber-400" title={`Rating: ${rating} Stars`}>
                             {[...Array(5)].map((_, i) => (
                               <Star
@@ -656,13 +686,13 @@ export default function Issues() {
                       {attachment && (
                         <div className="pt-1">
                           <a
-                            href={`${backendRoot}${attachment}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 hover:dark:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-blue-600 dark:text-blue-400 transition-colors shadow-xs"
+                             href={`${backendRoot}${attachment}`}
+                             target="_blank"
+                             rel="noopener noreferrer"
+                             className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 hover:dark:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-blue-600 dark:text-blue-400 transition-colors shadow-xs"
                           >
                             <Paperclip size={12} className="text-blue-500" />
-                            View Attachment
+                            {language === "en" ? "View Attachment" : "Xem tệp đính kèm"}
                           </a>
                         </div>
                       )}
@@ -671,12 +701,12 @@ export default function Issues() {
                       {ticket.resolved_at && (
                         <div className="border-t border-slate-100 dark:border-slate-800/80 pt-3 space-y-2">
                           <p className="text-[10px] text-emerald-500 dark:text-emerald-400 font-bold">
-                            ✓ Resolved on {new Date(ticket.resolved_at).toLocaleString()}
+                            ✓ {language === "en" ? "Resolved on" : "Đã xử lý lúc"} {new Date(ticket.resolved_at).toLocaleString(language === "en" ? "en-US" : "vi-VN")}
                           </p>
                           {feedback ? (
                             <div className="bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100/50 dark:border-emerald-900/30 rounded-2xl p-4 mt-2">
                               <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 block mb-1 uppercase tracking-wider">
-                                Resolution Response & Feedback:
+                                {language === "en" ? "Resolution Response & Feedback:" : "Phản hồi giải quyết & Nhận xét từ kỹ thuật:"}
                               </span>
                               <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-semibold">
                                 {feedback}
@@ -685,7 +715,11 @@ export default function Issues() {
                           ) : (
                             <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 bg-emerald-50/20 dark:bg-emerald-950/10 p-3 rounded-xl border border-emerald-100/40 dark:border-emerald-900/20 text-xs font-bold">
                               <CheckCircle2 size={13} />
-                              <span>This ticket is resolved. No additional comments left.</span>
+                              <span>
+                                {language === "en"
+                                  ? "This ticket is resolved. No additional comments left."
+                                  : "Yêu cầu đã được xử lý xong. Nhân viên kỹ thuật không để lại phản hồi bổ sung."}
+                              </span>
                             </div>
                           )}
                         </div>
@@ -703,24 +737,30 @@ export default function Issues() {
       <div className="space-y-6 pt-2">
         <h3 className="text-lg font-black text-slate-800 dark:text-white mb-2 flex items-center gap-2">
           <HelpCircle className="text-blue-500" size={20} />
-          Quick FAQs
+          {language === "en" ? "Quick FAQs" : "Giải đáp nhanh (FAQs)"}
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="p-4 bg-white border border-slate-200 dark:bg-slate-900 dark:border-slate-800 rounded-3xl relative overflow-hidden shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
             <h4 className="text-xs font-extrabold text-blue-600 dark:text-blue-400 flex items-center gap-1.5 uppercase tracking-wide">
-              <MessageSquare size={14} className="text-blue-500" /> QR Ticket Not Generating?
+              <MessageSquare size={14} className="text-blue-500" />
+              {language === "en" ? "QR Ticket Not Generating?" : "Không tạo được vé QR?"}
             </h4>
             <p className="text-xs text-slate-600 dark:text-slate-350 mt-2 leading-relaxed font-medium">
-              Ensure your transaction deposit is processed. Clear browser storage or refresh app token.
+              {language === "en"
+                ? "Ensure your transaction deposit is processed. Clear browser storage or refresh app token."
+                : "Hãy đảm bảo rằng giao dịch thanh toán đặt cọc của bạn đã hoàn tất. Thử làm mới cache trình duyệt hoặc đăng nhập lại."}
             </p>
           </div>
 
           <div className="p-4 bg-white border border-slate-200 dark:bg-slate-900 dark:border-slate-800 rounded-3xl relative overflow-hidden shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
             <h4 className="text-xs font-extrabold text-amber-700 dark:text-amber-400 flex items-center gap-1.5 uppercase tracking-wide">
-              <AlertTriangle size={14} className="text-amber-500" /> Camera Plate Scan Failed?
+              <AlertTriangle size={14} className="text-amber-500" />
+              {language === "en" ? "Camera Plate Scan Failed?" : "Quét biển số xe tại cổng thất bại?"}
             </h4>
             <p className="text-xs text-slate-600 dark:text-slate-350 mt-2 leading-relaxed font-medium">
-              Provide your digital reservation ticket QR directly to the gate guard via mobile dashboard view.
+              {language === "en"
+                ? "Provide your digital reservation ticket QR directly to the gate guard via mobile dashboard view."
+                : "Hãy xuất trình trực tiếp mã QR vé đặt chỗ trên điện thoại của bạn cho bảo vệ ở cổng bãi đỗ xe."}
             </p>
           </div>
         </div>

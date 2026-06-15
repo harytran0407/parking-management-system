@@ -143,17 +143,31 @@ namespace ParkingManagement.Tests.Services
         public async Task ProcessCheckOut_ValidRequest_CompletesSessionAndFreesSlot()
         {
             // Arrange
-            var dto = new VehicleCheckOutDto { LicensePlateOut = "51G-12345", StaffOutId = "STAFF-02" };
-            var session = new ParkingSession { SessionId = "SESS-01", VehicleTypeId = 1, SlotId = "SLOT-A1", CheckInTime = DateTime.Now.AddHours(-2) };
+            var dto = new VehicleCheckOutDto 
+            { 
+                LicensePlateOut = "51G-12345", 
+                TicketCode = "TICKET-12345",
+                CameraOut = "CAM-02",
+                GateOut = "GATE-02"
+            };
+            var session = new ParkingSession 
+            { 
+                SessionId = "SESS-01", 
+                VehicleTypeId = 1, 
+                SlotId = "SLOT-A1", 
+                CheckInTime = DateTime.Now.AddHours(-2),
+                LicensePlateIn = "51G-12345",
+                TicketCode = "TICKET-12345"
+            };
             var policy = new PricingPolicy { BasePrice = 10000, HourlyRate = 5000 };
             var slot = new ParkingSlot { SlotId = "SLOT-A1", Status = "OCCUPIED" };
 
-            _parkingRepositoryMock.Setup(r => r.GetActiveSessionByPlateAsync(dto.LicensePlateOut)).ReturnsAsync(session);
+            _parkingRepositoryMock.Setup(r => r.GetActiveSessionByTicketCodeAsync(dto.TicketCode)).ReturnsAsync(session);
             _parkingRepositoryMock.Setup(r => r.GetActivePricingPolicyByVehicleTypeAsync(session.VehicleTypeId)).ReturnsAsync(policy);
             _parkingRepositoryMock.Setup(r => r.GetSlotByIdAsync(session.SlotId)).ReturnsAsync(slot);
 
             // Act
-            var result = await _parkingService.ProcessCheckOutAsync(dto);
+            var result = await _parkingService.ProcessCheckOutAsync(dto, "STAFF-02");
 
             // Assert
             Assert.Equal("COMPLETED", result.Status);
@@ -169,11 +183,17 @@ namespace ParkingManagement.Tests.Services
         public async Task ProcessCheckOut_SessionNotFound_ThrowsException()
         {
             // Arrange
-            var dto = new VehicleCheckOutDto { LicensePlateOut = "51G-NOTFOUND" };
-            _parkingRepositoryMock.Setup(r => r.GetActiveSessionByPlateAsync(dto.LicensePlateOut)).ReturnsAsync((ParkingSession?)null);
+            var dto = new VehicleCheckOutDto 
+            { 
+                LicensePlateOut = "51G-NOTFOUND", 
+                TicketCode = "TICKET-NOTFOUND",
+                CameraOut = "CAM-02",
+                GateOut = "GATE-02"
+            };
+            _parkingRepositoryMock.Setup(r => r.GetActiveSessionByTicketCodeAsync(dto.TicketCode)).ReturnsAsync((ParkingSession?)null);
 
             // Act & Assert
-            var ex = await Assert.ThrowsAsync<Exception>(() => _parkingService.ProcessCheckOutAsync(dto));
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => _parkingService.ProcessCheckOutAsync(dto, "STAFF-02"));
             Assert.Equal("INVALID_TICKET", ex.Message);
         }
 
@@ -182,14 +202,27 @@ namespace ParkingManagement.Tests.Services
         public async Task ProcessCheckOut_PricingPolicyNotFound_ThrowsException()
         {
             // Arrange
-            var dto = new VehicleCheckOutDto { LicensePlateOut = "51G-12345" };
-            var session = new ParkingSession { SessionId = "SESS-01", VehicleTypeId = 99, CheckInTime = DateTime.Now.AddHours(-1) };
+            var dto = new VehicleCheckOutDto 
+            { 
+                LicensePlateOut = "51G-12345", 
+                TicketCode = "TICKET-12345",
+                CameraOut = "CAM-02",
+                GateOut = "GATE-02"
+            };
+            var session = new ParkingSession 
+            { 
+                SessionId = "SESS-01", 
+                VehicleTypeId = 99, 
+                CheckInTime = DateTime.Now.AddHours(-1),
+                LicensePlateIn = "51G-12345",
+                TicketCode = "TICKET-12345"
+            };
 
-            _parkingRepositoryMock.Setup(r => r.GetActiveSessionByPlateAsync(dto.LicensePlateOut)).ReturnsAsync(session);
+            _parkingRepositoryMock.Setup(r => r.GetActiveSessionByTicketCodeAsync(dto.TicketCode)).ReturnsAsync(session);
             _parkingRepositoryMock.Setup(r => r.GetActivePricingPolicyByVehicleTypeAsync(session.VehicleTypeId)).ReturnsAsync((PricingPolicy?)null);
 
             // Act & Assert
-            var ex = await Assert.ThrowsAsync<Exception>(() => _parkingService.ProcessCheckOutAsync(dto));
+            var ex = await Assert.ThrowsAsync<Exception>(() => _parkingService.ProcessCheckOutAsync(dto, "STAFF-02"));
             Assert.Equal("PRICING_POLICY_NOT_CONFIGURED", ex.Message);
         }
 
@@ -198,15 +231,29 @@ namespace ParkingManagement.Tests.Services
         public async Task ProcessCheckOut_SessionWithNoSlotId_CompletesSuccessfullyWithoutCrashing()
         {
             // Arrange
-            var dto = new VehicleCheckOutDto { LicensePlateOut = "51G-12345" };
-            var session = new ParkingSession { SessionId = "SESS-01", VehicleTypeId = 1, SlotId = null, CheckInTime = DateTime.Now.AddHours(-1) };
+            var dto = new VehicleCheckOutDto 
+            { 
+                LicensePlateOut = "51G-12345", 
+                TicketCode = "TICKET-12345",
+                CameraOut = "CAM-02",
+                GateOut = "GATE-02"
+            };
+            var session = new ParkingSession 
+            { 
+                SessionId = "SESS-01", 
+                VehicleTypeId = 1, 
+                SlotId = null, 
+                CheckInTime = DateTime.Now.AddHours(-1),
+                LicensePlateIn = "51G-12345",
+                TicketCode = "TICKET-12345"
+            };
             var policy = new PricingPolicy { BasePrice = 10000, HourlyRate = 2000 };
 
-            _parkingRepositoryMock.Setup(r => r.GetActiveSessionByPlateAsync(dto.LicensePlateOut)).ReturnsAsync(session);
+            _parkingRepositoryMock.Setup(r => r.GetActiveSessionByTicketCodeAsync(dto.TicketCode)).ReturnsAsync(session);
             _parkingRepositoryMock.Setup(r => r.GetActivePricingPolicyByVehicleTypeAsync(session.VehicleTypeId)).ReturnsAsync(policy);
 
             // Act
-            var result = await _parkingService.ProcessCheckOutAsync(dto);
+            var result = await _parkingService.ProcessCheckOutAsync(dto, "STAFF-02");
 
             // Assert
             Assert.Equal("COMPLETED", result.Status);
@@ -218,19 +265,60 @@ namespace ParkingManagement.Tests.Services
         public async Task ProcessCheckOut_ValidDuration_ReturnsCalculatedFee()
         {
             // Arrange
-            var dto = new VehicleCheckOutDto { LicensePlateOut = "51G-12345" };
-            var session = new ParkingSession { SessionId = "SESS-01", VehicleTypeId = 1, CheckInTime = DateTime.Now };
+            var dto = new VehicleCheckOutDto 
+            { 
+                LicensePlateOut = "51G-12345", 
+                TicketCode = "TICKET-12345",
+                CameraOut = "CAM-02",
+                GateOut = "GATE-02"
+            };
+            var session = new ParkingSession 
+            { 
+                SessionId = "SESS-01", 
+                VehicleTypeId = 1, 
+                CheckInTime = DateTime.Now,
+                LicensePlateIn = "51G-12345",
+                TicketCode = "TICKET-12345"
+            };
             var policy = new PricingPolicy { BasePrice = 15000, HourlyRate = 5000 };
 
-            _parkingRepositoryMock.Setup(r => r.GetActiveSessionByPlateAsync(dto.LicensePlateOut)).ReturnsAsync(session);
+            _parkingRepositoryMock.Setup(r => r.GetActiveSessionByTicketCodeAsync(dto.TicketCode)).ReturnsAsync(session);
             _parkingRepositoryMock.Setup(r => r.GetActivePricingPolicyByVehicleTypeAsync(session.VehicleTypeId)).ReturnsAsync(policy);
 
             // Act
-            var result = await _parkingService.ProcessCheckOutAsync(dto);
+            var result = await _parkingService.ProcessCheckOutAsync(dto, "STAFF-02");
 
             // Assert
             Assert.NotNull(result);
             Assert.True(result.DurationMinutes >= 0);
+        }
+
+        // TC-25: Thất bại khi checkout với biển số xe không khớp với biển số xe đăng ký lúc vào bãi
+        [Fact]
+        public async Task ProcessCheckOut_LicensePlateMismatch_ThrowsInvalidOperationException()
+        {
+            // Arrange
+            var dto = new VehicleCheckOutDto 
+            { 
+                LicensePlateOut = "51G-DIFFERENT", 
+                TicketCode = "TICKET-12345",
+                CameraOut = "CAM-02",
+                GateOut = "GATE-02"
+            };
+            var session = new ParkingSession 
+            { 
+                SessionId = "SESS-01", 
+                VehicleTypeId = 1, 
+                CheckInTime = DateTime.Now.AddHours(-1),
+                LicensePlateIn = "51G-12345",
+                TicketCode = "TICKET-12345"
+            };
+
+            _parkingRepositoryMock.Setup(r => r.GetActiveSessionByTicketCodeAsync(dto.TicketCode)).ReturnsAsync(session);
+
+            // Act & Assert
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => _parkingService.ProcessCheckOutAsync(dto, "STAFF-02"));
+            Assert.Equal("LICENSE_PLATE_MISMATCH", ex.Message);
         }
 
         #endregion

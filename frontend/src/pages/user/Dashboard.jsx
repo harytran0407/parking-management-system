@@ -6,7 +6,6 @@ import {
   MapPin,
   Clock,
   Layers,
-  AlertTriangle,
   XCircle,
   Calendar,
   Star,
@@ -16,6 +15,7 @@ import {
   RefreshCw,
   AlertCircle,
 } from "lucide-react";
+import { useLanguage } from "../../hooks/useLanguage";
 
 // ==========================================
 // STATIC PRESENTATION CONSTANTS (Fallback Data)
@@ -26,17 +26,12 @@ const STATIC_IMAGES = [
   "https://images.unsplash.com/photo-1573348722427-f1d6819fdf98?auto=format&fit=crop&q=80&w=1000",
 ];
 
-const STATIC_RULES = [
-  "Maximum speed limit inside the parking lot is 5 km/h.",
-  "Please take care of your personal belongings and valuables.",
-  "Park correctly inside the designated lines.",
-];
-
 // Embedded Google Maps URL assigned properly to a variable
 const FALLBACK_MAP_URL = "https://maps.google.com/maps?q=Saigon%20Hi-Tech%20Park,%20Ho%20Chi%20Minh&t=&z=15&ie=UTF8&iwloc=&output=embed";
 
 export default function UserDashboard() {
   const navigate = useNavigate();
+  const { language } = useLanguage();
   const [currentImgIndex, setCurrentImgIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -82,7 +77,7 @@ export default function UserDashboard() {
           }
         } catch (buildingErr) {
           console.error("Core building API error:", buildingErr);
-          throw new Error(buildingErr.response?.data?.message || "Failed to load parking building information.");
+          throw new Error(buildingErr.response?.data?.message || (language === "en" ? "Failed to load parking building information." : "Tải thông tin tòa nhà đỗ xe thất bại."));
         }
 
         // 2. Fetch Helper Data (Pricing Policy)
@@ -97,7 +92,7 @@ export default function UserDashboard() {
             {
               policy_id: 1,
               vehicle_type_id: 1,
-              vehicle_type_name: "Automobile (Car)",
+              vehicle_type_name: language === "en" ? "Automobile (Car)" : "Ô tô",
               base_price: 15000,
               hourly_rate: 10000,
               overnight_fee: 30000,
@@ -106,7 +101,7 @@ export default function UserDashboard() {
             {
               policy_id: 2,
               vehicle_type_id: 2,
-              vehicle_type_name: "Motorbike",
+              vehicle_type_name: language === "en" ? "Motorbike" : "Xe máy",
               base_price: 5000,
               hourly_rate: 2000,
               overnight_fee: 10000,
@@ -116,14 +111,14 @@ export default function UserDashboard() {
         }
       } catch (err) {
         console.error("Dashboard synchronization failed:", err);
-        setError(err.message || "Cannot connect to the parking management server.");
+        setError(err.message || (language === "en" ? "Cannot connect to the parking management server." : "Không thể kết nối đến máy chủ quản lý đỗ xe."));
       } finally {
         setLoading(false);
       }
     };
 
     fetchRealtimeDashboard();
-  }, []);
+  }, [language]);
 
   // Auto-play timer for the image carousel slider
   useEffect(() => {
@@ -153,14 +148,14 @@ export default function UserDashboard() {
     if (normalizedStatus === "ACTIVE" || normalizedStatus === "OPEN") {
       return (
         <span className="bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider h-fit mt-1.5">
-          Open
+          {language === "en" ? "Open" : "Hoạt động"}
         </span>
       );
     }
     if (normalizedStatus === "MAINTENANCE") {
       return (
         <span className="bg-amber-500/10 text-amber-500 border border-amber-500/20 text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider h-fit mt-1.5">
-          Maintenance
+          {language === "en" ? "Maintenance" : "Bảo trì"}
         </span>
       );
     }
@@ -176,7 +171,9 @@ export default function UserDashboard() {
     return (
       <div className="w-full h-96 flex flex-col items-center justify-center space-y-3 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl shadow-sm">
         <RefreshCw className="w-7 h-7 text-blue-500 animate-spin" />
-        <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Updating live parking status...</p>
+        <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">
+          {language === "en" ? "Updating live parking status..." : "Đang cập nhật trạng thái đỗ xe trực tiếp..."}
+        </p>
       </div>
     );
   }
@@ -186,13 +183,15 @@ export default function UserDashboard() {
     return (
       <div className="w-full p-8 bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/40 rounded-3xl flex flex-col items-center justify-center text-center space-y-3">
         <AlertCircle className="w-10 h-10 text-rose-500" />
-        <h4 className="text-base font-black text-rose-800 dark:text-rose-400">Connection Error</h4>
+        <h4 className="text-base font-black text-rose-800 dark:text-rose-400">
+          {language === "en" ? "Connection Error" : "Lỗi kết nối"}
+        </h4>
         <p className="text-xs font-semibold text-rose-600 dark:text-rose-400/80 max-w-md">{error}</p>
         <button
           type="button"
           onClick={() => window.location.reload()}
           className="mt-2 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-md transition-transform active:scale-95">
-          RELOAD DATA
+          {language === "en" ? "RELOAD DATA" : "TẢI LẠI DỮ LIỆU"}
         </button>
       </div>
     );
@@ -217,8 +216,6 @@ export default function UserDashboard() {
 
           {/* Deep dark gradient overlay at the bottom and top to blend image beautifully */}
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-slate-950/40 pointer-events-none z-10"></div>
-
-
 
           <button
             type="button"
@@ -249,8 +246,9 @@ export default function UserDashboard() {
         <div className="w-full lg:w-3/5 p-4 md:p-5 lg:p-6 flex flex-col justify-between">
           <div className="mb-3">
             <div className="flex items-center gap-2 mb-1">
-              <h3 className="text-2xl md:text-3xl font-black text-slate-800 dark:text-white tracking-tight">{buildingInfo.building_name || "Smart Parking Lot"}</h3>
-              {/*  MODIFIED: Dynamic status badge displaying dynamic database states side-by-side */}
+              <h3 className="text-2xl md:text-3xl font-black text-slate-800 dark:text-white tracking-tight">
+                {buildingInfo.building_name || (language === "en" ? "Smart Parking Lot" : "Bãi đỗ xe thông minh")}
+              </h3>
               {renderStatusBadge(buildingInfo.status)}
             </div>
             <div className="flex items-start gap-2 text-slate-500 dark:text-slate-400">
@@ -264,15 +262,15 @@ export default function UserDashboard() {
               {/* BLOCK 1: OPERATING HOURS */}
               <div>
                 <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-2">
-                  <Clock size={14} /> Operating Hours
+                  <Clock size={14} /> {language === "en" ? "Operating Hours" : "Giờ hoạt động"}
                 </p>
                 <div className="space-y-1 text-xs md:text-sm bg-slate-50 border border-slate-100 dark:bg-slate-800/40 dark:border-slate-800 p-3 rounded-xl font-medium text-slate-700 dark:text-slate-300">
                   <div className="flex justify-between">
-                    <span>Weekdays:</span>
+                    <span>{language === "en" ? "Weekdays:" : "Ngày thường:"}</span>
                     <span className="font-bold">{buildingInfo.operation_hours?.weekday_hours || "06:00 - 22:00"}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Weekends / Holidays:</span>
+                    <span>{language === "en" ? "Weekends / Holidays:" : "Cuối tuần / Ngày lễ:"}</span>
                     <span className="font-bold">{buildingInfo.operation_hours?.weekend_hours || "07:00 - 23:00"}</span>
                   </div>
                 </div>
@@ -280,30 +278,38 @@ export default function UserDashboard() {
 
               <div>
                 <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2.5 flex items-center gap-2">
-                  <Layers size={14} /> Parking Status
+                  <Layers size={14} /> {language === "en" ? "Parking Status" : "Trạng thái đỗ xe"}
                 </p>
                 {(() => {
                   const totalAvailable = buildingInfo.current_occupancy?.total_available ?? 0;
                   const isClosed = buildingInfo.status?.toUpperCase() === "MAINTENANCE" || buildingInfo.status?.toUpperCase() === "CLOSED";
-                  
-                  let statusTitle = "Available";
-                  let statusDesc = "Plenty of parking spaces are open for Motorbikes and Cars.";
+
+                  let statusTitle = language === "en" ? "Available" : "Còn chỗ trống";
+                  let statusDesc = language === "en"
+                    ? `${totalAvailable} / ${buildingInfo.total_slots || 0} slots are open for booking.`
+                    : `Còn trống ${totalAvailable} / ${buildingInfo.total_slots || 0} vị trí sẵn sàng đặt chỗ.`;
                   let statusColorClass = "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/10 border-emerald-100 dark:border-emerald-800/40";
                   let dotColorClass = "bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.5)]";
 
                   if (isClosed) {
-                    statusTitle = "Maintenance / Closed";
-                    statusDesc = "The parking building is temporarily closed for maintenance.";
+                    statusTitle = language === "en" ? "Maintenance / Closed" : "Đóng cửa / Bảo trì";
+                    statusDesc = language === "en"
+                      ? "The parking building is temporarily closed for maintenance."
+                      : "Tòa nhà đỗ xe đang tạm thời đóng cửa để bảo trì.";
                     statusColorClass = "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/10 border-amber-100 dark:border-amber-800/40";
                     dotColorClass = "bg-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.5)]";
                   } else if (totalAvailable === 0) {
-                    statusTitle = "Parking Full";
-                    statusDesc = "All parking slots are occupied. Booking is temporarily disabled.";
+                    statusTitle = language === "en" ? "Parking Full" : "Đã hết chỗ";
+                    statusDesc = language === "en"
+                      ? `0 / ${buildingInfo.total_slots || 0} slots available. All spaces are occupied.`
+                      : `Hết chỗ trống (0 / ${buildingInfo.total_slots || 0}). Tất cả các vị trí đã có xe đỗ.`;
                     statusColorClass = "text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/10 border-rose-100 dark:border-rose-800/40";
                     dotColorClass = "bg-rose-500 shadow-[0_0_12px_rgba(239,68,68,0.5)]";
                   } else if (totalAvailable <= 10) {
-                    statusTitle = "Limited Spaces";
-                    statusDesc = "Parking spaces are almost full. Book a spot quickly!";
+                    statusTitle = language === "en" ? "Limited Spaces" : "Sắp hết chỗ";
+                    statusDesc = language === "en"
+                      ? `Only ${totalAvailable} / ${buildingInfo.total_slots || 0} slots left. Book a spot quickly!`
+                      : `Chỉ còn lại ${totalAvailable} / ${buildingInfo.total_slots || 0} chỗ trống. Hãy đặt chỗ ngay!`;
                     statusColorClass = "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/10 border-amber-100 dark:border-amber-800/40";
                     dotColorClass = "bg-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.5)]";
                   }
@@ -323,7 +329,6 @@ export default function UserDashboard() {
                 })()}
               </div>
 
-              {/*  MODIFIED: Map pushed lower and lengthened vertically to seamlessly consume empty bottom gaps */}
               <div className="h-40 w-full bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:border-slate-800 rounded-xl overflow-hidden shadow-inner min-h-[160px] mb-3">
                 <iframe
                   src={FALLBACK_MAP_URL}
@@ -337,20 +342,6 @@ export default function UserDashboard() {
             </div>
 
             <div className="flex flex-col justify-between h-full space-y-2">
-              {/* BLOCK 3: PARKING RULES */}
-              <div>
-                <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-2">
-                  <AlertTriangle size={14} className="text-amber-500" /> Parking Area Rules
-                </p>
-                <ul className="space-y-1.5">
-                  {STATIC_RULES.map((rule, idx) => (
-                    <li key={idx} className="text-xs text-slate-600 dark:text-slate-400 flex items-start gap-2">
-                      <span className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-1.5 shrink-0"></span>
-                      <p className="leading-tight font-medium">{rule}</p>
-                    </li>
-                  ))}
-                </ul>
-              </div>
 
               {/* CARD REVIEW DISPLAY SCORING */}
               <div className="p-2.5 bg-slate-50 border border-slate-100 dark:bg-slate-800/20 dark:border-slate-800/80 rounded-xl flex items-center justify-between">
@@ -359,21 +350,26 @@ export default function UserDashboard() {
                     <Star size={14} className="fill-amber-400 text-amber-500" />
                   </div>
                   <div>
-                    <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Score</p>
+                    <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                      {language === "en" ? "Score" : "Đánh giá"}
+                    </p>
                     <p className="text-xs font-black text-slate-800 dark:text-white">
                       4.9 <span className="text-[10px] font-normal text-slate-400">/ 5.0</span>
                     </p>
                   </div>
                 </div>
-                <span className="text-[9px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded-md">142 Reviews</span>
+                <span className="text-[9px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded-md">
+                  {language === "en" ? "142 Reviews" : "142 đánh giá"}
+                </span>
               </div>
 
               {/* =========================================================
-                   BLOCK 4 MODIFIED: Full name display + Bold Effective Date + Stacked Rows
+                   BLOCK 4: Pricing Policies Display
                   ========================================================= */}
               <div>
                 <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-2">
-                  <DollarSign size={14} className="text-emerald-500" /> Parking Rates
+                  <DollarSign size={14} className="text-emerald-500" />
+                  {language === "en" ? "Parking Rates" : "Bảng giá đỗ xe"}
                 </p>
                 {pricingPolicy.length > 0 ? (
                   <div className="flex flex-col gap-2 text-[11px] ">
@@ -383,30 +379,61 @@ export default function UserDashboard() {
                         className="p-3 bg-slate-50 border border-slate-100 dark:bg-slate-800/20 dark:border-slate-800 rounded-xl flex flex-col justify-between gap-1.5 transition-all hover:border-slate-200 dark:hover:border-slate-700">
                         {/* Header: Full Vehicle Type Name (Left) + Darker/Bolder Effective Date (Right) */}
                         <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-800/60 pb-1">
-                          <span className="font-extrabold text-slate-800 dark:text-white uppercase tracking-wider text-[10px]">{policy.vehicle_type_name}</span>
-                          {policy.effective_date && <span className="text-[10px] font-black text-slate-700 dark:text-slate-300 font-mono">Applied: {policy.effective_date}</span>}
+                          <span className="font-extrabold text-slate-800 dark:text-white uppercase tracking-wider text-[10px]">
+                            {policy.vehicle_type_name}
+                          </span>
+                          {policy.effective_date && (
+                            <span className="text-[10px] font-black text-slate-700 dark:text-slate-300 font-mono">
+                              {language === "en" ? "Applied:" : "Áp dụng:"} {policy.effective_date}
+                            </span>
+                          )}
                         </div>
 
                         {/* Content: Inline pricing fields safely handled with calculations */}
                         <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 font-semibold text-[11px] px-0.5">
                           <p>
-                            Base: <span className="text-blue-600 dark:text-blue-400 font-bold">{policy.base_price?.toLocaleString()}đ</span>
+                            {language === "en" ? "Base:" : "Giá sàn:"} <span className="text-blue-600 dark:text-blue-400 font-bold">{policy.base_price?.toLocaleString()}đ</span>
                           </p>
                           <span className="text-slate-300 dark:text-slate-700">|</span>
                           <p>
-                            Hour: <span className="text-amber-600 dark:text-amber-500 font-bold">+{policy.hourly_rate?.toLocaleString()}đ/h</span>
+                            {language === "en" ? "Hour:" : "Giá giờ:"} <span className="text-amber-600 dark:text-amber-500 font-bold">+{policy.hourly_rate?.toLocaleString()}đ/h</span>
                           </p>
                           <span className="text-slate-300 dark:text-slate-700">|</span>
                           <p>
-                            Overnight: <span className="text-slate-700 dark:text-slate-200 font-bold">{policy.overnight_fee?.toLocaleString()}đ</span>
+                            {language === "en" ? "Overnight:" : "Qua đêm:"} <span className="text-emerald-600 dark:text-emerald-400 font-bold">{policy.overnight_fee?.toLocaleString()}đ</span>
                           </p>
                         </div>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="p-2 bg-slate-50 dark:bg-slate-800/40 text-center text-xs font-medium text-slate-400 rounded-xl italic">Loading pricing rates...</div>
+                  <div className="p-2 bg-slate-50 dark:bg-slate-800/40 text-center text-xs font-medium text-slate-400 rounded-xl italic">
+                    {language === "en" ? "Loading pricing rates..." : "Đang tải bảng giá đỗ xe..."}
+                  </div>
                 )}
+              </div>
+
+              {/* BOOKING GUARANTEE NOTICE */}
+              <div className="p-3 bg-blue-50/50 dark:bg-blue-950/10 border border-blue-100 dark:border-blue-900/30 rounded-xl flex items-start gap-2.5">
+                <div className="bg-blue-100 dark:bg-blue-900/45 p-1.5 rounded-lg text-blue-600 dark:text-blue-400 shrink-0">
+                  <AlertCircle size={14} className="text-blue-500" />
+                </div>
+                <div>
+                  <p className="text-[9px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
+                    {language === "en" ? "Booking Guarantee" : "Cam kết giữ chỗ"}
+                  </p>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-450 font-semibold leading-relaxed mt-0.5">
+                    {language === "en"
+                      ? "Your reserved slot is guaranteed and held for up to "
+                      : "Vị trí đặt chỗ của bạn được đảm bảo và giữ tối đa trong "}
+                    <span className="font-bold text-slate-800 dark:text-white">
+                      {language === "en" ? "30 minutes" : "30 phút"}
+                    </span>
+                    {language === "en"
+                      ? " past your selected booking time. Prepayment via VNPay is required."
+                      : " tính từ thời gian đặt chỗ đã chọn. Yêu cầu thanh toán trước qua VNPay."}
+                  </p>
+                </div>
               </div>
 
               {/* ACTION TRIGGER BUTTON */}
@@ -417,12 +444,13 @@ export default function UserDashboard() {
                     onClick={() => navigate("/user/book")}
                     className="group w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white px-4 py-3.5 rounded-xl font-extrabold shadow-[0_0_20px_rgba(37,99,235,0.25)] hover:shadow-[0_0_30px_rgba(37,99,235,0.5)] hover:-translate-y-0.5 transition-all duration-300 active:scale-[0.99] text-xs tracking-wider uppercase">
                     <Calendar size={15} className="group-hover:rotate-12 transition-transform duration-300" />
-                    Book A Slot Now &rarr;
+                    {language === "en" ? "Book A Slot Now" : "Đặt chỗ đỗ xe ngay"} &rarr;
                   </button>
                 </div>
               ) : (
                 <div className="bg-rose-50 border border-rose-100 dark:bg-rose-950/20 dark:border-rose-900/30 p-3.5 rounded-xl flex items-center gap-2 text-rose-600 dark:text-rose-400 font-black text-xs justify-center uppercase tracking-wider shadow-inner">
-                  <XCircle size={16} /> Parking Lot is Full
+                  <XCircle size={16} />
+                  {language === "en" ? "Parking Lot is Full" : "Bãi đỗ xe đã hết chỗ"}
                 </div>
               )}
             </div>

@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using ParkingManagement.Data;
 using ParkingManagement.Models;
 
@@ -74,11 +74,10 @@ public class DashboardRepository : IDashboardRepository
     public async Task<List<(int Hour, int Count)>> GetPeakHoursAsync(DateTime from, DateTime to)
     {
         var result = await _db.ParkingSessions
-            .Where(s => s.CheckInTime >= from && s.CheckInTime <= to)
+            .Where(s => s.CheckInTime >= from && s.CheckInTime <= to && s.CheckInTime != null)
             .GroupBy(s => s.CheckInTime!.Value.Hour)
             .Select(g => new { Hour = g.Key, Count = g.Count() })
-            .OrderByDescending(x => x.Count)
-            .Take(5)
+            .OrderBy(x => x.Hour)
             .ToListAsync();
 
         return result.Select(x => (x.Hour, x.Count)).ToList();

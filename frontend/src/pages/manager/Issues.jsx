@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
-import { AlertCircle, CheckCircle, Search, RefreshCw, Phone, Mail, User, ShieldAlert, Paperclip, Star } from 'lucide-react'
-import { toast } from 'sonner'
+import { AlertCircle, CheckCircle, Search, RefreshCw, Phone, Mail, ShieldAlert, Paperclip, Star } from 'lucide-react'
 import api from '../../utils/api'
 
 export default function ManagerIssues() {
@@ -8,8 +7,6 @@ export default function ManagerIssues() {
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
-  const [actionLoading, setActionLoading] = useState(null)
-  const [feedbacks, setFeedbacks] = useState({})
 
   const parseDescription = (description) => {
     if (!description) return { rating: 0, subject: "", message: "", attachment: "", feedback: "" };
@@ -81,53 +78,8 @@ export default function ManagerIssues() {
     fetchIncidents()
   }
 
-  const handleResolve = async (logId, feedbackText) => {
-    setActionLoading(logId)
-    try {
-      const response = await api.put(`/manager/incidents/${logId}/resolve`, {
-        feedback: feedbackText || ""
-      })
-      if (response.data && response.data.success) {
-        toast.success(response.data.message || 'Incident resolved successfully')
-        // Optimistic local state update
-        setIncidents(prev =>
-          prev.map(item => {
-            if (item.log_id === logId) {
-              let updatedDesc = item.description || "";
-              if (feedbackText && feedbackText.trim()) {
-                updatedDesc += `\n[Feedback: ${feedbackText.trim()}]`;
-              }
-              return { ...item, status: 'RESOLVED', description: updatedDesc, resolved_at: new Date().toISOString() };
-            }
-            return item;
-          })
-        )
-        setFeedbacks(prev => {
-          const next = { ...prev };
-          delete next[logId];
-          return next;
-        });
-      }
-    } catch (error) {
-      console.error('Resolve incident error:', error)
-      toast.error(error.message || 'Failed to resolve incident')
-    } finally {
-      setActionLoading(null)
-    }
-  }
-
   return (
     <div className="animate-slide-in flex flex-col h-full">
-      {/* HEADER SECTION */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <div>
-          <h2 className="section-title mb-1">Issue Tracking</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Monitor and resolve reported parking building incidents (Lost cards, parking slot disputes, system errors).
-          </p>
-        </div>
-      </div>
-
       {/* FILTER & SEARCH */}
       <div className="card mb-6 p-4">
         <form onSubmit={handleSearchSubmit} className="flex flex-col md:flex-row gap-4 items-center justify-between">
@@ -347,47 +299,28 @@ export default function ManagerIssues() {
                 const { feedback } = parseDescription(incident.description);
                 return (
                   incident.status === 'OPEN' ? (
-                    <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800/80 space-y-3">
-                      <span className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-wider block">
-                        Resolution Notes & Feedback
-                      </span>
-                      <div className="space-y-3">
-                        <textarea
-                          value={feedbacks[incident.log_id] || ""}
-                          onChange={(e) => setFeedbacks(prev => ({ ...prev, [incident.log_id]: e.target.value }))}
-                          placeholder="Type your resolution response to the user here..."
-                          className="w-full bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 text-sm text-slate-800 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-y font-medium min-h-[80px]"
-                          rows={3}
-                        />
-                        <div className="flex justify-end">
-                          <button
-                            onClick={() => handleResolve(incident.log_id, feedbacks[incident.log_id])}
-                            disabled={actionLoading === incident.log_id}
-                            className="w-full sm:w-auto px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 text-white font-bold rounded-xl flex items-center justify-center gap-2 shadow-md transition-all text-xs uppercase tracking-wider active:scale-95"
-                          >
-                            {actionLoading === incident.log_id ? (
-                              <RefreshCw size={14} className="animate-spin" />
-                            ) : (
-                              <CheckCircle size={14} />
-                            )}
-                            Resolve Ticket
-                          </button>
-                        </div>
+                    <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800/80">
+                      <div className="p-4 bg-amber-50/50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30 rounded-2xl flex items-center gap-2 text-amber-800 dark:text-amber-400 font-semibold text-xs">
+                        <AlertCircle size={14} className="text-amber-500" />
+                        <span>Pending resolution by Parking Staff.</span>
                       </div>
                     </div>
                   ) : (
-                    feedback && (
-                      <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800/80 space-y-2">
-                        <div className="p-4 bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 rounded-2xl space-y-1">
-                          <span className="text-[10px] font-black uppercase text-emerald-600 dark:text-emerald-400 block tracking-wider">
-                            Resolution Feedback
-                          </span>
-                          <p className="text-sm text-slate-700 dark:text-slate-300 font-semibold leading-relaxed">
-                            {feedback}
-                          </p>
+                    <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800/80 space-y-2">
+                      <div className="p-4 bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 rounded-2xl space-y-1.5">
+                        <div className="flex justify-between items-center text-[10px] font-black uppercase text-emerald-600 dark:text-emerald-400 tracking-wider">
+                          <span>Resolution Feedback</span>
+                          {incident.resolved_by && (
+                            <span className="font-mono text-slate-400 dark:text-slate-500 normal-case font-bold">
+                              Resolved by: {incident.resolved_by} {incident.resolved_at ? `at ${new Date(incident.resolved_at).toLocaleString()}` : ''}
+                            </span>
+                          )}
                         </div>
+                        <p className="text-sm text-slate-700 dark:text-slate-300 font-semibold leading-relaxed">
+                          {feedback || "Resolved without additional feedback."}
+                        </p>
                       </div>
-                    )
+                    </div>
                   )
                 );
               })()}

@@ -264,7 +264,15 @@ namespace ParkingManagement.Controllers.AuthController
 
             // Tạo JWT Token
             var jwtSettings = _configuration.GetSection("Jwt");
-            var key = Encoding.UTF8.GetBytes(jwtSettings["Key"] ?? "ParkingManagement_Super_Secret_Key_2026");
+            var secretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY");
+
+            if (string.IsNullOrEmpty(secretKey))
+            {
+                throw new InvalidOperationException("JWT_SECRET_KEY is missing in the .env file");
+            }
+            var issuer = jwtSettings["Issuer"];
+            var audience = jwtSettings["Audience"];
+            var key = Encoding.UTF8.GetBytes(secretKey);
 
             var claims = new List<Claim>
             {
@@ -277,9 +285,9 @@ namespace ParkingManagement.Controllers.AuthController
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(claims),
-                Expires = DateTime.UtcNow.AddSeconds(3600),
-                Issuer = jwtSettings["Issuer"],
-                Audience = jwtSettings["Audience"],
+                Expires = DateTime.UtcNow.AddMinutes(60),
+                Issuer = issuer,
+                Audience = audience,
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
             };
 

@@ -86,6 +86,23 @@ namespace ParkingManagement.Controllers
             _context.IncidentLogs.Add(log);
             await _context.SaveChangesAsync();
 
+            try
+            {
+                var systemLog = new SystemLog
+                {
+                    LogLevel = "WARNING",
+                    Message = $"User '{userId}' reported a new incident ticket #{log.LogId} of type '{request.IssueType}'.",
+                    Source = "IncidentUser",
+                    CreatedAt = DateTime.UtcNow
+                };
+                await _context.SystemLogs.AddAsync(systemLog);
+                await _context.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[IncidentUserController Error]: Could not log incident report. Reason: {ex.Message}");
+            }
+
             var response = new IncidentResponse
             {
                 LogId = log.LogId,

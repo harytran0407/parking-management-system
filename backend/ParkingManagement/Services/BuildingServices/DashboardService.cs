@@ -41,8 +41,13 @@ public class DashboardService : IDashboardService
 
         // Peak hours
         var peakHoursRaw = await _repo.GetPeakHoursAsync(from, to);
-        var peakHours = peakHoursRaw
-            .Select(x => new PeakHourDto { Hour = x.Hour, CheckIns = x.Count })
+        var hourDict = peakHoursRaw.ToDictionary(x => x.Hour, x => x.Count);
+        var peakHours = Enumerable.Range(0, 24)
+            .Select(h => new PeakHourDto
+            {
+                Hour = h,
+                CheckIns = hourDict.ContainsKey(h) ? hourDict[h] : 0
+            })
             .ToList();
 
         // AC3: Breakdown by vehicle type

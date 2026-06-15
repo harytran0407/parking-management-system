@@ -20,9 +20,22 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import api from "../../utils/api";
+import { useLanguage } from "../../hooks/useLanguage";
 
 export default function MyBookings() {
   const navigate = useNavigate();
+  const { language } = useLanguage();
+
+  const getStatusLabel = (status) => {
+    switch (status?.toLowerCase()) {
+      case "confirmed": return language === "en" ? "Confirmed" : "Đã xác nhận";
+      case "pending": return language === "en" ? "Pending" : "Chờ xử lý";
+      case "active": return language === "en" ? "Active" : "Đang đỗ";
+      case "completed": return language === "en" ? "Completed" : "Hoàn thành";
+      case "cancelled": return language === "en" ? "Cancelled" : "Đã hủy";
+      default: return status;
+    }
+  };
 
   // ==========================================
   // STATE MANAGEMENT
@@ -68,34 +81,47 @@ export default function MyBookings() {
 
       const activeRes = await api.get("/bookings/active");
       if (activeRes.data && activeRes.data.success) {
-        const list = activeRes.data.data.map(b => ({
-          id: b.booking_id,
-          slotId: b.slot_id || "N/A",
-          floorName: b.floor_name || "Basement B1",
-          vehicleType: b.vehicle_type === "Motorbike" ? "motorbike" : "car",
-          plate_number: b.vehicle_plate_number,
-          startTime: b.expected_arrival,
-          endTime: b.expired_at,
-          totalPrice: b.estimated_fee || b.deposit_paid || 15000,
-          depositPaid: b.deposit_paid || 15000,
-          remainingBalance: Math.max(0, (b.estimated_fee || 0) - (b.deposit_paid || 0)),
-          status: b.status.toLowerCase(),
-          qrCodeData: b.qr_code_data
-        }));
+        const list = activeRes.data.data.map(b => {
+          const isCar = b.vehicle_type !== "Motorbike";
+          const defaultPrice = isCar ? 15000 : 5000;
+          return {
+            id: b.booking_id,
+            slotId: b.slot_id || "N/A",
+            slotName: b.slot_name || (language === "en" ? "Assigned at Check-in" : "Chỉ định lúc Check-in"),
+            floorName: b.floor_name || "TBD",
+            vehicleType: isCar ? "car" : "motorbike",
+            plate_number: b.vehicle_plate_number,
+            startTime: b.expected_arrival,
+            endTime: b.expired_at,
+            totalPrice: b.estimated_fee || b.deposit_paid || defaultPrice,
+            depositPaid: b.deposit_paid || defaultPrice,
+            remainingBalance: (b.status?.toLowerCase() === "pending" || b.status?.toLowerCase() === "confirmed")
+              ? 0
+              : Math.max(0, (b.estimated_fee || 0) - (b.deposit_paid || 0)),
+            status: b.status.toLowerCase(),
+            qrCodeData: b.qr_code_data
+          };
+        });
         setBookings(list);
       }
 
       const historyRes = await api.get("/bookings/history");
       if (historyRes.data && historyRes.data.success) {
-        const list = historyRes.data.data.map(b => ({
-          id: b.booking_id,
-          location: `Slot ${b.slot_id} - ${b.floor_name}`,
-          plate_number: b.vehicle_plate_number,
-          date: b.booking_time ? b.booking_time.substring(0, 10) : "",
-          time: `${formatTimeOnly(b.expected_arrival)} - ${formatTimeOnly(b.expired_at)}`,
-          fee: b.estimated_fee || b.deposit_paid || 15000,
-          status: b.status.toLowerCase(),
-        }));
+        const list = historyRes.data.data.map(b => {
+          const isCar = b.vehicle_type !== "Motorbike";
+          const defaultPrice = isCar ? 15000 : 5000;
+          return {
+            id: b.booking_id,
+            location: b.slot_id
+              ? `${language === "en" ? "Slot" : "Vị trí"} ${b.slot_name || b.slot_id} - ${b.floor_name || "TBD"}`
+              : `${language === "en" ? "Assigned at Check-in" : "Chỉ định lúc Check-in"}`,
+            plate_number: b.vehicle_plate_number,
+            date: b.booking_time ? b.booking_time.substring(0, 10) : "",
+            time: formatTimeOnly(b.expected_arrival),
+            fee: b.estimated_fee || b.deposit_paid || defaultPrice,
+            status: b.status.toLowerCase(),
+          };
+        });
         setBookingHistory(list);
       }
     } catch (error) {
@@ -112,7 +138,7 @@ export default function MyBookings() {
     try {
       const date = new Date(dtString);
       return date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
-    } catch(e) {
+    } catch (e) {
       return "";
     }
   };
@@ -131,34 +157,19 @@ export default function MyBookings() {
     if (
       activeModal === "adjust" &&
       adjustTimeData.startTime &&
-      adjustTimeData.endTime &&
       selectedBooking
     ) {
       const start = new Date(adjustTimeData.startTime).getTime();
-      const end = new Date(adjustTimeData.endTime).getTime();
       const now = new Date().getTime();
 
       let error = "";
       if (start < now - 10 * 60 * 1000) {
-        error = "Entry time cannot be in the past.";
-      } else if (end <= start) {
-        error = "Exit time must be after entry time.";
-      } else if (end - start < 30 * 60 * 1000) {
-        error = "Booking duration must be at least 30 minutes.";
+        error = language === "en" ? "Entry time cannot be in the past." : "Thời gian vào không được ở quá khứ.";
       }
       setAdjustError(error);
-
-      let estimatedFee = 15000; // Base price is 15,000 VND
-      if (!error) {
-        const durationMs = end - start;
-        const billedHours = Math.ceil(durationMs / (1000 * 60 * 60));
-        if (billedHours > 1) {
-          estimatedFee += (billedHours - 1) * 2000;
-        }
-      }
-      setNewPrice(estimatedFee);
+      setNewPrice(selectedBooking.depositPaid || (selectedBooking.vehicleType === "car" ? 15000 : 5000));
     }
-  }, [adjustTimeData.startTime, adjustTimeData.endTime, activeModal, selectedBooking]);
+  }, [adjustTimeData.startTime, activeModal, selectedBooking]);
 
   const filteredBookingHistory = useMemo(() => {
     return bookingHistory.filter((item) => {
@@ -182,11 +193,11 @@ export default function MyBookings() {
       const toLocalISO = (dString) => {
         if (!dString) return "";
         const d = new Date(dString);
-        return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
       };
       setAdjustTimeData({
         startTime: toLocalISO(booking.startTime),
-        endTime: toLocalISO(booking.endTime),
+        endTime: "",
       });
       setAdjustError("");
       setNewPrice(booking.totalPrice);
@@ -207,7 +218,7 @@ export default function MyBookings() {
       }
     } catch (error) {
       console.error("Lỗi huỷ đặt chỗ:", error);
-      alert(error.response?.data?.message || "Failed to cancel booking.");
+      alert(error.response?.data?.message || (language === "en" ? "Failed to cancel booking." : "Hủy đặt chỗ thất bại."));
     }
   };
 
@@ -215,7 +226,7 @@ export default function MyBookings() {
     try {
       const payload = {
         expected_arrival: new Date(adjustTimeData.startTime).toISOString(),
-        expired_at: new Date(adjustTimeData.endTime).toISOString(),
+        expired_at: null,
       };
       const response = await api.put(`/bookings/${selectedBooking.id}/adjust`, payload);
       if (response.data && response.data.success) {
@@ -224,7 +235,7 @@ export default function MyBookings() {
       }
     } catch (error) {
       console.error("Lỗi điều chỉnh giờ:", error);
-      alert(error.response?.data?.message || "Failed to adjust booking schedule.");
+      alert(error.response?.data?.message || (language === "en" ? "Failed to adjust booking schedule." : "Điều chỉnh lịch đặt thất bại."));
     }
   };
 
@@ -237,7 +248,7 @@ export default function MyBookings() {
       }
     } catch (error) {
       console.error("Lỗi xử lý thanh toán:", error);
-      alert(error.response?.data?.message || "Failed to complete payment.");
+      alert(error.response?.data?.message || (language === "en" ? "Failed to complete payment." : "Thanh toán thất bại."));
     }
   };
 
@@ -250,7 +261,7 @@ export default function MyBookings() {
       hour: "2-digit",
       minute: "2-digit",
     };
-    return new Date(dateString).toLocaleDateString("en-US", options);
+    return new Date(dateString).toLocaleDateString(language === "en" ? "en-US" : "vi-VN", options);
   };
 
   return (
@@ -264,7 +275,7 @@ export default function MyBookings() {
           <ArrowLeft className="w-5 h-5 text-slate-600 dark:text-slate-300" />
         </button>
         <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
-          My Bookings
+          {language === "en" ? "My Bookings" : "Lịch đặt của tôi"}
         </h2>
       </div>
 
@@ -272,40 +283,40 @@ export default function MyBookings() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 shrink-0">
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
           <p className="text-sm text-slate-400 font-semibold mb-2">
-            Total Sessions
+            {language === "en" ? "Total Sessions" : "Tổng lượt đặt"}
           </p>
           <div className="flex items-end justify-between">
             <h3 className="text-3xl font-black text-slate-800 dark:text-white">
               {stats.totalBookings}
             </h3>
             <span className="text-xs font-bold text-blue-600 bg-blue-50 dark:bg-blue-500/10 dark:text-blue-400 px-2.5 py-1 rounded-full">
-              This month: +{stats.thisMonthNew}
+              {language === "en" ? `This month: +${stats.thisMonthNew}` : `Tháng này: +${stats.thisMonthNew}`}
             </span>
           </div>
         </div>
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
           <p className="text-sm text-slate-400 font-semibold mb-2">
-            Active Parking
+            {language === "en" ? "Active Parking" : "Đang đỗ xe"}
           </p>
           <div className="flex items-end justify-between">
             <h3 className="text-3xl font-black text-slate-800 dark:text-white">
               {stats.activeSessions}
             </h3>
             <span className="text-xs font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10 dark:text-emerald-400 px-2.5 py-1 rounded-full animate-pulse">
-              ● In Lot
+              ● {language === "en" ? "In Lot" : "Trong bãi"}
             </span>
           </div>
         </div>
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
           <p className="text-sm text-slate-400 font-semibold mb-2">
-            Total Expended
+            {language === "en" ? "Total Expended" : "Tổng chi tiêu"}
           </p>
           <div className="flex items-end justify-between">
             <h3 className="text-3xl font-black text-slate-800 dark:text-white">
               {stats.totalCost.toLocaleString()}đ
             </h3>
             <span className="text-xs font-bold text-purple-600 bg-purple-50 dark:bg-purple-500/10 dark:text-purple-400 px-2.5 py-1 rounded-full">
-              Accumulated
+              {language === "en" ? "Accumulated" : "Tích lũy"}
             </span>
           </div>
         </div>
@@ -320,7 +331,7 @@ export default function MyBookings() {
               className="mx-auto text-slate-300 dark:text-slate-600 mb-4"
             />
             <p className="text-slate-500 dark:text-slate-400 font-medium">
-              You have no active booking sessions.
+              {language === "en" ? "You have no active booking sessions." : "Bạn không có lượt đặt chỗ nào đang hoạt động."}
             </p>
           </div>
         ) : (
@@ -340,15 +351,14 @@ export default function MyBookings() {
                   )}
                 </div>
                 <span
-                  className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider ${
-                    booking.status === "confirmed" || booking.status === "pending" || booking.status === "active"
+                  className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider ${booking.status === "confirmed" || booking.status === "pending" || booking.status === "active"
                       ? "bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400"
                       : booking.status === "completed"
                         ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400"
                         : "bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400"
-                  }`}
+                    }`}
                 >
-                  {booking.status}
+                  {getStatusLabel(booking.status)}
                 </span>
               </div>
 
@@ -356,7 +366,9 @@ export default function MyBookings() {
                 <div className="flex flex-col sm:flex-row justify-between items-start gap-3 mb-3">
                   <div>
                     <h3 className="text-xl font-black text-slate-800 dark:text-white flex flex-wrap items-center gap-2">
-                      Slot {booking.slotId}
+                      {booking.slotId && booking.slotId !== "N/A"
+                        ? `${language === "en" ? "Slot" : "Vị trí"} ${booking.slotName || booking.slotId}`
+                        : (language === "en" ? "Assigned at Check-in" : "Chỉ định lúc Check-in")}
                       <span className="text-xs font-mono font-bold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md flex items-center gap-1">
                         <Hash size={12} />
                         {booking.id}
@@ -365,10 +377,12 @@ export default function MyBookings() {
                         {booking.plate_number}
                       </span>
                     </h3>
-                    <p className="text-slate-400 dark:text-slate-500 text-xs font-bold flex items-center gap-1 mt-1.5 uppercase tracking-wider">
-                      <MapPin size={13} className="text-blue-500" />{" "}
-                      {booking.floorName}
-                    </p>
+                    {booking.slotId && booking.slotId !== "N/A" && (
+                      <p className="text-slate-450 dark:text-slate-500 text-xs font-bold flex items-center gap-1 mt-1.5 uppercase tracking-wider">
+                        <MapPin size={13} className="text-blue-500" />{" "}
+                        {booking.floorName}
+                      </p>
+                    )}
                   </div>
 
                   {booking.status !== "cancelled" && (
@@ -376,26 +390,18 @@ export default function MyBookings() {
                       onClick={() => openModal("qr", booking)}
                       className="flex items-center gap-2 bg-slate-800 hover:bg-slate-900 dark:bg-slate-800 dark:hover:bg-slate-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm"
                     >
-                      <QrCode size={16} /> Show Ticket
+                      <QrCode size={16} /> {language === "en" ? "Show Ticket" : "Xem vé"}
                     </button>
                   )}
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 dark:bg-slate-800/20 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800/60 font-medium">
+                <div className="bg-slate-50 dark:bg-slate-800/20 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800/60 font-medium">
                   <div>
                     <p className="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-bold tracking-wider mb-0.5">
-                      Entry Schedule
+                      {language === "en" ? "Expected Entry Time" : "Thời gian vào dự kiến"}
                     </p>
-                    <p className="text-xs text-slate-700 dark:text-slate-300">
+                    <p className="text-xs text-slate-700 dark:text-slate-300 font-bold font-mono">
                       {formatDate(booking.startTime)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-bold tracking-wider mb-0.5">
-                      Exit Estimation
-                    </p>
-                    <p className="text-xs text-slate-700 dark:text-slate-300">
-                      {formatDate(booking.endTime)}
                     </p>
                   </div>
                 </div>
@@ -404,7 +410,7 @@ export default function MyBookings() {
               <div className="w-full md:w-auto md:min-w-[180px] flex flex-col gap-3 border-t md:border-t-0 md:border-l border-slate-100 dark:border-slate-800 pt-4 md:pt-0 md:pl-6 text-right">
                 <div>
                   <p className="text-xs text-slate-400 dark:text-slate-500 font-semibold">
-                    Remaining Balance
+                    {language === "en" ? "Remaining Balance" : "Số dư còn lại"}
                   </p>
                   <p
                     className={`text-2xl font-black font-mono tracking-tight ${booking.status === "completed" ? "text-emerald-500" : "text-slate-800 dark:text-white"}`}
@@ -420,32 +426,32 @@ export default function MyBookings() {
                       onClick={() => openModal("pay", booking)}
                       className="w-full flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm"
                     >
-                      <CreditCard size={14} /> Paid
+                      <CreditCard size={14} /> {language === "en" ? "Pay" : "Thanh toán"}
                     </button>
                     <div className="grid grid-cols-2 gap-2">
                       <button
                         onClick={() => openModal("adjust", booking)}
                         className="flex items-center justify-center gap-1 bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-950/20 dark:hover:bg-blue-950/40 dark:text-blue-400 py-1.5 rounded-lg text-xs font-bold transition-colors"
                       >
-                        <Edit size={12} /> Adjust
+                        <Edit size={12} /> {language === "en" ? "Adjust" : "Điều chỉnh"}
                       </button>
                       <button
                         onClick={() => openModal("cancel", booking)}
                         className="flex items-center justify-center gap-1 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-950/20 dark:hover:bg-red-950/40 dark:text-red-400 py-1.5 rounded-lg text-xs font-bold transition-colors"
                       >
-                        <Ban size={12} /> Cancel
+                        <Ban size={12} /> {language === "en" ? "Cancel" : "Hủy"}
                       </button>
                     </div>
                   </div>
                 )}
                 {booking.status === "completed" && (
                   <div className="bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold p-2.5 rounded-xl flex items-center justify-center gap-1.5">
-                    <CheckCircle size={14} /> Paid in Full
+                    <CheckCircle size={14} /> {language === "en" ? "Paid in Full" : "Đã thanh toán"}
                   </div>
                 )}
                 {booking.status === "cancelled" && (
                   <div className="bg-slate-50 dark:bg-slate-800 text-slate-400 text-xs font-bold p-2.5 rounded-xl text-center">
-                    Session Cancelled
+                    {language === "en" ? "Session Cancelled" : "Đã hủy phiên"}
                   </div>
                 )}
               </div>
@@ -458,7 +464,7 @@ export default function MyBookings() {
       <div className="shrink-0 mt-4 mb-6">
         <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
           <h3 className="text-lg font-bold text-slate-800 dark:text-white">
-            Booking History
+            {language === "en" ? "Booking History" : "Lịch sử đặt chỗ"}
           </h3>
 
           <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -468,7 +474,7 @@ export default function MyBookings() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search ID, Plate or Slot..."
+                placeholder={language === "en" ? "Search ID, Plate or Slot..." : "Tìm ID, biển số hoặc vị trí..."}
                 className="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/40 bg-white text-slate-800 dark:bg-slate-900 dark:text-white font-medium"
               />
             </div>
@@ -478,9 +484,9 @@ export default function MyBookings() {
               onChange={(e) => setStatusFilter(e.target.value)}
               className="px-3 py-2 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/40 cursor-pointer"
             >
-              <option value="all">All Status</option>
-              <option value="completed">Completed</option>
-              <option value="cancelled">Cancelled</option>
+              <option value="all">{language === "en" ? "All Status" : "Tất cả trạng thái"}</option>
+              <option value="completed">{language === "en" ? "Completed" : "Hoàn thành"}</option>
+              <option value="cancelled">{language === "en" ? "Cancelled" : "Đã hủy"}</option>
             </select>
           </div>
         </div>
@@ -490,23 +496,22 @@ export default function MyBookings() {
             <table className="w-full text-left text-sm text-slate-600 dark:text-slate-400">
               <thead className="bg-slate-50 dark:bg-slate-800/40 text-xs uppercase text-slate-400 dark:text-slate-500 font-bold border-b border-slate-200 dark:border-slate-800 tracking-wider">
                 <tr>
-                  <th className="px-6 py-4">Booking ID</th>
-                  <th className="px-6 py-4">Plate Number</th>
-                  <th className="px-6 py-4">Location</th>
-                  <th className="px-6 py-4">Date</th>
-                  <th className="px-6 py-4">Time Window</th>
-                  <th className="px-6 py-4 text-right">Fee Paid</th>
-                  <th className="px-6 py-4 text-center">Status</th>
+                  <th className="px-6 py-4">{language === "en" ? "Plate Number" : "Biển số xe"}</th>
+                  <th className="px-6 py-4">{language === "en" ? "Location" : "Vị trí"}</th>
+                  <th className="px-6 py-4">{language === "en" ? "Date" : "Ngày"}</th>
+                  <th className="px-6 py-4">{language === "en" ? "Entry Time" : "Giờ vào"}</th>
+                  <th className="px-6 py-4 text-right">{language === "en" ? "Fee Paid" : "Phí thanh toán"}</th>
+                  <th className="px-6 py-4 text-center">{language === "en" ? "Status" : "Trạng thái"}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
                 {filteredBookingHistory.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={7}
+                      colSpan={6}
                       className="px-6 py-10 text-center text-slate-400 dark:text-slate-500"
                     >
-                      No matching historical records found.
+                      {language === "en" ? "No matching historical records found." : "Không tìm thấy lịch sử đặt chỗ tương ứng."}
                     </td>
                   </tr>
                 ) : (
@@ -515,9 +520,6 @@ export default function MyBookings() {
                       key={idx}
                       className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors"
                     >
-                      <td className="px-6 py-4 font-mono font-bold text-slate-800 dark:text-slate-300">
-                        {item.id}
-                      </td>
                       <td className="px-6 py-4 font-mono font-black text-xs text-slate-700 dark:text-slate-300">
                         {item.plate_number}
                       </td>
@@ -533,7 +535,7 @@ export default function MyBookings() {
                         <span
                           className={`inline-block px-2.5 py-1 rounded-md text-[11px] font-bold ${item.status === "completed" ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400" : "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400"}`}
                         >
-                          {item.status.toUpperCase()}
+                          {getStatusLabel(item.status).toUpperCase()}
                         </span>
                       </td>
                     </tr>
@@ -545,18 +547,19 @@ export default function MyBookings() {
 
           <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-bold text-slate-400 dark:text-slate-500">
             <span>
-              Showing 1-{filteredBookingHistory.length} of{" "}
-              {filteredBookingHistory.length} items
+              {language === "en"
+                ? `Showing 1-${filteredBookingHistory.length} of ${filteredBookingHistory.length} items`
+                : `Hiển thị 1-${filteredBookingHistory.length} trong tổng số ${filteredBookingHistory.length} mục`}
             </span>
             <div className="flex gap-1">
               <button className="px-3 py-1 bg-slate-50 border border-slate-200 text-slate-600 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400 transition-colors rounded-lg hover:bg-slate-100">
-                Prev
+                {language === "en" ? "Prev" : "Trước"}
               </button>
               <button className="px-3 py-1 bg-blue-600 text-white border border-blue-600 rounded-lg shadow-sm">
                 1
               </button>
               <button className="px-3 py-1 bg-slate-50 border border-slate-200 text-slate-600 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400 transition-colors rounded-lg hover:bg-slate-100">
-                Next
+                {language === "en" ? "Next" : "Sau"}
               </button>
             </div>
           </div>
@@ -576,15 +579,15 @@ export default function MyBookings() {
                   <X size={20} />
                 </button>
                 <h3 className="font-bold text-slate-800 dark:text-white text-xl mb-1 flex items-center justify-center gap-1.5">
-                  <QrCode className="text-blue-500" size={22} /> E-Ticket
+                  <QrCode className="text-blue-500" size={22} /> {language === "en" ? "E-Ticket" : "Vé điện tử"}
                 </h3>
                 <p className="text-slate-400 dark:text-slate-500 text-xs font-mono font-bold mb-6">
-                  ID: {selectedBooking.id} | PLATE: {selectedBooking.plate_number}
+                  ID: {selectedBooking.id} | {language === "en" ? "PLATE" : "BIỂN SỐ"}: {selectedBooking.plate_number}
                 </p>
 
                 <div className="bg-white p-4 rounded-2xl inline-block border-4 border-slate-800 mb-5 shadow-lg">
                   <img
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=Ticket_Valid_Slot_${selectedBooking.slotId}_Plate_${selectedBooking.plate_number}`}
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=Ticket_Booking_${selectedBooking.id}_Plate_${selectedBooking.plate_number}`}
                     alt="Ticket QR"
                     className="w-44 h-44"
                   />
@@ -593,14 +596,16 @@ export default function MyBookings() {
                 <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-xl p-3 mb-6 text-left flex gap-2.5 items-start text-amber-700 dark:text-amber-400 text-xs font-medium leading-relaxed">
                   <Info className="text-amber-500 shrink-0 mt-0.5" size={16} />
                   <p>
-                    Note: The gate camera will scan your license plate. Show this QR code to staff if needed.
+                    {language === "en"
+                      ? "Note: The gate camera will scan your license plate. Show this QR code to staff if needed."
+                      : "Lưu ý: Camera tại cổng sẽ quét biển số xe của bạn. Hãy xuất trình mã QR này cho nhân viên khi được yêu cầu."}
                   </p>
                 </div>
                 <button
                   onClick={closeModal}
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-md transition-all"
                 >
-                  Close
+                  {language === "en" ? "Close" : "Đóng"}
                 </button>
               </div>
             )}
@@ -611,26 +616,26 @@ export default function MyBookings() {
                   <AlertTriangle size={28} />
                 </div>
                 <h3 className="font-bold text-slate-800 dark:text-white text-xl mb-2">
-                  Cancel Booking?
+                  {language === "en" ? "Cancel Booking?" : "Hủy đặt chỗ?"}
                 </h3>
                 <p className="text-slate-500 dark:text-slate-400 text-sm mb-5 font-medium">
-                  Are you sure to release reservation for{" "}
+                  {language === "en" ? "Are you sure to release reservation for " : "Bạn có chắc chắn muốn hủy đặt chỗ cho vị trí "}
                   <span className="font-black text-slate-700 dark:text-slate-200">
-                    Slot {selectedBooking.slotId}
+                    {selectedBooking.slotId && selectedBooking.slotId !== "N/A"
+                      ? `${language === "en" ? "Slot" : "Vị trí"} ${selectedBooking.slotName || selectedBooking.slotId}`
+                      : (selectedBooking.slotName || (language === "en" ? "Assigned at Check-in" : "Chỉ định lúc Check-in"))}
                   </span>
                   ?
                 </p>
 
                 <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 rounded-xl p-3.5 mb-6 text-left">
                   <p className="text-xs font-bold text-red-600 dark:text-red-400">
-                    Notice:
+                    {language === "en" ? "Notice:" : "Lưu ý:"}
                   </p>
                   <p className="text-[11px] font-medium text-red-500 mt-1 leading-normal">
-                    Your booking deposit of{" "}
-                    <span className="font-bold underline">
-                      {selectedBooking.depositPaid.toLocaleString()} VND
-                    </span>{" "}
-                    is non-refundable if you cancel.
+                    {language === "en"
+                      ? `Your booking deposit of ${selectedBooking.depositPaid.toLocaleString()} VND is non-refundable if you cancel.`
+                      : `Khoản tiền đặt cọc của bạn là ${selectedBooking.depositPaid.toLocaleString()} VND sẽ không được hoàn lại nếu bạn hủy bỏ.`}
                   </p>
                 </div>
 
@@ -639,7 +644,7 @@ export default function MyBookings() {
                     onClick={closeModal}
                     className="flex-1 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold py-3 rounded-xl transition-colors text-sm"
                   >
-                    Go Back
+                    {language === "en" ? "Go Back" : "Quay lại"}
                   </button>
                   <button
                     disabled={cancelCountdown > 0}
@@ -647,8 +652,8 @@ export default function MyBookings() {
                     className={`flex-1 font-bold py-3 rounded-xl transition-all text-sm shadow-md ${cancelCountdown > 0 ? "bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed" : "bg-red-600 hover:bg-red-700 text-white shadow-red-500/20"}`}
                   >
                     {cancelCountdown > 0
-                      ? `Confirm (${cancelCountdown}s)`
-                      : "Cancel Booking"}
+                      ? (language === "en" ? `Confirm (${cancelCountdown}s)` : `Xác nhận (${cancelCountdown}s)`)
+                      : (language === "en" ? "Cancel Booking" : "Hủy đặt chỗ")}
                   </button>
                 </div>
               </div>
@@ -658,7 +663,7 @@ export default function MyBookings() {
               <div className="p-6">
                 <div className="flex justify-between items-center mb-5 border-b border-slate-100 dark:border-slate-800 pb-3">
                   <h3 className="font-bold text-slate-800 dark:text-white text-lg flex items-center gap-1.5">
-                    <Clock className="text-blue-500" size={18} /> Change Schedule
+                    <Clock className="text-blue-500" size={18} /> {language === "en" ? "Change Schedule" : "Thay đổi giờ đặt"}
                   </h3>
                   <button
                     onClick={closeModal}
@@ -668,39 +673,21 @@ export default function MyBookings() {
                   </button>
                 </div>
                 <div className="space-y-4 mb-5">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">
-                        New Entry Time:
-                      </label>
-                      <input
-                        type="datetime-local"
-                        value={adjustTimeData.startTime}
-                        onChange={(e) =>
-                          setAdjustTimeData({
-                            ...adjustTimeData,
-                            startTime: e.target.value,
-                          })
-                        }
-                        className="w-full bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">
-                        New Exit Time:
-                      </label>
-                      <input
-                        type="datetime-local"
-                        value={adjustTimeData.endTime}
-                        onChange={(e) =>
-                          setAdjustTimeData({
-                            ...adjustTimeData,
-                            endTime: e.target.value,
-                          })
-                        }
-                        className="w-full bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40"
-                      />
-                    </div>
+                  <div>
+                    <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 block">
+                      {language === "en" ? "New Expected Entry Time:" : "Giờ vào dự kiến mới:"}
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={adjustTimeData.startTime}
+                      onChange={(e) =>
+                        setAdjustTimeData({
+                          ...adjustTimeData,
+                          startTime: e.target.value,
+                        })
+                      }
+                      className="w-full bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                    />
                   </div>
                   {adjustError && (
                     <p className="text-[10px] text-red-500 font-semibold mt-1.5">
@@ -708,41 +695,17 @@ export default function MyBookings() {
                     </p>
                   )}
                 </div>
-
-                <div className="bg-blue-50 dark:bg-blue-950/20 rounded-2xl p-3.5 mb-6 border border-blue-100 dark:border-blue-900/30 text-xs font-medium space-y-1.5 text-slate-600 dark:text-slate-400">
-                  <div className="flex justify-between">
-                    <span>New Estimated Price:</span>
-                    <span className="font-bold text-slate-800 dark:text-slate-200">
-                      {newPrice.toLocaleString()} VND
-                    </span>
-                  </div>
-                  <div className="flex justify-between border-b border-blue-100 dark:border-blue-900/40 pb-1.5">
-                    <span>Deposit Paid:</span>
-                    <span className="text-emerald-500 font-bold">
-                      -{selectedBooking.depositPaid.toLocaleString()} VND
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center pt-1.5 text-sm">
-                    <span className="text-blue-800 dark:text-blue-300 font-bold">
-                      Remaining Amount:
-                    </span>
-                    <span className="font-black text-base text-blue-600 dark:text-blue-400">
-                      {(newPrice - selectedBooking.depositPaid > 0
-                        ? newPrice - selectedBooking.depositPaid
-                        : 0
-                      ).toLocaleString()} VND
-                    </span>
-                  </div>
-                  <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-2 border-t border-blue-100 dark:border-blue-900/40 pt-2 font-medium leading-relaxed">
-                    💡 <strong>Rate:</strong> 15,000 VND for the 1st hour, then +2,000 VND for each next hour.
-                  </div>
+                <div className="bg-blue-50 dark:bg-blue-950/20 rounded-2xl p-3.5 mb-6 border border-blue-100 dark:border-blue-900/30 text-xs font-semibold text-blue-800 dark:text-blue-300 leading-relaxed">
+                  💡 {language === "en"
+                    ? "Updating your expected entry time does not change your paid deposit. The final parking fee will be calculated when you leave the parking lot."
+                    : "Cập nhật thời gian vào không làm thay đổi tiền cọc đã nộp. Phí gửi xe thực tế sẽ được tính toán khi bạn lấy xe ra khỏi bãi."}
                 </div>
                 <button
-                  disabled={newPrice <= 0 || !!adjustError}
+                  disabled={!!adjustError || !adjustTimeData.startTime}
                   onClick={handleConfirmAdjust}
-                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold py-3 rounded-xl shadow-md transition-transform active:scale-95 text-sm"
+                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 text-white font-bold py-3 rounded-xl shadow-md transition-transform active:scale-95 text-sm"
                 >
-                  Save Changes
+                  {language === "en" ? "Save Changes" : "Lưu thay đổi"}
                 </button>
               </div>
             )}
@@ -756,10 +719,10 @@ export default function MyBookings() {
                   <X size={20} />
                 </button>
                 <h3 className="font-bold text-slate-800 dark:text-white text-xl mb-1 flex items-center justify-center gap-1.5">
-                  <CreditCard className="text-emerald-500" size={20} /> Pay Remaining Fee
+                  <CreditCard className="text-emerald-500" size={20} /> {language === "en" ? "Pay Remaining Fee" : "Thanh toán số dư"}
                 </h3>
                 <p className="text-slate-400 dark:text-slate-500 text-xs font-semibold mb-5">
-                  Scan QR code to pay the remaining balance.
+                  {language === "en" ? "Scan QR code to pay the remaining balance." : "Quét mã QR để thanh toán phí còn lại."}
                 </p>
 
                 <div className="bg-white p-3 rounded-2xl inline-block border-2 border-slate-100 mb-4 shadow-sm">
@@ -771,7 +734,7 @@ export default function MyBookings() {
                 </div>
                 <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-3 mb-6 border border-slate-100 dark:border-slate-800/60 text-xs font-bold text-slate-500 dark:text-slate-400">
                   <p>
-                    Amount:{" "}
+                    {language === "en" ? "Amount:" : "Số tiền:"}
                     <span className="text-emerald-500 text-lg font-black font-mono ml-1">
                       {selectedBooking.remainingBalance.toLocaleString()}đ
                     </span>
@@ -782,13 +745,13 @@ export default function MyBookings() {
                     onClick={closeModal}
                     className="flex-1 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold py-3 rounded-xl transition-colors text-sm"
                   >
-                    Go Back
+                    {language === "en" ? "Go Back" : "Quay lại"}
                   </button>
                   <button
                     onClick={handleConfirmPay}
                     className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 rounded-xl text-sm shadow-md shadow-emerald-500/20"
                   >
-                    Confirm Paid
+                    {language === "en" ? "Confirm Paid" : "Xác nhận đã trả"}
                   </button>
                 </div>
               </div>

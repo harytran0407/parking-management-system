@@ -129,26 +129,11 @@ public class BookingService : IBookingService
                     ExpectedArrival = request.ExpectedArrival,
                     ExpiredAt = expiredAt,
                     BookingTime = DateTime.UtcNow,
-                    Status = "CONFIRMED",
+                    Status = "PENDING",
                     Notes = request.Notes
                 };
 
                 _context.Bookings.Add(booking);
-
-                var payment = new Payment
-                {
-                    PaymentId = "PAY-" + Guid.NewGuid().ToString("N").Substring(0, 10).ToUpper(),
-                    PaymentType = "BOOKING",
-                    AmountDue = estimatedFee,
-                    AmountPaid = estimatedFee,
-                    PaymentMethod = "VNPAY",
-                    PaymentTime = DateTime.UtcNow,
-                    Status = "SUCCESS",
-                    BookingId = bookingId,
-                    UserId = userId
-                };
-
-                _context.Payments.Add(payment);
 
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
@@ -396,7 +381,13 @@ public class BookingService : IBookingService
 
     private static BookingResponse MapToBookingResponse(Booking b)
     {
-        decimal estimatedFee = 15000m; // Base price is 15,000 VND
+        decimal basePrice = 15000m; // Base price is 15,000 VND for cars
+        if (b.Vehicle?.VehicleTypeId == 1) // Motorbike
+        {
+            basePrice = 5000m;
+        }
+
+        decimal estimatedFee = basePrice;
 
         DateTime referenceTime = DateTime.UtcNow;
         if (b.ExpiredAt.HasValue)
@@ -409,9 +400,11 @@ public class BookingService : IBookingService
             referenceTime = DateTime.UtcNow;
         }
 
-        if (b.Status?.Equals("CANCELLED", StringComparison.OrdinalIgnoreCase) == true)
+        if (b.Status?.Equals("CANCELLED", StringComparison.OrdinalIgnoreCase) == true ||
+            b.Status?.Equals("PENDING", StringComparison.OrdinalIgnoreCase) == true ||
+            b.Status?.Equals("CONFIRMED", StringComparison.OrdinalIgnoreCase) == true)
         {
-            estimatedFee = b.Payments?.Where(p => p.Status == "SUCCESS").Sum(p => (decimal?)p.AmountPaid) ?? 15000m;
+            estimatedFee = b.Payments?.Where(p => p.Status == "SUCCESS").Sum(p => (decimal?)p.AmountPaid) ?? basePrice;
         }
         else if (referenceTime > b.ExpectedArrival)
         {

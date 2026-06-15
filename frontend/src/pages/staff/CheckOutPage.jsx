@@ -87,6 +87,7 @@ export default function CheckOutPage() {
                 setScanResult({
                     type: "ExitPending",
                     sessionId: activeSession.session_id,
+                    ticketCode: activeSession.ticket_code,
                     plate: aiPlate,
                     slot: activeSession.slot_name || "N/A",
                     floor: activeSession.floor !== undefined ? `Floor ${activeSession.floor}` : "N/A",
@@ -125,6 +126,7 @@ export default function CheckOutPage() {
             setScanResult({
                 type: "ExitPending",
                 sessionId: activeSession.session_id,
+                ticketCode: activeSession.ticket_code,
                 plate: formattedPlate,
                 slot: activeSession.slot_name || "N/A",
                 floor: activeSession.floor !== undefined ? `Floor ${activeSession.floor}` : "N/A",
@@ -153,6 +155,7 @@ export default function CheckOutPage() {
 
         try {
             const bodyData = {
+                ticket_code: scanResult.ticketCode || "TK-SYSTEM-WALKIN",
                 license_plate_out: scanResult.plate,
                 camera_out: camOut,
                 gate_out: gateOut,

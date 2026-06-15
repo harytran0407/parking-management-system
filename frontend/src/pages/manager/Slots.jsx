@@ -1,227 +1,220 @@
 import { useState, useEffect } from 'react'
-import { Grid, Plus, RefreshCw, Edit, Trash2, ShieldAlert, Sliders, BatteryCharging, Accessibility, Info, X } from 'lucide-react'
+import { Plus, RefreshCw, Edit, Trash2, Sliders, X, Layers, Car, Bike, ShieldAlert } from 'lucide-react'
 import { toast } from 'sonner'
 import api from '../../utils/api'
 
 export default function ManagerSlots() {
-  const [slotsData, setSlotsData] = useState([])
-  const [slotsSummary, setSlotsSummary] = useState(null)
+  const [zonesData, setZonesData] = useState([])
   const [loading, setLoading] = useState(true)
+  const [formSubmitting, setFormSubmitting] = useState(false)
 
   // Filters
   const [selectedFloor, setSelectedFloor] = useState('')
-  const [selectedZone, setSelectedZone] = useState('')
   const [selectedVehicleType, setSelectedVehicleType] = useState('')
-  const [selectedStatus, setSelectedStatus] = useState('')
-  
-  // Modal states
-  const [isBulkCreateOpen, setIsBulkCreateOpen] = useState(false)
-  const [isEditOpen, setIsEditOpen] = useState(false)
-  
-  // Form states
-  const [bulkCreateForm, setBulkCreateForm] = useState({
-    zoneId: '',
-    count: 10
-  })
-  const [editForm, setEditForm] = useState({
-    slotId: '',
-    slotName: '',
-    isHandicap: false,
-    isElectricCharging: false,
-    clearSession: false
-  })
-  
-  const [zones, setZones] = useState([])
-  const [formSubmitting, setFormSubmitting] = useState(false)
 
-  // Load available zones
-  const fetchZones = async () => {
+  // Modals
+  const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [isEditOpen, setIsEditOpen] = useState(false)
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false)
+  const [zoneToDelete, setZoneToDelete] = useState(null)
+
+  // Forms
+  const [createForm, setCreateForm] = useState({
+    zoneName: '',
+    floorNumber: '',
+    capacity: '',
+    vehicleTypeId: '1' // 1: Car, 2: Bike
+  })
+
+  const [editForm, setEditForm] = useState({
+    zoneId: '',
+    zoneName: '',
+    floorNumber: '',
+    capacity: '',
+    vehicleTypeId: '1',
+    status: 'ACTIVE' // ACTIVE, MAINTENANCE
+  })
+
+  // Fetch all allocations
+  const fetchAllocations = async () => {
+    setLoading(true)
     try {
       const response = await api.get('/parking/floors')
       if (response.data && response.data.success) {
-        setZones(response.data.data)
+        setZonesData(response.data.data || [])
       }
     } catch (error) {
-      console.error('Error fetching zones:', error)
-    }
-  }
-
-  // Load slots
-  const fetchSlots = async () => {
-    setLoading(true)
-    try {
-      const response = await api.get('/parking/slots', {
-        params: {
-          floor: selectedFloor ? parseInt(selectedFloor) : undefined,
-          zone: selectedZone || undefined,
-          vehicleTypeId: selectedVehicleType ? parseInt(selectedVehicleType) : undefined,
-          status: selectedStatus || undefined,
-          pageSize: 100 // Load more slots for management view
-        }
-      })
-      if (response.data && response.data.success) {
-        setSlotsSummary(response.data.data.summary)
-        setSlotsData(response.data.data.slots || [])
-      }
-    } catch (error) {
-      console.error('Error fetching slots:', error)
-      toast.error('Failed to load parking slots')
+      console.error('Error fetching allocations:', error)
+      toast.error('Failed to load parking allocations')
     } finally {
       setLoading(false)
     }
   }
 
   useEffect(() => {
-    fetchSlots()
-  }, [selectedFloor, selectedZone, selectedVehicleType, selectedStatus])
-
-  useEffect(() => {
-    fetchZones()
+    fetchAllocations()
   }, [])
 
-  // Handle Bulk Create
-  const handleBulkCreateSubmit = async (e) => {
+  // Create Submit
+  const handleCreateSubmit = async (e) => {
     e.preventDefault()
-    if (!bulkCreateForm.zoneId) {
-      toast.error('Please select a Zone')
+    if (!createForm.zoneName.trim()) {
+      toast.error('Zone Name is required')
       return
     }
 
     setFormSubmitting(true)
     try {
-      const response = await api.post('/parking/slots/bulk-create', {
-        zone_id: parseInt(bulkCreateForm.zoneId),
-        count: parseInt(bulkCreateForm.count)
+      const response = await api.post('/parking/floors', {
+        zone_name: createForm.zoneName,
+        floor_number: parseInt(createForm.floorNumber),
+        capacity: parseInt(createForm.capacity),
+        vehicle_type_id: parseInt(createForm.vehicleTypeId)
       })
 
       if (response.data && response.data.success) {
-        toast.success(`Successfully created ${response.data.data.slots_created} slots in ${response.data.data.zone_name}`)
-        setIsBulkCreateOpen(false)
-        fetchSlots()
+        toast.success(response.data.message || 'Floor zone created successfully')
+        setIsCreateOpen(false)
+        setCreateForm({
+          zoneName: '',
+          floorNumber: '',
+          capacity: '',
+          vehicleTypeId: '1'
+        })
+        fetchAllocations()
       }
     } catch (error) {
-      console.error('Bulk create error:', error)
-      toast.error(error.message || 'Failed to bulk create slots')
+      console.error('Create zone error:', error)
+      toast.error(error.response?.data?.message || error.message || 'Failed to create zone')
     } finally {
       setFormSubmitting(false)
     }
   }
 
   // Open Edit Modal
-  const openEditModal = (slot) => {
+  const openEditModal = (zone) => {
     setEditForm({
-      slotId: slot.slot_id,
-      slotName: slot.slot_name,
-      isHandicap: slot.is_handicap || false,
-      isElectricCharging: slot.is_electric_charging || false,
-      clearSession: false
+      zoneId: zone.zone_id,
+      zoneName: zone.zone_name,
+      floorNumber: zone.floor_number,
+      capacity: zone.capacity,
+      vehicleTypeId: zone.vehicle_type_id.toString(),
+      status: zone.status || 'ACTIVE'
     })
     setIsEditOpen(true)
   }
 
-  // Handle Edit Submit
+  // Edit Submit
   const handleEditSubmit = async (e) => {
     e.preventDefault()
     setFormSubmitting(true)
     try {
-      const response = await api.put(`/parking/slots/${editForm.slotId}/edit`, {
-        is_handicap: editForm.isHandicap,
-        is_electric_charging: editForm.isElectricCharging,
-        clear_session: editForm.clearSession
+      const response = await api.put(`/parking/floors/${editForm.zoneId}`, {
+        vehicle_type_id: parseInt(editForm.vehicleTypeId),
+        capacity: parseInt(editForm.capacity),
+        status: editForm.status
       })
 
       if (response.data && response.data.success) {
-        toast.success('Slot updated successfully')
+        if (response.data.data?.warning) {
+          toast.warning(response.data.data.warning)
+        } else {
+          toast.success(response.data.message || 'Zone updated successfully')
+        }
         setIsEditOpen(false)
-        fetchSlots()
+        fetchAllocations()
       }
     } catch (error) {
-      console.error('Edit slot error:', error)
-      toast.error(error.message || 'Failed to update slot')
+      console.error('Edit zone error:', error)
+      toast.error(error.response?.data?.message || error.message || 'Failed to update zone')
     } finally {
       setFormSubmitting(false)
     }
   }
 
-  // Handle Delete Slot
-  const handleDeleteSlot = async (slotId) => {
-    if (!window.confirm('Are you sure you want to delete this parking slot? This action cannot be undone.')) {
-      return
-    }
+  // Open Delete Modal
+  const openDeleteModal = (zone) => {
+    setZoneToDelete(zone)
+    setIsDeleteOpen(true)
+  }
 
+  // Delete Action Submit
+  const handleDeleteZoneSubmit = async () => {
+    if (!zoneToDelete) return
+    setFormSubmitting(true)
     try {
-      await api.delete(`/parking/slots/${slotId}`)
-      toast.success('Slot deleted successfully')
-      fetchSlots()
+      await api.delete(`/parking/floors/${zoneToDelete.zone_id}`)
+      toast.success('Zone allocation deleted successfully')
+      setIsDeleteOpen(false)
+      setZoneToDelete(null)
+      fetchAllocations()
     } catch (error) {
-      console.error('Delete slot error:', error)
-      toast.error(error.message || 'Failed to delete slot (Must be AVAILABLE to delete)')
+      console.error('Delete zone error:', error)
+      toast.error(error.response?.data?.message || error.message || 'Failed to delete zone allocation')
+    } finally {
+      setFormSubmitting(false)
     }
   }
 
-  // Handle quick update slot status (e.g. MAINTENANCE / AVAILABLE)
-  const handleToggleMaintenance = async (slot) => {
-    const nextStatus = slot.status === 'MAINTENANCE' ? 'AVAILABLE' : 'MAINTENANCE'
-    const payload = {
-      status: nextStatus,
-      reason: nextStatus === 'MAINTENANCE' ? 'Manager manual lock' : 'Resolved',
-      estimated_duration_minutes: nextStatus === 'MAINTENANCE' ? 120 : 0
-    }
+  // Filter & Compute Stats
+  const filteredZones = zonesData.filter(zone => {
+    const matchesFloor = selectedFloor === '' || zone.floor_number.toString() === selectedFloor
+    const matchesVehicle = selectedVehicleType === '' || zone.vehicle_type_id.toString() === selectedVehicleType
+    return matchesFloor && matchesVehicle
+  })
 
-    try {
-      await api.put(`/parking/slots/${slot.slot_id}/status`, payload)
-      toast.success(`Slot status updated to ${nextStatus}`)
-      fetchSlots()
-    } catch (error) {
-      console.error('Update status error:', error)
-      toast.error(error.message || 'Failed to toggle maintenance status')
-    }
-  }
+  // Summary figures (based on unfiltered or filtered? usually unfiltered is best for global header stats)
+  const totalZones = zonesData.length
+  const totalCapacity = zonesData.reduce((sum, zone) => sum + zone.capacity, 0)
+  const totalActive = zonesData.reduce((sum, zone) => sum + zone.active_vehicles_count, 0)
+  const totalAvailable = Math.max(0, totalCapacity - totalActive)
+  const averageOccupancy = totalCapacity > 0 ? Math.round((totalActive / totalCapacity) * 100) : 0
+
+  // Unique floors for filter dropdown
+  const uniqueFloors = [...new Set(zonesData.map(z => z.floor_number))].sort((a, b) => a - b)
 
   return (
     <div className="animate-slide-in flex flex-col h-full">
       {/* HEADER SECTION */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
-          <h2 className="section-title mb-1">Parking Slots Management</h2>
+          <h2 className="section-title mb-1">Parking Slots Capacity Management</h2>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            View real-time layout grid, edit slot attributes, bulk create or delete slots.
+            Configure, allocate, and monitor parking capacities per floor and zone.
           </p>
         </div>
         <button
-          onClick={() => setIsBulkCreateOpen(true)}
+          onClick={() => setIsCreateOpen(true)}
           className="btn-primary flex items-center gap-2 shadow-lg hover:shadow-blue-500/25 transition-all duration-300"
         >
           <Plus size={18} />
-          Bulk Create Slots
+          Add New Zone
         </button>
       </div>
 
       {/* SUMMARY STATS BAR */}
-      {slotsSummary && (
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm mb-6">
-          <div className="p-3 bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 rounded-lg text-center">
-            <span className="text-xs font-bold text-slate-400 uppercase block mb-1">Total Slots</span>
-            <span className="text-2xl font-bold text-slate-900 dark:text-white font-mono">{slotsSummary.total_slots}</span>
-          </div>
-          <div className="p-3 bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100/50 dark:border-emerald-900/30 rounded-lg text-center">
-            <span className="text-xs font-bold text-emerald-500 uppercase block mb-1">Available</span>
-            <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 font-mono">{slotsSummary.available}</span>
-          </div>
-          <div className="p-3 bg-red-50/50 dark:bg-red-950/20 border border-red-100/50 dark:border-red-900/30 rounded-lg text-center">
-            <span className="text-xs font-bold text-red-500 uppercase block mb-1">Occupied</span>
-            <span className="text-2xl font-bold text-red-600 dark:text-red-400 font-mono">{slotsSummary.occupied}</span>
-          </div>
-          <div className="p-3 bg-amber-50/50 dark:bg-amber-950/20 border border-amber-100/50 dark:border-amber-900/30 rounded-lg text-center">
-            <span className="text-xs font-bold text-amber-500 uppercase block mb-1">Reserved</span>
-            <span className="text-2xl font-bold text-amber-600 dark:text-amber-400 font-mono">{slotsSummary.reserved}</span>
-          </div>
-          <div className="p-3 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-center">
-            <span className="text-xs font-bold text-slate-500 uppercase block mb-1">Maintenance</span>
-            <span className="text-2xl font-bold text-slate-600 dark:text-slate-400 font-mono">{slotsSummary.maintenance}</span>
-          </div>
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm mb-6">
+        <div className="p-3 bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 rounded-lg text-center">
+          <span className="text-xs font-bold text-slate-400 uppercase block mb-1">Total Zones</span>
+          <span className="text-2xl font-bold text-slate-900 dark:text-white font-mono">{totalZones}</span>
         </div>
-      )}
+        <div className="p-3 bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100/50 dark:border-blue-900/30 rounded-lg text-center">
+          <span className="text-xs font-bold text-blue-500 uppercase block mb-1">Total Capacity</span>
+          <span className="text-2xl font-bold text-blue-600 dark:text-blue-400 font-mono">{totalCapacity}</span>
+        </div>
+        <div className="p-3 bg-red-50/50 dark:bg-red-950/20 border border-red-100/50 dark:border-red-900/30 rounded-lg text-center">
+          <span className="text-xs font-bold text-red-500 uppercase block mb-1">Active Vehicles</span>
+          <span className="text-2xl font-bold text-red-600 dark:text-red-400 font-mono">{totalActive}</span>
+        </div>
+        <div className="p-3 bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100/50 dark:border-emerald-900/30 rounded-lg text-center">
+          <span className="text-xs font-bold text-emerald-500 uppercase block mb-1">Available slots</span>
+          <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 font-mono">{totalAvailable}</span>
+        </div>
+        <div className="p-3 bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/50 dark:border-indigo-900/30 rounded-lg text-center">
+          <span className="text-xs font-bold text-indigo-500 uppercase block mb-1">Occupancy Rate</span>
+          <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-400 font-mono">{averageOccupancy}%</span>
+        </div>
+      </div>
 
       {/* FILTER PANEL */}
       <div className="card mb-6 p-4">
@@ -233,128 +226,129 @@ export default function ManagerSlots() {
           <select
             value={selectedFloor}
             onChange={(e) => setSelectedFloor(e.target.value)}
-            className="input-field w-32 py-1.5 px-3 text-sm font-medium"
+            className="input-field w-36 py-1.5 px-3 text-sm font-medium"
           >
             <option value="">All Floors</option>
-            <option value="1">Floor 1</option>
-            <option value="2">Floor 2</option>
-            <option value="3">Floor 3</option>
-          </select>
-
-          <select
-            value={selectedZone}
-            onChange={(e) => setSelectedZone(e.target.value)}
-            className="input-field w-32 py-1.5 px-3 text-sm font-medium"
-          >
-            <option value="">All Zones</option>
-            <option value="A">Zone A</option>
-            <option value="B">Zone B</option>
-            <option value="C">Zone C</option>
+            {uniqueFloors.map(floor => (
+              <option key={floor} value={floor.toString()}>Floor {floor}</option>
+            ))}
           </select>
 
           <select
             value={selectedVehicleType}
             onChange={(e) => setSelectedVehicleType(e.target.value)}
-            className="input-field w-36 py-1.5 px-3 text-sm font-medium"
+            className="input-field w-40 py-1.5 px-3 text-sm font-medium"
           >
-            <option value="">All Vehicles</option>
-            <option value="1">Automobile (Car)</option>
-            <option value="2">Motorbike</option>
-          </select>
-
-          <select
-            value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value)}
-            className="input-field w-36 py-1.5 px-3 text-sm font-medium"
-          >
-            <option value="">All Statuses</option>
-            <option value="AVAILABLE">Available</option>
-            <option value="OCCUPIED">Occupied</option>
-            <option value="RESERVED">Reserved</option>
-            <option value="MAINTENANCE">Maintenance</option>
+            <option value="">All Vehicle Types</option>
+            <option value="1">Motorbike</option>
+            <option value="2">Car</option>
           </select>
 
           <button
-            onClick={fetchSlots}
+            onClick={fetchAllocations}
             className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg transition-colors border border-slate-200 dark:border-slate-700 ml-auto"
-            title="Refresh Slots List"
+            title="Refresh Allocations"
           >
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
           </button>
         </div>
       </div>
 
-      {/* GRID DISPLAY */}
+      {/* ALLOCATIONS LIST */}
       <div className="card flex-1 overflow-hidden p-6 flex flex-col">
         {loading ? (
           <div className="flex flex-col items-center justify-center flex-1 py-12 gap-3">
             <RefreshCw size={32} className="animate-spin text-blue-500" />
-            <p className="text-slate-500 dark:text-slate-400 font-medium">Loading slots matrix...</p>
+            <p className="text-slate-500 dark:text-slate-400 font-medium">Loading allocations...</p>
           </div>
-        ) : slotsData.length === 0 ? (
+        ) : filteredZones.length === 0 ? (
           <div className="flex flex-col items-center justify-center flex-1 py-12 text-center">
-            <Grid size={48} className="text-slate-300 dark:text-slate-700 mb-3" />
-            <p className="text-slate-500 dark:text-slate-400 font-semibold text-lg">No slots configured</p>
+            <Layers size={48} className="text-slate-300 dark:text-slate-700 mb-3" />
+            <p className="text-slate-500 dark:text-slate-400 font-semibold text-lg">No allocations found</p>
             <p className="text-slate-400 dark:text-slate-500 text-sm max-w-sm mt-1">
-              Select bulk create option above to assign slots configuration.
+              Add a new floor/zone allocation configuration to get started.
             </p>
           </div>
         ) : (
           <div className="overflow-y-auto flex-1 pr-2">
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-              {slotsData.map((slot) => {
-                let statusClasses = "border-emerald-200 bg-emerald-50/20 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/20 dark:text-emerald-400";
-                if (slot.status === "OCCUPIED") statusClasses = "border-red-200 bg-red-50/20 text-red-700 dark:border-red-900/60 dark:bg-red-950/20 dark:text-red-400";
-                if (slot.status === "RESERVED") statusClasses = "border-amber-200 bg-amber-50/20 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-400";
-                if (slot.status === "MAINTENANCE") statusClasses = "border-slate-200 bg-slate-100/50 text-slate-500 dark:border-slate-800 dark:bg-slate-800/40 dark:text-slate-400";
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredZones.map((zone) => {
+                const occupancyPercentage = zone.capacity > 0 ? Math.round((zone.active_vehicles_count / zone.capacity) * 100) : 0
+                const isMaintenance = zone.status === 'MAINTENANCE'
 
                 return (
                   <div
-                    key={slot.slot_id}
-                    className={`p-3.5 border rounded-xl flex flex-col justify-between transition-all hover:shadow-md relative group/slot ${statusClasses}`}
+                    key={zone.zone_id}
+                    className={`p-5 border rounded-xl flex flex-col justify-between transition-all hover:shadow-md bg-white dark:bg-slate-900 ${
+                      isMaintenance 
+                        ? 'border-amber-200 dark:border-amber-950/60 bg-amber-50/10' 
+                        : 'border-slate-200 dark:border-slate-800'
+                    }`}
                   >
-                    <div className="flex justify-between items-start">
-                      <span className="text-base font-black font-mono">{slot.slot_name}</span>
-                      <div className="flex items-center gap-1 text-slate-400">
-                        {slot.is_electric_charging && <BatteryCharging size={14} className="text-teal-500" />}
-                        {slot.is_handicap && <Accessibility size={14} className="text-indigo-500" />}
+                    <div>
+                      {/* Card Header */}
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <h3 className="text-base font-extrabold text-slate-800 dark:text-white">
+                            Floor {zone.floor_number} • {zone.zone_name}
+                          </h3>
+                          <span className="text-[10px] text-slate-400 font-mono">ID: {zone.zone_id}</span>
+                        </div>
+                        <span className={`px-2 py-0.5 text-xs font-bold rounded-full ${
+                          isMaintenance 
+                            ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400' 
+                            : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
+                        }`}>
+                          {isMaintenance ? 'Maintenance' : 'Active'}
+                        </span>
+                      </div>
+
+                      {/* Card Body */}
+                      <div className="space-y-4 my-4">
+                        <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                          {zone.vehicle_type_id === 2 ? <Car size={16} className="text-blue-500" /> : <Bike size={16} className="text-blue-500" />}
+                          <span className="font-semibold">{zone.vehicle_type_name}</span>
+                        </div>
+
+                        {/* Occupancy Indicator */}
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-xs font-bold text-slate-500 dark:text-slate-400">
+                            <span>Occupancy</span>
+                            <span>{zone.active_vehicles_count} / {zone.capacity} slots ({occupancyPercentage}%)</span>
+                          </div>
+                          <div className="w-full bg-slate-100 dark:bg-slate-800 h-2.5 rounded-full overflow-hidden shadow-inner">
+                            <div 
+                              className={`h-full rounded-full transition-all duration-500 ${
+                                occupancyPercentage >= 90 
+                                  ? 'bg-red-500' 
+                                  : occupancyPercentage >= 75 
+                                  ? 'bg-amber-500' 
+                                  : 'bg-blue-500'
+                              }`} 
+                              style={{ width: `${Math.min(100, occupancyPercentage)}%` }}
+                            />
+                          </div>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="mt-4 flex justify-between items-center text-[10px] font-bold font-mono opacity-85">
-                      <span>F{slot.floor} • Z{slot.zone}</span>
-                      <span>{slot.vehicle_type_id === 1 ? 'CAR' : 'BIKE'}</span>
-                    </div>
-
-                    {slot.occupied_by_plate && (
-                      <div className="mt-2 pt-1.5 border-t border-dashed border-inherit text-xs font-bold font-mono truncate">
-                        🚘 {slot.occupied_by_plate}
-                      </div>
-                    )}
-
-                    {/* HOVER ACTIONS POPUP OVERLAY */}
-                    <div className="absolute inset-0 bg-slate-900/90 rounded-xl flex items-center justify-center gap-2.5 opacity-0 group-hover/slot:opacity-100 transition-all duration-200 backdrop-blur-xs">
+                    {/* Actions Panel */}
+                    <div className="flex justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800 mt-4">
                       <button
-                        onClick={() => openEditModal(slot)}
-                        className="p-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                        title="Edit slot"
+                        onClick={() => openEditModal(zone)}
+                        className="p-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg transition-colors border border-slate-200 dark:border-slate-700 flex items-center gap-1.5 text-xs font-semibold"
+                        title="Edit Zone Allocation"
                       >
                         <Edit size={14} />
+                        Edit
                       </button>
                       <button
-                        onClick={() => handleToggleMaintenance(slot)}
-                        className="p-1.5 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors"
-                        title={slot.status === 'MAINTENANCE' ? 'Open Slot' : 'Lock (Maintenance)'}
-                      >
-                        <ShieldAlert size={14} className={slot.status === 'MAINTENANCE' ? 'text-amber-400' : 'text-slate-300'} />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteSlot(slot.slot_id)}
-                        disabled={slot.status !== 'AVAILABLE'}
-                        className="p-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-40 disabled:hover:bg-red-600 transition-colors"
-                        title="Delete slot"
+                        onClick={() => openDeleteModal(zone)}
+                        className="p-1.5 bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 rounded-lg transition-colors border border-red-100/50 dark:border-red-950/30 flex items-center gap-1.5 text-xs font-semibold"
+                        title="Delete Zone"
                       >
                         <Trash2 size={14} />
+                        Delete
                       </button>
                     </div>
                   </div>
@@ -366,13 +360,13 @@ export default function ManagerSlots() {
       </div>
 
       {/* ============================================================
-          BULK CREATE MODAL
+          CREATE ZONE MODAL
          ============================================================ */}
-      {isBulkCreateOpen && (
+      {isCreateOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
           <div className="card w-full max-w-md shadow-2xl relative animate-slide-in bg-white dark:bg-slate-900">
             <button
-              onClick={() => setIsBulkCreateOpen(false)}
+              onClick={() => setIsCreateOpen(false)}
               className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg transition-all"
             >
               <X size={18} />
@@ -383,47 +377,68 @@ export default function ManagerSlots() {
                 <Plus size={22} />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-slate-800 dark:text-white">Bulk Create Slots</h3>
-                <p className="text-xs text-slate-500">Auto generate slots for designated Zone.</p>
+                <h3 className="text-lg font-bold text-slate-800 dark:text-white">Create New Zone</h3>
+                <p className="text-xs text-slate-500">Configure new zone capacity allocation.</p>
               </div>
             </div>
 
-            <form onSubmit={handleBulkCreateSubmit} className="space-y-4">
+            <form onSubmit={handleCreateSubmit} className="space-y-4">
               <div>
-                <label className="label">Select Zone-Floor *</label>
-                <select
+                <label className="label">Zone Name *</label>
+                <input
+                  type="text"
                   required
-                  value={bulkCreateForm.zoneId}
-                  onChange={(e) => setBulkCreateForm(prev => ({ ...prev, zoneId: e.target.value }))}
+                  placeholder="e.g. Zone A"
+                  value={createForm.zoneName}
+                  onChange={(e) => setCreateForm(prev => ({ ...prev, zoneName: e.target.value }))}
                   className="input-field"
-                >
-                  <option value="">-- Choose Allocation --</option>
-                  {zones.map((z) => (
-                    <option key={z.zone_id} value={z.zone_id}>
-                      {z.zone_name} (Floor {z.floor_number} • Capacity {z.capacity} • {z.vehicle_type_name})
-                    </option>
-                  ))}
-                </select>
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="label">Floor Number *</label>
+                  <input
+                    type="number"
+                    required
+                    min={1}
+                    placeholder="e.g. 1"
+                    value={createForm.floorNumber}
+                    onChange={(e) => setCreateForm(prev => ({ ...prev, floorNumber: e.target.value }))}
+                    className="input-field"
+                  />
+                </div>
+                <div>
+                  <label className="label">Capacity *</label>
+                  <input
+                    type="number"
+                    required
+                    min={1}
+                    placeholder="e.g. 50"
+                    value={createForm.capacity}
+                    onChange={(e) => setCreateForm(prev => ({ ...prev, capacity: e.target.value }))}
+                    className="input-field"
+                  />
+                </div>
               </div>
 
               <div>
-                <label className="label">Number of slots to generate *</label>
-                <input
-                  type="number"
+                <label className="label">Vehicle Type *</label>
+                <select
                   required
-                  min={1}
-                  max={100}
-                  value={bulkCreateForm.count}
-                  onChange={(e) => setBulkCreateForm(prev => ({ ...prev, count: e.target.value }))}
+                  value={createForm.vehicleTypeId}
+                  onChange={(e) => setCreateForm(prev => ({ ...prev, vehicleTypeId: e.target.value }))}
                   className="input-field"
-                />
-                <p className="text-[10px] text-slate-400 mt-1">Accept counts from 1 up to 100 per action.</p>
+                >
+                  <option value="1">Motorbike</option>
+                  <option value="2">Automobile (Car)</option>
+                </select>
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
-                  onClick={() => setIsBulkCreateOpen(false)}
+                  onClick={() => setIsCreateOpen(false)}
                   className="btn-secondary"
                   disabled={formSubmitting}
                 >
@@ -435,7 +450,7 @@ export default function ManagerSlots() {
                   disabled={formSubmitting}
                 >
                   {formSubmitting && <RefreshCw size={14} className="animate-spin" />}
-                  Generate Slots
+                  Create Zone
                 </button>
               </div>
             </form>
@@ -444,7 +459,7 @@ export default function ManagerSlots() {
       )}
 
       {/* ============================================================
-          EDIT SLOT MODAL
+          EDIT ZONE MODAL
          ============================================================ */}
       {isEditOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
@@ -461,57 +476,59 @@ export default function ManagerSlots() {
                 <Edit size={22} />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-slate-800 dark:text-white">Modify Slot ({editForm.slotName})</h3>
-                <p className="text-xs text-slate-500">Configure parameters or override sessions for this slot.</p>
+                <h3 className="text-lg font-bold text-slate-800 dark:text-white">Edit Allocation ({editForm.zoneName})</h3>
+                <p className="text-xs text-slate-500">Modify capacity details or toggle maintenance mode.</p>
               </div>
             </div>
 
             <form onSubmit={handleEditSubmit} className="space-y-4">
-              <div className="space-y-3">
-                <label className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800 cursor-pointer">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="label">Floor (Read-only)</label>
                   <input
-                    type="checkbox"
-                    checked={editForm.isHandicap}
-                    onChange={(e) => setEditForm(prev => ({ ...prev, isHandicap: e.target.checked }))}
-                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                    type="text"
+                    disabled
+                    value={`Floor ${editForm.floorNumber}`}
+                    className="input-field bg-slate-50 dark:bg-slate-800 cursor-not-allowed opacity-75"
                   />
-                  <div>
-                    <p className="text-sm font-semibold text-slate-800 dark:text-white flex items-center gap-1.5">
-                      <Accessibility size={14} className="text-indigo-500" /> Handicap Accessible
-                    </p>
-                    <p className="text-[10px] text-slate-400">Mark slot for drivers with physical disabilities.</p>
-                  </div>
-                </label>
+                </div>
+                <div>
+                  <label className="label">Capacity *</label>
+                  <input
+                    type="number"
+                    required
+                    min={1}
+                    value={editForm.capacity}
+                    onChange={(e) => setEditForm(prev => ({ ...prev, capacity: e.target.value }))}
+                    className="input-field"
+                  />
+                </div>
+              </div>
 
-                <label className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={editForm.isElectricCharging}
-                    onChange={(e) => setEditForm(prev => ({ ...prev, isElectricCharging: e.target.checked }))}
-                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                  />
-                  <div>
-                    <p className="text-sm font-semibold text-slate-800 dark:text-white flex items-center gap-1.5">
-                      <BatteryCharging size={14} className="text-teal-500" /> EV Electric Charging Station
-                    </p>
-                    <p className="text-[10px] text-slate-400">Mark slot equipped with EV charger socket.</p>
-                  </div>
-                </label>
+              <div>
+                <label className="label">Vehicle Type *</label>
+                <select
+                  required
+                  value={editForm.vehicleTypeId}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, vehicleTypeId: e.target.value }))}
+                  className="input-field"
+                >
+                  <option value="1">Motorbike</option>
+                  <option value="2">Car</option>
+                </select>
+              </div>
 
-                <label className="flex items-center gap-3 p-3 bg-red-50/30 dark:bg-red-950/10 rounded-xl border border-red-100/50 dark:border-red-950/30 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={editForm.clearSession}
-                    onChange={(e) => setEditForm(prev => ({ ...prev, clearSession: e.target.checked }))}
-                    className="w-4 h-4 text-red-600 rounded focus:ring-red-500"
-                  />
-                  <div>
-                    <p className="text-sm font-semibold text-red-800 dark:text-red-400 flex items-center gap-1.5">
-                      <ShieldAlert size={14} className="text-red-500" /> Force Clear Session (Override)
-                    </p>
-                    <p className="text-[10px] text-red-400">Force slot status back to free, solving duplicate locks.</p>
-                  </div>
-                </label>
+              <div>
+                <label className="label">Status *</label>
+                <select
+                  required
+                  value={editForm.status}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, status: e.target.value }))}
+                  className="input-field"
+                >
+                  <option value="ACTIVE">Active (Available for parking)</option>
+                  <option value="MAINTENANCE">Maintenance (Locked for service)</option>
+                </select>
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
@@ -533,6 +550,65 @@ export default function ManagerSlots() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================
+          DELETE CONFIRMATION MODAL
+         ============================================================ */}
+      {isDeleteOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="card w-full max-w-md shadow-2xl relative animate-slide-in bg-white dark:bg-slate-900">
+            <button
+              onClick={() => setIsDeleteOpen(false)}
+              className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg transition-all"
+            >
+              <X size={18} />
+            </button>
+            
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2.5 bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400 rounded-xl">
+                <ShieldAlert size={22} />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-slate-800 dark:text-white">Delete Zone Configuration?</h3>
+                <p className="text-xs text-slate-500">Confirm deletion of zone capacity assignment.</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <p className="text-sm text-slate-600 dark:text-slate-300">
+                Are you sure you want to delete the configuration for{' '}
+                <strong className="text-slate-800 dark:text-white">
+                  Floor {zoneToDelete?.floor_number} • {zoneToDelete?.zone_name}
+                </strong>
+                ?
+              </p>
+              <p className="text-xs text-red-500 font-semibold bg-red-50 dark:bg-red-950/20 p-2.5 rounded-lg border border-red-100 dark:border-red-950/30">
+                Warning: This action cannot be undone. Active bookings or parked sessions on this floor must be cleared before deleting.
+              </p>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setIsDeleteOpen(false)}
+                  className="btn-secondary"
+                  disabled={formSubmitting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteZoneSubmit}
+                  className="btn-primary bg-red-600 hover:bg-red-700 text-white flex items-center gap-2 border-red-600 hover:border-red-700 focus:ring-red-500"
+                  disabled={formSubmitting}
+                >
+                  {formSubmitting && <RefreshCw size={14} className="animate-spin" />}
+                  Delete Configuration
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
