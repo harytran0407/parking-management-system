@@ -9,7 +9,6 @@ namespace ParkingManagement.DTOs
     public class ActiveSessionDataDto
     {
         public string SessionId { get; set; } = null!;
-        public string? TicketCode { get; set; }
         public string LicensePlateIn { get; set; } = null!;
         public DateTime CheckInTime { get; set; }
         public int DurationMinutes { get; set; }
@@ -19,5 +18,6 @@ namespace ParkingManagement.DTOs
         public decimal CurrentFee { get; set; }
         public string Status { get; set; } = null!;
         public string PaymentStatus { get; set; } = null!;
+        public string? BookingId { get; set; }
     }
 }
