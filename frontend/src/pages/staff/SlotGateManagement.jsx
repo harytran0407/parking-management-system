@@ -48,7 +48,7 @@ export default function SlotGateManagementPage() {
       }
     } catch (err) {
       console.error("Fetch Slots Error:", err);
-      toast.error(err.response?.data?.message || "Không thể tải bản đồ ô đỗ từ máy chủ.");
+      toast.error(err.response?.data?.message || "Cannot load slot map!");
     } finally {
       setIsFetchingSlots(false);
     }

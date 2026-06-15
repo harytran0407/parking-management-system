@@ -35,7 +35,7 @@ namespace ParkingManagement.Services
 
             string currentSessionId = activeSession.SessionId;
             DateTime checkOutTime = currentTime ?? DateTime.Now;
-            int resolvedVehicleTypeId = dto.VehicleTypeId > 0 ? dto.VehicleTypeId : activeSession.VehicleTypeId;
+            int resolvedVehicleTypeId = dto.VehicleTypeId ?? activeSession.VehicleTypeId;
 
             var policy = await _parkingRepository.GetActivePricingPolicyByVehicleTypeAsync(resolvedVehicleTypeId)
                          ?? throw new InvalidOperationException("PRICING_POLICY_NOT_CONFIGURED");
