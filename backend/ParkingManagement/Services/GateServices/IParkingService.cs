@@ -1,5 +1,6 @@
 using System.Threading.Tasks;
 using ParkingManagement.DTOs;
+using ParkingManagement.Models;
 
 namespace ParkingManagement.Services
 {
@@ -9,14 +10,44 @@ namespace ParkingManagement.Services
     public interface IParkingService
     {
         /// <summary>
-        /// Xử lý nghiệp vụ cho xe vào bãi và cấp phát vị trí đỗ (Check-in).
+        /// Điều hướng và xử lý nghiệp vụ Check-in chung (Phân luồng tự động xe Vãng lai hoặc Đặt chỗ).
+        /// </summary>
+        Task<CheckInResponseDto> ProcessCheckInAsync(VehicleCheckInDto dto, string staffId);
+
+        /// <summary>
+        /// Điều hướng và xử lý nghiệp vụ Check-out chung (Phân luồng tự động xe Vãng lai hoặc Đặt chỗ).
+        /// </summary>
+        Task<CheckOutResponseDto> ProcessCheckOutAsync(VehicleCheckOutDto checkOutDto, string staffId);
+
+        /// <summary>
+        /// Xử lý nghiệp vụ Check-in cho xe vãng lai (Walk-in) và cấp phát vị trí đỗ.
         /// </summary>
         Task<CheckInResponseDto> ProcessWalkInCheckInAsync(VehicleCheckInDto dto, string staffId);
 
         /// <summary>
-        /// Xử lý nghiệp vụ cho xe rời bãi, tính hóa đơn và giải phóng ô đỗ (Check-out).
+        /// Xử lý nghiệp vụ Check-in cho xe đã đặt chỗ trước (Booking) dựa trên biển số.
         /// </summary>
-        Task<CheckOutResponseDto> ProcessCheckOutAsync(VehicleCheckOutDto checkOutDto, string staffId);
+        Task<CheckInResponseDto> ProcessBookingCheckInAsync(VehicleCheckInDto dto, string staffId);
+
+        /// <summary>
+        /// Xử lý nghiệp vụ Check-out, tính hóa đơn và giải phóng ô đỗ cho xe vãng lai.
+        /// </summary>
+        Task<CheckOutResponseDto> ProcessWalkInCheckOutAsync(ParkingSession session, VehicleCheckOutDto checkOutDto, string staffId);
+
+        /// <summary>
+        /// Xử lý nghiệp vụ Check-out, kết thúc đơn đặt chỗ và giải phóng ô đỗ cho xe Booking.
+        /// </summary>
+        Task<CheckOutResponseDto> ProcessBookingCheckOutAsync(VehicleCheckOutDto checkOutDto, string staffId);
+
+        /// <summary>
+        /// Kiểm tra xem có đơn đặt chỗ (Booking) nào đang hoạt động cho biển số này hay không.
+        /// </summary>
+        Task<bool> IsBookingActiveAsync(string licensePlate);
+
+        /// <summary>
+        /// Kiểm tra xem phiên gửi xe hiện tại của biển số này có phải là xe đặt chỗ trước (Booking) hay không.
+        /// </summary>
+        Task<bool> IsActiveSessionABookingAsync(string licensePlate);
 
         /// <summary>
         /// Tìm kiếm thông tin phiên gửi xe đang hoạt động (ACTIVE) bằng biển số xe.
@@ -24,14 +55,14 @@ namespace ParkingManagement.Services
         Task<ActiveSessionResponseDto> GetActiveSessionByLicensePlateAsync(string licensePlate);
 
         /// <summary>
-        /// Tìm kiếm thông tin phiên gửi xe đang hoạt động (ACTIVE) bằng mã vé (TicketCode).
-        /// </summary>
-        Task<ActiveSessionResponseDto> GetActiveSessionByTicketCodeAsync(string ticketCode);
-
-        /// <summary>
-        /// Tìm kiếm thông tin phiên gửi xe đang hoạt động (ACTIVE) bằng tên ô đỗ.
+        /// Tìm kiếm thông tin phiên gửi xe đang hoạt động (ACTIVE) bằng tên ô đỗ xe.
         /// </summary>
         Task<ActiveSessionResponseDto> GetActiveSessionBySlotNameAsync(string slotName);
+
+        /// <summary>
+        /// Tìm kiếm thông tin phiên gửi xe đang hoạt động (ACTIVE) bằng mã vé xe.
+        /// </summary>
+        Task<ActiveSessionResponseDto> GetActiveSessionByTicketCodeAsync(string ticketCode);
 
         /// <summary>
         /// Tính toán chi tiết chi phí gửi xe tạm tính tại thời điểm hiện tại (Pre-check-out).
@@ -49,7 +80,7 @@ namespace ParkingManagement.Services
         Task<ParkingSlotsResponseDto> GetRealtimeSlotsAsync(SlotQueryFilterDto filter);
 
         /// <summary>
-        /// Lấy danh sách lịch sử những xe đã và đang gửi tại bãi theo bộ lọc phân trang
+        /// Lấy danh sách lịch sử các phiên gửi xe (đã kết thúc hoặc đang hoạt động) theo bộ lọc phân trang.
         /// </summary>
         Task<PagedHistoryResponseDto> GetParkingHistoryAsync(ParkingHistoryFilterDto filter);
     }
