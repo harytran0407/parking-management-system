@@ -1,11 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using ParkingManagement.Data;
+using ParkingManagement.Dtos;
 using ParkingManagement.Extensions;
 using ParkingManagement.Repositories;
 using ParkingManagement.Services;
 using ParkingManagement.Services.BookingServices;
 using ParkingManagement.Services.BuildingServices;
-using ParkingManagement.Dtos;
+using ParkingManagement.Services.FeedbackServices;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -122,6 +123,7 @@ builder.Services.AddScoped<IBookingService, BookingService>();
 builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<ISystemConfigService, SystemConfigService>();
+builder.Services.AddScoped<IFeedbackSerivce, FeedbackService>();
 
 var app = builder.Build();
 
