@@ -41,64 +41,12 @@ namespace ParkingManagement.Repositories
                 .FirstOrDefaultAsync();
         }
 
-        public async Task<Booking?> GetActiveBookingAsync(string licensePlate, int vehicleTypeId, string? bookingId = null)
-        {
-            var query = _context.Bookings
-                .Include(b => b.Vehicle)
-                .Where(b => b.Status == "CONFIRMED" || b.Status == "PENDING");
-
-            if (!string.IsNullOrWhiteSpace(bookingId))
-            {
-                query = query.Where(b => b.BookingId == bookingId);
-            }
-            else
-            {
-                // Give a 2 hour window for arrival
-                var now = DateTime.UtcNow;
-                var minArrival = now.AddHours(-2);
-                var maxArrival = now.AddHours(2);
-                query = query.Where(b => b.Vehicle != null 
-                                         && b.Vehicle.VehiclePlateNumber == licensePlate 
-                                         && b.Vehicle.VehicleTypeId == vehicleTypeId
-                                         && b.ExpectedArrival >= minArrival 
-                                         && b.ExpectedArrival <= maxArrival);
-            }
-
-            return await query.OrderBy(b => b.ExpectedArrival).FirstOrDefaultAsync();
-        }
-
-        public async Task<Booking?> GetBookingWithPaymentsAsync(string bookingId)
-        {
-            if (string.IsNullOrWhiteSpace(bookingId)) return null;
-
-            return await _context.Bookings
-                .Include(b => b.Payments)
-                .FirstOrDefaultAsync(b => b.BookingId == bookingId);
-        }
-
         public async Task CreateSessionAsync(ParkingSession session)
         {
             if (session == null) throw new ArgumentNullException(nameof(session));
 
             await _context.ParkingSessions.AddAsync(session);
             await _context.SaveChangesAsync();
-
-            try
-            {
-                var systemLog = new SystemLog
-                {
-                    LogLevel = "INFO",
-                    Message = $"Vehicle '{session.LicensePlateIn}' successfully checked-in at Slot '{session.SlotId}'. Session: '{session.SessionId}', TicketCode: '{session.TicketCode}'.",
-                    Source = "ParkingGate",
-                    CreatedAt = DateTime.UtcNow
-                };
-                await _context.SystemLogs.AddAsync(systemLog);
-                await _context.SaveChangesAsync();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[ParkingRepository Error]: Could not log check-in. Reason: {ex.Message}");
-            }
         }
 
         public async Task UpdateSessionAsync(ParkingSession session)
@@ -107,23 +55,6 @@ namespace ParkingManagement.Repositories
 
             _context.ParkingSessions.Update(session);
             await _context.SaveChangesAsync();
-
-            try
-            {
-                var systemLog = new SystemLog
-                {
-                    LogLevel = "INFO",
-                    Message = $"Vehicle '{session.LicensePlateIn}' session updated. Status: '{session.Status}', PaymentStatus: '{session.PaymentStatus}', Checkout Time: '{session.CheckOutTime}', Fee: {session.TotalFee:N0} VND.",
-                    Source = "ParkingGate",
-                    CreatedAt = DateTime.UtcNow
-                };
-                await _context.SystemLogs.AddAsync(systemLog);
-                await _context.SaveChangesAsync();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[ParkingRepository Error]: Could not log check-out/update. Reason: {ex.Message}");
-            }
         }
 
         public async Task<ParkingSlot?> GetSlotByIdAsync(string slotId)
@@ -192,7 +123,7 @@ namespace ParkingManagement.Repositories
 
             return await _context.ParkingSessions
                 .Include(s => s.Slot)
-                    .ThenInclude(sl => sl!.Zone)
+                .ThenInclude(sl => sl!.Zone)
                 .FirstOrDefaultAsync(s => s.TicketCode == ticketCode && s.Status == "ACTIVE");
         }
 
@@ -409,6 +340,54 @@ namespace ParkingManagement.Repositories
                 .ToListAsync();
         
             return (items, totalCount);
+        }
+
+        // Booking Services
+        public async Task<Booking?> GetValidBookingByLicensePlateAsync(string licensePlate, DateTime currentTime)
+        {
+            if (string.IsNullOrWhiteSpace(licensePlate)) return null;
+        
+            return await _context.Bookings
+                .Include(b => b.Slot)
+                    .ThenInclude(s => s!.Zone)
+                .Include(b => b.Vehicle) // Chắc chắn Include bảng Vehicle để thực hiện so khớp dữ liệu liên kết
+                .FirstOrDefaultAsync(b => b.Vehicle != null 
+                    && b.Vehicle.VehiclePlateNumber == licensePlate // <-- Đã sửa thành VehiclePlateNumber
+                    && b.Status == "CONFIRMED"
+                    && b.ExpectedArrival <= currentTime
+                    && b.ExpiredAt > currentTime);
+        }
+
+        public async Task<bool> HasActiveBookingByLicensePlateAsync(string licensePlate, DateTime currentTime)
+        {
+            if (string.IsNullOrWhiteSpace(licensePlate)) return false;
+        
+            return await _context.Bookings
+                .AnyAsync(b => b.Vehicle.VehiclePlateNumber == licensePlate 
+                          && (b.Status == "PENDING" || b.Status == "CONFIRMED") 
+                          && b.ExpectedArrival <= currentTime
+                          && b.ExpiredAt > currentTime);
+        }
+
+        public async Task UpdateBookingStatusAsync(string bookingId, string status)
+        {
+            if (string.IsNullOrWhiteSpace(bookingId)) return;
+
+            var booking = await _context.Bookings.FindAsync(bookingId);
+            if (booking != null)
+            {
+                booking.Status = status.ToUpper();
+                _context.Bookings.Update(booking);
+                await _context.SaveChangesAsync();
+            }
+        }
+
+        public async Task<ParkingSession?> GetActiveSessionByBookingIdAsync(string bookingId)
+        {
+            return await _context.ParkingSessions
+                .Include(s => s.Slot)
+                .ThenInclude(p => p.Zone)
+                .FirstOrDefaultAsync(s => s.BookingId == bookingId && s.Status == "ACTIVE");
         }
     }
 }
