@@ -18,5 +18,6 @@ namespace ParkingManagement.DTOs
         public decimal CurrentFee { get; set; }
         public string Status { get; set; } = null!;
         public string PaymentStatus { get; set; } = null!;
+        public string? BookingId { get; set; }
     }
 }

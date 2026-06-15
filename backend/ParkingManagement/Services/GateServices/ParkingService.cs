@@ -18,6 +18,26 @@ namespace ParkingManagement.Services
             _parkingRepository = parkingRepository;
         }
 
+        /// HÀM XỬ LÝ ĐIỀU HƯỚNG CHECK-OUT
+        public async Task<CheckInResponseDto> ProcessCheckInAsync(VehicleCheckInDto dto, string staffId)
+        {
+            if (await _parkingRepository.IsVehicleActiveInParkingAsync(dto.LicensePlateIn))
+            {
+                throw new InvalidOperationException("ACTIVE_SESSION_EXISTS");
+            }
+
+            bool hasBooking = await _parkingRepository.HasActiveBookingByLicensePlateAsync(dto.LicensePlateIn, DateTime.Now);
+
+            if (hasBooking)
+            {
+                return await ProcessBookingCheckInAsync(dto, staffId);
+            }
+            else
+            {
+                return await ProcessWalkInCheckInAsync(dto, staffId);
+            }
+        }
+
         public async Task<CheckInResponseDto> ProcessWalkInCheckInAsync(VehicleCheckInDto dto, string staffId)
         {
             if (await _parkingRepository.IsVehicleActiveInParkingAsync(dto.LicensePlateIn))
@@ -26,10 +46,9 @@ namespace ParkingManagement.Services
             }
 
             string selectedSlotId = await ResolveSlotIdAsync(dto.SlotId, dto.VehicleTypeId);
-
             var initialSlotInfo = await _parkingRepository.GetSlotByIdAsync(selectedSlotId);
-            if (initialSlotInfo == null) throw new KeyNotFoundException("SLOT_NOT_AVAILABLE");
 
+            if (initialSlotInfo == null) throw new KeyNotFoundException("SLOT_NOT_AVAILABLE");
             string sessionId = GenerateSessionId();
             string ticketCode = GenerateTicketCode();
             DateTime checkInTime = DateTime.Now;
@@ -43,7 +62,6 @@ namespace ParkingManagement.Services
                 {
                     throw new InvalidOperationException("CONCURRENCY_CONFLICT");
                 }
-
                 var session = new ParkingSession
                 {
                     SessionId = sessionId,
@@ -61,7 +79,6 @@ namespace ParkingManagement.Services
                     PaymentStatus = "PENDING"
                 };
                 await _parkingRepository.CreateSessionAsync(session);
-
                 slotToUpdate.Status = "OCCUPIED";
                 slotToUpdate.CurrentSessionId = sessionId;
                 slotToUpdate.LastUpdated = checkInTime;
@@ -69,19 +86,106 @@ namespace ParkingManagement.Services
                 await _parkingRepository.UpdateSlotAsync(slotToUpdate);
             });
 
-            return MapToCheckInResponseDto(sessionId, ticketCode, checkInTime, dto.LicensePlateIn, selectedSlotId, initialSlotInfo);
+            return MapToCheckInResponseDto(sessionId, ticketCode, checkInTime, dto.LicensePlateIn, selectedSlotId, initialSlotInfo, dto.BookingId);
         }
 
+        public async Task<CheckInResponseDto> ProcessBookingCheckInAsync(VehicleCheckInDto dto, string staffId)
+        {
+            if (await _parkingRepository.IsVehicleActiveInParkingAsync(dto.LicensePlateIn))
+            {
+                throw new InvalidOperationException("ACTIVE_SESSION_EXISTS");
+            }
+        
+            var booking = await _parkingRepository.GetValidBookingByLicensePlateAsync(dto.LicensePlateIn, DateTime.Now)
+                          ?? throw new KeyNotFoundException("NO_VALID_BOOKING_FOUND_FOR_THIS_PLATE");
+        
+            string selectedSlotId = booking.SlotId ?? throw new InvalidOperationException("BOOKED_SLOT_NOT_FOUND");
+            var slotInfo = await _parkingRepository.GetSlotByIdAsync(selectedSlotId)
+                           ?? throw new KeyNotFoundException("BOOKED_SLOT_NOT_FOUND");
+        
+            string sessionId = GenerateSessionId();
+            DateTime checkInTime = DateTime.Now;
+        
+            await _parkingRepository.SaveChangesWithTransactionAsync(async () =>
+            {
+                var slotToUpdate = await _parkingRepository.GetSlotByIdAsync(selectedSlotId);
+                
+                if (slotToUpdate == null || (slotToUpdate.Status?.ToUpper() != "RESERVED" && slotToUpdate.Status?.ToUpper() != "AVAILABLE"))
+                {
+                    throw new InvalidOperationException("BOOKED_SLOT_STATE_INVALID_OR_NOT_RESERVED");
+                }
+        
+                var session = new ParkingSession
+                {
+                    SessionId = sessionId,
+                    TicketCode = null, 
+                    CheckInTime = checkInTime,
+                    LicensePlateIn = dto.LicensePlateIn,
+                    VehicleTypeId = dto.VehicleTypeId,
+                    CameraIn = dto.CameraIn,
+                    GateIn = dto.GateIn,
+                    ImageUrlIn = dto.ImageUrlIn,
+                    StaffInId = staffId,
+                    SlotId = selectedSlotId,
+                    BookingId = booking.BookingId, 
+                    Status = "ACTIVE",
+                    PaymentStatus = "PENDING"
+                };
+                await _parkingRepository.CreateSessionAsync(session);
+        
+                slotToUpdate.Status = "OCCUPIED";
+                slotToUpdate.CurrentSessionId = sessionId;
+                slotToUpdate.LastUpdated = checkInTime;
+                await _parkingRepository.UpdateSlotAsync(slotToUpdate);
+        
+                await _parkingRepository.UpdateBookingStatusAsync(booking.BookingId, "COMPLETED");
+            });
+
+            return MapToCheckInResponseDto(sessionId, null, checkInTime, dto.LicensePlateIn, selectedSlotId, slotInfo, booking?.BookingId);
+        }
+
+        /// HÀM XỬ LÝ ĐIỀU HƯỚNG CHECK-OUT
         public async Task<CheckOutResponseDto> ProcessCheckOutAsync(VehicleCheckOutDto checkOutDto, string staffId)
         {
-            var session = await _parkingRepository.GetActiveSessionByTicketCodeAsync(checkOutDto.TicketCode)
-                          ?? throw new InvalidOperationException("INVALID_TICKET");
+            ParkingSession? session = null;
 
-            if (!string.Equals(session.LicensePlateIn, checkOutDto.LicensePlateOut, StringComparison.OrdinalIgnoreCase))
+            if (!string.IsNullOrEmpty(checkOutDto.BookingId))
             {
-                throw new InvalidOperationException("LICENSE_PLATE_MISMATCH");
+                session = await _parkingRepository.GetActiveSessionByBookingIdAsync(checkOutDto.BookingId);
             }
 
+            if (session == null && !string.IsNullOrWhiteSpace(checkOutDto.LicensePlateOut))
+            {
+                session = await _parkingRepository.GetActiveSessionByPlateAsync(checkOutDto.LicensePlateOut);
+            }
+
+            if (session == null && !string.IsNullOrEmpty(checkOutDto.TicketCode))
+            {
+                session = await _parkingRepository.GetActiveSessionByTicketCodeAsync(checkOutDto.TicketCode);
+            }
+
+            if (session == null)
+            {
+                throw new InvalidOperationException("VEHICLE_NOT_FOUND_IN_PARKING");
+            }
+
+            if (string.IsNullOrEmpty(checkOutDto.LicensePlateOut))
+            {
+                checkOutDto.LicensePlateOut = session.LicensePlateIn;
+            }
+
+            if (!string.IsNullOrEmpty(session.BookingId))
+            {
+                return await ProcessBookingCheckOutWithSessionAsync(session, checkOutDto, staffId);
+            }
+            else
+            {
+                return await ProcessWalkInCheckOutAsync(session, checkOutDto, staffId);
+            }
+        }
+
+        public async Task<CheckOutResponseDto> ProcessWalkInCheckOutAsync(ParkingSession session, VehicleCheckOutDto checkOutDto, string staffId)
+        {
             var checkOutTime = DateTime.Now;
             int durationMinutes = ParkingCalculationHelper.CalculateDurationMinutes(session.CheckInTime, checkOutTime);
 
@@ -100,7 +204,7 @@ namespace ParkingManagement.Services
             await _parkingRepository.SaveChangesWithTransactionAsync(async () =>
             {
                 UpdateSessionForCheckOut(session, checkOutDto, staffId, checkOutTime, durationMinutes, feeResult.CurrentFee);
-                session.TicketCode = null; 
+                session.TicketCode = null;
                 await _parkingRepository.UpdateSessionAsync(session);
 
                 if (!string.IsNullOrEmpty(session.SlotId))
@@ -119,6 +223,73 @@ namespace ParkingManagement.Services
 
             return MapToCheckOutResponseDto(session, feeResult.CurrentFee, durationMinutes, checkOutTime);
         }
+
+        public async Task<bool> IsBookingActiveAsync(string licensePlate)
+        {
+            if (string.IsNullOrWhiteSpace(licensePlate)) return false;
+            return await _parkingRepository.HasActiveBookingByLicensePlateAsync(licensePlate, DateTime.Now);
+        }
+
+        public async Task<bool> IsActiveSessionABookingAsync(string licensePlateOut)
+        {
+            if (string.IsNullOrEmpty(licensePlateOut)) return false;
+            var session = await _parkingRepository.GetActiveSessionByPlateAsync(licensePlateOut);
+            return session != null && !string.IsNullOrEmpty(session.BookingId);
+        }
+
+        public async Task<CheckOutResponseDto> ProcessBookingCheckOutAsync(VehicleCheckOutDto checkOutDto, string staffId)
+        {
+            var session = await _parkingRepository.GetActiveSessionByPlateAsync(checkOutDto.LicensePlateOut)
+                          ?? throw new InvalidOperationException("VEHICLE_NOT_FOUND_IN_PARKING");
+
+            return await ProcessBookingCheckOutWithSessionAsync(session, checkOutDto, staffId);
+        }
+
+        private async Task<CheckOutResponseDto> ProcessBookingCheckOutWithSessionAsync(ParkingSession session, VehicleCheckOutDto checkOutDto, string staffId)
+        {
+            if (string.IsNullOrEmpty(session.BookingId))
+            {
+                throw new InvalidOperationException("NOT_A_BOOKING_VEHICLE_USE_WALKIN_FLOW_INSTEAD");
+            }
+
+            var checkOutTime = DateTime.Now;
+            int durationMinutes = ParkingCalculationHelper.CalculateDurationMinutes(session.CheckInTime, checkOutTime);
+            var policy = await _parkingRepository.GetActivePricingPolicyByVehicleTypeAsync(session.VehicleTypeId)
+                        ?? throw new Exception("PRICING_POLICY_NOT_CONFIGURED");
+            string operatingHours = await _parkingRepository.GetOperatingHoursForDayAsync(checkOutTime);
+
+            var feeResult = ParkingCalculationHelper.CalculateParkingFee(session.CheckInTime ?? DateTime.Now, checkOutTime, policy, operatingHours);
+
+            await _parkingRepository.SaveChangesWithTransactionAsync(async () =>
+            {
+                session.LicensePlateOut = checkOutDto.LicensePlateOut;
+                session.CameraOut = checkOutDto.CameraOut;
+                session.GateOut = checkOutDto.GateOut;
+                session.ImageUrlOut = checkOutDto.ImageUrlOut;
+                session.StaffOutId = staffId;
+                session.CheckOutTime = checkOutTime;
+                session.DurationMinutes = durationMinutes;
+                session.TotalFee = feeResult.CurrentFee;
+
+                session.PaymentStatus = "PAID"; 
+                session.Status = "COMPLETED";
+                await _parkingRepository.UpdateSessionAsync(session);
+
+                if (!string.IsNullOrEmpty(session.SlotId))
+                {
+                    var slot = await _parkingRepository.GetSlotByIdAsync(session.SlotId);
+                    if (slot != null)
+                    {
+                        slot.Status = "AVAILABLE";
+                        slot.CurrentSessionId = null;
+                        slot.LastUpdated = checkOutTime;
+                        await _parkingRepository.UpdateSlotAsync(slot);
+                    }
+                }
+            });
+
+            return MapToCheckOutResponseDto(session, feeResult.CurrentFee, durationMinutes, checkOutTime);
+        }       
 
         public async Task<ActiveSessionResponseDto> GetActiveSessionByLicensePlateAsync(string licensePlate)
         {
@@ -223,7 +394,10 @@ namespace ParkingManagement.Services
 
             if (slot.Status == "OCCUPIED" && (upperStatus == "AVAILABLE" || upperStatus == "RESERVED"))
             {
-                throw new InvalidOperationException("CANNOT_MANUALLY_FREE_AN_OCCUPIED_SLOT");
+                if (string.IsNullOrWhiteSpace(dto.Reason))
+                {
+                    throw new ArgumentException("MANUAL_FREE_REQUIRES_A_VALID_REASON");
+                }
             }
 
             if (upperStatus == "MAINTENANCE" && slot.Status == "OCCUPIED")
@@ -387,7 +561,7 @@ namespace ParkingManagement.Services
 
         #region Data Mappers (Chuyển đổi DTO tách biệt luồng xử lý)
 
-        private CheckInResponseDto MapToCheckInResponseDto(string sessId, string ticketCode, DateTime time, string plate, string slotId, ParkingSlot? slotInfo)
+        private CheckInResponseDto MapToCheckInResponseDto(string sessId, string ticketCode, DateTime time, string plate, string slotId, ParkingSlot? slotInfo, string? bookingId = null)
         {
             return new CheckInResponseDto
             {
@@ -403,7 +577,8 @@ namespace ParkingManagement.Services
                     Zone = slotInfo?.Zone?.ZoneName ?? "A",
                     CheckInTime = time,
                     Status = "ACTIVE",
-                    PaymentStatus = "PENDING"
+                    PaymentStatus = "PENDING",
+                    BookingId = bookingId
                 }
             };
         }
@@ -439,7 +614,8 @@ namespace ParkingManagement.Services
                     Floor = session.Slot?.Zone?.FloorNumber ?? 1,
                     CurrentFee = fee,
                     Status = session.Status ?? "ACTIVE",
-                    PaymentStatus = session.PaymentStatus ?? "PENDING"
+                    PaymentStatus = session.PaymentStatus ?? "PENDING",
+                    BookingId = session.BookingId ?? string.Empty
                 }
             };
         }

@@ -45,7 +45,6 @@ namespace ParkingManagement.Controllers
             string? staffId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
                            ?? User.FindFirst("sub")?.Value;
 
-
             if (string.IsNullOrEmpty(staffId))
             {
                 return StatusCode(StatusCodes.Status401Unauthorized, new
@@ -58,7 +57,7 @@ namespace ParkingManagement.Controllers
 
             try
             {
-                var response = await _parkingService.ProcessWalkInCheckInAsync(dto, staffId);
+                var response = await _parkingService.ProcessCheckInAsync(dto, staffId);
                 return Ok(response);
             }
             catch (InvalidOperationException ex) when (ex.Message == "ACTIVE_SESSION_EXISTS")
@@ -79,30 +78,57 @@ namespace ParkingManagement.Controllers
                     message = "Bãi xe đã đầy chỗ cho loại phương tiện này."
                 });
             }
+            catch (KeyNotFoundException ex) when (ex.Message == "NO_VALID_BOOKING_FOUND_FOR_THIS_PLATE")
+            {
+                return StatusCode(StatusCodes.Status404NotFound, new
+                {
+                    success = false,
+                    error_code = "NO_VALID_BOOKING_FOUND",
+                    message = "Không tìm thấy đơn đặt chỗ hợp lệ cho biển số xe này tại thời điểm hiện tại."
+                });
+            }
+            catch (InvalidOperationException ex) when (ex.Message == "BOOKED_SLOT_STATE_INVALID_OR_NOT_RESERVED")
+            {
+                return StatusCode(StatusCodes.Status400BadRequest, new
+                {
+                    success = false,
+                    error_code = "BOOKED_SLOT_STATE_INVALID",
+                    message = "Vị trí đỗ đã đặt trước đang ở trạng thái không hợp lệ hoặc không được bảo lưu (RESERVED)."
+                });
+            }
+            catch (InvalidOperationException ex) when (ex.Message == "CONCURRENCY_CONFLICT")
+            {
+                return StatusCode(StatusCodes.Status409Conflict, new
+                {
+                    success = false,
+                    error_code = "CONCURRENCY_CONFLICT",
+                    message = "Vị trí đỗ vừa bị thay đổi trạng thái bởi một phiên làm việc khác, vui lòng thử lại."
+                });
+            }
             catch (Exception ex)
             {
                 var innerMessage = ex.InnerException != null ? ex.InnerException.Message : ex.Message;
                 return StatusCode(StatusCodes.Status500InternalServerError, new
                 {
                     success = false,
-                    error_code = "DATABASE_UPDATE_FAILED",
-                    message = "Lỗi kết nối cơ sở dữ liệu, hành động chưa được ghi nhận.",
+                    error_code = "SERVER_INTERNAL_ERROR",
+                    message = "Hệ thống gặp sự cố trong quá trình xử lý Check-in.",
                     details = innerMessage
                 });
             }
         }
 
         /// <summary>
-        /// Endpoint handles Check-out feature for vehicles leaving the parking lot.
+        /// Endpoint xử lý tính năng Check-out chung cho cả phương tiện Vãng lai và Đặt chỗ trước.
         /// </summary>
         [HttpPost("check-out")]
-        [Authorize(Roles = "ParkingStaff")] 
+        [Authorize(Roles = "ParkingStaff")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<IActionResult> CheckOut([FromBody] VehicleCheckOutDto dto)
         {
             if (!ModelState.IsValid)
             {
-                return BadRequest(new { success = false, error_code = "INVALID_TICKET", message = "Invalid data submitted." });
+                return BadRequest(new { success = false, error_code = "INVALID_DATA", message = "Dữ liệu gửi lên không hợp lệ." });
             }
 
             string? staffId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
@@ -114,7 +140,17 @@ namespace ParkingManagement.Controllers
                 {
                     success = false,
                     error_code = "UNAUTHORIZED_ACCESS",
-                    message = "Session has expired, please log in again."
+                    message = "Phiên làm việc đã hết hạn, vui lòng đăng nhập lại."
+                });
+            }
+
+            if (string.IsNullOrWhiteSpace(dto.TicketCode) && string.IsNullOrWhiteSpace(dto.BookingId))
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    error_code = "TICKET_OR_BOOKING_REQUIRED",
+                    message = "Bắt buộc phải nhập/quét mã vé hoặc mã đặt chỗ (Booking) để thực hiện check-out."
                 });
             }
 
@@ -123,13 +159,13 @@ namespace ParkingManagement.Controllers
                 var response = await _parkingService.ProcessCheckOutAsync(dto, staffId);
                 return Ok(response);
             }
-            catch (InvalidOperationException ex) when (ex.Message == "INVALID_TICKET")
+            catch (InvalidOperationException ex) when (ex.Message == "INVALID_TICKET" || ex.Message == "ACTIVE_SESSION_NOT_FOUND")
             {
                 return NotFound(new
                 {
                     success = false,
                     error_code = "INVALID_TICKET",
-                    message = "Parking session or ticket information could not be found."
+                    message = "Không tìm thấy thông tin lượt gửi xe hoặc mã vé/mã đặt chỗ không hợp lệ."
                 });
             }
             catch (InvalidOperationException ex) when (ex.Message == "PAYMENT_FAILED")
@@ -138,7 +174,16 @@ namespace ParkingManagement.Controllers
                 {
                     success = false,
                     error_code = "PAYMENT_FAILED",
-                    message = "Payment failed, please check the account balance or method."
+                    message = "Thanh toán thất bại, vui lòng kiểm tra lại số dư tài khoản hoặc phương thức thanh toán."
+                });
+            }
+            catch (InvalidOperationException ex) when (ex.Message == "CONCURRENCY_CONFLICT")
+            {
+                return StatusCode(StatusCodes.Status409Conflict, new
+                {
+                    success = false,
+                    error_code = "CONCURRENCY_CONFLICT",
+                    message = "Thao tác check-out thất bại do xung đột dữ liệu đồng thời. Vui lòng thử lại."
                 });
             }
             catch (Exception ex)
@@ -148,7 +193,7 @@ namespace ParkingManagement.Controllers
                 {
                     success = false,
                     error_code = "DATABASE_UPDATE_FAILED",
-                    message = "Database connection error, action was not recorded.",
+                    message = "Lỗi kết nối cơ sở dữ liệu, hành động chưa được ghi nhận.",
                     details = innerMessage
                 });
             }
@@ -426,7 +471,7 @@ namespace ParkingManagement.Controllers
         /// Bulk create slots for a zone
         /// </summary>
         [HttpPost("slots/bulk-create")]
-        [AllowAnonymous]
+        [Authorize(Roles = "ParkingManager")]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> BulkCreateSlots([FromBody] BulkCreateSlotsRequest request)
@@ -447,7 +492,7 @@ namespace ParkingManagement.Controllers
         /// Edit slot: is_handicap, is_electric_charging, clear session
         /// </summary>
         [HttpPut("slots/{slotId}/edit")]
-        [AllowAnonymous]
+        [Authorize(Roles = "ParkingManager")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> EditSlot(string slotId, [FromBody] EditSlotRequest request)
@@ -468,7 +513,7 @@ namespace ParkingManagement.Controllers
         /// Delete slot — cannot delete if status != AVAILABLE
         /// </summary>
         [HttpDelete("slots/{slotId}")]
-        [AllowAnonymous]
+        [Authorize(Roles = "ParkingManager")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
@@ -482,8 +527,7 @@ namespace ParkingManagement.Controllers
         /// Lấy danh sách lịch sử đỗ xe (Các phiên đã kết thúc/đã check-out)
         /// </summary>
         [HttpGet("history")]
-        [Authorize(Roles = "ParkingStaff,ParkingManager")] // Chỉ Staff và Manager mới được xem lịch sử
-        [AllowAnonymous]
+        [Authorize(Roles = "ParkingStaff,ParkingManager")]
         [ProducesResponseType(typeof(PagedHistoryResponseDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetParkingHistory(
             [FromQuery] ParkingHistoryFilterDto filter,
