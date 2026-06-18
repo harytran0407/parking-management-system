@@ -53,6 +53,8 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<SystemLog> SystemLogs { get; set; }
 
+    public virtual DbSet<Feedback> Feedbacks { get; set; }
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
 
@@ -761,7 +763,7 @@ public partial class AppDbContext : DbContext
                 .IsRequired()
                 .HasMaxLength(100);
 
-            entity.HasIndex(e => e.SettingKey).IsUnique(); 
+            entity.HasIndex(e => e.SettingKey).IsUnique();
 
             entity.Property(e => e.SettingValue)
                 .HasColumnName("SETTING_VALUE")
@@ -771,7 +773,7 @@ public partial class AppDbContext : DbContext
                 .HasMaxLength(255);
 
             entity.Property(e => e.UpdatedAt)
-                .HasColumnName("UPDATE_AT") 
+                .HasColumnName("UPDATE_AT")
                 .HasColumnType("datetime")
                 .HasDefaultValueSql("CURRENT_TIMESTAMP");
         });
@@ -795,9 +797,63 @@ public partial class AppDbContext : DbContext
                 .HasMaxLength(150);
 
             entity.Property(e => e.CreatedAt)
-                .HasColumnName("CREATE_AT") 
+                .HasColumnName("CREATE_AT")
                 .HasColumnType("datetime")
                 .HasDefaultValueSql("CURRENT_TIMESTAMP");
+        });
+
+        modelBuilder.Entity<Feedback>(entity =>
+        {
+            entity.ToTable("FEEDBACK");
+            entity.HasKey(e => e.FeedbackId);
+
+            entity.Property(e => e.FeedbackId)
+                .HasColumnName("FEEDBACK_ID");
+
+            entity.Property(e => e.UserId)
+                .HasColumnName("USER_ID")
+                .HasMaxLength(36);
+
+            entity.Property(e => e.FullName)
+                .HasColumnName("FULL_NAME")
+                .IsRequired()
+                .HasMaxLength(100);
+
+            entity.Property(e => e.IdCardNumber)
+                .HasColumnName("ID_CARD_NUMBER")
+                .IsRequired()
+                .HasMaxLength(20);
+
+            entity.Property(e => e.Title)
+                .HasColumnName("TITLE")
+                .IsRequired()
+                .HasMaxLength(100);
+
+            entity.Property(e => e.Content)
+                .HasColumnName("CONTENT")
+                .HasColumnType("text")
+                .IsRequired();
+
+            entity.Property(e => e.Status)
+                .HasColumnName("STATUS")
+                .HasDefaultValueSql("'OPEN'");
+
+            entity.Property(e => e.CreatedAt)
+                .HasColumnName("CREATED_AT")
+                .HasColumnType("datetime")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+            entity.Property(e => e.ResolvedAt)
+                .HasColumnName("RESOLVED_AT")
+                .HasColumnType("datetime");
+
+            entity.Property(e => e.ResolvedBy)
+                .HasColumnName("RESOLVED_BY")
+                .HasMaxLength(36);
+
+            entity.Property(e => e.ResponseNote)
+                .HasColumnName("RESPONSE_NOTE")
+                .HasColumnType("text");
         });
 
         var dateTimeConverter = new Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<DateTime, DateTime>(
