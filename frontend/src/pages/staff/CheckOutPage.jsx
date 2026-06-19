@@ -75,7 +75,7 @@ export default function CheckOutPage() {
     const populateScanResult = (activeSession, displayPlate, customType = "ExitPending") => {
         const sessionId = activeSession.session_id || activeSession.sessionId;
         const licensePlateIn = activeSession.license_plate_in || activeSession.licensePlateIn;
-        const slotName = activeSession.slot_name || activeSession.slotName;
+        const zoneName = activeSession.zone_name || activeSession.zoneName || activeSession.slot_name || activeSession.slotName;
         const checkInTime = activeSession.check_in_time || activeSession.checkInTime;
         const durationMinutes = activeSession.duration_minutes || activeSession.durationMinutes;
         const currentFee = activeSession.current_fee !== undefined ? activeSession.current_fee : activeSession.currentFee;
@@ -85,15 +85,16 @@ export default function CheckOutPage() {
             type: customType,
             sessionId: sessionId,
             plate: displayPlate || licensePlateIn || "N/A",
-            slot: slotName || "N/A",
+            slot: zoneName ? `Zone ${zoneName}` : "N/A",
             floor: activeSession.floor !== undefined ? `Floor ${activeSession.floor}` : "N/A",
-            zone: activeSession.zone || "Unassigned Zone",
+            zone: zoneName || "Unassigned Zone",
             timeIn: checkInTime ? new Date(checkInTime).toLocaleString("vi-VN") : "N/A",
             duration: durationMinutes !== undefined ? `${durationMinutes} mins` : "0 mins",
             price: currentFee || 0,
             vehicleModel: vehicleTypes.find(v => v.id === (vehicleTypeId || selectedVehicleType))?.name || "Vehicle"
         });
     };
+
 
     const handleManualSearchSubmit = async () => {
         if (!manualInput || isLoading) return;
@@ -208,7 +209,8 @@ export default function CheckOutPage() {
 
         } catch (error) {
             console.error("Pipeline Error:", error);
-            toast.error(error.response?.data?.message || error.message || "License plate processing workflow failed.");
+            const errorMsg = error.message || error.response?.data?.message || "License plate processing workflow failed.";
+            toast.error(errorMsg);
         } finally {
             setIsLoading(false);
         }
@@ -290,15 +292,8 @@ export default function CheckOutPage() {
                 throw new Error("Unable to complete vehicle exit. Server returned uncompleted status.");
             }
         } catch (error) {
-
-            if (error.response && error.response.data) {
-                const backendMessage = error.response.data?.message || error.response.data?.Message || error.response.data;
-                toast.error(typeof backendMessage === "string" ? backendMessage : "Backend validation rejected this checkout request.");
-            } else if (error.request) {
-                toast.error("No response from parking server. Please check if your Backend .NET API is running.");
-            } else {
-                toast.error(`Request Setup Error: ${error.message}`);
-            }
+            const backendMessage = error.message || error.response?.data?.message || error.response?.data?.Message || error.response?.data || error;
+            toast.error(typeof backendMessage === "string" ? backendMessage : "Backend validation rejected this checkout request.");
         } finally {
             setIsLoading(false);
         }

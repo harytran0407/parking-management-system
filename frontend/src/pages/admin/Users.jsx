@@ -67,7 +67,7 @@ export default function AdminUsers() {
       userId: "usr_2606071000",
       username: "admin_pms",
       fullName: "System Administrator",
-      email: "admin@smartpark.com",
+      email: "admin@eparking.vn",
       phone: "0901234567",
       role: "SystemAdmin",
       roleId: 1,
@@ -79,7 +79,7 @@ export default function AdminUsers() {
       userId: "usr_2606071001",
       username: "mgr_phamviet",
       fullName: "Pham Viet",
-      email: "viet.pham@smartpark.com",
+      email: "viet.pham@eparking.vn",
       phone: "0907654321",
       role: "ParkingManager",
       roleId: 2,
@@ -91,7 +91,7 @@ export default function AdminUsers() {
       userId: "usr_2606071002",
       username: "staff_nguyenvan",
       fullName: "Nguyen Van Gate Staff",
-      email: "van.nguyen@smartpark.com",
+      email: "van.nguyen@eparking.vn",
       phone: "0911223344",
       role: "ParkingStaff",
       roleId: 3,
@@ -953,7 +953,7 @@ export default function AdminUsers() {
                   required
                   value={newEmail}
                   onChange={(e) => setNewEmail(e.target.value)}
-                  placeholder="name@smartpark.com"
+                  placeholder="name@eparking.vn"
                   className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/10 text-xs"
                 />
               </div>

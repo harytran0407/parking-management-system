@@ -30,8 +30,15 @@ public class BookingController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetPriceEstimate([FromQuery] BookingPriceRequest request)
     {
-        var data = await _service.GetPriceEstimateAsync(request);
-        return Ok(new { success = true, data });
+        try 
+        {
+            var result = await _service.GetPriceEstimateAsync(request);
+            return Ok(new { success = true, data = result });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
     }
 
     // POST /api/v1/bookings
@@ -131,26 +138,7 @@ public class BookingController : ControllerBase
         return Ok(new { success = true, data });
     }
 
-    // PUT: api/v1/bookings/{bookingId}/adjust
-    [HttpPut("{bookingId}/adjust")]
-    [Authorize]
-    [ProducesResponseType(typeof(BookingResponse), StatusCodes.Status200OK)]
-    public async Task<IActionResult> AdjustBooking(string bookingId, [FromBody] AdjustBookingRequest request)
-    {
-        if (!ModelState.IsValid)
-        {
-            var errors = ModelState.Values
-                .SelectMany(v => v.Errors)
-                .Select(e => e.ErrorMessage);
-            return BadRequest(new { success = false, message = string.Join("; ", errors) });
-        }
 
-        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-            ?? throw new UnauthorizedAccessException("Invalid token");
-
-        var data = await _service.AdjustBookingAsync(bookingId, userId, request);
-        return Ok(new { success = true, message = "Booking schedule adjusted successfully.", data });
-    }
 
     // PUT: api/v1/bookings/{bookingId}/pay
     [HttpPut("{bookingId}/pay")]
@@ -163,5 +151,80 @@ public class BookingController : ControllerBase
 
         var data = await _service.PayBookingAsync(bookingId, userId);
         return Ok(new { success = true, message = "Booking paid successfully.", data });
+    }
+
+    // PUT: api/v1/bookings/{bookingId}/unlock
+    [HttpPut("{bookingId}/unlock")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> UnlockBooking(string bookingId)
+    {
+        try
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? throw new UnauthorizedAccessException("Invalid token");
+
+            var success = await _service.UnlockBookingAsync(bookingId, userId);
+            if (success)
+            {
+                return Ok(new { success = true, message = "Xe đã được mở khóa thành công." });
+            }
+            return BadRequest(new { success = false, message = "Không thể mở khóa xe tại thời điểm này. Đơn đỗ xe có thể đã kết thúc hoặc không tồn tại." });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    // PUT: api/v1/bookings/{bookingId}/lock
+    [HttpPut("{bookingId}/lock")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> LockBooking(string bookingId)
+    {
+        try
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? throw new UnauthorizedAccessException("Invalid token");
+
+            var success = await _service.LockBookingAsync(bookingId, userId);
+            if (success)
+            {
+                return Ok(new { success = true, message = "Xe đã được khóa thành công." });
+            }
+            return BadRequest(new { success = false, message = "Không thể khóa xe tại thời điểm này. Đơn đỗ xe có thể đã kết thúc hoặc không tồn tại." });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    // GET: api/v1/bookings/{bookingId}
+    [HttpGet("{bookingId}")]
+    [Authorize]
+    [ProducesResponseType(typeof(BookingResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetBookingById(string bookingId)
+    {
+        try
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? throw new UnauthorizedAccessException("Invalid token");
+
+            var data = await _service.GetBookingByIdAsync(bookingId, userId);
+            return Ok(new { success = true, data });
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(new { success = false, message = "Không tìm thấy thông tin đặt chỗ." });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
     }
 }

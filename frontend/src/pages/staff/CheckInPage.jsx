@@ -6,11 +6,19 @@ import axios from "axios";
 import {
     Camera, CarFront, MapPin, CheckCircle2, RefreshCcw,
     VideoOff, Ban, ParkingSquare, Hash, ArrowDownCircle,
-    Video, X, Maximize2, Search
+    Video, X, Maximize2, Search, AlertTriangle, Clock
 } from "lucide-react";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const PYTHON_STREAM_URL = import.meta.env.VITE_PYTHON_STREAM_URL;
+
+const formatDateTime = (dateVal) => {
+    if (!dateVal) return "";
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return "";
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())} - ${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+};
 
 export default function CheckInPage() {
     const webcamRef = useRef(null);
@@ -24,6 +32,7 @@ export default function CheckInPage() {
     const [isStreamConnected, setIsStreamConnected] = useState(true);
 
     const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+    const [earlyCheckInWarning, setEarlyCheckInWarning] = useState(null);
 
     const vehicleTypes = [
         { id: 1, name: "Motorbike" },
@@ -52,6 +61,41 @@ export default function CheckInPage() {
             return false;
         } catch (error) {
             return false;
+        }
+    };
+
+    const handleConfirmEarlyCheckIn = async (bodyData) => {
+        setIsLoading(true);
+        setEarlyCheckInWarning(null);
+        toast.dismiss();
+        try {
+            const bodyWithConfirm = {
+                ...bodyData,
+                confirm_early_in: true
+            };
+            const response = await api.post(`/parking/check-in`, bodyWithConfirm);
+            if (response.data && response.data.success) {
+                const sessionData = response.data.data;
+                toast.success(`Successfully checked in vehicle: ${bodyWithConfirm.license_plate_in}`);
+                const hasBooking = sessionData.booking_id !== null && sessionData.booking_id !== undefined && sessionData.booking_id !== "";
+                setScanResult({
+                    type: "EntryConfirmed",
+                    isBooking: hasBooking,
+                    plate: sessionData.license_plate_in || bodyWithConfirm.license_plate_in,
+                    sessionId: sessionData.session_id,
+                    ticketCode: hasBooking ? null : (sessionData.ticket_code || "N/A"),
+                    slot: `Zone ${sessionData.zone_name || "?"} (${sessionData.available_capacity ?? "?"} remaining)`,
+                    floor: sessionData.floor !== undefined ? `Floor ${sessionData.floor}` : "N/A",
+                    zone: sessionData.zone_name || "Unassigned Zone",
+                    vehicleModel: vehicleTypes.find(v => v.id === parseInt(bodyWithConfirm.vehicle_type_id))?.name || "Vehicle",
+                    checkInTime: formatDateTime(sessionData.check_in_time || new Date())
+                });
+            }
+        } catch (error) {
+            const errorMsg = error.message || error.response?.data?.message || "Early check-in failed.";
+            toast.error(errorMsg);
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -102,34 +146,47 @@ export default function CheckInPage() {
                 image_url_in: `/uploads/plates/client_captured_${new Date().getTime()}.jpg`,
             };
 
-            console.log("[API Check-In] Gửi Body Data lên Backend:", bodyData);
-            const response = await api.post(`/parking/check-in`, bodyData);
-            console.log("[API Check-In] Kết quả phản hồi từ Backend:", response.data);
+            try {
+                const response = await api.post(`/parking/check-in`, bodyData);
 
-            if (response.data && response.data.success) {
-                const sessionData = response.data.data;
-                toast.success(`Successfully checked in vehicle: ${aiPlate}`);
+                if (response.data && response.data.success) {
+                    const sessionData = response.data.data;
+                    toast.success(`Successfully checked in vehicle: ${aiPlate}`);
 
-                const hasBooking = sessionData.booking_id !== null && sessionData.booking_id !== undefined && sessionData.booking_id !== "";
+                    const hasBooking = sessionData.booking_id !== null && sessionData.booking_id !== undefined && sessionData.booking_id !== "";
 
-                setScanResult({
-                    type: "EntryConfirmed",
-                    isBooking: hasBooking, 
-                    plate: sessionData.license_plate_in || aiPlate,
-                    sessionId: sessionData.session_id,
-                    ticketCode: hasBooking ? null : (sessionData.ticket_code || "N/A"), 
-                    slot: sessionData.slot_name || "N/A",
-                    floor: sessionData.floor !== undefined ? `Floor ${sessionData.floor}` : "N/A",
-                    zone: sessionData.zone || "Unassigned Zone",
-                    vehicleModel: vehicleTypes.find(v => v.id === parseInt(aiVehicleType))?.name || "Vehicle"
-                });
-            } else {
-                throw new Error("Backend server rejected the Check-In command request.");
+                    setScanResult({
+                        type: "EntryConfirmed",
+                        isBooking: hasBooking,
+                        plate: sessionData.license_plate_in || aiPlate,
+                        sessionId: sessionData.session_id,
+                        ticketCode: hasBooking ? null : (sessionData.ticket_code || "N/A"),
+                        slot: `Zone ${sessionData.zone_name || "?"} (${sessionData.available_capacity ?? "?"} remaining)`,
+                        floor: sessionData.floor !== undefined ? `Floor ${sessionData.floor}` : "N/A",
+                        zone: sessionData.zone_name || "Unassigned Zone",
+                        vehicleModel: vehicleTypes.find(v => v.id === parseInt(aiVehicleType))?.name || "Vehicle",
+                        checkInTime: formatDateTime(sessionData.check_in_time || new Date())
+                    });
+                } else {
+                    throw new Error("Backend server rejected the Check-In command request.");
+                }
+            } catch (error) {
+                const errorCode = error.error_code || error.response?.data?.error_code;
+                const errorMsg = error.message || error.response?.data?.message;
+                if (errorCode === "EARLY_CHECKIN_WARNING") {
+                    setEarlyCheckInWarning({
+                        message: errorMsg,
+                        bodyData: bodyData
+                    });
+                    return;
+                }
+                throw error;
             }
 
         } catch (error) {
             console.error("Pipeline Error:", error);
-            toast.error(error.response?.data?.message || error.message || "License plate processing workflow failed.");
+            const errorMsg = error.message || error.response?.data?.message || "License plate processing workflow failed.";
+            toast.error(errorMsg);
         } finally {
             setIsLoading(false);
         }
@@ -158,34 +215,49 @@ export default function CheckInPage() {
                 camera_in: camIn,
                 gate_in: gateIn,
                 image_url_in: "/uploads/plates/manual_entry.jpg",
-                slot_id: null,
                 booking_id: null
             };
 
             console.log("[API Check-In] Gửi Body Data lên Backend:", bodyData);
-            const response = await api.post(`/parking/check-in`, bodyData);
-            console.log("[API Check-In] Kết quả phản hồi từ Backend:", response.data);
 
-            if (response.data && response.data.success) {
-                const data = response.data.data;
-                toast.success(`Manual Check-In recorded for: ${plateNumber}`);
+            try {
+                const response = await api.post(`/parking/check-in`, bodyData);
+                console.log("[API Check-In] Kết quả phản hồi từ Backend:", response.data);
 
-                const hasBooking = data.booking_id !== null && data.booking_id !== undefined && data.booking_id !== "";
+                if (response.data && response.data.success) {
+                    const data = response.data.data;
+                    toast.success(`Manual Check-In recorded for: ${plateNumber}`);
 
-                setScanResult({
-                    type: "EntryConfirmed",
-                    isBooking: hasBooking, 
-                    plate: data.license_plate_in,
-                    ticketCode: hasBooking ? null : (data.ticket_code || "N/A"),
-                    slot: data.slot_name || "N/A",
-                    floor: data.floor !== undefined ? `Floor ${data.floor}` : "N/A",
-                    zone: data.zone || "Unassigned Zone",
-                    sessionId: data.session_id,
-                    vehicleModel: vehicleTypes.find(v => v.id === selectedVehicleType)?.name || "Vehicle"
-                });
+                    const hasBooking = data.booking_id !== null && data.booking_id !== undefined && data.booking_id !== "";
+
+                    setScanResult({
+                        type: "EntryConfirmed",
+                        isBooking: hasBooking,
+                        plate: data.license_plate_in,
+                        ticketCode: hasBooking ? null : (data.ticket_code || "N/A"),
+                        slot: `Zone ${data.zone_name || "?"} (${data.available_capacity ?? "?"} remaining)`,
+                        floor: data.floor !== undefined ? `Floor ${data.floor}` : "N/A",
+                        zone: data.zone_name || "Unassigned Zone",
+                        sessionId: data.session_id,
+                        vehicleModel: vehicleTypes.find(v => v.id === selectedVehicleType)?.name || "Vehicle",
+                        checkInTime: formatDateTime(data.check_in_time || new Date())
+                    });
+                }
+            } catch (error) {
+                const errorCode = error.error_code || error.response?.data?.error_code;
+                const errorMsg = error.message || error.response?.data?.message;
+                if (errorCode === "EARLY_CHECKIN_WARNING") {
+                    setEarlyCheckInWarning({
+                        message: errorMsg,
+                        bodyData: bodyData
+                    });
+                    return;
+                }
+                throw error;
             }
         } catch (error) {
-            toast.error(error.response?.data?.message || "Manual check-in registration failed.");
+            const errorMsg = error.message || error.response?.data?.message || "Manual check-in registration failed.";
+            toast.error(errorMsg);
         } finally {
             setIsLoading(false);
         }
@@ -195,7 +267,7 @@ export default function CheckInPage() {
         if (!targetPlate || targetPlate.trim() === "" || isLoading) return;
 
         setIsLoading(true);
-        toast.dismiss(); 
+        toast.dismiss();
         const formattedPlate = targetPlate.toUpperCase().trim();
 
         try {
@@ -227,7 +299,7 @@ export default function CheckInPage() {
         setScanResult(null);
         setPlateNumber("");
         setCapturedImage(null);
-        toast.dismiss(); 
+        toast.dismiss();
     };
 
 
@@ -313,7 +385,7 @@ export default function CheckInPage() {
                                     placeholder="Enter license plate..."
                                     value={manualInput}
                                     onChange={(e) => setManualInput(e.target.value.toUpperCase())}
-                                    className="flex-1 w-full border border-slate-200 dark:border-slate-800 rounded-lg pl-9 pr-3 py-2 text-xs font-mono font-bold bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 tracking-wider focus:outline-none focus:border-slate-400 dark:focus:border-slate-700 focus:bg-white dark:focus:bg-slate-950 transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600 placeholder:font-sans placeholder:font-normal h-10"
+                                    className="flex-1 w-full border border-slate-200 dark:border-slate-800 rounded-lg pl-9 pr-3 py-2 text-sm font-bold bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 tracking-wider focus:outline-none focus:border-slate-400 dark:focus:border-slate-700 focus:bg-white dark:focus:bg-slate-950 transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600 placeholder:font-sans placeholder:font-normal h-10"
                                 />
                                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                             </div>
@@ -371,8 +443,8 @@ export default function CheckInPage() {
                                         <div className="grid grid-cols-2 gap-3">
                                             {/* Ô LICENSE PLATE */}
                                             <div className={`border rounded-lg px-3 py-2 transition-all duration-300 ${scanResult.isBooking
-                                                    ? "bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800/60"
-                                                    : "bg-slate-50 dark:bg-slate-950 border-slate-100 dark:border-slate-800"
+                                                ? "bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800/60"
+                                                : "bg-slate-50 dark:bg-slate-950 border-slate-100 dark:border-slate-800"
                                                 }`}>
                                                 <span className={`text-[10px] font-bold uppercase block tracking-wider mb-0.5 ${scanResult.isBooking ? "text-blue-500 dark:text-blue-400" : "text-slate-400 dark:text-slate-500"
                                                     }`}>License Plate</span>
@@ -382,8 +454,8 @@ export default function CheckInPage() {
 
                                             {/* Ô TYPE VEHICLE */}
                                             <div className={`border rounded-lg px-3 py-2 transition-all duration-300 ${scanResult.isBooking
-                                                    ? "bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800/60"
-                                                    : "bg-slate-50 dark:bg-slate-950 border-slate-100 dark:border-slate-800"
+                                                ? "bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800/60"
+                                                : "bg-slate-50 dark:bg-slate-950 border-slate-100 dark:border-slate-800"
                                                 }`}>
                                                 <span className={`text-[10px] font-bold uppercase block tracking-wider mb-0.5 ${scanResult.isBooking ? "text-blue-500 dark:text-blue-400" : "text-slate-400 dark:text-slate-500"
                                                     }`}>Type</span>
@@ -397,19 +469,20 @@ export default function CheckInPage() {
                                             <>
                                                 <div className="relative overflow-hidden rounded-lg bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-950 dark:to-slate-900 border border-slate-800 p-4 text-white shadow-md">
                                                     <div className="space-y-1 text-center">
-                                                        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-300 dark:text-slate-500">Assigned Slot</div>
-                                                        <div className="font-mono text-yellow-400 text-3xl xl:text-4xl font-black tracking-wider">
-                                                            {scanResult.slot}
+                                                        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-300 dark:text-slate-500">Assigned Zone</div>
+                                                        <div className="font-mono text-yellow-400 text-2xl xl:text-3xl font-black ">
+                                                            {scanResult.zone}
                                                         </div>
                                                     </div>
                                                     <div className="mt-4 grid grid-cols-2 gap-2 border-t border-slate-700/50 pt-3 text-xs">
                                                         <div className="flex items-center gap-1.5 font-medium text-white">
-                                                            <MapPin size={13} className="text-slate-400 shrink-0" />
+                                                            <MapPin size={13} className="text-white shrink-0" />
                                                             <span className="truncate">{scanResult.floor}</span>
                                                         </div>
-                                                        <div className="text-right font-semibold text-slate-300 flex items-center justify-end gap-1">
-                                                            <span className="text-white px-1.5 py-0.5 rounded text-[11px] font-mono font-bold ">
-                                                                {scanResult.zone}
+                                                        <div className="text-right font-semibold text-slate-300 flex items-center justify-end gap-1.5">
+                                                            <Clock size={13} className="text-white shrink-0" />
+                                                            <span className="text-white px-1.5 py-0.5 rounded text-[11px]  ">
+                                                                {scanResult.checkInTime}
                                                             </span>
                                                         </div>
                                                     </div>
@@ -422,7 +495,7 @@ export default function CheckInPage() {
                                                             <CheckCircle2 size={17} className="text-blue-100 animate-pulse" /> Booked Vehicle
                                                         </div>
                                                         <p className="text-[10px] text-blue-100 mt-1.5 leading-relaxed">
-                                                            Valid reservation found. No regular ticket issued.
+                                                            Booking found! No ticket code required.
                                                         </p>
                                                     </div>
                                                 ) : (
@@ -506,6 +579,43 @@ export default function CheckInPage() {
                         <img src={capturedImage} alt="High Resolution Audit" className="w-full h-auto max-h-[85vh] object-contain" />
                         <div className="absolute bottom-0 inset-x-0 bg-slate-900/90 dark:bg-slate-950/80 p-3 text-center border-t border-slate-200 dark:border-slate-800 backdrop-blur-sm">
                             <p className="font-mono font-bold tracking-widest text-sm text-yellow-500 dark:text-yellow-400">{plateNumber || "No Plate Detected"}</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* EARLY CHECK-IN WARNING MODAL */}
+            {earlyCheckInWarning && (
+                <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
+                    <div
+                        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl scaleUp transform transition-all duration-300 animate-fadeIn"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="w-12 h-12 bg-blue-600 dark:bg-blue-500 text-white dark:text-white rounded-full flex items-center justify-center mb-4 mx-auto">
+                            <AlertTriangle size={24} />
+                        </div>
+
+                        <h3 className="text-md font-black text-center text-slate-800 dark:text-slate-100 mb-2">
+                            Cảnh báo đến sớm
+                        </h3>
+
+                        <p className="text-xs text-slate-500 dark:text-slate-400 text-center leading-relaxed mb-6">
+                            {earlyCheckInWarning.message}
+                        </p>
+
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setEarlyCheckInWarning(null)}
+                                className="flex-1 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wide transition-all active:scale-98"
+                            >
+                                Hủy
+                            </button>
+                            <button
+                                onClick={() => handleConfirmEarlyCheckIn(earlyCheckInWarning.bodyData)}
+                                className="flex-1 bg-blue-600 hover:bg-blue-600 text-white py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all active:scale-98 shadow-md shadow-blue-500/10"
+                            >
+                                Đồng ý
+                            </button>
                         </div>
                     </div>
                 </div>

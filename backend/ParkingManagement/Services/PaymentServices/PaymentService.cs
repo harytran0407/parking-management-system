@@ -4,6 +4,7 @@ using ParkingManagement.Dtos;
 using ParkingManagement.Models;
 using ParkingManagement.Repositories;
 using Microsoft.Extensions.Configuration;
+using ParkingManagement.Services.Helpers;
 
 namespace ParkingManagement.Services
 {
@@ -23,7 +24,7 @@ namespace ParkingManagement.Services
             var booking = await _paymentRepository.GetBookingByIdAsync(request.BookingId);
             if (booking == null) throw new Exception("Không tìm thấy thông tin đặt chỗ.");
 
-            int vehicleTypeId = booking.Vehicle?.VehicleTypeId ?? 2;
+            int vehicleTypeId = booking.VehicleTypeId;
             decimal realAmount = await _paymentRepository.GetBasePriceForVehicleTypeAsync(vehicleTypeId);
 
             string paymentId = "pay_" + Guid.NewGuid().ToString().Substring(0, 8);
@@ -113,6 +114,21 @@ namespace ParkingManagement.Services
                 return true;
             }
             return false;
+        }
+
+        public async Task<bool> ConfirmMockPaymentAsync(string bookingId, string paymentMethod, string userId)
+        {
+            var booking = await _paymentRepository.GetBookingByIdAsync(bookingId);
+            if (booking == null) throw new Exception("Không tìm thấy thông tin đặt chỗ.");
+
+            int vehicleTypeId = booking.VehicleTypeId;
+            
+            // Fetch active policy
+            var policy = await _paymentRepository.GetActivePricingPolicyByVehicleTypeAsync(vehicleTypeId);
+            DateTime expiredAt = booking.ExpiredAt ?? booking.ExpectedArrival.AddHours(2);
+            decimal amount = ParkingCalculationHelper.CalculateBookingEstimatedFee(booking.ExpectedArrival, expiredAt, policy);
+
+            return await _paymentRepository.ProcessMockPaymentConfirmationAsync(bookingId, paymentMethod, userId, amount);
         }
     }
 }

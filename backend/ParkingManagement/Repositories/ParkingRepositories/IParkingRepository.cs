@@ -17,9 +17,24 @@ namespace ParkingManagement.Repositories
         Task<bool> IsVehicleActiveInParkingAsync(string licensePlate);
 
         /// <summary>
-        /// Tìm kiếm vị trí đỗ xe (Slot) còn trống đầu tiên phù hợp với loại phương tiện truyền vào.
+        /// Tìm Zone tối ưu còn chỗ trống (ưu tiên tầng thấp → capacity cao) cho loại xe chỉ định.
         /// </summary>
-        Task<ParkingSlot?> FindFirstAvailableSlotAsync(int vehicleTypeId);
+        Task<FloorZone?> FindBestAvailableZoneAsync(int vehicleTypeId);
+
+        /// <summary>
+        /// Lấy thông tin Zone theo ID.
+        /// </summary>
+        Task<FloorZone?> GetZoneByIdAsync(int zoneId);
+
+        /// <summary>
+        /// Giảm AVAILABLE_CAPACITY của Zone đi 1 khi xe check-in.
+        /// </summary>
+        Task DecrementZoneCapacityAsync(int zoneId);
+
+        /// <summary>
+        /// Tăng AVAILABLE_CAPACITY của Zone lên 1 khi xe check-out.
+        /// </summary>
+        Task IncrementZoneCapacityAsync(int zoneId);
 
         /// <summary>
         /// Thêm mới một bản ghi phiên gửi xe (ParkingSession) vào cơ sở dữ liệu khi phương tiện vào bãi (Check-in).
@@ -118,11 +133,16 @@ namespace ParkingManagement.Repositories
         /// <summary>
         /// Cập nhật trạng thái mới cho một đơn đặt chỗ (Booking) cụ thể trong cơ sở dữ liệu.
         /// </summary>
-        Task UpdateBookingStatusAsync(string bookingId, string status);
+        Task UpdateBookingStatusAsync(string bookingId, string status, int? zoneId = null);
 
         /// <summary>
         /// Tìm kiếm phiên gửi xe đang hoạt động (ACTIVE) liên kết với mã đơn đặt chỗ (BookingId).
         /// </summary>
         Task<ParkingSession?> GetActiveSessionByBookingIdAsync(string bookingId);
+
+        /// <summary>
+        /// Đánh dấu phiên đỗ xe đã thanh toán (QuickPay): tạo bản ghi Payment hợp lệ và cập nhật PaymentStatus trên session.
+        /// </summary>
+        Task MarkSessionPaidAsync(ParkingSession session, decimal fee);
     }
 }

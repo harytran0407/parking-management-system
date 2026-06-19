@@ -60,6 +60,18 @@ namespace ParkingManagement.Controllers
                 var response = await _parkingService.ProcessCheckInAsync(dto, staffId);
                 return Ok(response);
             }
+            catch (InvalidOperationException ex) when (ex.Message.StartsWith("EARLY_CHECKIN_WARNING:"))
+            {
+                var parts = ex.Message.Split(':');
+                int earlyMinutes = parts.Length > 1 && int.TryParse(parts[1], out var mins) ? mins : 0;
+                return StatusCode(StatusCodes.Status409Conflict, new
+                {
+                    success = false,
+                    error_code = "EARLY_CHECKIN_WARNING",
+                    message = $"Khách hàng đến sớm {earlyMinutes} phút (vượt quá 15 phút cho phép). Bạn có muốn kích hoạt chế độ tính phí bổ sung cho khoảng thời gian đến sớm này?",
+                    early_minutes = earlyMinutes
+                });
+            }
             catch (InvalidOperationException ex) when (ex.Message == "ACTIVE_SESSION_EXISTS")
             {
                 return StatusCode(StatusCodes.Status409Conflict, new
@@ -159,6 +171,15 @@ namespace ParkingManagement.Controllers
                 var response = await _parkingService.ProcessCheckOutAsync(dto, staffId);
                 return Ok(response);
             }
+            catch (InvalidOperationException ex) when (ex.Message == "VEHICLE_IS_LOCKED")
+            {
+                return StatusCode(StatusCodes.Status422UnprocessableEntity, new
+                {
+                    success = false,
+                    error_code = "VEHICLE_IS_LOCKED",
+                    message = "Phương tiện đang được khóa bảo vệ bởi Smart Lock. Vui lòng mở khóa trên ứng dụng hoặc đợi đến 5 phút trước khi hết giờ booking để tự động mở khóa."
+                });
+            }
             catch (InvalidOperationException ex) when (ex.Message == "INVALID_TICKET" || ex.Message == "ACTIVE_SESSION_NOT_FOUND")
             {
                 return NotFound(new
@@ -203,9 +224,11 @@ namespace ParkingManagement.Controllers
         /// 5.3 Get Active Session by License Plate
         /// </summary>
         [HttpGet("sessions/active/{license_plate}")]
-        [Authorize(Roles = "ParkingStaff,ParkingManager")] 
+        [Authorize(Roles = "ParkingStaff,ParkingManager,ParkingUser")] 
         [ProducesResponseType(typeof(ActiveSessionResponseDto), StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetActiveSessionByLicensePlate([FromRoute(Name = "license_plate")] string licensePlate)
+        public async Task<IActionResult> GetActiveSessionByLicensePlate(
+            [FromRoute(Name = "license_plate")] string licensePlate,
+            [FromQuery(Name = "ticketSuffix")] string? ticketSuffix = null)
         {
             try
             {
@@ -214,8 +237,33 @@ namespace ParkingManagement.Controllers
                     return BadRequest(new { success = false, error_code = "INVALID_TICKET", message = "Biển số xe không được để trống" });
                 }
 
-                var response = await _parkingService.GetActiveSessionByLicensePlateAsync(licensePlate);
+                // If user is a customer (ParkingUser), they must enter the ticket suffix
+                bool isUser = User.IsInRole("ParkingUser");
+                if (isUser && (string.IsNullOrWhiteSpace(ticketSuffix) || ticketSuffix.Trim().Length != 5))
+                {
+                    return BadRequest(new { success = false, error_code = "TICKET_CODE_REQUIRED", message = "Vui lòng nhập chính xác 5 ký tự cuối của mã vé xe." });
+                }
+
+                var response = await _parkingService.GetActiveSessionByLicensePlateAsync(licensePlate, ticketSuffix);
                 return Ok(response);
+            }
+            catch (InvalidOperationException ex) when (ex.Message == "QUICK_PAY_ONLY_FOR_WALKIN")
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    error_code = "QUICK_PAY_ONLY_FOR_WALKIN",
+                    message = "Tính năng Quick Pay chỉ hỗ trợ phương tiện Vãng lai (vé vãng lai)."
+                });
+            }
+            catch (InvalidOperationException ex) when (ex.Message == "WRONG_TICKET_CODE")
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    error_code = "WRONG_TICKET_CODE",
+                    message = "5 ký tự cuối của mã vé xe không đúng, vui lòng nhập lại."
+                });
             }
             catch (InvalidOperationException ex) when (ex.Message == "INVALID_TICKET" || ex.Message == "ACTIVE_SESSION_NOT_FOUND")
             {
@@ -225,6 +273,46 @@ namespace ParkingManagement.Controllers
                     error_code = "INVALID_TICKET",
                     message = "Không tìm thấy thông tin lượt gửi xe này (Mã phiên/Vé không hợp lệ)."
                 });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new
+                {
+                    success = false,
+                    error_code = "DATABASE_UPDATE_FAILED",
+                    message = "Lỗi kết nối cơ sở dữ liệu, hành động chưa được ghi nhận.",
+                    details = ex.Message
+                });
+            }
+        }
+
+        /// <summary>
+        /// 5.4 Process QuickPay for Active Session (mock payment)
+        /// </summary>
+        [HttpPost("sessions/active/{session_id}/pay")]
+        [Authorize(Roles = "ParkingStaff,ParkingManager,ParkingUser")]
+        public async Task<IActionResult> ProcessQuickPay([FromRoute(Name = "session_id")] string sessionId, [FromBody] QuickPayRequestDto dto)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(sessionId))
+                {
+                    return BadRequest(new { success = false, error_code = "INVALID_SESSION", message = "Mã phiên đỗ xe không được trống" });
+                }
+
+                string? userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                               ?? User.FindFirst("sub")?.Value;
+
+                var success = await _parkingService.ProcessQuickPayPaymentAsync(sessionId, dto.PaymentMethod ?? "MOCK", userId);
+                if (success)
+                {
+                    return Ok(new { success = true, message = "Thanh toán QuickPay thành công. Bạn có 15 phút để ra khỏi bãi xe." });
+                }
+                return BadRequest(new { success = false, error_code = "PAYMENT_FAILED", message = "Thanh toán QuickPay thất bại." });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { success = false, error_code = "PAYMENT_ERROR", message = ex.Message });
             }
             catch (Exception ex)
             {
