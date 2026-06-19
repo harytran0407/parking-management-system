@@ -1,17 +1,18 @@
-﻿using Google.Apis.Auth;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.IdentityModel.Tokens;
 using ParkingManagement.Data;
 using ParkingManagement.DTOs;
 using ParkingManagement.DTOs.Auth;
 using ParkingManagement.Models;
+using ParkingManagement.Services.EmailServices;
 using ParkingManagement.Utils;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using Google.Apis.Auth;
+using Microsoft.EntityFrameworkCore;
 
 namespace ParkingManagement.Controllers.AuthController
 {
@@ -26,11 +27,14 @@ namespace ParkingManagement.Controllers.AuthController
 
         private readonly IMemoryCache _cache;
 
-        public AuthController(AppDbContext context, IConfiguration configuration, IMemoryCache cache)
+        private readonly IEmailService _emailService;
+
+        public AuthController(AppDbContext context, IConfiguration configuration, IMemoryCache cache, IEmailService emailService)
         {
             _context = context;
             _configuration = configuration;
             _cache = cache;
+            _emailService = emailService;
         }
 
         [HttpPost("register")]
@@ -239,7 +243,7 @@ namespace ParkingManagement.Controllers.AuthController
                 return StatusCode(403, new
                 {
                     success = false,
-                    error_code = "ACCESS_DENIED",
+                    error_code = "ACCOUNT_DENIED",
                     message = "Account inactive or not verified"
                 });
 
@@ -306,8 +310,8 @@ namespace ParkingManagement.Controllers.AuthController
                         full_name = userInDb.FullName,
                         email = userInDb.Email,
                         phone = userInDb.Phone,
-                        role = roleName
-
+                        role = roleName,
+                        avatar_url = userInDb.AvatarUrl ?? ""
                     }
                 }
             });
@@ -345,7 +349,7 @@ namespace ParkingManagement.Controllers.AuthController
         }
 
         [HttpPost("forgot-password")]
-        public IActionResult ForgotPassword([FromBody] ForgotPasswordRequestDto request)
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequestDto request)
         {
             var userInDb = _context.Users.FirstOrDefault(u => u.Email == request.EmailOrPhone || u.Phone == request.EmailOrPhone);
 
@@ -359,11 +363,36 @@ namespace ParkingManagement.Controllers.AuthController
             var cacheOptions = new MemoryCacheEntryOptions().SetAbsoluteExpiration(TimeSpan.FromMinutes(5));
             _cache.Set($"OTP_{request.EmailOrPhone}", otp, cacheOptions);
 
+            // Gửi OTP qua email thực tế nếu tài khoản có email hợp lệ
+            if (!string.IsNullOrEmpty(userInDb.Email) && ValidationUtils.IsValidEmail(userInDb.Email))
+            {
+                try
+                {
+                    string subject = "eParking - Reset Password OTP Verification";
+                    string body = $@"
+                        <div style='font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ddd; border-radius: 8px; max-width: 600px;'>
+                            <h2 style='color: #2563eb; text-align: center;'>eParking Verification Code</h2>
+                            <p>Hello,</p>
+                            <p>We received a request to reset your password. Please use the verification code below to proceed:</p>
+                            <div style='text-align: center; margin: 30px 0;'>
+                                <span style='font-size: 28px; font-weight: bold; letter-spacing: 4px; background-color: #f3f4f6; padding: 10px 24px; border-radius: 6px; border: 1px solid #e5e7eb;'>{otp}</span>
+                            </div>
+                            <p>This code is only valid for <strong>5 minutes</strong>. If you did not request this, please ignore this email.</p>
+                            <hr style='border: none; border-top: 1px solid #eee; margin: 20px 0;' />
+                            <p style='font-size: 12px; color: #666; text-align: center;'>This is an automated message, please do not reply directly to this email.</p>
+                        </div>";
+                    await _emailService.SendEmailAsync(userInDb.Email, subject, body);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[EMAIL_ERROR] Failed to send email to {userInDb.Email}: {ex.Message}");
+                }
+            }
+
             return Ok(new
             {
                 success = true,
-                message = "OTP has been sent to your Email or phone number",
-                mock_otp = otp // Chỉ dùng để test, trong thực tế sẽ gửi OTP qua Email hoặc SMS
+                message = "OTP has been sent to your Email or phone number"
             });
         }
 
@@ -414,9 +443,8 @@ namespace ParkingManagement.Controllers.AuthController
             });
         }
 
-        //[Authorize]
+        [Authorize]
         [HttpGet("profile")]
-        [AllowAnonymous]
         public IActionResult GetProfile()
         {
             // Lấy userId từ JWT Token đang gửi kèm
@@ -445,9 +473,10 @@ namespace ParkingManagement.Controllers.AuthController
             {
                 Id = userInDb.UserId,
                 Username = userInDb.Username,
-                Email = userInDb.Email,
-                Phone = userInDb.Phone,
-                AvatarUrl = userInDb.AvatarUrl ?? ""
+                FullName = userInDb.FullName ?? string.Empty,
+                Email = userInDb.Email ?? string.Empty,
+                Phone = userInDb.Phone ?? string.Empty,
+                AvatarUrl = userInDb.AvatarUrl ?? string.Empty
             };
 
             return Ok(new
@@ -459,7 +488,7 @@ namespace ParkingManagement.Controllers.AuthController
 
         [Authorize]
         [HttpPut("profile")]
-        public async Task<IActionResult> UpdateProfile([FromForm] UpdateProfileRequestDto request)
+        public IActionResult UpdateProfile([FromForm] UpdateProfileRequestDto request)
         {
             // Lấy userId từ JWT Token đang gửi kèm
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -484,15 +513,15 @@ namespace ParkingManagement.Controllers.AuthController
             /* -- Validation -- */
 
             // Dò tìm xem có tài khoản nào khác đã sử dụng Email mà người dùng đang muốn cập nhật
-            bool isEmailTaken = _context.Users.Any(u => u.Email == request.Email && u.UserId != userId);
-            if (isEmailTaken)
-            {
-                return BadRequest(new
-                {
-                    success = false,
-                    message = "This Email is already taken by another account"
-                });
-            }
+            // bool isEmailTaken = _context.Users.Any(u => u.Email == request.Email && u.UserId != userId);
+            // if (isEmailTaken)
+            // {
+            //     return BadRequest(new
+            //     {
+            //         success = false,
+            //         message = "This Email is already taken by another account"
+            //     });
+            // }
 
             // Dò tìm xem có tài khoản nào khác đã sử dụng SĐT mà người dùng đang muốn cập nhật
             bool isPhoneTaken = _context.Users.Any(u => u.Phone == request.Phone && u.UserId != userId);
@@ -507,12 +536,32 @@ namespace ParkingManagement.Controllers.AuthController
 
             if (request.Avatar != null && request.Avatar.Length > 0)
             {
-                var fileName = $"{Guid.NewGuid()}_{request.Avatar.FileName}";
+                // BÓC TÁCH ĐUÔI FILE: Lấy phần mở rộng gốc của ảnh (Ví dụ: .png, .jpg)
+                var extension = Path.GetExtension(request.Avatar.FileName);
+                // BIỆN PHÁP AN TOÀN: Nếu file gốc bị truncated mất đuôi, tự động ép về đuôi .jpg chuẩn
+                if (string.IsNullOrEmpty(extension))
+                {
+                    extension = ".jpg";
+                }
+                var fileName = $"{Guid.NewGuid()}_{extension}";
+
+                var uploadFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "avatars");
+                if (!Directory.Exists(uploadFolder))
+                {
+                    Directory.CreateDirectory(uploadFolder);
+                }
+                // Sử dụng luồng FileStream đồng bộ 
+                var filePath = Path.Combine(uploadFolder, fileName);
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    request.Avatar.CopyTo(stream);
+                }
                 userInDb.AvatarUrl = $"/uploads/avatars/{fileName}";
             }
 
-            userInDb.Username = request.Username;
-            userInDb.Email = request.Email;
+            // userInDb.Username = request.Username;
+            userInDb.FullName = request.FullName;
+            // userInDb.Email = request.Email;
             userInDb.Phone = request.Phone;
             _context.SaveChanges();
 
@@ -520,7 +569,157 @@ namespace ParkingManagement.Controllers.AuthController
             {
                 success = true,
                 message = "Profile updated successfully",
+                data = new
+                {
+                    avatar_url = userInDb.AvatarUrl
+                }
 
+            });
+        }
+
+        [Authorize]
+        [HttpPost("change-password")]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequestDto request)
+        {
+            // 1. Lấy userId từ JWT Token
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized(new
+                {
+                    success = false,
+                    error_code = "UNAUTHORIZED",
+                    message = "Invalid token or session expired."
+                });
+            }
+
+            // 2. Tìm tài khoản trong database
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.UserId == userId);
+            if (user == null)
+            {
+                return NotFound(new
+                {
+                    success = false,
+                    error_code = "USER_NOT_FOUND",
+                    message = "User not found."
+                });
+            }
+
+            // 3. Kiểm tra trạng thái tài khoản
+            if (user.Status == "BANNED")
+            {
+                return Unauthorized(new
+                {
+                    success = false,
+                    error_code = "ACCOUNT_LOCKED",
+                    message = "Account has been suspended or banned."
+                });
+            }
+            if (user.Status == "INACTIVE")
+            {
+                return StatusCode(403, new
+                {
+                    success = false,
+                    error_code = "ACCOUNT_DENIED",
+                    message = "Account is inactive."
+                });
+            }
+
+            // 4. Kiểm tra dữ liệu đầu vào trống
+            if (string.IsNullOrWhiteSpace(request.CurrentPassword) || 
+                string.IsNullOrWhiteSpace(request.NewPassword) || 
+                string.IsNullOrWhiteSpace(request.ConfirmPassword))
+            {
+                return UnprocessableEntity(new
+                {
+                    success = false,
+                    error_code = "VALIDATION_ERROR",
+                    message = "Please fill in all required fields."
+                });
+            }
+
+            // 5. Xác thực mật khẩu hiện tại
+            if (!BCrypt.Net.BCrypt.Verify(request.CurrentPassword, user.Password))
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    error_code = "INVALID_CURRENT_PASSWORD",
+                    message = "Incorrect current password."
+                });
+            }
+
+            // 6. Kiểm tra mật khẩu mới trùng mật khẩu cũ (OWASP)
+            if (request.NewPassword == request.CurrentPassword)
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    error_code = "PASSWORD_REUSED",
+                    message = "New password cannot be the same as your current password."
+                });
+            }
+
+            // 7. Khớp mật khẩu mới và xác nhận mật khẩu
+            if (request.NewPassword != request.ConfirmPassword)
+            {
+                return UnprocessableEntity(new
+                {
+                    success = false,
+                    error_code = "PASSWORD_MISMATCH",
+                    message = "Confirm password does not match the new password."
+                });
+            }
+
+            // 8. Kiểm tra độ phức tạp của mật khẩu mới (OWASP & Regex giống Register)
+            if (!ValidationUtils.IsValidPassword(request.NewPassword))
+            {
+                return UnprocessableEntity(new
+                {
+                    success = false,
+                    error_code = "WEAK_PASSWORD",
+                    message = "New password must be at least 8 characters long and contain uppercase, lowercase, numbers, and special characters."
+                });
+            }
+
+            // 9. Kiểm tra xem mật khẩu mới có chứa các thông tin nhạy cảm của người dùng hay không (OWASP)
+            string newPasswordLower = request.NewPassword.ToLower();
+            if (!string.IsNullOrEmpty(user.Username) && newPasswordLower.Contains(user.Username.ToLower()))
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    error_code = "PASSWORD_CONTAINS_USERNAME",
+                    message = "Password cannot contain your username."
+                });
+            }
+            if (!string.IsNullOrEmpty(user.Email) && newPasswordLower.Contains(user.Email.ToLower()))
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    error_code = "PASSWORD_CONTAINS_EMAIL",
+                    message = "Password cannot contain your email address."
+                });
+            }
+            if (!string.IsNullOrEmpty(user.FullName) && newPasswordLower.Contains(user.FullName.ToLower()))
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    error_code = "PASSWORD_CONTAINS_NAME",
+                    message = "Password cannot contain your full name."
+                });
+            }
+
+            // 10. Mã hóa và lưu mật khẩu mới
+            user.Password = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                success = true,
+                message = "Password updated successfully!"
             });
         }
 
@@ -578,7 +777,7 @@ namespace ParkingManagement.Controllers.AuthController
                     var clientId = _configuration["Google:ClientId"];
                     var settings = new GoogleJsonWebSignature.ValidationSettings()
                     {
-                        Audience = new List<string>() { clientId }
+                        Audience = new List<string>() { clientId ?? string.Empty }
                     };
 
                     var payload = await GoogleJsonWebSignature.ValidateAsync(access_Token, settings);
@@ -588,7 +787,7 @@ namespace ParkingManagement.Controllers.AuthController
                 }
 
                 // 4. KIỂM TRA DATABASE VÀ LƯU NGƯỜI DÙNG
-                var userInDb = await _context.Users.FirstOrDefaultAsync(u => u.Email == userEmail);
+                var userInDb = await _context.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.Email == userEmail);
                 var roleName = "ParkingUser"; // Mặc định role khi đăng nhập bằng Google sẽ là "User".
 
                 // Tạo một mật khẩu giả ngẫu nhiên để lưu vào Database, vì đăng nhập qua Google sẽ không có mật khẩu.
@@ -616,10 +815,51 @@ namespace ParkingManagement.Controllers.AuthController
                 }
                 else
                 {
+                    // Kiểm tra trạng thái tài khoản
+                    if (userInDb.Status == "BANNED")
+                    {
+                        return Unauthorized(new
+                        {
+                            success = false,
+                            error_code = "ACCOUNT_LOCKED",
+                            message = "Account has been suspended or banned."
+                        });
+                    }
+
+                    if (userInDb.Status == "INACTIVE")
+                    {
+                        return StatusCode(403, new
+                        {
+                            success = false,
+                            error_code = "ACCOUNT_DENIED",
+                            message = "Account is inactive."
+                        });
+                    }
+
                     // Nếu user đã tồn tại, cập nhật LastLogin
                     userInDb.LastLogin = DateTime.UtcNow;
+                    if (!string.IsNullOrEmpty(userAvatar))
+                    {
+                        if (string.IsNullOrEmpty(userInDb.AvatarUrl) || userInDb.AvatarUrl.StartsWith("http://") || userInDb.AvatarUrl.StartsWith("https://"))
+                        {
+                            userInDb.AvatarUrl = userAvatar;
+                        }
+                    }
                 }
                 await _context.SaveChangesAsync();
+
+                if (userInDb.Role != null)
+                {
+                    roleName = userInDb.Role.RoleName;
+                }
+                else
+                {
+                    var dbRole = await _context.Roles.FirstOrDefaultAsync(r => r.RoleId == userInDb.RoleId);
+                    if (dbRole != null)
+                    {
+                        roleName = dbRole.RoleName;
+                    }
+                }
 
                 // 5. Tạo JWT Token cho tài khoản và trả về cho client (tương tự như trong phương thức Login)
                 var jwtSettings = _configuration.GetSection("Jwt");
@@ -669,6 +909,7 @@ namespace ParkingManagement.Controllers.AuthController
                             full_name = userInDb.FullName,
                             email = userInDb.Email,
                             avatar = userInDb.AvatarUrl,
+                            avatar_url = userInDb.AvatarUrl,
                             role = roleName
                         }
                     }
@@ -678,66 +919,6 @@ namespace ParkingManagement.Controllers.AuthController
             {
                 return StatusCode(500, new { success = false, message = "Lỗi hệ thống: " + ex.Message });
             }
-        }
-
-        [Authorize]
-        [HttpPut("update-password")]
-        public async Task<IActionResult> UpdatePassword([FromBody] UpdatePasswordRequestDto request)
-        {
-            // Lấy UserId của người đang dùng
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userId))
-            {
-                return Unauthorized(new
-                {
-                    success = false,
-                    message = "Can't find the authorize information"
-                });
-            }
-
-            // Tìm user trong database
-            var userInDb = await _context.Users.FirstOrDefaultAsync(u => u.UserId == userId);
-            if (userId == null)
-            {
-                return NotFound(new
-                {
-                    success = false,
-                    message = "User not found."
-                });
-            }
-
-            // Kiểm tra mật khẩu cũ có khớp trong database không
-            bool isOldPasswordCorrect = BCrypt.Net.BCrypt.Verify(request.OldPassword, userInDb.Password);
-            if (!isOldPasswordCorrect)
-            {
-                return BadRequest(new
-                {
-                    success = false,
-                    message = "Current password doesn't correct."
-                });
-            }
-
-            // Kiểm tra mật khẩu mới trùng khớp mật khẩu 
-            if (request.OldPassword == request.NewPassword)
-            {
-                return BadRequest(new
-                {
-                    success = false,
-                    message = "New password must be different from the old password"
-                });
-            }
-
-            // Mã hóa mật khẩu mới và update database
-            string hashedNewPassword = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
-            userInDb.Password = hashedNewPassword;
-
-            await _context.SaveChangesAsync();
-
-            return Ok(new
-            {
-                success = true,
-                message = "Update password successfully."
-            });
         }
     }
 }

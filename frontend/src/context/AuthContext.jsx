@@ -24,19 +24,20 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(false);
 
   /**
-   * ==========================================
-   *  HÀM ĐĂNG NHẬP THỰC TẾ (TÍCH HỢP AXIOS API)
-   * ==========================================
+   * ====================================================
+   *  HÀM ĐĂNG NHẬP THỰC TẾ (TÍCH HỢP AXIOS API-RECAPTCHA)
+   * ====================================================
    * @param {string} emailOrPhone - Email hoặc Số điện thoại người dùng
    * @param {string} password - Mật khẩu thô
    */
-  const login = useCallback(async (emailOrPhone, password) => {
+  const login = useCallback(async (emailOrPhone, password, captchaToken) => {
     setLoading(true);
     try {
       // Gọi chính xác API thực tế theo cấu hình snake_case của dự án bãi xe
       const response = await api.post("/auth/login", {
         email_or_phone: emailOrPhone.trim(),
         password: password,
+        captcha_token: captchaToken,
       });
 
       // Đối chiếu cấu trúc response.data.data thành công từ authController.cs
@@ -63,7 +64,7 @@ export function AuthProvider({ children }) {
 
   /**
    * ==========================================
-   * 🛑 HÀM ĐĂNG NHẬP GOOGLE THỰC TẾ (TÍCH HỢP AXIOS API)
+   *  HÀM ĐĂNG NHẬP GOOGLE THỰC TẾ (TÍCH HỢP AXIOS API)
    * ==========================================
    */
   const loginWithGoogle = useCallback(async (googleAccessToken) => {
@@ -106,9 +107,9 @@ export function AuthProvider({ children }) {
       console.warn("Server-side logout token revocation skipped or failed:", e);
     } finally {
       // Luôn luôn dọn sạch bộ nhớ bộ nhớ Client bất kể API thành công hay gặp lỗi
-      setUser(null);
       localStorage.removeItem("accessToken");
       localStorage.removeItem("userData");
+      setUser(null);
     }
   }, []);
 
@@ -123,7 +124,59 @@ export function AuthProvider({ children }) {
       return newUser;
     });
   }, []);
+  // lấy thông tin profile từ DB
+  const fetchProfile = useCallback(async () => {
+    try {
+      const response = await api.get("/auth/profile");
+      if (response.data && response.data.success) {
+        const profileData = response.data.data;
 
+        // Sử dụng functional updater form (prev => ...) để loại bỏ sự phụ thuộc vào biến 'user'
+        setUser((prevUser) => {
+          const updated = { ...prevUser, ...profileData };
+          localStorage.setItem("userData", JSON.stringify(updated));
+          return updated;
+        });
+
+        return profileData;
+      }
+    } catch (error) {
+      console.error("Failed to fetch profile updates from database:", error);
+      throw error;
+    }
+  }, []);
+
+  /**
+   *  CẬP NHẬT PROFILE LÊN SERVER DÙNG MULTIPART FORMDATA
+   * SỬA LỖI ĐỒNG BỘ: Đổi key khớp chuẩn xác 100% với thuộc tính UpdateProfileRequestDto trong C#
+   */
+  const updateProfileApi = useCallback(async (profileData) => {
+    const formData = new FormData();
+
+    
+    // formData.append("Username", profileData.username || "");
+    formData.append("FullName", profileData.full_name || ""); 
+    // formData.append("Email", profileData.email || "");
+    formData.append("Phone", profileData.phone || "");
+
+    // Gắn tệp tin nhị phân gốc vào trường Avatar nếu có phát hiện file mới chọn
+    if (profileData.avatarFile) {
+      formData.append("Avatar", profileData.avatarFile); 
+    }
+
+    try {
+      const response = await api.put("/auth/profile", formData, {
+        headers: {
+          // Chỉ định cấu hình Multipart định dạng dữ liệu truyền tải
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Error executing profile update multipart transmit:", error);
+      throw error.response?.data || error;
+    }
+  }, []); // Thêm mảng dependency trống bảo vệ hiệu năng hàm
   const isAuthenticated = !!user;
 
   return (
@@ -136,6 +189,8 @@ export function AuthProvider({ children }) {
         isAuthenticated,
         updateUser,
         loginWithGoogle,
+        fetchProfile,
+        updateProfileApi,
       }}>
       {children}
     </AuthContext.Provider>

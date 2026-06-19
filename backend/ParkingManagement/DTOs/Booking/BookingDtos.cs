@@ -1,5 +1,7 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System;
+using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace ParkingManagement.DTOs.Booking;
 
@@ -7,17 +9,26 @@ namespace ParkingManagement.DTOs.Booking;
 
 public class CreateBookingRequest
 {
-    [Required]
+    /* MODIFIED BY ANTIGRAVITY (MADE OPTIONAL FOR AUTO-ASSIGNMENT FLOW) */
     [JsonPropertyName("slot_id")]
-    public string SlotId { get; set; } = null!;
+    public string? SlotId { get; set; }
 
-    [Required]
-    [JsonPropertyName("vehicle_id")]
-    public int VehicleId { get; set; }
+    /* MODIFIED: Replaced VehicleId FK with direct LicensePlate + VehicleTypeId */
+    [Required(ErrorMessage = "license_plate is required")]
+    [JsonPropertyName("license_plate")]
+    public string LicensePlate { get; set; } = null!;
+
+    [Required(ErrorMessage = "vehicle_type_id is required")]
+    [JsonPropertyName("vehicle_type_id")]
+    public int VehicleTypeId { get; set; }
 
     [Required(ErrorMessage = "expected_arrival is required")]
     [JsonPropertyName("expected_arrival")]
     public DateTime ExpectedArrival { get; set; }
+
+    /* MODIFIED BY ANTIGRAVITY (MADE OPTIONAL) */
+    [JsonPropertyName("expired_at")]
+    public DateTime? ExpiredAt { get; set; }
 
     [JsonPropertyName("notes")]
     public string? Notes { get; set; }
@@ -27,13 +38,25 @@ public class CreateBookingRequest
 
 public class BookingPriceRequest
 {
-    [Required]
+    /* MODIFIED BY ANTIGRAVITY (MADE OPTIONAL) */
     [JsonPropertyName("slot_id")]
-    public string SlotId { get; set; } = null!;
+    [FromQuery(Name = "slot_id")]
+    public string? SlotId { get; set; }
+
+    [Required]
+    [JsonPropertyName("vehicle_type_id")]
+    [FromQuery(Name = "vehicle_type_id")]
+    public int VehicleTypeId { get; set; }
 
     [Required]
     [JsonPropertyName("expected_arrival")]
+    [FromQuery(Name = "expected_arrival")]
     public DateTime ExpectedArrival { get; set; }
+
+    /* MODIFIED BY ANTIGRAVITY (MADE OPTIONAL) */
+    [JsonPropertyName("expired_at")]
+    [FromQuery(Name = "expired_at")]
+    public DateTime? ExpiredAt { get; set; }
 }
 
 public class BookingPriceResponse
@@ -49,6 +72,10 @@ public class BookingPriceResponse
 
     [JsonPropertyName("expected_arrival")]
     public DateTime ExpectedArrival { get; set; }
+
+    /* ADDED BY ANTIGRAVITY (REQUIRED FOR FRONTEND CONFIRMATION) */
+    [JsonPropertyName("expired_at")]
+    public DateTime ExpiredAt { get; set; }
 
     [JsonPropertyName("base_price")]
     public decimal BasePrice { get; set; }
@@ -70,6 +97,21 @@ public class BookingResponse
     [JsonPropertyName("booking_id")]
     public string BookingId { get; set; } = null!;
 
+    /* ADDED BY ANTIGRAVITY (REQUIRED BY FRONTEND & CONTROLLER) */
+    [JsonPropertyName("vehicle_user_id")]
+    public string VehicleUserId { get; set; } = null!;
+
+    /* MODIFIED: LicensePlate is now stored directly on Booking */
+    [JsonPropertyName("license_plate")]
+    public string LicensePlate { get; set; } = string.Empty;
+
+    [JsonPropertyName("vehicle_type_id")]
+    public int VehicleTypeId { get; set; }
+
+    /* MODIFIED: VehicleType name resolved from VehicleTypeId navigation */
+    [JsonPropertyName("vehicle_type")]
+    public string VehicleType { get; set; } = string.Empty;
+
     [JsonPropertyName("slot_id")]
     public string? SlotId { get; set; }
 
@@ -79,11 +121,12 @@ public class BookingResponse
     [JsonPropertyName("floor_number")]
     public int? FloorNumber { get; set; }
 
+    /* ADDED BY ANTIGRAVITY (REQUIRED BY FRONTEND & CONTROLLER) */
+    [JsonPropertyName("floor_name")]
+    public string FloorName { get; set; } = string.Empty;
+
     [JsonPropertyName("zone_name")]
     public string? ZoneName { get; set; }
-
-    [JsonPropertyName("vehicle_id")]
-    public int? VehicleId { get; set; }
 
     [JsonPropertyName("expected_arrival")]
     public DateTime ExpectedArrival { get; set; }
@@ -102,4 +145,34 @@ public class BookingResponse
 
     [JsonPropertyName("estimated_fee")]
     public decimal EstimatedFee { get; set; }
+
+    /* ADDED BY ANTIGRAVITY (REQUIRED BY FRONTEND & CONTROLLER) */
+    [JsonPropertyName("deposit_paid")]
+    public decimal DepositPaid { get; set; }
+
+    /* ADDED BY ANTIGRAVITY (REQUIRED BY FRONTEND & CONTROLLER) */
+    /* ADDED BY ANTIGRAVITY (REQUIRED FOR SMART LOCK FEATURE) */
+    [JsonPropertyName("is_locked")]
+    public bool? IsLocked { get; set; }
+
+    [JsonPropertyName("qr_code_data")]
+    public string QrCodeData { get; set; } = string.Empty;
+}
+
+
+
+/* ADDED BY ANTIGRAVITY (REQUIRED FOR GET STATS ENDPOINT) */
+public class BookingDashboardStatsResponse
+{
+    [JsonPropertyName("total_bookings")]
+    public int TotalBookings { get; set; }
+
+    [JsonPropertyName("this_month_new")]
+    public int ThisMonthNew { get; set; }
+
+    [JsonPropertyName("active_sessions")]
+    public int ActiveSessions { get; set; }
+
+    [JsonPropertyName("total_cost")]
+    public decimal TotalCost { get; set; }
 }

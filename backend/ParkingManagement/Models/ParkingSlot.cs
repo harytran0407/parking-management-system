@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace ParkingManagement.Models;
@@ -21,7 +21,6 @@ public partial class ParkingSlot
 
     public int ZoneId { get; set; }
 
-    public virtual ICollection<Booking> Bookings { get; set; } = new List<Booking>();
 
     public virtual ICollection<ParkingSession> ParkingSessions { get; set; } = new List<ParkingSession>();
 

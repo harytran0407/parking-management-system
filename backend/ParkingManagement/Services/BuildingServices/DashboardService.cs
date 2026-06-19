@@ -1,4 +1,4 @@
-﻿using ParkingManagement.DTOs.Building;
+using ParkingManagement.DTOs.Building;
 using ParkingManagement.Repositories;
 
 namespace ParkingManagement.Services.BuildingServices;
@@ -12,7 +12,7 @@ public interface IDashboardService
 public class DashboardService : IDashboardService
 {
     private readonly IDashboardRepository _repo;
-    private const string BuildingId = "B01";
+    private const string BuildingId = "B001";
 
     public DashboardService(IDashboardRepository repo)
     {
@@ -41,8 +41,13 @@ public class DashboardService : IDashboardService
 
         // Peak hours
         var peakHoursRaw = await _repo.GetPeakHoursAsync(from, to);
-        var peakHours = peakHoursRaw
-            .Select(x => new PeakHourDto { Hour = x.Hour, CheckIns = x.Count })
+        var hourDict = peakHoursRaw.ToDictionary(x => x.Hour, x => x.Count);
+        var peakHours = Enumerable.Range(0, 24)
+            .Select(h => new PeakHourDto
+            {
+                Hour = h,
+                CheckIns = hourDict.ContainsKey(h) ? hourDict[h] : 0
+            })
             .ToList();
 
         // AC3: Breakdown by vehicle type

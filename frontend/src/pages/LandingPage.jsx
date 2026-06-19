@@ -46,8 +46,8 @@ export default function LandingPage() {
       <nav className="fixed w-full z-50 top-0 transition-all duration-300 bg-[#060a12]/80 backdrop-blur-md border-b border-white/5">
         <div className="max-w-7xl mx-auto flex items-center justify-between px-6 py-4">
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => scrollToTop()}>
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center font-bold text-white">S</div>
-            <span className="text-xl font-bold tracking-tight text-white">Smartpark</span>
+            <img src="/eParkingLogo.png" alt="eParking Logo" className="w-8 h-8 object-contain rounded-lg shadow-sm shrink-0" />
+            <span className="text-xl font-bold tracking-tight text-white">eParking</span>
           </div>
 
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-300">
@@ -115,7 +115,7 @@ export default function LandingPage() {
           <div className="w-full md:w-5/12 relative min-h-[300px] md:min-h-full">
             <img
               src="https://images.unsplash.com/photo-1573348722427-f1d6819fdf98?auto=format&fit=crop&q=80&w=1200"
-              alt="Smartpark Facility"
+              alt="eParking Facility"
               className="absolute inset-0 w-full h-full object-cover"
             />
             <div className="absolute inset-0 bg-gradient-to-t md:bg-gradient-to-l from-[#060a12] to-transparent opacity-90 md:opacity-100"></div>
@@ -125,7 +125,7 @@ export default function LandingPage() {
             <span className="inline-block px-3 py-1 bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold uppercase tracking-widest rounded-full mb-6 w-max">
               Premium Location
             </span>
-            <h3 className="text-3xl md:text-4xl font-bold text-white mb-4">Smartpark Innovation Hub</h3>
+            <h3 className="text-3xl md:text-4xl font-bold text-white mb-4">eParking Innovation Hub</h3>
 
             <p className="text-slate-400 flex items-start gap-3 text-sm mb-8 leading-relaxed">
               <MapPin className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
@@ -305,8 +305,8 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
             <div className="md:col-span-2">
               <div className="flex items-center gap-2 mb-6">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center font-bold text-white">S</div>
-                <span className="text-2xl font-bold text-white tracking-tight">Smartpark</span>
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center font-bold text-white">e</div>
+                <span className="text-2xl font-bold text-white tracking-tight">eParking</span>
               </div>
               <p className="text-sm text-slate-400 max-w-sm leading-relaxed mb-8">
                 An intelligent parking management system designed to optimize urban space, enhance security, and deliver a seamless automated billing experience.
@@ -375,7 +375,7 @@ export default function LandingPage() {
               <Mail className="w-6 h-6 text-blue-400" />
               <div>
                 <p className="text-xs text-slate-500 mb-0.5">Email</p>
-                <p className="text-sm font-semibold text-white">hello@smartpark.io</p>
+                <p className="text-sm font-semibold text-white">hello@eparking.vn</p>
               </div>
             </div>
 
@@ -392,7 +392,7 @@ export default function LandingPage() {
               <div>
                 <p className="text-xs text-slate-500 mb-0.5">GitHub</p>
                 <a href="#" className="text-sm font-semibold text-white hover:text-blue-400 transition-colors">
-                  github.com/smartpark
+                  github.com/eparking
                 </a>
               </div>
             </div>
@@ -400,7 +400,7 @@ export default function LandingPage() {
 
           {/* Bottom Copyright Line */}
           <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-slate-500">
-            <p>© 2026 Smartpark Team. All rights reserved.</p>
+            <p>© 2026 eParking Team. All rights reserved.</p>
             <p>Designed with ❤️ by SE Students</p>
             <div className="flex gap-6">
               <a href="#" className="hover:text-white transition-colors">

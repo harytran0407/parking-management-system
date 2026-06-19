@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using ParkingManagement.Models;
@@ -23,8 +23,6 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<IncidentLog> IncidentLogs { get; set; }
 
-    public virtual DbSet<MonthlyPass> MonthlyPasses { get; set; }
-
     public virtual DbSet<ParkingBuilding> ParkingBuildings { get; set; }
 
     public virtual DbSet<ParkingSession> ParkingSessions { get; set; }
@@ -37,13 +35,9 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<Role> Roles { get; set; }
 
-    public virtual DbSet<SubscriptionPlan> SubscriptionPlans { get; set; }
-
     public virtual DbSet<User> Users { get; set; }
 
     public virtual DbSet<RoleAuditLog> RoleAuditLogs { get; set; }
-
-    public virtual DbSet<Vehicle> Vehicles { get; set; }
 
     public virtual DbSet<VehicleType> VehicleTypes { get; set; }
 
@@ -74,9 +68,9 @@ public partial class AppDbContext : DbContext
 
             entity.HasIndex(e => e.VehicleUserId, "FK_BOOKING_OWNER");
 
-            entity.HasIndex(e => e.SlotId, "FK_BOOKING_SLOT");
+            entity.HasIndex(e => e.ZoneId, "FK_BOOKING_ZONE");
 
-            entity.HasIndex(e => e.VehicleId, "FK_BOOKING_VEHICLE");
+            entity.HasIndex(e => e.VehicleTypeId, "FK_BOOKING_VEHICLE_TYPE");
 
             entity.Property(e => e.BookingId).HasColumnName("BOOKING_ID");
             entity.Property(e => e.BookingTime)
@@ -92,25 +86,29 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.Notes)
                 .HasMaxLength(255)
                 .HasColumnName("NOTES");
-            entity.Property(e => e.SlotId)
-                .HasMaxLength(20)
-                .HasColumnName("SLOT_ID");
+            entity.Property(e => e.ZoneId)
+                .HasColumnName("ZONE_ID");
             entity.Property(e => e.Status)
                 .HasDefaultValueSql("'PENDING'")
                 .HasColumnType("enum('PENDING','CONFIRMED','CANCELLED','COMPLETED')")
                 .HasColumnName("STATUS");
-            entity.Property(e => e.VehicleId).HasColumnName("VEHICLE_ID");
+            entity.Property(e => e.LicensePlate)
+                .HasMaxLength(50)
+                .HasColumnName("LICENSE_PLATE")
+                .IsRequired();
+            entity.Property(e => e.VehicleTypeId).HasColumnName("VEHICLE_TYPE_ID");
             entity.Property(e => e.VehicleUserId)
                 .HasMaxLength(36)
                 .HasColumnName("VEHICLE_USER_ID");
 
-            entity.HasOne(d => d.Slot).WithMany(p => p.Bookings)
-                .HasForeignKey(d => d.SlotId)
-                .HasConstraintName("FK_BOOKING_SLOT");
+            entity.HasOne(d => d.Zone).WithMany(p => p.Bookings)
+                .HasForeignKey(d => d.ZoneId)
+                .HasConstraintName("FK_BOOKING_ZONE");
 
-            entity.HasOne(d => d.Vehicle).WithMany(p => p.Bookings)
-                .HasForeignKey(d => d.VehicleId)
-                .HasConstraintName("FK_BOOKING_VEHICLE");
+            entity.HasOne(d => d.VehicleType).WithMany(p => p.Bookings)
+                .HasForeignKey(d => d.VehicleTypeId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_BOOKING_VEHICLE_TYPE");
 
             entity.HasOne(d => d.VehicleUser).WithMany(p => p.Bookings)
                 .HasForeignKey(d => d.VehicleUserId)
@@ -133,6 +131,9 @@ public partial class AppDbContext : DbContext
                 .HasMaxLength(10)
                 .HasColumnName("BUILDING_ID");
             entity.Property(e => e.Capacity).HasColumnName("CAPACITY");
+            entity.Property(e => e.AvailableCapacity)
+                .HasColumnName("AVAILABLE_CAPACITY")
+                .HasDefaultValue(0);
             entity.Property(e => e.FloorNumber).HasColumnName("FLOOR_NUMBER");
             entity.Property(e => e.Status)
                 .HasDefaultValueSql("'ACTIVE'")
@@ -222,45 +223,6 @@ public partial class AppDbContext : DbContext
                 .HasConstraintName("FK_INCIDENT_SESSION");
         });
 
-        modelBuilder.Entity<MonthlyPass>(entity =>
-        {
-            entity.HasKey(e => e.MonthlyPassId).HasName("PRIMARY");
-
-            entity.ToTable("monthly_pass");
-
-            entity.HasIndex(e => e.PlanId, "FK_MONTHLYPASS_PLAN");
-
-            entity.HasIndex(e => e.VehicleId, "FK_MONTHLYPASS_VEHICLE");
-
-            entity.Property(e => e.MonthlyPassId).HasColumnName("MONTHLY_PASS_ID");
-            entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("CURRENT_TIMESTAMP")
-                .HasColumnType("datetime")
-                .HasColumnName("CREATED_AT");
-            entity.Property(e => e.EndDate).HasColumnName("END_DATE");
-            entity.Property(e => e.PaymentStatus)
-                .HasDefaultValueSql("'PENDING'")
-                .HasColumnType("enum('PENDING','PAID')")
-                .HasColumnName("PAYMENT_STATUS");
-            entity.Property(e => e.PlanId)
-                .HasMaxLength(50)
-                .HasColumnName("PLAN_ID");
-            entity.Property(e => e.StartDate).HasColumnName("START_DATE");
-            entity.Property(e => e.Status)
-                .HasDefaultValueSql("'ACTIVE'")
-                .HasColumnType("enum('ACTIVE','EXPIRED')")
-                .HasColumnName("STATUS");
-            entity.Property(e => e.VehicleId).HasColumnName("VEHICLE_ID");
-
-            entity.HasOne(d => d.Plan).WithMany(p => p.MonthlyPasses)
-                .HasForeignKey(d => d.PlanId)
-                .HasConstraintName("FK_MONTHLYPASS_PLAN");
-
-            entity.HasOne(d => d.Vehicle).WithMany(p => p.MonthlyPasses)
-                .HasForeignKey(d => d.VehicleId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_MONTHLYPASS_VEHICLE");
-        });
 
         modelBuilder.Entity<ParkingBuilding>(entity =>
         {
@@ -302,6 +264,8 @@ public partial class AppDbContext : DbContext
 
             entity.HasIndex(e => e.BookingId, "FK_SESSION_BOOKING");
 
+            entity.HasIndex(e => e.ZoneId, "FK_SESSION_ZONE");
+
             entity.HasIndex(e => e.SlotId, "FK_SESSION_SLOT");
 
             entity.HasIndex(e => e.StaffInId, "FK_SESSION_STAFF_IN");
@@ -309,8 +273,6 @@ public partial class AppDbContext : DbContext
             entity.HasIndex(e => e.StaffOutId, "FK_SESSION_STAFF_OUT");
 
             entity.HasIndex(e => e.VehicleTypeId, "FK_SESSION_TYPE");
-
-            entity.HasIndex(e => e.VehicleId, "FK_SESSION_VEHICLE");
 
             entity.Property(e => e.SessionId)
                 .HasMaxLength(20)
@@ -352,6 +314,8 @@ public partial class AppDbContext : DbContext
                 .HasDefaultValueSql("'PENDING'")
                 .HasColumnType("enum('PENDING','PAID','FAILED')")
                 .HasColumnName("PAYMENT_STATUS");
+            entity.Property(e => e.ZoneId)
+                .HasColumnName("ZONE_ID");
             entity.Property(e => e.SlotId)
                 .HasMaxLength(20)
                 .HasColumnName("SLOT_ID");
@@ -368,15 +332,22 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.TotalFee)
                 .HasPrecision(10, 2)
                 .HasColumnName("TOTAL_FEE");
-            entity.Property(e => e.VehicleId).HasColumnName("VEHICLE_ID");
             entity.Property(e => e.VehicleTypeId).HasColumnName("VEHICLE_TYPE_ID");
             entity.Property(e => e.TicketCode)
                 .HasMaxLength(20)
                 .HasColumnName("TICKET_CODE");
 
+            entity.Property(e => e.IsLocked)
+                .HasColumnName("IS_LOCKED")
+                .HasColumnType("tinyint(1)");
+
             entity.HasOne(d => d.Booking).WithMany(p => p.ParkingSessions)
                 .HasForeignKey(d => d.BookingId)
                 .HasConstraintName("FK_SESSION_BOOKING");
+
+            entity.HasOne(d => d.Zone).WithMany(p => p.ParkingSessions)
+                .HasForeignKey(d => d.ZoneId)
+                .HasConstraintName("FK_SESSION_ZONE");
 
             entity.HasOne(d => d.Slot).WithMany(p => p.ParkingSessions)
                 .HasForeignKey(d => d.SlotId)
@@ -389,10 +360,6 @@ public partial class AppDbContext : DbContext
             entity.HasOne(d => d.StaffOut).WithMany(p => p.ParkingSessionStaffOuts)
                 .HasForeignKey(d => d.StaffOutId)
                 .HasConstraintName("FK_SESSION_STAFF_OUT");
-
-            entity.HasOne(d => d.Vehicle).WithMany(p => p.ParkingSessions)
-                .HasForeignKey(d => d.VehicleId)
-                .HasConstraintName("FK_SESSION_VEHICLE");
 
             entity.HasOne(d => d.VehicleType).WithMany(p => p.ParkingSessions)
                 .HasForeignKey(d => d.VehicleTypeId)
@@ -448,8 +415,6 @@ public partial class AppDbContext : DbContext
 
             entity.HasIndex(e => e.BookingId, "FK_PAY_BOOKING");
 
-            entity.HasIndex(e => e.MonthlyPassId, "FK_PAY_CARD");
-
             entity.HasIndex(e => e.SessionId, "FK_PAY_SESSION");
 
             entity.HasIndex(e => e.UserId, "FK_PAY_USER");
@@ -464,7 +429,6 @@ public partial class AppDbContext : DbContext
                 .HasPrecision(10, 2)
                 .HasColumnName("AMOUNT_PAID");
             entity.Property(e => e.BookingId).HasColumnName("BOOKING_ID");
-            entity.Property(e => e.MonthlyPassId).HasColumnName("MONTHLY_PASS_ID");
             entity.Property(e => e.ChangeDue)
                 .HasPrecision(10, 2)
                 .HasDefaultValueSql("'0.00'")
@@ -502,10 +466,6 @@ public partial class AppDbContext : DbContext
             entity.HasOne(d => d.Booking).WithMany(p => p.Payments)
                 .HasForeignKey(d => d.BookingId)
                 .HasConstraintName("FK_PAY_BOOKING");
-
-            entity.HasOne(d => d.MonthlyPass).WithMany(p => p.Payments)
-                .HasForeignKey(d => d.MonthlyPassId)
-                .HasConstraintName("FK_PAY_CARD");
 
             entity.HasOne(d => d.Session).WithMany(p => p.Payments)
                 .HasForeignKey(d => d.SessionId)
@@ -545,9 +505,6 @@ public partial class AppDbContext : DbContext
                 .HasForeignKey(d => d.VehicleTypeId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_POLICY_TYPE");
-            entity.Property(e => e.HandlingFee)
-                .HasPrecision(10, 2)
-                .HasColumnName("HANDLING_FEE");
         });
 
         modelBuilder.Entity<Role>(entity =>
@@ -567,31 +524,6 @@ public partial class AppDbContext : DbContext
                 .HasColumnName("ROLE_NAME");
         });
 
-        modelBuilder.Entity<SubscriptionPlan>(entity =>
-        {
-            entity.HasKey(e => e.PlanId).HasName("PRIMARY");
-
-            entity.ToTable("subscription_plan");
-
-            entity.HasIndex(e => e.VehicleTypeId, "FK_PLAN_TYPE");
-
-            entity.Property(e => e.PlanId)
-                .HasMaxLength(50)
-                .HasColumnName("PLAN_ID");
-            entity.Property(e => e.DurationDays).HasColumnName("DURATION_DAYS");
-            entity.Property(e => e.GracePeriodDays)
-                .HasDefaultValueSql("'0'")
-                .HasColumnName("GRACE_PERIOD_DAYS");
-            entity.Property(e => e.Price)
-                .HasPrecision(10, 2)
-                .HasColumnName("PRICE");
-            entity.Property(e => e.VehicleTypeId).HasColumnName("VEHICLE_TYPE_ID");
-
-            entity.HasOne(d => d.VehicleType).WithMany(p => p.SubscriptionPlans)
-                .HasForeignKey(d => d.VehicleTypeId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_PLAN_TYPE");
-        });
 
         modelBuilder.Entity<User>(entity =>
         {
@@ -644,49 +576,6 @@ public partial class AppDbContext : DbContext
                 .HasColumnType("LONGTEXT");
         });
 
-        modelBuilder.Entity<Vehicle>(entity =>
-        {
-            entity.HasKey(e => e.VehicleId).HasName("PRIMARY");
-
-            entity.ToTable("vehicle");
-
-            entity.HasIndex(e => e.VehicleUserId, "FK_VEHICLE_OWNER");
-
-            entity.HasIndex(e => e.VehicleTypeId, "FK_VEHICLE_TYPE");
-
-            entity.HasIndex(e => e.VehiclePlateNumber, "VEHICLE_PLATE_NUMBER").IsUnique();
-
-            entity.Property(e => e.VehicleId).HasColumnName("VEHICLE_ID");
-            entity.Property(e => e.Brand)
-                .HasMaxLength(50)
-                .HasColumnName("BRAND");
-            entity.Property(e => e.Color)
-                .HasMaxLength(30)
-                .HasColumnName("COLOR");
-            entity.Property(e => e.Model)
-                .HasMaxLength(50)
-                .HasColumnName("MODEL");
-            entity.Property(e => e.VehicleDescription)
-                .HasMaxLength(200)
-                .HasColumnName("VEHICLE_DESCRIPTION");
-            entity.Property(e => e.VehiclePlateNumber)
-                .HasMaxLength(50)
-                .HasColumnName("VEHICLE_PLATE_NUMBER");
-            entity.Property(e => e.VehicleTypeId).HasColumnName("VEHICLE_TYPE_ID");
-            entity.Property(e => e.VehicleUserId)
-                .HasMaxLength(36)
-                .HasColumnName("VEHICLE_USER_ID");
-
-            entity.HasOne(d => d.VehicleType).WithMany(p => p.Vehicles)
-                .HasForeignKey(d => d.VehicleTypeId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_VEHICLE_TYPE");
-
-            entity.HasOne(d => d.VehicleUser).WithMany(p => p.Vehicles)
-                .HasForeignKey(d => d.VehicleUserId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_VEHICLE_OWNER");
-        });
 
         modelBuilder.Entity<VehicleType>(entity =>
         {
@@ -763,7 +652,7 @@ public partial class AppDbContext : DbContext
                 .IsRequired()
                 .HasMaxLength(100);
 
-            entity.HasIndex(e => e.SettingKey).IsUnique();
+            entity.HasIndex(e => e.SettingKey).IsUnique(); 
 
             entity.Property(e => e.SettingValue)
                 .HasColumnName("SETTING_VALUE")
@@ -773,7 +662,7 @@ public partial class AppDbContext : DbContext
                 .HasMaxLength(255);
 
             entity.Property(e => e.UpdatedAt)
-                .HasColumnName("UPDATE_AT")
+                .HasColumnName("UPDATE_AT") 
                 .HasColumnType("datetime")
                 .HasDefaultValueSql("CURRENT_TIMESTAMP");
         });
@@ -797,7 +686,7 @@ public partial class AppDbContext : DbContext
                 .HasMaxLength(150);
 
             entity.Property(e => e.CreatedAt)
-                .HasColumnName("CREATE_AT")
+                .HasColumnName("CREATE_AT") 
                 .HasColumnType("datetime")
                 .HasDefaultValueSql("CURRENT_TIMESTAMP");
         });

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace ParkingManagement.Models;
@@ -9,9 +9,12 @@ public partial class Booking
 
     public string VehicleUserId { get; set; } = null!;
 
-    public int? VehicleId { get; set; }
+    public string LicensePlate { get; set; } = null!;
 
-    public string? SlotId { get; set; }
+    public int VehicleTypeId { get; set; }
+
+    /// <summary>Zone được gợi ý khi đặt chỗ (thay thế SlotId).</summary>
+    public int? ZoneId { get; set; }
 
     public DateTime ExpectedArrival { get; set; }
 
@@ -27,9 +30,9 @@ public partial class Booking
 
     public virtual ICollection<Payment> Payments { get; set; } = new List<Payment>();
 
-    public virtual ParkingSlot? Slot { get; set; }
+    public virtual FloorZone? Zone { get; set; }
 
-    public virtual Vehicle? Vehicle { get; set; }
+    public virtual VehicleType VehicleType { get; set; } = null!;
 
     public virtual User VehicleUser { get; set; } = null!;
 }

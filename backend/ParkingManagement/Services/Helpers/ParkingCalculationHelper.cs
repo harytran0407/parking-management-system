@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using ParkingManagement.Models; // Đảm bảo đã import đúng namespace chứa PricingPolicy
 
 namespace ParkingManagement.Services.Helpers
@@ -12,8 +13,31 @@ namespace ParkingManagement.Services.Helpers
         public int GracePeriodRemainingSeconds { get; set; }
     }
 
+    public class BookingFeeResult
+    {
+        public decimal TotalFee { get; set; }
+        public decimal EarlyArrivalFee { get; set; }
+        public int EarlyHours { get; set; }
+        public decimal OvernightFee { get; set; }
+        public decimal LateCheckoutFee { get; set; }
+        public int LateHours { get; set; }
+        public decimal PrepaidOvertime { get; set; }
+    }
+
     public static class ParkingCalculationHelper
     {
+        private static readonly TimeZoneInfo _vnTz = TimeZoneInfo.FindSystemTimeZoneById(
+            OperatingSystem.IsWindows() ? "SE Asia Standard Time" : "Asia/Ho_Chi_Minh");
+
+        public static DateTime ConvertToVnTime(DateTime dt)
+        {
+            if (dt.Kind == DateTimeKind.Utc)
+            {
+                return TimeZoneInfo.ConvertTimeFromUtc(dt, _vnTz);
+            }
+            return DateTime.SpecifyKind(dt, DateTimeKind.Unspecified);
+        }
+
         public static int CalculateDurationMinutes(DateTime? checkInTime, DateTime currentTime)
         {
             if (!checkInTime.HasValue) return 0;
@@ -73,7 +97,7 @@ namespace ParkingManagement.Services.Helpers
         /// <summary>
         /// Hàm tính tiền nhận động chuỗi cấu hình giờ hoạt động áp dụng cho ngày hiện tại
         /// </summary>
-        public static ParkingFeeResult CalculateParkingFee(DateTime checkInTime, DateTime checkOutTime, PricingPolicy policy, string operatingHours, int gracePeriodMinutes = 5)
+        public static ParkingFeeResult CalculateParkingFee(DateTime checkInTime, DateTime checkOutTime, PricingPolicy? policy, string operatingHours, int gracePeriodMinutes = 5)
         {
             // 1. Tính tổng số phút thực tế
             TimeSpan duration = checkOutTime - checkInTime;
@@ -86,11 +110,15 @@ namespace ParkingManagement.Services.Helpers
             int billedHours = 0;
             decimal appliedOvernightFee = 0;
 
+            decimal basePrice = policy?.BasePrice ?? 15000m;
+            decimal hourlyRate = policy?.HourlyRate ?? 2000m;
+            decimal overnightFee = policy?.OvernightFee ?? 0m;
+
             // Kiểm tra trạng thái phạt lố giờ hoạt động trước
             bool isOvernight = IsOvernightParking(checkInTime, checkOutTime, operatingHours);
             if (isOvernight)
             {
-                appliedOvernightFee = policy.OvernightFee;
+                appliedOvernightFee = overnightFee;
             }
 
             // 2. KIỂM TRA ĐIỀU KIỆN ÂN HẠN (GRACE PERIOD)
@@ -108,12 +136,12 @@ namespace ParkingManagement.Services.Helpers
                 if (billedHours > 0)
                 {
                     // Tiếng đầu tiên tính BasePrice
-                    actualParkingFee = policy.BasePrice;
+                    actualParkingFee = basePrice;
 
                     // Các tiếng tiếp theo tính lũy tiến theo HourlyRate
                     if (billedHours > 1)
                     {
-                        actualParkingFee += (billedHours - 1) * policy.HourlyRate;
+                        actualParkingFee += (billedHours - 1) * hourlyRate;
                     }
                 }
 
@@ -139,6 +167,120 @@ namespace ParkingManagement.Services.Helpers
                 OvernightFee = appliedOvernightFee,
                 GracePeriodRemainingSeconds = gracePeriodRemainingSeconds
             };
+        }
+
+        public static decimal CalculateBookingEstimatedFee(DateTime expectedArrival, DateTime expiredAt, PricingPolicy? policy)
+        {
+            decimal basePrice = policy?.BasePrice ?? 15000m;
+            decimal hourlyRate = policy?.HourlyRate ?? 2000m;
+            var duration = expiredAt - expectedArrival;
+            var billedHours = (int)Math.Ceiling(duration.TotalMinutes / 60.0);
+            decimal estimatedFee = basePrice + (billedHours > 1 ? (billedHours - 1) * hourlyRate : 0m);
+            return estimatedFee;
+        }
+
+        public static decimal CalculateEarlyArrivalFee(DateTime checkInTime, DateTime expectedArrival, PricingPolicy? policy, string operatingHours)
+        {
+            var limit = expectedArrival.AddMinutes(-15);
+            if (checkInTime < limit)
+            {
+                var result = CalculateParkingFee(checkInTime, limit, policy, operatingHours);
+                return result.CurrentFee;
+            }
+            return 0;
+        }
+
+        public static decimal CalculateOverdueFee(DateTime checkOutTime, DateTime expiredAt, PricingPolicy? policy)
+        {
+            if (checkOutTime > expiredAt)
+            {
+                var overdueMinutes = (checkOutTime - expiredAt).TotalMinutes;
+                if (overdueMinutes > 15) // 15-minute grace period
+                {
+                    decimal hourlyRate = policy?.HourlyRate ?? 2000m;
+                    var overdueBlocks = (int)Math.Ceiling(overdueMinutes / 60.0);
+                    return overdueBlocks * hourlyRate * 2;
+                }
+            }
+            return 0;
+        }
+
+        public static decimal CalculatePrepaidOvertime(Booking booking, PricingPolicy? policy, int vehicleTypeId)
+        {
+            if (booking == null) return 0m;
+            var totalPaid = booking.Payments?.Where(p => p.Status == "SUCCESS").Sum(p => p.AmountPaid) ?? 0m;
+            var depositPayment = booking.Payments?.FirstOrDefault(p => p.PaymentType == "BOOKING" && p.Status == "SUCCESS");
+            
+            decimal basePrice = policy?.BasePrice ?? (vehicleTypeId == 1 ? 5000m : 15000m);
+            decimal hourlyRate = policy?.HourlyRate ?? 2000m;
+            var expectedArrival = booking.ExpectedArrival;
+            var expiredAt = booking.ExpiredAt ?? expectedArrival.AddHours(2);
+            var origDuration = expiredAt - expectedArrival;
+            var origBilledHours = (int)Math.Ceiling(origDuration.TotalMinutes / 60.0);
+            decimal originalEstimatedFee = basePrice + (origBilledHours > 1 ? (origBilledHours - 1) * hourlyRate : 0m);
+
+            decimal depositAmount = depositPayment?.AmountPaid ?? originalEstimatedFee;
+            return Math.Max(0m, totalPaid - depositAmount);
+        }
+
+        public static BookingFeeResult CalculateBookingFeeDetails(
+            DateTime? checkInTime,
+            DateTime checkOutTime,
+            Booking booking,
+            PricingPolicy? policy,
+            string operatingHours)
+        {
+            var result = new BookingFeeResult();
+            if (booking == null) return result;
+
+            var expectedArrival = booking.ExpectedArrival;
+            var expiredAt = booking.ExpiredAt ?? expectedArrival.AddHours(2);
+
+            if (checkInTime.HasValue)
+            {
+                var checkInVn = ConvertToVnTime(checkInTime.Value);
+                if (checkInVn < expectedArrival.AddMinutes(-15))
+                {
+                    var earlyResult = CalculateParkingFee(
+                        checkInVn,
+                        expectedArrival.AddMinutes(-15),
+                        policy,
+                        operatingHours
+                    );
+                    result.EarlyArrivalFee = earlyResult.CurrentFee;
+                    result.EarlyHours = earlyResult.Hours;
+                    result.OvernightFee = earlyResult.OvernightFee;
+                }
+            }
+
+            var checkOutVn = ConvertToVnTime(checkOutTime);
+            if (checkOutVn > expiredAt)
+            {
+                var overdueMinutes = (checkOutVn - expiredAt).TotalMinutes;
+                if (overdueMinutes > 15) // 15-minute grace period
+                {
+                    decimal hourlyRate = policy?.HourlyRate ?? 2000m;
+                    var overdueBlocks = (int)Math.Ceiling(overdueMinutes / 60.0);
+                    result.LateCheckoutFee = overdueBlocks * hourlyRate * 2;
+                    result.LateHours = overdueBlocks;
+                }
+            }
+
+            result.PrepaidOvertime = CalculatePrepaidOvertime(booking, policy, booking.VehicleTypeId);
+            result.TotalFee = Math.Max(0m, result.EarlyArrivalFee + result.LateCheckoutFee - result.PrepaidOvertime);
+
+            return result;
+        }
+
+        public static decimal CalculateBookingSessionFee(
+            DateTime? checkInTime,
+            DateTime checkOutTime,
+            Booking booking,
+            PricingPolicy? policy,
+            string operatingHours)
+        {
+            var details = CalculateBookingFeeDetails(checkInTime, checkOutTime, booking, policy, operatingHours);
+            return details.TotalFee;
         }
     }
 }

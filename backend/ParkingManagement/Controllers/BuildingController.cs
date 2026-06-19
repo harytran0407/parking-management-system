@@ -1,7 +1,7 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using ParkingManagement.DTOs.Building;
-using ParkingManagement.Repositories;
 using ParkingManagement.Services.BuildingServices;
+using ParkingManagement.Repositories;
 
 namespace ParkingManagement.Controllers;
 
@@ -65,7 +65,7 @@ public class BuildingController : ControllerBase
             {
                 PolicyId = p.PolicyId,
                 VehicleTypeId = p.VehicleTypeId,
-                VehicleTypeName = p.VehicleType?.VehicleTypeName ?? (p.VehicleTypeId == 1 ? "Automobile (Car)" : "Motorbike"),
+                VehicleTypeName = p.VehicleType?.VehicleTypeName ?? (p.VehicleTypeId == 2 ? "Car" : "Motorbike"),
                 BasePrice = p.BasePrice,
                 HourlyRate = p.HourlyRate,
                 OvernightFee = p.OvernightFee,

@@ -1,6 +1,5 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ParkingManagement.Models;
 
@@ -30,8 +29,6 @@ public partial class Payment
 
     public string? SessionId { get; set; }
 
-    public int? MonthlyPassId { get; set; }
-
     public string? BookingId { get; set; }
 
     public string? UserId { get; set; }
@@ -40,7 +37,6 @@ public partial class Payment
 
     public virtual ICollection<IncidentLog> IncidentLogs { get; set; } = new List<IncidentLog>();
 
-    public virtual MonthlyPass? MonthlyPass { get; set; }
 
     public virtual ParkingSession? Session { get; set; }
 

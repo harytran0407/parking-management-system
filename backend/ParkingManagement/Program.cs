@@ -1,18 +1,20 @@
 using Microsoft.EntityFrameworkCore;
 using ParkingManagement.Data;
-using ParkingManagement.Dtos;
 using ParkingManagement.Extensions;
 using ParkingManagement.Repositories;
 using ParkingManagement.Services;
 using ParkingManagement.Services.BookingServices;
 using ParkingManagement.Services.BuildingServices;
+using ParkingManagement.Services.EmailServices;
 using ParkingManagement.Services.FeedbackServices;
-
-
-var builder = WebApplication.CreateBuilder(args);
+using ParkingManagement.Dtos;
+using ParkingManagement.Models;
 
 // ── .ENV Reader ───────────────────────────────────────────────────────────────
 DotNetEnv.Env.Load();
+
+var builder = WebApplication.CreateBuilder(args);
+builder.Configuration.AddEnvironmentVariables();
 
 // ── Database ──────────────────────────────────────────────────────────────────
 var dbServer = Environment.GetEnvironmentVariable("DB_SERVER");
@@ -36,7 +38,6 @@ builder.Services.AddControllers()
             System.Text.Json.JsonNamingPolicy.SnakeCaseLower);
 
 // ── CORS Policy Definition ────────────────────────────────────────────────────
-// Định nghĩa tường minh cấu hình CORS từ tầng Service của WebApplication
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactFrontend", policy =>
@@ -58,6 +59,7 @@ builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo { Title = "ParkingManagement API", Version = "v1" });
 
+    // Cấu hình nút Authorize trên Swagger
     c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
     {
         Description = "Nhập chữ 'Bearer' [khoảng trắng] [chuỗi_token_của_bạn].\r\n\r\nVí dụ: Bearer eyJhbGciOiJIUzI1Ni...",
@@ -86,43 +88,60 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-builder.Services.AddMemoryCache();
+builder.Services.AddMemoryCache(); // Thêm bộ nhớ đệm (cache) dùng cho rate limiting.
 
-// ── Dependency Injection Modules ──────────────────────────────────────────────
+// ── Parking module ───────────────────────────────────────────────────────────────────────
 builder.Services.AddScoped<IParkingRepository, ParkingRepository>();
 builder.Services.AddScoped<IParkingService, ParkingService>();
 
+// ── Booking module ───────────────────────────────────────────────────────────────────────
 builder.Services.AddScoped<IBookingRepository, BookingRepository>();
-
-builder.Services.AddScoped<IIncidentRepository, IncidentRepository>();
-builder.Services.AddScoped<IIncidentService, IncidentService>();
-
-builder.Services.AddScoped<IBuildingRepository, BuildingRepository>();
-builder.Services.AddScoped<IBuildingService, BuildingService>();
-
-builder.Services.AddScoped<IVehicleTypeRepository, VehicleTypeRepository>();
-builder.Services.AddScoped<IVehicleTypeService, VehicleTypeService>();
-
-builder.Services.AddScoped<IFloorAllocationRepository, FloorAllocationRepository>();
-builder.Services.AddScoped<IFloorAllocationService, FloorAllocationService>();
-
-builder.Services.AddJwtAuthentication(builder.Configuration);
-
-builder.Services.AddScoped<ISlotManagementRepository, SlotManagementRepository>();
-builder.Services.AddScoped<ISlotManagementService, SlotManagementService>();
-
-builder.Services.AddScoped<IPricingPolicyRepository, PricingPolicyRepository>();
-builder.Services.AddScoped<IPricingPolicyService, PricingPolicyService>();
-
-builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
-builder.Services.AddScoped<IDashboardService, DashboardService>();
-
 builder.Services.AddScoped<IBookingServiceRepository, BookingServiceRepository>();
 builder.Services.AddScoped<IBookingService, BookingService>();
 
+// ── Payment module ───────────────────────────────────────────────────────────────────────
 builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
+
+// ── Incident module ───────────────────────────────────────────────────────────────────────
+builder.Services.AddScoped<IIncidentRepository, IncidentRepository>();
+builder.Services.AddScoped<IIncidentService, IncidentService>();
+
+// ── Building module ───────────────────────────────────────────────────────────
+builder.Services.AddScoped<IBuildingRepository, BuildingRepository>();
+builder.Services.AddScoped<IBuildingService, BuildingService>();
+
+// ── VehicleType module ────────────────────────────────────────────────────────
+builder.Services.AddScoped<IVehicleTypeRepository, VehicleTypeRepository>();
+builder.Services.AddScoped<IVehicleTypeService, VehicleTypeService>();
+
+// ── VehicleFloor module ────────────────────────────────────────────────────────
+builder.Services.AddScoped<IFloorAllocationRepository, FloorAllocationRepository>();
+builder.Services.AddScoped<IFloorAllocationService, FloorAllocationService>();
+
+// ── Auth & JWT ─────────────────────────────────────────-────────────────────────
+builder.Services.AddJwtAuthentication(builder.Configuration);
+
+// ── Email module ──────────────────────────────────────────────────────────────
+builder.Services.Configure<MailSettings>(builder.Configuration.GetSection("MailSettings"));
+builder.Services.AddTransient<IEmailService, EmailService>();
+
+// ── Slot management module ────────────────────────────────────────────────────
+builder.Services.AddScoped<ISlotManagementRepository, SlotManagementRepository>();
+builder.Services.AddScoped<ISlotManagementService, SlotManagementService>();
+
+// ── Pricing Policy module ─────────────────────────────────────────────────────
+builder.Services.AddScoped<IPricingPolicyRepository, PricingPolicyRepository>();
+builder.Services.AddScoped<IPricingPolicyService, PricingPolicyService>();
+
+// ── Dashboard module ──────────────────────────────────────────────────────────
+builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
+builder.Services.AddScoped<IDashboardService, DashboardService>();
+
+// ── SystemConfig module ───────────────────────────────────────────────────────
 builder.Services.AddScoped<ISystemConfigService, SystemConfigService>();
+
+// ── Feedback module ───────────────────────────────────────────────────────────
 builder.Services.AddScoped<IFeedbackSerivce, FeedbackService>();
 
 var app = builder.Build();
@@ -141,7 +160,7 @@ app.UseExceptionHandler(errApp => errApp.Run(async ctx =>
     if (ex != null)
     {
         Console.WriteLine("\n🚨 ======= [BACKEND CRASH DETECTED] =======");
-        Console.WriteLine(ex.ToString());
+        Console.WriteLine(ex.ToString()); // In trọn vẹn dấu vết lỗi, tên file, số dòng bị sập
         Console.WriteLine("============================================\n");
     }
 
@@ -162,10 +181,10 @@ app.UseHttpsRedirection();
 
 app.UseCors("AllowReactFrontend");
 
-app.UseAuthentication(); 
-app.UseMiddleware<ParkingManagement.Middlewares.TokenBlacklistMiddleware>(); 
-app.UseAuthorization(); 
-
+// Security
+app.UseMiddleware<ParkingManagement.Middlewares.TokenBlacklistMiddleware>(); // Check blacklist
+app.UseAuthentication(); // Read JWT token
+app.UseAuthorization(); // Check role/permission
+app.UseStaticFiles();
 app.MapControllers();
-
 app.Run();

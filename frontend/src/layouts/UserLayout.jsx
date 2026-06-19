@@ -1,33 +1,35 @@
 import { Routes, Route } from "react-router-dom";
 import React, { useState } from "react";
-import {Car,Home,History,CreditCard,Calendar,MessageSquare,User,CarFront,} from "lucide-react";
+import { Car, Home, History, CreditCard, Calendar, MessageSquare, User, CarFront, Search } from "lucide-react";
 import Sidebar from "../components/Sidebar";
 import Header from "../components/Header";
 import UserDashboard from "../pages/user/Dashboard";
 import BookSlot from "../pages/user/BookSlot";
 import Profile from "../pages/user/Profile";
 import MyBookings from "../pages/user/MyBookings";
-import MyVehicles from "../pages/user/MyVehicles";
+import QuickPay from "../pages/user/QuickPay";
 import Issues from "../pages/user/Issues";
+import { useLanguage } from "../hooks/useLanguage";
 
 export default function UserLayout() {
+  const { language } = useLanguage();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const navigationItems = [
-    { path: "/user", label: "Parking Info", icon: <Car size={20} /> },
-    { path: "/user/book", label: "Book a Slot", icon: <Calendar size={20} /> },
+    { path: "/user", label: language === "en" ? "Parking Info" : "Thông tin đỗ xe", icon: <Car size={20} /> },
+    { path: "/user/book", label: language === "en" ? "Book a Slot" : "Đặt vị trí đỗ", icon: <Calendar size={20} /> },
     {
       path: "/user/bookings",
-      label: "My Bookings",
+      label: language === "en" ? "My Bookings" : "Lịch sử đặt chỗ",
       icon: <History size={20} />,
     },
     {
-      path: "/user/vehicle",
-      label: "My Vehicles",
-      icon: <CarFront size={20} />,
+      path: "/user/quick-pay",
+      label: language === "en" ? "Quick Pay" : "Thanh toán nhanh",
+      icon: <CreditCard size={20} />,
     },
     {
       path: "/user/issues",
-      label: "Issues",
+      label: language === "en" ? "Issues" : "Báo cáo sự cố",
       icon: <MessageSquare size={20} />,
     },
   ];
@@ -42,7 +44,6 @@ export default function UserLayout() {
 
       <div className="relative flex flex-col flex-1 overflow-hidden transition-all duration-300">
         <Header
-          title="Driver Dashboard"
           isSidebarCollapsed={isSidebarCollapsed}
           setIsSidebarCollapsed={setIsSidebarCollapsed}
         />
@@ -53,8 +54,9 @@ export default function UserLayout() {
             <Route path="/book" element={<BookSlot />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/bookings" element={<MyBookings />} />
-            <Route path="/vehicle" element={<MyVehicles />} />
+            <Route path="/quick-pay" element={<QuickPay />} />
             <Route path="/issues" element={<Issues />} />
+
 
             {/* Đưa route catch-all /* xuống dưới cùng để chuẩn logic React Router */}
             <Route path="/*" element={<UserDashboard />} />

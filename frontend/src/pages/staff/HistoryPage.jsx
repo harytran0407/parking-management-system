@@ -202,7 +202,7 @@ export default function HistoryPage() {
                             <tr className="text-slate-500 dark:text-slate-400 uppercase font-bold text-[10px] tracking-wider border-b border-slate-100 dark:border-slate-800 sticky top-0 bg-white dark:bg-slate-900 z-10 shadow-[0_1px_0_0_rgba(241,245,249,1)] dark:shadow-[0_1px_0_0_rgba(30,41,59,1)]">
                                 <th className="pb-3 font-semibold pl-2">License Plate</th>
                                 <th className="pb-3 font-semibold">Type</th>
-                                <th className="pb-3 font-semibold">Slot</th>
+                                <th className="pb-3 font-semibold">Zone</th>
                                 <th className="pb-3 font-semibold">Check-in Time</th>
                                 <th className="pb-3 font-semibold">Check-out Time</th>
                                 <th className="pb-3 font-semibold">Status</th>
@@ -236,12 +236,12 @@ export default function HistoryPage() {
                                             {String(log.vehicleTypeId || log.vehicle_type) === "2" ? "Car" : "Motorbike"}
                                         </td>
                                         <td className="py-3.5 font-mono text-amber-700 dark:text-amber-500 font-bold text-sm group-hover:translate-x-0.5 transition-transform origin-left">
-                                            {log.slot?.slotNumber || log.slot_number || "—"}
+                                            {log.zoneName || log.zone_name || "—"}
                                         </td>
                                         <td className="py-3.5 text-slate-800 dark:text-slate-200 font-mono text-[11px]">
                                             {log.checkInTime || log.check_in_time ? new Date(log.checkInTime || log.check_in_time).toLocaleString("en-US") : "—"}
                                         </td>
-                                        <td className="py-3.5 text-slate-500 dark:text-slate-400 font-mono text-[11px]">
+                                        <td className="py-3.5 text-slate-800 dark:text-slate-200 font-mono text-[11px]">
                                             {log.checkOutTime || log.check_out_time ? new Date(log.checkOutTime || log.check_out_time).toLocaleString("en-US") : "—"}
                                         </td>
                                         <td className="py-3.5">
