@@ -10,10 +10,11 @@ using ParkingManagement.Services.FeedbackServices;
 using ParkingManagement.Dtos;
 using ParkingManagement.Models;
 
-var builder = WebApplication.CreateBuilder(args);
-
 // ── .ENV Reader ───────────────────────────────────────────────────────────────
 DotNetEnv.Env.Load();
+
+var builder = WebApplication.CreateBuilder(args);
+builder.Configuration.AddEnvironmentVariables();
 
 // ── Database ──────────────────────────────────────────────────────────────────
 var dbServer = Environment.GetEnvironmentVariable("DB_SERVER");
