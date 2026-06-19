@@ -1,7 +1,13 @@
+<<<<<<< HEAD
 using Microsoft.EntityFrameworkCore;
 using ParkingManagement.Data;
 using ParkingManagement.Models;
 using ParkingManagement.DTOs.Building;
+=======
+﻿using Microsoft.EntityFrameworkCore;
+using ParkingManagement.Data;
+using ParkingManagement.Models;
+>>>>>>> origin/main
 
 namespace ParkingManagement.Repositories;
 
@@ -9,7 +15,10 @@ public interface IBuildingRepository
 {
     Task<ParkingBuilding?> GetByIdAsync(string buildingId);
     Task<(int occupied, int available)> GetOccupancyAsync(string buildingId);
+<<<<<<< HEAD
     Task<List<VehicleTypeAvailabilityDto>> GetOccupancyByVehicleTypeAsync(string buildingId);
+=======
+>>>>>>> origin/main
     Task UpdateAsync(ParkingBuilding building);
 }
 
@@ -27,6 +36,7 @@ public class BuildingRepository : IBuildingRepository
 
     public async Task<(int occupied, int available)> GetOccupancyAsync(string buildingId)
     {
+<<<<<<< HEAD
         var zones = await _db.FloorZones
             .Where(z => z.BuildingId == buildingId && z.Status == "ACTIVE")
             .ToListAsync();
@@ -63,6 +73,20 @@ public class BuildingRepository : IBuildingRepository
             .ToList();
     }
 
+=======
+        var slots = await _db.ParkingSlots
+            .Include(s => s.Zone)
+            .Where(s => s.Zone.BuildingId == buildingId)
+            .GroupBy(s => s.Status)
+            .Select(g => new { Status = g.Key, Count = g.Count() })
+            .ToListAsync();
+
+        int occupied = slots.Where(s => s.Status == "OCCUPIED").Sum(s => s.Count);
+        int available = slots.Where(s => s.Status == "AVAILABLE").Sum(s => s.Count);
+        return (occupied, available);
+    }
+
+>>>>>>> origin/main
     public async Task UpdateAsync(ParkingBuilding building)
     {
         _db.ParkingBuildings.Update(building);

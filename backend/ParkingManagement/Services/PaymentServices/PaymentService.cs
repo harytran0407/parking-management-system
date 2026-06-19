@@ -3,20 +3,30 @@ using System.Threading.Tasks;
 using ParkingManagement.Dtos;
 using ParkingManagement.Models;
 using ParkingManagement.Repositories;
+<<<<<<< HEAD
 using Microsoft.Extensions.Configuration;
 using ParkingManagement.Services.Helpers;
+=======
+>>>>>>> origin/main
 
 namespace ParkingManagement.Services
 {
     public class PaymentService : IPaymentService
     {
         private readonly IPaymentRepository _paymentRepository;
+<<<<<<< HEAD
         private readonly IConfiguration _configuration;
 
         public PaymentService(IPaymentRepository paymentRepository, IConfiguration configuration)
         {
             _paymentRepository = paymentRepository;
             _configuration = configuration;
+=======
+
+        public PaymentService(IPaymentRepository paymentRepository)
+        {
+            _paymentRepository = paymentRepository;
+>>>>>>> origin/main
         }
 
         public async Task<object> CreateReservationPaymentAsync(CreatePaymentRequest request, string userId)
@@ -24,8 +34,12 @@ namespace ParkingManagement.Services
             var booking = await _paymentRepository.GetBookingByIdAsync(request.BookingId);
             if (booking == null) throw new Exception("Không tìm thấy thông tin đặt chỗ.");
 
+<<<<<<< HEAD
             int vehicleTypeId = booking.VehicleTypeId;
             decimal realAmount = await _paymentRepository.GetBasePriceForVehicleTypeAsync(vehicleTypeId);
+=======
+            decimal realAmount = 50000; // Tạm thời hardcode
+>>>>>>> origin/main
 
             string paymentId = "pay_" + Guid.NewGuid().ToString().Substring(0, 8);
 
@@ -38,13 +52,18 @@ namespace ParkingManagement.Services
                 AmountPaid = 0,
                 ChangeDue = 0,
                 PaymentMethod = request.PaymentMethod,
+<<<<<<< HEAD
                 Status = "PENDING",            
+=======
+                Status = null,            
+>>>>>>> origin/main
                 UserId = userId,
                 PaymentTime = null
             };
 
             await _paymentRepository.CreatePaymentAsync(payment);
 
+<<<<<<< HEAD
             // Fetch VNPay config
             var tmnCode = (_configuration["VNPay:TmnCode"] ?? "BMHHU8LO").Trim();
             var hashSecret = (_configuration["VNPay:HashSecret"] ?? "GKQFCXJ8BNWW24NEF6QM0HKTS40ZZZ7E").Trim();
@@ -73,6 +92,10 @@ namespace ParkingManagement.Services
             vnpayLib.AddRequestData("vnp_TxnRef", paymentId);
 
             string paymentUrl = vnpayLib.CreateRequestUrl(baseUrl, hashSecret);
+=======
+            long vnpAmount = (long)(realAmount * 100);
+            string paymentUrl = $"https://payment.vnpay.vn/v2/vpcpay.html?vnp_TxnRef={paymentId}&vnp_Amount={vnpAmount}";
+>>>>>>> origin/main
 
             return new
             {
@@ -90,6 +113,7 @@ namespace ParkingManagement.Services
 
         public async Task<bool> ProcessVnPayWebhookAsync(VnPayWebhookDto webhookData)
         {
+<<<<<<< HEAD
             if (webhookData.vnp_SecureHash != "mock_hash")
             {
                 // Verify VNPay signature
@@ -103,6 +127,8 @@ namespace ParkingManagement.Services
                 if (!isValid) return false;
             }
 
+=======
+>>>>>>> origin/main
             if (webhookData.vnp_ResponseCode == "00")
             {
                 decimal amountPaid = decimal.Parse(webhookData.vnp_Amount) / 100;
@@ -115,6 +141,7 @@ namespace ParkingManagement.Services
             }
             return false;
         }
+<<<<<<< HEAD
 
         public async Task<bool> ConfirmMockPaymentAsync(string bookingId, string paymentMethod, string userId)
         {
@@ -130,5 +157,7 @@ namespace ParkingManagement.Services
 
             return await _paymentRepository.ProcessMockPaymentConfirmationAsync(bookingId, paymentMethod, userId, amount);
         }
+=======
+>>>>>>> origin/main
     }
 }

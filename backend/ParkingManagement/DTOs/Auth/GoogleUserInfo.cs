@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 using System.Text.Json.Serialization;
+=======
+﻿using System.Text.Json.Serialization;
+>>>>>>> origin/main
 
 namespace ParkingManagement.DTOs.Auth
 {
@@ -13,4 +17,8 @@ namespace ParkingManagement.DTOs.Auth
         [JsonPropertyName("picture")]
         public string Picture { get; set; } = string.Empty;
     }
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> origin/main

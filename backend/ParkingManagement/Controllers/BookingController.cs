@@ -1,12 +1,19 @@
+<<<<<<< HEAD
 using Microsoft.AspNetCore.Authorization;
+=======
+﻿using Microsoft.AspNetCore.Authorization;
+>>>>>>> origin/main
 using Microsoft.AspNetCore.Mvc;
 using ParkingManagement.DTOs.Booking;
 using ParkingManagement.Services.BookingServices;
 using System.Security.Claims;
+<<<<<<< HEAD
 using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using System.Linq;
+=======
+>>>>>>> origin/main
 
 namespace ParkingManagement.Controllers;
 
@@ -30,6 +37,7 @@ public class BookingController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetPriceEstimate([FromQuery] BookingPriceRequest request)
     {
+<<<<<<< HEAD
         try 
         {
             var result = await _service.GetPriceEstimateAsync(request);
@@ -39,6 +47,10 @@ public class BookingController : ControllerBase
         {
             return BadRequest(new { success = false, message = ex.Message });
         }
+=======
+        var data = await _service.GetPriceEstimateAsync(request);
+        return Ok(new { success = true, data });
+>>>>>>> origin/main
     }
 
     // POST /api/v1/bookings
@@ -96,6 +108,7 @@ public class BookingController : ControllerBase
         var data = await _service.CancelBookingAsync(bookingId, userId);
         return Ok(new { success = true, message = "Booking cancelled.", data });
     }
+<<<<<<< HEAD
 
     /* ─── ADDED BY ANTIGRAVITY (REQUIRED FOR FRONTEND BACKWARD COMPATIBILITY) ─── */
 
@@ -227,4 +240,6 @@ public class BookingController : ControllerBase
             return BadRequest(new { success = false, message = ex.Message });
         }
     }
+=======
+>>>>>>> origin/main
 }

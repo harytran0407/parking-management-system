@@ -137,6 +137,7 @@ body {
   animation: slideInRight 0.3s ease-out;
 }
 
+<<<<<<< HEAD
 @keyframes slideUpDense {
   from {
     opacity: 0;
@@ -152,6 +153,8 @@ body {
   animation: slideUpDense 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+=======
+>>>>>>> origin/main
 .text-muted {
   @apply text-slate-400 dark:text-slate-500;
 }
@@ -205,6 +208,7 @@ body {
   background-color: transparent !important;
   border: none !important;
   box-shadow: none !important;
+<<<<<<< HEAD
 }
 
 /* Hide scrollbars but keep functionality */
@@ -214,4 +218,6 @@ body {
 .no-scrollbar {
   -ms-overflow-style: none !important;
   scrollbar-width: none !important;
+=======
+>>>>>>> origin/main
 }

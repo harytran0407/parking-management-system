@@ -24,6 +24,7 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(false);
 
   /**
+<<<<<<< HEAD
    * ====================================================
    *  HÀM ĐĂNG NHẬP THỰC TẾ (TÍCH HỢP AXIOS API-RECAPTCHA)
    * ====================================================
@@ -31,13 +32,25 @@ export function AuthProvider({ children }) {
    * @param {string} password - Mật khẩu thô
    */
   const login = useCallback(async (emailOrPhone, password, captchaToken) => {
+=======
+   * ==========================================
+   *  HÀM ĐĂNG NHẬP THỰC TẾ (TÍCH HỢP AXIOS API)
+   * ==========================================
+   * @param {string} emailOrPhone - Email hoặc Số điện thoại người dùng
+   * @param {string} password - Mật khẩu thô
+   */
+  const login = useCallback(async (emailOrPhone, password) => {
+>>>>>>> origin/main
     setLoading(true);
     try {
       // Gọi chính xác API thực tế theo cấu hình snake_case của dự án bãi xe
       const response = await api.post("/auth/login", {
         email_or_phone: emailOrPhone.trim(),
         password: password,
+<<<<<<< HEAD
         captcha_token: captchaToken,
+=======
+>>>>>>> origin/main
       });
 
       // Đối chiếu cấu trúc response.data.data thành công từ authController.cs
@@ -64,7 +77,11 @@ export function AuthProvider({ children }) {
 
   /**
    * ==========================================
+<<<<<<< HEAD
    *  HÀM ĐĂNG NHẬP GOOGLE THỰC TẾ (TÍCH HỢP AXIOS API)
+=======
+   * 🛑 HÀM ĐĂNG NHẬP GOOGLE THỰC TẾ (TÍCH HỢP AXIOS API)
+>>>>>>> origin/main
    * ==========================================
    */
   const loginWithGoogle = useCallback(async (googleAccessToken) => {
@@ -107,9 +124,15 @@ export function AuthProvider({ children }) {
       console.warn("Server-side logout token revocation skipped or failed:", e);
     } finally {
       // Luôn luôn dọn sạch bộ nhớ bộ nhớ Client bất kể API thành công hay gặp lỗi
+<<<<<<< HEAD
       localStorage.removeItem("accessToken");
       localStorage.removeItem("userData");
       setUser(null);
+=======
+      setUser(null);
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("userData");
+>>>>>>> origin/main
     }
   }, []);
 
@@ -124,6 +147,7 @@ export function AuthProvider({ children }) {
       return newUser;
     });
   }, []);
+<<<<<<< HEAD
   // lấy thông tin profile từ DB
   const fetchProfile = useCallback(async () => {
     try {
@@ -177,6 +201,9 @@ export function AuthProvider({ children }) {
       throw error.response?.data || error;
     }
   }, []); // Thêm mảng dependency trống bảo vệ hiệu năng hàm
+=======
+
+>>>>>>> origin/main
   const isAuthenticated = !!user;
 
   return (
@@ -189,8 +216,11 @@ export function AuthProvider({ children }) {
         isAuthenticated,
         updateUser,
         loginWithGoogle,
+<<<<<<< HEAD
         fetchProfile,
         updateProfileApi,
+=======
+>>>>>>> origin/main
       }}>
       {children}
     </AuthContext.Provider>

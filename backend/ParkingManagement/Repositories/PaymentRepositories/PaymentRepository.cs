@@ -4,8 +4,11 @@ using Microsoft.EntityFrameworkCore;
 using ParkingManagement.Models;
 using ParkingManagement.Data; 
 
+<<<<<<< HEAD
 using System.Linq;
 
+=======
+>>>>>>> origin/main
 namespace ParkingManagement.Repositories
 {
     public class PaymentRepository : IPaymentRepository
@@ -19,9 +22,13 @@ namespace ParkingManagement.Repositories
 
         public async Task<Booking?> GetBookingByIdAsync(string bookingId)
         {
+<<<<<<< HEAD
             return await _context.Bookings
                 .Include(b => b.VehicleType)
                 .FirstOrDefaultAsync(b => b.BookingId == bookingId);
+=======
+            return await _context.Bookings.FirstOrDefaultAsync(b => b.BookingId == bookingId);
+>>>>>>> origin/main
         }
 
         public async Task CreatePaymentAsync(Payment payment)
@@ -30,6 +37,7 @@ namespace ParkingManagement.Repositories
             await _context.SaveChangesAsync();
         }
 
+<<<<<<< HEAD
         public async Task<decimal> GetBasePriceForVehicleTypeAsync(int vehicleTypeId)
         {
             var policy = await _context.PricingPolicies
@@ -39,6 +47,8 @@ namespace ParkingManagement.Repositories
             return policy?.BasePrice ?? (vehicleTypeId == 1 ? 5000m : 15000m);
         }
 
+=======
+>>>>>>> origin/main
         public async Task UpdateBookingAndPaymentSuccessAsync(string paymentId, string transactionId, decimal amountPaid)
         {
             using (var transaction = await _context.Database.BeginTransactionAsync())
@@ -73,6 +83,7 @@ namespace ParkingManagement.Repositories
                 }
             }
         }
+<<<<<<< HEAD
 
         public async Task<bool> ProcessMockPaymentConfirmationAsync(string bookingId, string paymentMethod, string userId, decimal amount)
         {
@@ -138,5 +149,7 @@ namespace ParkingManagement.Repositories
                 .OrderByDescending(p => p.EffectiveDate)
                 .FirstOrDefaultAsync();
         }
+=======
+>>>>>>> origin/main
     }
 }

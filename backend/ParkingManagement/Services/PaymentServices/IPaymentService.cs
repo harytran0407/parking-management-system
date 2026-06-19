@@ -15,10 +15,13 @@ namespace ParkingManagement.Services
         /// Tiếp nhận và xử lý tín hiệu phản hồi tự động (IPN/Webhook) từ cổng thanh toán VNPay khi khách hàng chuyển tiền xong.
         /// </summary>
         Task<bool> ProcessVnPayWebhookAsync(VnPayWebhookDto webhookData);
+<<<<<<< HEAD
 
         /// <summary>
         /// Xác nhận thanh toán giả lập (Mock Payment) cho đặt chỗ.
         /// </summary>
         Task<bool> ConfirmMockPaymentAsync(string bookingId, string paymentMethod, string userId);
+=======
+>>>>>>> origin/main
     }
 }

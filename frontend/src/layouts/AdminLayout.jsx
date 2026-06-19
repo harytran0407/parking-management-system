@@ -1,4 +1,5 @@
 import { Routes, Route } from 'react-router-dom'
+<<<<<<< HEAD
 import { useState } from 'react'
 import { Users, Terminal, Settings, BarChart3 } from 'lucide-react'
 import Sidebar from '../components/Sidebar'
@@ -40,6 +41,29 @@ export default function AdminLayout() {
             <Route path="/logs" element={<AdminLogs />} />
             <Route path="/settings" element={<AdminSettings />} />
             <Route path="/profile" element={<Profile />} />
+=======
+import { Users, Lock, Settings, BarChart3 } from 'lucide-react'
+import Sidebar from '../components/Sidebar'
+import Header from '../components/Header'
+import AdminDashboard from '../pages/admin/Dashboard'
+
+export default function AdminLayout() {
+  const navigationItems = [
+    { path: '/admin', label: 'Dashboard', icon: <BarChart3 size={20} /> },
+    { path: '/admin/users', label: 'Users', icon: <Users size={20} /> },
+    { path: '/admin/permissions', label: 'Permissions', icon: <Lock size={20} /> },
+    { path: '/admin/settings', label: 'Settings', icon: <Settings size={20} /> },
+  ]
+
+  return (
+    <div className="main-container">
+      <Sidebar navigationItems={navigationItems} />
+      <div className="content-wrapper">
+        <Header title="Administrator" />
+        <main className="page-content">
+          <Routes>
+            <Route path="/" element={<AdminDashboard />} />
+>>>>>>> origin/main
             <Route path="/*" element={<AdminDashboard />} />
           </Routes>
         </main>

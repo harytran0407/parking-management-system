@@ -1,5 +1,9 @@
 -- ============================================================
+<<<<<<< HEAD
 -- DATABASE PARKING MANAGEMENT SYSTEM (UPDATED)
+=======
+-- DATABASE PARKING MANAGEMENT SYSTEM
+>>>>>>> origin/main
 -- ============================================================
 
 -- ============================================================
@@ -19,9 +23,15 @@ CREATE TABLE USERS (
     FULL_NAME   VARCHAR(100),
     EMAIL       VARCHAR(100) UNIQUE,
     PHONE       VARCHAR(15),
+<<<<<<< HEAD
     ROLE_ID     INT,                                         
     STATUS      ENUM('ACTIVE','INACTIVE','BANNED') DEFAULT 'ACTIVE', 
     LAST_LOGIN  DATETIME,                                                                                   
+=======
+    ROLE_ID     INT,                         
+    STATUS      ENUM('ACTIVE','INACTIVE','BANNED') DEFAULT 'ACTIVE', 
+    LAST_LOGIN  DATETIME,                                                            
+>>>>>>> origin/main
     CREATED_AT  DATETIME DEFAULT CURRENT_TIMESTAMP,
     AvatarUrl   LONGTEXT,
 
@@ -29,7 +39,11 @@ CREATE TABLE USERS (
 );
 
 -- ============================================================
+<<<<<<< HEAD
 -- NHÓM 2: DANH MỤC PHƯƠNG TIỆN
+=======
+-- NHÓM 2: QUẢN LÝ PHƯƠNG TIỆN & CHỦ XE
+>>>>>>> origin/main
 -- ============================================================
 
 CREATE TABLE VEHICLE_TYPE (
@@ -37,6 +51,23 @@ CREATE TABLE VEHICLE_TYPE (
     VEHICLE_TYPE_NAME     VARCHAR(100) UNIQUE NOT NULL    
 );
 
+<<<<<<< HEAD
+=======
+CREATE TABLE VEHICLE (
+    VEHICLE_ID           INT AUTO_INCREMENT PRIMARY KEY,
+    VEHICLE_PLATE_NUMBER VARCHAR(50) NOT NULL UNIQUE, 
+    VEHICLE_DESCRIPTION  VARCHAR(200), 
+    BRAND                VARCHAR(50),                 
+    MODEL                VARCHAR(50),                 
+    COLOR                VARCHAR(30),                                                    
+    VEHICLE_TYPE_ID      INT NOT NULL,                
+    VEHICLE_USER_ID      VARCHAR(36) NOT NULL,
+    
+    CONSTRAINT FK_VEHICLE_TYPE FOREIGN KEY (VEHICLE_TYPE_ID) REFERENCES VEHICLE_TYPE(VEHICLE_TYPE_ID), 
+    CONSTRAINT FK_VEHICLE_OWNER FOREIGN KEY (VEHICLE_USER_ID) REFERENCES USERS(USER_ID)
+);
+
+>>>>>>> origin/main
 -- ============================================================
 -- NHÓM 3: QUẢN LÝ TOÀ NHÀ & BÃI ĐỖ
 -- ============================================================
@@ -54,6 +85,7 @@ CREATE TABLE PARKING_BUILDING (
 );
 
 CREATE TABLE FLOOR_ZONE (
+<<<<<<< HEAD
     ZONE_ID             INT AUTO_INCREMENT PRIMARY KEY,
     ZONE_NAME           VARCHAR(50) NOT NULL,
     FLOOR_NUMBER        INT NOT NULL,
@@ -63,12 +95,26 @@ CREATE TABLE FLOOR_ZONE (
     VEHICLE_TYPE_ID     INT NOT NULL,
     BUILDING_ID         VARCHAR(10),
     CONSTRAINT FK_ZONE_TYPE     FOREIGN KEY (VEHICLE_TYPE_ID) REFERENCES VEHICLE_TYPE(VEHICLE_TYPE_ID),
+=======
+    ZONE_ID         INT AUTO_INCREMENT PRIMARY KEY,
+    ZONE_NAME       VARCHAR(50) NOT NULL,     -- Khu A, B, C (API §3.2)
+    FLOOR_NUMBER    INT NOT NULL,             -- Tầng 1, 2, 3 (API §3.2)
+    CAPACITY        INT NOT NULL,
+    STATUS          ENUM('ACTIVE','MAINTENANCE') DEFAULT 'ACTIVE',
+    VEHICLE_TYPE_ID INT NOT NULL,
+    BUILDING_ID     VARCHAR(10),                             
+    CONSTRAINT FK_ZONE_TYPE     FOREIGN KEY (VEHICLE_TYPE_ID) REFERENCES VEHICLE_TYPE(VEHICLE_TYPE_ID), 
+>>>>>>> origin/main
     CONSTRAINT FK_ZONE_BUILDING FOREIGN KEY (BUILDING_ID)     REFERENCES PARKING_BUILDING(BUILDING_ID)
 );
 
 CREATE TABLE PARKING_SLOT (
     SLOT_ID                 VARCHAR(20) PRIMARY KEY,
+<<<<<<< HEAD
     SLOT_NAME               VARCHAR(20) NOT NULL,   
+=======
+    SLOT_NAME               VARCHAR(20) NOT NULL,   -- Ví dụ: "A101" --**
+>>>>>>> origin/main
     STATUS                  ENUM('AVAILABLE','OCCUPIED','RESERVED','MAINTENANCE') DEFAULT 'AVAILABLE',
     IS_HANDICAP             BOOLEAN DEFAULT FALSE,   
     IS_ELECTRIC_CHARGING    BOOLEAN DEFAULT FALSE,   
@@ -79,6 +125,7 @@ CREATE TABLE PARKING_SLOT (
 );
 
 -- ============================================================
+<<<<<<< HEAD
 -- NHÓM 4: ĐẶT CHỖ & PHIÊN ĐỖ XE (LƯU BIỂN SỐ TRỰC TIẾP)
 -- ============================================================
 
@@ -101,6 +148,29 @@ CREATE TABLE BOOKING (
 
 CREATE TABLE PARKING_SESSION (
     SESSION_ID          VARCHAR(20) PRIMARY KEY,
+=======
+-- NHÓM 4: ĐẶT CHỖ & PHIÊN ĐỖ XE
+-- ============================================================
+
+CREATE TABLE BOOKING (
+    BOOKING_ID VARCHAR(20) PRIMARY KEY,
+    VEHICLE_USER_ID VARCHAR(36) NOT NULL, 
+    VEHICLE_ID     INT , 
+    SLOT_ID VARCHAR(20),
+    EXPECTED_ARRIVAL DATETIME NOT NULL,
+    EXPIRED_AT DATETIME,
+    BOOKING_TIME DATETIME DEFAULT CURRENT_TIMESTAMP,
+    STATUS ENUM('PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED') DEFAULT 'PENDING',
+    NOTES VARCHAR(255),
+    
+    CONSTRAINT FK_BOOKING_VEHICLE FOREIGN KEY (VEHICLE_ID) REFERENCES VEHICLE(VEHICLE_ID),
+    CONSTRAINT FK_BOOKING_OWNER FOREIGN KEY (VEHICLE_USER_ID) REFERENCES USERS(USER_ID), 
+    CONSTRAINT FK_BOOKING_SLOT FOREIGN KEY (SLOT_ID) REFERENCES PARKING_SLOT(SLOT_ID)
+);
+
+CREATE TABLE PARKING_SESSION (
+    SESSION_ID          VARCHAR(20) PRIMARY KEY,               
+>>>>>>> origin/main
     CHECK_IN_TIME       DATETIME DEFAULT CURRENT_TIMESTAMP,
     CHECK_OUT_TIME      DATETIME,
     DURATION_MINUTES    INT,
@@ -112,6 +182,7 @@ CREATE TABLE PARKING_SESSION (
     STAFF_IN_ID         VARCHAR(36),
     -- Dữ liệu nhận diện khi RA
     LICENSE_PLATE_OUT   VARCHAR(50),
+<<<<<<< HEAD
     IMAGE_URL_OUT       VARCHAR(500),
     GATE_OUT            VARCHAR(50),
     CAMERA_OUT          VARCHAR(50),
@@ -138,6 +209,42 @@ CREATE TABLE PARKING_SESSION (
 
 -- ============================================================
 -- NHÓM 5: CHÍNH SÁCH GIÁ GIỜ/LƯỢT
+=======
+    IMAGE_URL_OUT       VARCHAR(500),     
+    GATE_OUT            VARCHAR(50),                     
+    CAMERA_OUT          VARCHAR(50),
+    STAFF_OUT_ID        VARCHAR(36),
+    -- Trạng thái & Tiền bạc
+    TOTAL_FEE           DECIMAL(10,2),              
+    STATUS              ENUM('ACTIVE','COMPLETED','CANCELLED','LOST_TICKET') DEFAULT 'ACTIVE', 
+    PAYMENT_STATUS      ENUM('PENDING','PAID','FAILED') DEFAULT 'PENDING',
+    -- Liên kết quan hệ 
+    VEHICLE_TYPE_ID     INT NOT NULL,
+    SLOT_ID             VARCHAR(20),
+    VEHICLE_ID          INT,
+    BOOKING_ID          VARCHAR(20),
+    TICKET_CODE         VARCHAR(20),
+                     
+    CONSTRAINT FK_SESSION_TYPE     FOREIGN KEY (VEHICLE_TYPE_ID) REFERENCES VEHICLE_TYPE(VEHICLE_TYPE_ID), 
+    CONSTRAINT FK_SESSION_SLOT     FOREIGN KEY (SLOT_ID)         REFERENCES PARKING_SLOT(SLOT_ID),
+    CONSTRAINT FK_SESSION_VEHICLE  FOREIGN KEY (VEHICLE_ID)      REFERENCES VEHICLE(VEHICLE_ID),
+    CONSTRAINT FK_SESSION_BOOKING  FOREIGN KEY (BOOKING_ID)      REFERENCES BOOKING(BOOKING_ID),
+    CONSTRAINT FK_SESSION_STAFF_IN  FOREIGN KEY (STAFF_IN_ID)   REFERENCES USERS(USER_ID),
+    CONSTRAINT FK_SESSION_STAFF_OUT FOREIGN KEY (STAFF_OUT_ID)  REFERENCES USERS(USER_ID)
+);
+-- Bảng danh mục Gói cước tháng để khớp nối
+CREATE TABLE SUBSCRIPTION_PLAN (
+    PLAN_ID             VARCHAR(50) PRIMARY KEY,      -- Ví dụ: "plan_monthly_car" 
+    VEHICLE_TYPE_ID     INT NOT NULL,
+    DURATION_DAYS       INT NOT NULL,                 -- 30 ngày
+    PRICE               DECIMAL(10,2) NOT NULL,       -- 1,500,000 VND
+    GRACE_PERIOD_DAYS   INT DEFAULT 0,                -- Số ngày gia hạn (7 days)
+    CONSTRAINT FK_PLAN_TYPE FOREIGN KEY (VEHICLE_TYPE_ID) REFERENCES VEHICLE_TYPE(VEHICLE_TYPE_ID)
+);
+
+-- ============================================================
+-- NHÓM 5: BẢNG GIÁ & THẺ THÁNG
+>>>>>>> origin/main
 -- ============================================================
 
 CREATE TABLE PRICING_POLICY (
@@ -151,33 +258,71 @@ CREATE TABLE PRICING_POLICY (
     CONSTRAINT FK_POLICY_TYPE FOREIGN KEY (VEHICLE_TYPE_ID) REFERENCES VEHICLE_TYPE(VEHICLE_TYPE_ID) 
 );
 
+<<<<<<< HEAD
 -- ============================================================
 -- NHÓM 6: THANH TOÁN (BỎ MONTHLY_PASS)
+=======
+CREATE TABLE MONTHLY_PASS (
+    MONTHLY_PASS_ID INT AUTO_INCREMENT PRIMARY KEY,
+    VEHICLE_ID      INT NOT NULL,
+    PLAN_ID         VARCHAR(50),
+    START_DATE      DATE NOT NULL,
+    END_DATE        DATE NOT NULL,
+    STATUS          ENUM('ACTIVE', 'EXPIRED') DEFAULT 'ACTIVE',
+    PAYMENT_STATUS  ENUM('PENDING','PAID') DEFAULT 'PENDING',
+    CREATED_AT      DATETIME DEFAULT CURRENT_TIMESTAMP,   --
+    CONSTRAINT FK_MONTHLYPASS_PLAN FOREIGN KEY (PLAN_ID) REFERENCES SUBSCRIPTION_PLAN(PLAN_ID),
+    CONSTRAINT FK_MONTHLYPASS_VEHICLE FOREIGN KEY (VEHICLE_ID) REFERENCES VEHICLE(VEHICLE_ID)
+);
+
+-- ============================================================
+-- NHÓM 6: THANH TOÁN
+>>>>>>> origin/main
 -- ============================================================
 
 CREATE TABLE PAYMENT (
     PAYMENT_ID      VARCHAR(20) PRIMARY KEY,
+<<<<<<< HEAD
     PAYMENT_TYPE    ENUM('SESSION','BOOKING','INCIDENT') NOT NULL, -- Đã bỏ MONTHLY_PASS
     AMOUNT_DUE      DECIMAL(10,2) NOT NULL,
     AMOUNT_PAID     DECIMAL(10,2) NOT NULL,
     CHANGE_DUE      DECIMAL(10,2) DEFAULT 0,         
     PAYMENT_METHOD  ENUM('CASH','VNPAY') NOT NULL,                 -- Đã bỏ SUBSCRIPTION
+=======
+    PAYMENT_TYPE    ENUM('SESSION','MONTHLY_PASS','BOOKING','INCIDENT') NOT NULL,
+    AMOUNT_DUE      DECIMAL(10,2) NOT NULL,
+    AMOUNT_PAID     DECIMAL(10,2) NOT NULL,
+    CHANGE_DUE      DECIMAL(10,2) DEFAULT 0,         
+    PAYMENT_METHOD  ENUM('CASH','VNPAY','SUBSCRIPTION') NOT NULL, 
+>>>>>>> origin/main
     PAYMENT_TIME    DATETIME DEFAULT CURRENT_TIMESTAMP,
     STATUS          ENUM('SUCCESS','FAILED') DEFAULT 'SUCCESS',   
     TRANSACTION_ID  VARCHAR(100),                    
     RECEIPT_URL     VARCHAR(500),                    
     REMARKS         VARCHAR(255),
     SESSION_ID      VARCHAR(20),
+<<<<<<< HEAD
+=======
+    MONTHLY_PASS_ID         INT,
+>>>>>>> origin/main
     BOOKING_ID      VARCHAR(20),
     USER_ID         VARCHAR(36),                     
     
     CONSTRAINT FK_PAY_SESSION  FOREIGN KEY (SESSION_ID)  REFERENCES PARKING_SESSION(SESSION_ID),
+<<<<<<< HEAD
+=======
+    CONSTRAINT FK_PAY_CARD     FOREIGN KEY (MONTHLY_PASS_ID)     REFERENCES MONTHLY_PASS(MONTHLY_PASS_ID),
+>>>>>>> origin/main
     CONSTRAINT FK_PAY_BOOKING  FOREIGN KEY (BOOKING_ID)  REFERENCES BOOKING(BOOKING_ID),
     CONSTRAINT FK_PAY_USER     FOREIGN KEY (USER_ID)     REFERENCES USERS(USER_ID)
 );
 
 -- ============================================================
+<<<<<<< HEAD
 -- NHÓM 7: SỰ CỐ & NHẬT KÝ HỆ THỐNG
+=======
+-- NHÓM 7: SỰ CỐ & VÉ MẤT
+>>>>>>> origin/main
 -- ============================================================
 
 CREATE TABLE INCIDENT_LOG (
@@ -207,22 +352,35 @@ CREATE TABLE SLOT_STATUS_LOGS (
     new_status VARCHAR(20) NOT NULL,
     changed_by VARCHAR(50) NOT NULL,
     changed_at DATETIME NOT NULL,
+<<<<<<< HEAD
     reason VARCHAR(255) NULL,
+=======
+    reason NVARCHAR(255) NULL,
+>>>>>>> origin/main
     estimated_duration_minutes INT NULL,
     CONSTRAINT pk_slot_status_logs PRIMARY KEY (log_id)
 );
 
 CREATE TABLE ROLE_AUDIT_LOG (
     ROLE_LOG_ID INT AUTO_INCREMENT PRIMARY KEY,
+<<<<<<< HEAD
     ADMIN_ID VARCHAR(36) NOT NULL,                 -- Ai là người đổi?
     TARGET_USER_ID VARCHAR(36) NOT NULL,            -- Đổi của ai?
     OLD_ROLE_ID INT,                                -- Quyền cũ là gì?
     NEW_ROLE_ID INT NOT NULL,                       -- Quyền mới là gì?
     CHANGED_AT DATETIME DEFAULT CURRENT_TIMESTAMP,  -- Đổi khi nào?
+=======
+    ADMIN_ID VARCHAR(36) NOT NULL,       			
+    TARGET_USER_ID VARCHAR(36) NOT NULL, 			
+    OLD_ROLE_ID INT,                     			
+    NEW_ROLE_ID INT NOT NULL,            			
+    CHANGED_AT DATETIME DEFAULT CURRENT_TIMESTAMP,  
+>>>>>>> origin/main
     
     CONSTRAINT FK_AUDIT_ADMIN FOREIGN KEY (ADMIN_ID) REFERENCES USERS(USER_ID),
     CONSTRAINT FK_AUDIT_TARGET FOREIGN KEY (TARGET_USER_ID) REFERENCES USERS(USER_ID)
 );
+<<<<<<< HEAD
 
 -- ============================================================
 -- NHÓM 8: CẤU HÌNH HỆ THỐNG
@@ -264,3 +422,5 @@ CREATE TABLE FEEDBACK (
     CONSTRAINT FK_FEEDBACK_USER FOREIGN KEY (USER_ID) REFERENCES USERS(USER_ID),
     CONSTRAINT FK_FEEDBACK_RESOLVER FOREIGN KEY (RESOLVED_BY) REFERENCES USERS(USER_ID)
 );
+=======
+>>>>>>> origin/main

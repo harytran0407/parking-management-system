@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 using System;
+=======
+﻿using System;
+>>>>>>> origin/main
 using System.Collections.Generic;
 
 namespace ParkingManagement.Models;
@@ -39,6 +43,7 @@ public partial class ParkingSession
 
     public string? PaymentStatus { get; set; }
 
+<<<<<<< HEAD
     public bool? IsLocked { get; set; }
 
     public int VehicleTypeId { get; set; }
@@ -49,6 +54,14 @@ public partial class ParkingSession
     /// <summary>Giữ lại để tương thích ngược với dữ liệu cũ.</summary>
     public string? SlotId { get; set; }
 
+=======
+    public int VehicleTypeId { get; set; }
+
+    public string? SlotId { get; set; }
+
+    public int? VehicleId { get; set; }
+
+>>>>>>> origin/main
     public string? BookingId { get; set; }
 
     public string? TicketCode { get; set; }
@@ -59,13 +72,24 @@ public partial class ParkingSession
 
     public virtual ICollection<Payment> Payments { get; set; } = new List<Payment>();
 
+<<<<<<< HEAD
     public virtual FloorZone? Zone { get; set; }
 
+=======
+>>>>>>> origin/main
     public virtual ParkingSlot? Slot { get; set; }
 
     public virtual User? StaffIn { get; set; }
 
     public virtual User? StaffOut { get; set; }
 
+<<<<<<< HEAD
     public virtual VehicleType VehicleType { get; set; } = null!;
+=======
+    public virtual Vehicle? Vehicle { get; set; }
+
+    public virtual VehicleType VehicleType { get; set; } = null!;
+
+
+>>>>>>> origin/main
 }

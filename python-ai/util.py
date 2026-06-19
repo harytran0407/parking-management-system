@@ -17,7 +17,10 @@ USING_PADDLE = False
 reader = None
 
 try:
+<<<<<<< HEAD
     # pyrefly: ignore [missing-import]
+=======
+>>>>>>> origin/main
     from ppocr_onnx.pipeline import DetAndRecONNXPipeline
     
     # Định nghĩa đường dẫn tới các file model ONNX của repo gốc

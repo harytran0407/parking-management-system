@@ -48,7 +48,6 @@ public class BuildingController : ControllerBase
         var data = await _service.UpdateBuildingInfoAsync(BuildingId, request);
         return Ok(ApiResponse<UpdateBuildingResponse>.Ok(data, "Building information updated successfully."));
     }
-
     // /GET /api/v1/parking/buildings/pricing/current
     // =========================================================================
     [HttpGet("pricing/current")]
@@ -66,7 +65,7 @@ public class BuildingController : ControllerBase
             {
                 PolicyId = p.PolicyId,
                 VehicleTypeId = p.VehicleTypeId,
-                VehicleTypeName = p.VehicleType?.VehicleTypeName ?? (p.VehicleTypeId == 2 ? "Automobile (Car)" : "Motorbike"),
+                VehicleTypeName = p.VehicleType?.VehicleTypeName ?? (p.VehicleTypeId == 2 ? "Car" : "Motorbike"),
                 BasePrice = p.BasePrice,
                 HourlyRate = p.HourlyRate,
                 OvernightFee = p.OvernightFee,

@@ -7,9 +7,13 @@ export default {
   ],
   theme: {
     extend: {
+<<<<<<< HEAD
       fontFamily: {
         sans: ['"Plus Jakarta Sans"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
       },
+=======
+      
+>>>>>>> origin/main
       colors: {
         dark: {
           50: '#f9fafb',

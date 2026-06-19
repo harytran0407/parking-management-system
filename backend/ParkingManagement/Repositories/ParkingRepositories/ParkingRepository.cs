@@ -27,6 +27,7 @@ namespace ParkingManagement.Repositories
                 .AnyAsync(s => s.LicensePlateIn == licensePlate && s.Status == "ACTIVE");
         }
 
+<<<<<<< HEAD
         // Zone-based capacity management
         public async Task<FloorZone?> FindBestAvailableZoneAsync(int vehicleTypeId)
         {
@@ -58,6 +59,22 @@ namespace ParkingManagement.Repositories
                 .ExecuteUpdateAsync(s => s.SetProperty(z => z.AvailableCapacity, z => z.AvailableCapacity + 1));
         }
 
+=======
+        // TẠM THỜI
+        public async Task<ParkingSlot?> FindFirstAvailableSlotAsync(int vehicleTypeId)
+        {
+            return await _context.ParkingSlots
+                .Include(s => s.Zone)
+                .Where(slot => slot.Status == "AVAILABLE"
+                               && slot.Zone != null
+                               && slot.Zone.VehicleTypeId == vehicleTypeId
+                               && slot.Zone.Status == "ACTIVE")
+                .OrderBy(slot => slot.Zone!.FloorNumber)
+                .ThenBy(slot => slot.SlotName)
+                .FirstOrDefaultAsync();
+        }
+
+>>>>>>> origin/main
         public async Task CreateSessionAsync(ParkingSession session)
         {
             if (session == null) throw new ArgumentNullException(nameof(session));
@@ -128,6 +145,7 @@ namespace ParkingManagement.Repositories
         {
             if (string.IsNullOrWhiteSpace(licensePlate)) return null;
 
+<<<<<<< HEAD
             var cleanPlate = licensePlate.Replace("-", "").Replace(".", "").Replace(" ", "").ToUpper();
 
             return await _context.ParkingSessions
@@ -137,6 +155,12 @@ namespace ParkingManagement.Repositories
                 .Include(s => s.Payments)
                 .Include(s => s.VehicleType)
                 .FirstOrDefaultAsync(s => s.LicensePlateIn.Replace("-", "").Replace(".", "").Replace(" ", "").ToUpper() == cleanPlate && s.Status == "ACTIVE");
+=======
+            return await _context.ParkingSessions
+                .Include(s => s.Slot)
+                    .ThenInclude(sl => sl!.Zone)
+                .FirstOrDefaultAsync(s => s.LicensePlateIn == licensePlate && s.Status == "ACTIVE");
+>>>>>>> origin/main
         }
 
         public async Task<ParkingSession?> GetActiveSessionByTicketCodeAsync(string ticketCode)
@@ -144,10 +168,15 @@ namespace ParkingManagement.Repositories
             if (string.IsNullOrWhiteSpace(ticketCode)) return null;
 
             return await _context.ParkingSessions
+<<<<<<< HEAD
                 .Include(s => s.Zone)
                 .Include(s => s.Booking)
                     .ThenInclude(b => b.Payments)
                 .Include(s => s.Payments)
+=======
+                .Include(s => s.Slot)
+                .ThenInclude(sl => sl!.Zone)
+>>>>>>> origin/main
                 .FirstOrDefaultAsync(s => s.TicketCode == ticketCode && s.Status == "ACTIVE");
         }
 
@@ -184,11 +213,16 @@ namespace ParkingManagement.Repositories
             if (string.IsNullOrWhiteSpace(sessionId)) return null;
 
             return await _context.ParkingSessions
+<<<<<<< HEAD
                 .Include(s => s.Zone)
                 .Include(s => s.Booking)
                     .ThenInclude(b => b.Payments)
                 .Include(s => s.Payments)
                 .Include(s => s.VehicleType)
+=======
+                .Include(s => s.Slot)
+                    .ThenInclude(sl => sl!.Zone)
+>>>>>>> origin/main
                 .FirstOrDefaultAsync(s => s.SessionId == sessionId && s.Status == "ACTIVE");
         }
 
@@ -316,7 +350,12 @@ namespace ParkingManagement.Repositories
             if (pageSize <= 0) pageSize = 15;
         
             var query = _context.ParkingSessions
+<<<<<<< HEAD
                 .Include(s => s.Zone)
+=======
+                .Include(s => s.Slot)
+                    .ThenInclude(sl => sl!.Zone)
+>>>>>>> origin/main
                 .AsQueryable();
         
             if (!string.IsNullOrWhiteSpace(licensePlate))
@@ -372,6 +411,7 @@ namespace ParkingManagement.Repositories
         public async Task<Booking?> GetValidBookingByLicensePlateAsync(string licensePlate, DateTime currentTime)
         {
             if (string.IsNullOrWhiteSpace(licensePlate)) return null;
+<<<<<<< HEAD
 
             var cleanedPlate = licensePlate.Trim().ToUpper();
 
@@ -398,11 +438,24 @@ namespace ParkingManagement.Repositories
                     && b.Status == "CONFIRMED"
                     && b.ExpectedArrival.AddHours(-12) <= currentTime
                     && b.ExpectedArrival.AddMinutes(30) >= currentTime);
+=======
+        
+            return await _context.Bookings
+                .Include(b => b.Slot)
+                    .ThenInclude(s => s!.Zone)
+                .Include(b => b.Vehicle) // Chắc chắn Include bảng Vehicle để thực hiện so khớp dữ liệu liên kết
+                .FirstOrDefaultAsync(b => b.Vehicle != null 
+                    && b.Vehicle.VehiclePlateNumber == licensePlate // <-- Đã sửa thành VehiclePlateNumber
+                    && b.Status == "CONFIRMED"
+                    && b.ExpectedArrival <= currentTime
+                    && b.ExpiredAt > currentTime);
+>>>>>>> origin/main
         }
 
         public async Task<bool> HasActiveBookingByLicensePlateAsync(string licensePlate, DateTime currentTime)
         {
             if (string.IsNullOrWhiteSpace(licensePlate)) return false;
+<<<<<<< HEAD
 
             var cleanedPlate = licensePlate.Trim().ToUpper();
 
@@ -430,6 +483,17 @@ namespace ParkingManagement.Repositories
         }
 
         public async Task UpdateBookingStatusAsync(string bookingId, string status, int? zoneId = null)
+=======
+        
+            return await _context.Bookings
+                .AnyAsync(b => b.Vehicle.VehiclePlateNumber == licensePlate 
+                          && (b.Status == "PENDING" || b.Status == "CONFIRMED") 
+                          && b.ExpectedArrival <= currentTime
+                          && b.ExpiredAt > currentTime);
+        }
+
+        public async Task UpdateBookingStatusAsync(string bookingId, string status)
+>>>>>>> origin/main
         {
             if (string.IsNullOrWhiteSpace(bookingId)) return;
 
@@ -437,10 +501,13 @@ namespace ParkingManagement.Repositories
             if (booking != null)
             {
                 booking.Status = status.ToUpper();
+<<<<<<< HEAD
                 if (zoneId.HasValue)
                 {
                     booking.ZoneId = zoneId.Value;
                 }
+=======
+>>>>>>> origin/main
                 _context.Bookings.Update(booking);
                 await _context.SaveChangesAsync();
             }
@@ -449,6 +516,7 @@ namespace ParkingManagement.Repositories
         public async Task<ParkingSession?> GetActiveSessionByBookingIdAsync(string bookingId)
         {
             return await _context.ParkingSessions
+<<<<<<< HEAD
                 .Include(s => s.Zone)
                 .Include(s => s.Booking)
                     .ThenInclude(b => b.Payments)
@@ -480,5 +548,11 @@ namespace ParkingManagement.Repositories
             _context.ParkingSessions.Update(session);
             await _context.SaveChangesAsync();
         }
+=======
+                .Include(s => s.Slot)
+                .ThenInclude(p => p.Zone)
+                .FirstOrDefaultAsync(s => s.BookingId == bookingId && s.Status == "ACTIVE");
+        }
+>>>>>>> origin/main
     }
 }

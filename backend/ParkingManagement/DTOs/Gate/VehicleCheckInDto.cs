@@ -25,10 +25,18 @@ namespace ParkingManagement.DTOs
         [JsonPropertyName("staff_in_id")]
         public string? StaffInId { get; set; }
 
+<<<<<<< HEAD
         [JsonPropertyName("booking_id")]
         public string? BookingId { get; set; }
 
         [JsonPropertyName("confirm_early_in")]
         public bool ConfirmEarlyIn { get; set; }
+=======
+        [JsonPropertyName("slot_id")]
+        public string? SlotId { get; set; }
+
+        [JsonPropertyName("booking_id")]
+        public string? BookingId { get; set; }
+>>>>>>> origin/main
     }
 }
