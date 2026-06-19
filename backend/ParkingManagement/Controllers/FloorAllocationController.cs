@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 using Microsoft.AspNetCore.Mvc;
-=======
-﻿using Microsoft.AspNetCore.Mvc;
->>>>>>> origin/main
 using ParkingManagement.DTOs.Building;
 using ParkingManagement.Services.BuildingServices;
 
@@ -13,11 +9,7 @@ namespace ParkingManagement.Controllers;
 public class FloorAllocationController : ControllerBase
 {
     private readonly IFloorAllocationService _service;
-<<<<<<< HEAD
     private const string BuildingId = "B001";
-=======
-    private const string BuildingId = "B01";
->>>>>>> origin/main
 
     public FloorAllocationController(IFloorAllocationService service)
     {

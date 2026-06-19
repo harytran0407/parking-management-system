@@ -13,7 +13,6 @@ namespace ParkingManagement.Services
     {
         private readonly IParkingRepository _parkingRepository;
 
-<<<<<<< HEAD
         private static readonly TimeZoneInfo _vnTz = TimeZoneInfo.FindSystemTimeZoneById(
             OperatingSystem.IsWindows() ? "SE Asia Standard Time" : "Asia/Ho_Chi_Minh");
         private static DateTime VnNow => TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, _vnTz);
@@ -52,8 +51,6 @@ namespace ParkingManagement.Services
             return targetTime;
         }
 
-=======
->>>>>>> origin/main
         public ParkingService(IParkingRepository parkingRepository)
         {
             _parkingRepository = parkingRepository;
@@ -67,11 +64,7 @@ namespace ParkingManagement.Services
                 throw new InvalidOperationException("ACTIVE_SESSION_EXISTS");
             }
 
-<<<<<<< HEAD
             bool hasBooking = await _parkingRepository.HasActiveBookingByLicensePlateAsync(dto.LicensePlateIn, VnNow);
-=======
-            bool hasBooking = await _parkingRepository.HasActiveBookingByLicensePlateAsync(dto.LicensePlateIn, DateTime.Now);
->>>>>>> origin/main
 
             if (hasBooking)
             {
@@ -90,34 +83,17 @@ namespace ParkingManagement.Services
                 throw new InvalidOperationException("ACTIVE_SESSION_EXISTS");
             }
 
-<<<<<<< HEAD
             var zone = await _parkingRepository.FindBestAvailableZoneAsync(dto.VehicleTypeId)
                        ?? throw new InvalidOperationException("NO_AVAILABLE_SLOT");
 
-=======
-            string selectedSlotId = await ResolveSlotIdAsync(dto.SlotId, dto.VehicleTypeId);
-            var initialSlotInfo = await _parkingRepository.GetSlotByIdAsync(selectedSlotId);
-
-            if (initialSlotInfo == null) throw new KeyNotFoundException("SLOT_NOT_AVAILABLE");
->>>>>>> origin/main
             string sessionId = GenerateSessionId();
             string ticketCode = GenerateTicketCode();
             DateTime checkInTime = DateTime.Now;
 
             await _parkingRepository.SaveChangesWithTransactionAsync(async () =>
             {
-<<<<<<< HEAD
                 await _parkingRepository.DecrementZoneCapacityAsync(zone.ZoneId);
 
-=======
-                var slotToUpdate = await _parkingRepository.GetSlotByIdAsync(selectedSlotId);
-                if (slotToUpdate == null) throw new KeyNotFoundException("SLOT_NOT_AVAILABLE");
-
-                if (slotToUpdate.Status?.ToUpper() != "AVAILABLE")
-                {
-                    throw new InvalidOperationException("CONCURRENCY_CONFLICT");
-                }
->>>>>>> origin/main
                 var session = new ParkingSession
                 {
                     SessionId = sessionId,
@@ -129,31 +105,16 @@ namespace ParkingManagement.Services
                     GateIn = dto.GateIn,
                     ImageUrlIn = dto.ImageUrlIn,
                     StaffInId = staffId,
-<<<<<<< HEAD
                     ZoneId = zone.ZoneId,
                     SlotId = null,
-=======
-                    SlotId = selectedSlotId,
->>>>>>> origin/main
                     BookingId = dto.BookingId,
                     Status = "ACTIVE",
                     PaymentStatus = "PENDING"
                 };
                 await _parkingRepository.CreateSessionAsync(session);
-<<<<<<< HEAD
             });
 
             return MapToCheckInResponseDto(sessionId, ticketCode, checkInTime, dto.LicensePlateIn, zone, dto.BookingId);
-=======
-                slotToUpdate.Status = "OCCUPIED";
-                slotToUpdate.CurrentSessionId = sessionId;
-                slotToUpdate.LastUpdated = checkInTime;
-
-                await _parkingRepository.UpdateSlotAsync(slotToUpdate);
-            });
-
-            return MapToCheckInResponseDto(sessionId, ticketCode, checkInTime, dto.LicensePlateIn, selectedSlotId, initialSlotInfo, dto.BookingId);
->>>>>>> origin/main
         }
 
         public async Task<CheckInResponseDto> ProcessBookingCheckInAsync(VehicleCheckInDto dto, string staffId)
@@ -163,7 +124,6 @@ namespace ParkingManagement.Services
                 throw new InvalidOperationException("ACTIVE_SESSION_EXISTS");
             }
         
-<<<<<<< HEAD
             var booking = await _parkingRepository.GetValidBookingByLicensePlateAsync(dto.LicensePlateIn, VnNow)
                           ?? throw new KeyNotFoundException("NO_VALID_BOOKING_FOUND_FOR_THIS_PLATE");
         
@@ -185,48 +145,25 @@ namespace ParkingManagement.Services
             }
             zone ??= await _parkingRepository.FindBestAvailableZoneAsync(booking.VehicleTypeId)
                      ?? throw new InvalidOperationException("NO_AVAILABLE_SLOT");
-=======
-            var booking = await _parkingRepository.GetValidBookingByLicensePlateAsync(dto.LicensePlateIn, DateTime.Now)
-                          ?? throw new KeyNotFoundException("NO_VALID_BOOKING_FOUND_FOR_THIS_PLATE");
-        
-            string selectedSlotId = booking.SlotId ?? throw new InvalidOperationException("BOOKED_SLOT_NOT_FOUND");
-            var slotInfo = await _parkingRepository.GetSlotByIdAsync(selectedSlotId)
-                           ?? throw new KeyNotFoundException("BOOKED_SLOT_NOT_FOUND");
->>>>>>> origin/main
         
             string sessionId = GenerateSessionId();
             DateTime checkInTime = DateTime.Now;
         
             await _parkingRepository.SaveChangesWithTransactionAsync(async () =>
             {
-<<<<<<< HEAD
                 await _parkingRepository.DecrementZoneCapacityAsync(zone.ZoneId);
  
-=======
-                var slotToUpdate = await _parkingRepository.GetSlotByIdAsync(selectedSlotId);
-                
-                if (slotToUpdate == null || (slotToUpdate.Status?.ToUpper() != "RESERVED" && slotToUpdate.Status?.ToUpper() != "AVAILABLE"))
-                {
-                    throw new InvalidOperationException("BOOKED_SLOT_STATE_INVALID_OR_NOT_RESERVED");
-                }
-        
->>>>>>> origin/main
                 var session = new ParkingSession
                 {
                     SessionId = sessionId,
                     TicketCode = null, 
                     CheckInTime = checkInTime,
                     LicensePlateIn = dto.LicensePlateIn,
-<<<<<<< HEAD
                     VehicleTypeId = booking.VehicleTypeId,
-=======
-                    VehicleTypeId = dto.VehicleTypeId,
->>>>>>> origin/main
                     CameraIn = dto.CameraIn,
                     GateIn = dto.GateIn,
                     ImageUrlIn = dto.ImageUrlIn,
                     StaffInId = staffId,
-<<<<<<< HEAD
                     ZoneId = zone.ZoneId,
                     SlotId = null,
                     BookingId = booking.BookingId, 
@@ -239,24 +176,6 @@ namespace ParkingManagement.Services
             });
 
             return MapToCheckInResponseDto(sessionId, null, checkInTime, dto.LicensePlateIn, zone, booking.BookingId);
-=======
-                    SlotId = selectedSlotId,
-                    BookingId = booking.BookingId, 
-                    Status = "ACTIVE",
-                    PaymentStatus = "PENDING"
-                };
-                await _parkingRepository.CreateSessionAsync(session);
-        
-                slotToUpdate.Status = "OCCUPIED";
-                slotToUpdate.CurrentSessionId = sessionId;
-                slotToUpdate.LastUpdated = checkInTime;
-                await _parkingRepository.UpdateSlotAsync(slotToUpdate);
-        
-                await _parkingRepository.UpdateBookingStatusAsync(booking.BookingId, "COMPLETED");
-            });
-
-            return MapToCheckInResponseDto(sessionId, null, checkInTime, dto.LicensePlateIn, selectedSlotId, slotInfo, booking?.BookingId);
->>>>>>> origin/main
         }
 
         /// HÀM XỬ LÝ ĐIỀU HƯỚNG CHECK-OUT
@@ -309,7 +228,6 @@ namespace ParkingManagement.Services
 
             string operatingHours = await _parkingRepository.GetOperatingHoursForDayAsync(checkOutTime);
 
-<<<<<<< HEAD
             decimal finalFee = 0;
 
             if (session.PaymentStatus == "PAID")
@@ -362,46 +280,12 @@ namespace ParkingManagement.Services
             });
 
             return MapToCheckOutResponseDto(session, finalFee, durationMinutes, checkOutTime);
-=======
-            var feeResult = ParkingCalculationHelper.CalculateParkingFee(
-                session.CheckInTime ?? DateTime.Now,
-                checkOutTime,
-                policy,
-                operatingHours
-            );
-
-            await _parkingRepository.SaveChangesWithTransactionAsync(async () =>
-            {
-                UpdateSessionForCheckOut(session, checkOutDto, staffId, checkOutTime, durationMinutes, feeResult.CurrentFee);
-                session.TicketCode = null;
-                await _parkingRepository.UpdateSessionAsync(session);
-
-                if (!string.IsNullOrEmpty(session.SlotId))
-                {
-                    var slot = await _parkingRepository.GetSlotByIdAsync(session.SlotId);
-                    if (slot != null)
-                    {
-                        slot.Status = "AVAILABLE";
-                        slot.CurrentSessionId = null;
-                        slot.LastUpdated = checkOutTime;
-
-                        await _parkingRepository.UpdateSlotAsync(slot);
-                    }
-                }
-            });
-
-            return MapToCheckOutResponseDto(session, feeResult.CurrentFee, durationMinutes, checkOutTime);
->>>>>>> origin/main
         }
 
         public async Task<bool> IsBookingActiveAsync(string licensePlate)
         {
             if (string.IsNullOrWhiteSpace(licensePlate)) return false;
-<<<<<<< HEAD
             return await _parkingRepository.HasActiveBookingByLicensePlateAsync(licensePlate, VnNow);
-=======
-            return await _parkingRepository.HasActiveBookingByLicensePlateAsync(licensePlate, DateTime.Now);
->>>>>>> origin/main
         }
 
         public async Task<bool> IsActiveSessionABookingAsync(string licensePlateOut)
@@ -426,7 +310,6 @@ namespace ParkingManagement.Services
                 throw new InvalidOperationException("NOT_A_BOOKING_VEHICLE_USE_WALKIN_FLOW_INSTEAD");
             }
 
-<<<<<<< HEAD
             // Check Smart Lock status:
             // - If IsLocked is null (default), auto-unlock 5 minutes before ExpiredAt.
             // - If IsLocked is explicitly true, the user manually locked it. Respect it and keep it locked forever (until manual unlock).
@@ -452,15 +335,11 @@ namespace ParkingManagement.Services
                 calculationCheckOutTime = GetCalculationTimeForBooking(session.Booking, checkOutTime);
             }
 
-=======
-            var checkOutTime = DateTime.Now;
->>>>>>> origin/main
             int durationMinutes = ParkingCalculationHelper.CalculateDurationMinutes(session.CheckInTime, checkOutTime);
             var policy = await _parkingRepository.GetActivePricingPolicyByVehicleTypeAsync(session.VehicleTypeId)
                         ?? throw new Exception("PRICING_POLICY_NOT_CONFIGURED");
             string operatingHours = await _parkingRepository.GetOperatingHoursForDayAsync(checkOutTime);
 
-<<<<<<< HEAD
             decimal totalExtraFee = 0;
 
             if (session.PaymentStatus == "PAID")
@@ -499,9 +378,6 @@ namespace ParkingManagement.Services
                     );
                 }
             }
-=======
-            var feeResult = ParkingCalculationHelper.CalculateParkingFee(session.CheckInTime ?? DateTime.Now, checkOutTime, policy, operatingHours);
->>>>>>> origin/main
 
             await _parkingRepository.SaveChangesWithTransactionAsync(async () =>
             {
@@ -512,17 +388,12 @@ namespace ParkingManagement.Services
                 session.StaffOutId = staffId;
                 session.CheckOutTime = checkOutTime;
                 session.DurationMinutes = durationMinutes;
-<<<<<<< HEAD
                 session.TotalFee = totalExtraFee;
-=======
-                session.TotalFee = feeResult.CurrentFee;
->>>>>>> origin/main
 
                 session.PaymentStatus = "PAID"; 
                 session.Status = "COMPLETED";
                 await _parkingRepository.UpdateSessionAsync(session);
 
-<<<<<<< HEAD
                 if (session.ZoneId.HasValue)
                 {
                     await _parkingRepository.IncrementZoneCapacityAsync(session.ZoneId.Value);
@@ -600,30 +471,10 @@ namespace ParkingManagement.Services
         }
 
         public async Task<ActiveSessionResponseDto> GetActiveSessionByLicensePlateAsync(string licensePlate, string? ticketSuffix = null)
-=======
-                if (!string.IsNullOrEmpty(session.SlotId))
-                {
-                    var slot = await _parkingRepository.GetSlotByIdAsync(session.SlotId);
-                    if (slot != null)
-                    {
-                        slot.Status = "AVAILABLE";
-                        slot.CurrentSessionId = null;
-                        slot.LastUpdated = checkOutTime;
-                        await _parkingRepository.UpdateSlotAsync(slot);
-                    }
-                }
-            });
-
-            return MapToCheckOutResponseDto(session, feeResult.CurrentFee, durationMinutes, checkOutTime);
-        }       
-
-        public async Task<ActiveSessionResponseDto> GetActiveSessionByLicensePlateAsync(string licensePlate)
->>>>>>> origin/main
         {
             var session = await _parkingRepository.GetActiveSessionByPlateAsync(licensePlate)
                           ?? throw new InvalidOperationException("INVALID_TICKET");
 
-<<<<<<< HEAD
             if (ticketSuffix != null)
             {
                 // Must be walk-in (no BookingId)
@@ -647,27 +498,6 @@ namespace ParkingManagement.Services
             var policy = await _parkingRepository.GetActivePricingPolicyByVehicleTypeAsync(session.VehicleTypeId);
 
             return MapToActiveSessionResponseDto(session, durationMinutes, currentFee, policy);
-=======
-            var currentTime = DateTime.Now;
-            int durationMinutes = ParkingCalculationHelper.CalculateDurationMinutes(session.CheckInTime, currentTime);
-
-            decimal currentFee = 0;
-            var policy = await _parkingRepository.GetActivePricingPolicyByVehicleTypeAsync(session.VehicleTypeId);
-            if (policy != null)
-            {
-                string operatingHours = await _parkingRepository.GetOperatingHoursForDayAsync(currentTime);
-
-                var feeResult = ParkingCalculationHelper.CalculateParkingFee(
-                    session.CheckInTime ?? DateTime.Now,
-                    currentTime,
-                    policy,
-                    operatingHours
-                );
-                currentFee = feeResult.CurrentFee;
-            }
-
-            return MapToActiveSessionResponseDto(session, durationMinutes, currentFee);
->>>>>>> origin/main
         }
 
         public async Task<ActiveSessionResponseDto> GetActiveSessionByTicketCodeAsync(string ticketCode)
@@ -677,7 +507,6 @@ namespace ParkingManagement.Services
 
             var currentTime = DateTime.Now;
             int durationMinutes = ParkingCalculationHelper.CalculateDurationMinutes(session.CheckInTime, currentTime);
-<<<<<<< HEAD
             decimal currentFee = await CalculateCurrentFeeForSessionAsync(session, currentTime);
             var policy = await _parkingRepository.GetActivePricingPolicyByVehicleTypeAsync(session.VehicleTypeId);
 
@@ -694,25 +523,6 @@ namespace ParkingManagement.Services
 
             await _parkingRepository.MarkSessionPaidAsync(session, currentFee);
             return true;
-=======
-
-            decimal currentFee = 0;
-            var policy = await _parkingRepository.GetActivePricingPolicyByVehicleTypeAsync(session.VehicleTypeId);
-            if (policy != null)
-            {
-                string operatingHours = await _parkingRepository.GetOperatingHoursForDayAsync(currentTime);
-
-                var feeResult = ParkingCalculationHelper.CalculateParkingFee(
-                    session.CheckInTime ?? DateTime.Now,
-                    currentTime,
-                    policy,
-                    operatingHours
-                );
-                currentFee = feeResult.CurrentFee;
-            }
-
-            return MapToActiveSessionResponseDto(session, durationMinutes, currentFee);
->>>>>>> origin/main
         }
 
         public async Task<ActiveSessionResponseDto> GetActiveSessionBySlotNameAsync(string slotName)
@@ -738,7 +548,6 @@ namespace ParkingManagement.Services
 
             string operatingHours = await _parkingRepository.GetOperatingHoursForDayAsync(currentTime);
 
-<<<<<<< HEAD
             decimal totalFee = 0;
             int hours = 0;
             decimal overnightFee = 0;
@@ -784,16 +593,6 @@ namespace ParkingManagement.Services
             };
 
             return MapToPreCheckOutResponseDto(session, policy, dummyFeeResult);
-=======
-            var feeResult = ParkingCalculationHelper.CalculateParkingFee(
-                session.CheckInTime ?? DateTime.Now,
-                currentTime,
-                policy,
-                operatingHours
-            );
-
-            return MapToPreCheckOutResponseDto(session, policy, feeResult);
->>>>>>> origin/main
         }
 
         public async Task<SlotStatusResponseDto> UpdateSlotStatusAsync(UpdateSlotStatusDto dto, string staffId)
@@ -920,11 +719,7 @@ namespace ParkingManagement.Services
                 LicensePlate = s.LicensePlateIn ?? s.LicensePlateOut ?? "N/A",
                 VehicleType = s.VehicleTypeId.ToString(),
                 SlotNumber = s.Slot?.SlotName ?? "N/A",
-<<<<<<< HEAD
                 ZoneName = s.Zone?.ZoneName ?? s.Slot?.Zone?.ZoneName ?? "N/A",
-=======
-                ZoneName = s.Slot?.Zone?.ZoneName ?? "N/A",
->>>>>>> origin/main
                 CheckInTime = s.CheckInTime ?? DateTime.Now,
                 CheckOutTime = s.CheckOutTime,
                 TotalFee = s.TotalFee ?? 0,
@@ -947,17 +742,6 @@ namespace ParkingManagement.Services
 
         #region Private Sub-Functions (Các hàm phụ trợ nội bộ giúp code gọn gàng)
 
-<<<<<<< HEAD
-=======
-        private async Task<string> ResolveSlotIdAsync(string? inputSlotId, int vehicleTypeId)
-        {
-            if (!string.IsNullOrEmpty(inputSlotId)) return inputSlotId;
-
-            var availableSlot = await _parkingRepository.FindFirstAvailableSlotAsync(vehicleTypeId)
-                                ?? throw new InvalidOperationException("NO_AVAILABLE_SLOT");
-            return availableSlot.SlotId;
-        }
->>>>>>> origin/main
 
         private string GenerateSessionId() => "sess_" + Guid.NewGuid().ToString("N").Substring(0, 10).ToLower();
 
@@ -988,11 +772,7 @@ namespace ParkingManagement.Services
 
         #region Data Mappers (Chuyển đổi DTO tách biệt luồng xử lý)
 
-<<<<<<< HEAD
         private CheckInResponseDto MapToCheckInResponseDto(string sessId, string? ticketCode, DateTime time, string plate, FloorZone zone, string? bookingId = null)
-=======
-        private CheckInResponseDto MapToCheckInResponseDto(string sessId, string ticketCode, DateTime time, string plate, string slotId, ParkingSlot? slotInfo, string? bookingId = null)
->>>>>>> origin/main
         {
             return new CheckInResponseDto
             {
@@ -1002,17 +782,10 @@ namespace ParkingManagement.Services
                     SessionId = sessId,
                     TicketCode = ticketCode,
                     LicensePlateIn = plate,
-<<<<<<< HEAD
                     ZoneId = zone.ZoneId,
                     ZoneName = zone.ZoneName,
                     Floor = zone.FloorNumber,
                     AvailableCapacity = zone.AvailableCapacity,
-=======
-                    SlotId = slotId,
-                    SlotName = slotInfo?.SlotName ?? "N/A",
-                    Floor = slotInfo?.Zone?.FloorNumber ?? 1,
-                    Zone = slotInfo?.Zone?.ZoneName ?? "A",
->>>>>>> origin/main
                     CheckInTime = time,
                     Status = "ACTIVE",
                     PaymentStatus = "PENDING",
@@ -1036,7 +809,6 @@ namespace ParkingManagement.Services
             };
         }
 
-<<<<<<< HEAD
         private ActiveSessionResponseDto MapToActiveSessionResponseDto(ParkingSession session, int duration, decimal fee, PricingPolicy? policy = null)
         {
             string paymentStatus = session.PaymentStatus ?? "PENDING";
@@ -1078,10 +850,6 @@ namespace ParkingManagement.Services
                 }
             }
 
-=======
-        private ActiveSessionResponseDto MapToActiveSessionResponseDto(ParkingSession session, int duration, decimal fee)
-        {
->>>>>>> origin/main
             return new ActiveSessionResponseDto
             {
                 Success = true,
@@ -1091,7 +859,6 @@ namespace ParkingManagement.Services
                     LicensePlateIn = session.LicensePlateIn ?? string.Empty,
                     CheckInTime = session.CheckInTime ?? DateTime.Now,
                     DurationMinutes = duration,
-<<<<<<< HEAD
                     ZoneId = session.ZoneId ?? 0,
                     ZoneName = session.Zone?.ZoneName ?? session.Slot?.Zone?.ZoneName ?? "N/A",
                     Floor = session.Zone?.FloorNumber ?? session.Slot?.Zone?.FloorNumber ?? 1,
@@ -1108,15 +875,6 @@ namespace ParkingManagement.Services
                     IsOverdue = isOverdue,
                     OverdueMinutes = overdueMinutes,
                     OverdueFee = overdueFee
-=======
-                    SlotId = session.SlotId ?? string.Empty,
-                    SlotName = session.Slot?.SlotName ?? "N/A",
-                    Floor = session.Slot?.Zone?.FloorNumber ?? 1,
-                    CurrentFee = fee,
-                    Status = session.Status ?? "ACTIVE",
-                    PaymentStatus = session.PaymentStatus ?? "PENDING",
-                    BookingId = session.BookingId ?? string.Empty
->>>>>>> origin/main
                 }
             };
         }

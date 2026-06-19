@@ -1,10 +1,6 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useState } from 'react';
-<<<<<<< HEAD
 import { History, LogIn, LogOut, AlertTriangle, Map, User, ScanSearch } from "lucide-react";
-=======
-import { History, LogIn, LogOut, AlertTriangle, Map, User } from "lucide-react";
->>>>>>> origin/main
 import Sidebar from "../components/Sidebar";
 import Header from "../components/Header";
 import Profile from '../pages/user/Profile';
@@ -13,10 +9,7 @@ import CheckOutPage from "../pages/staff/CheckOutPage";
 import HistoryPage from "../pages/staff/HistoryPage";
 import IncidentHandlingPage from '../pages/staff/IncidentHandling';
 import SlotGateManagementPage from '../pages/staff/SlotGateManagement';
-<<<<<<< HEAD
 import SessionLookupPage from '../pages/staff/SessionLookupPage';
-=======
->>>>>>> origin/main
 
 export default function StaffLayout() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -48,14 +41,11 @@ export default function StaffLayout() {
       label: "Slot Management",
       icon: <Map size={20} />,
     },
-<<<<<<< HEAD
     {
       path: "/staff/session-lookup",
       label: "Session Lookup",
       icon: <ScanSearch size={20} />,
     },
-=======
->>>>>>> origin/main
   ];
 
   return (
@@ -83,10 +73,7 @@ export default function StaffLayout() {
             <Route path="/history" element={<HistoryPage />} />
             <Route path="/incidents" element={<IncidentHandlingPage />} />
             <Route path="/slots" element={<SlotGateManagementPage />} />
-<<<<<<< HEAD
             <Route path="/session-lookup" element={<SessionLookupPage />} />
-=======
->>>>>>> origin/main
             <Route path="profile" element={<Profile />} />
 
             {/* NẾU ĐƯỜNG DẪN SAI: Tự động redirect về Check-In luôn thay vì Dashboard */}

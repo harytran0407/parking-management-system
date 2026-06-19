@@ -1,19 +1,13 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
-<<<<<<< HEAD
 import { LanguageProvider } from "./context/LanguageContext";
-=======
->>>>>>> origin/main
 import ProtectedRoute from "./components/ProtectedRoute";
 import { toast, Toaster } from "sonner";
 import LandingPage from "./pages/LandingPage";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
-<<<<<<< HEAD
 import Forbidden from "./pages/Forbidden";
-=======
->>>>>>> origin/main
 
 import ManagerLayout from "./layouts/ManagerLayout";
 import StaffLayout from "./layouts/StaffLayout";
@@ -38,7 +32,6 @@ function App() {
         }}
       />
       <GlobalHttpListener />
-<<<<<<< HEAD
       <LanguageProvider>
         <AuthProvider>
           <Routes>
@@ -80,7 +73,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            
+
             <Route
               path="/admin/*"
               element={
@@ -92,58 +85,6 @@ function App() {
           </Routes>
         </AuthProvider>
       </LanguageProvider>
-=======
-      <AuthProvider>
-        <Routes>
-          {/* ============================================================
-              PUBLIC ROUTES (Tuyến đường công khai)
-             ============================================================ */}
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-
-          {/* ============================================================
-              PROTECTED ROUTES 
-             ============================================================ */}
-          <Route
-            path="/manager/*"
-            element={
-              <ProtectedRoute allowedRoles={["ParkingManager"]}>
-                <ManagerLayout />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/staff/*"
-            element={
-              <ProtectedRoute allowedRoles={["ParkingStaff"]}>
-                <StaffLayout />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/user/*"
-            element={
-              <ProtectedRoute allowedRoles={["ParkingUser"]}>
-                <UserLayout />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/*"
-            element={
-              <ProtectedRoute allowedRoles={["SystemAdmin"]}>
-                <AdminLayout />
-              </ProtectedRoute>
-            }
-          />
-        </Routes>
-      </AuthProvider>
->>>>>>> origin/main
     </Router>
   );
 }

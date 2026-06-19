@@ -1,10 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-<<<<<<< HEAD
-import { ArrowLeft, Mail, KeyRound, CheckCircle2, RefreshCcw, Eye, EyeOff,ShieldAlert,Zap } from "lucide-react";
-=======
-import { ArrowLeft, Mail, KeyRound, CheckCircle2, RefreshCcw, Eye, EyeOff } from "lucide-react";
->>>>>>> origin/main
+import { ArrowLeft, Mail, KeyRound, CheckCircle2, RefreshCcw, Eye, EyeOff, ShieldAlert, Zap } from "lucide-react";
 import { toast } from "sonner";
 import api from "../utils/api";
 
@@ -63,7 +59,6 @@ export default function ForgotPassword() {
     setStep("reset");
   };
 
-<<<<<<< HEAD
   const handleRestartFlow = () => {
     setOtpCode("");
     setNewPassword("");
@@ -71,8 +66,6 @@ export default function ForgotPassword() {
     setStep("request");
   };
 
-=======
->>>>>>> origin/main
   // ============================================================
   // BƯỚC 3: ĐỔI MẬT KHẨU MỚI (BẮN CẢ OTP + PASS MỚI LÊN SERVER)
   // ============================================================
@@ -130,11 +123,7 @@ export default function ForgotPassword() {
       <div className="w-full max-w-md relative z-10">
         <div className="backdrop-blur-md bg-[#1e293b]/70 border border-slate-700/50 shadow-2xl rounded-xl p-8">
           <div className="text-center mb-6">
-<<<<<<< HEAD
             <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">eParking</h1>
-=======
-            <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">Smartpark</h1>
->>>>>>> origin/main
             <p className="text-slate-400 text-sm">Forgot Password Recovery</p>
           </div>
 
@@ -177,11 +166,8 @@ export default function ForgotPassword() {
                 Please enter the verification code sent to <br />
                 <span className="text-blue-400 font-mono font-semibold">{inputValue}</span>
               </div>
-<<<<<<< HEAD
 
 
-=======
->>>>>>> origin/main
               <div className="relative">
                 <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
                 <input

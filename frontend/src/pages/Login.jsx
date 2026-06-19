@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import React, { useState, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
@@ -8,32 +7,18 @@ import { useGoogleLogin } from "@react-oauth/google";
 import ReCAPTCHA from "react-google-recaptcha";
 
 // MAP ĐIỀU HƯỚNG TỰ ĐỘNG DỰA VÀO DATA BACKEND TRẢ VỀ (GIỮ NGUYÊN VẸN)
-=======
-import React, { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { useAuth } from "../hooks/useAuth";
-import { Lock, Mail, ArrowLeft } from "lucide-react";
-import googleIcon from "../assets/google.png";
-import { useGoogleLogin } from "@react-oauth/google";
-
-// 🎯 GIỮ LẠI MAP NÀY ĐỂ ĐIỀU HƯỚNG TỰ ĐỘNG DỰA VÀO DATA BACKEND TRẢ VỀ
->>>>>>> origin/main
 const ROLE_ROUTES_MAP = {
   ParkingStaff: "/staff",
   ParkingUser: "/user",
   ParkingManager: "/manager",
   SystemAdmin: "/admin",
-<<<<<<< HEAD
   User: "/user",
-=======
->>>>>>> origin/main
 };
 
 export default function Login() {
   const navigate = useNavigate();
   const { login, loginWithGoogle } = useAuth();
 
-<<<<<<< HEAD
   const [captchaToken, setCaptchaToken] = useState(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -49,19 +34,10 @@ export default function Login() {
     setCaptchaToken(token);
     if (token) setError("");
   };
-=======
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  // Đã xóa state [role, setRole]
-
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
->>>>>>> origin/main
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-<<<<<<< HEAD
 
     if (!captchaToken) {
       setError("Complete the verification 'I am not a robot'.");
@@ -77,33 +53,13 @@ export default function Login() {
       setCaptchaToken(null);
       recaptchaRef.current?.reset();
 
-=======
-    setLoading(true);
-
-    //=================AXIOS API==================
-    try {
-      // Login <= AuthContext
-        const user = await login(email.trim(), password);
-
-        console.log("Google User: ", user); 
-        console.log("Google User Role: ", user.role);
-
-      // 🎯 TỰ ĐỘNG ĐIỀU HƯỚNG: Lấy user.role từ Backend trả về để map với đường dẫn
-      const redirectPath = ROLE_ROUTES_MAP[user.role] || "/home";
-      navigate(redirectPath);
-    } catch (err) {
->>>>>>> origin/main
       const errorCode = err?.error_code;
       switch (errorCode) {
         case "INVALID_CREDENTIALS":
           setError("Invalid email or password. Please try again.");
           break;
         case "ACCOUNT_LOCKED":
-<<<<<<< HEAD
           setError("This account has been banned.");
-=======
-          setError("This account has been locked due to multiple failed logins.");
->>>>>>> origin/main
           break;
         case "ACCESS_DENIED":
           setError("Account is inactive or not verified.");
@@ -115,41 +71,24 @@ export default function Login() {
           setError(err?.message || "Login failed. Please verify your credentials.");
       }
     } finally {
-<<<<<<< HEAD
       setSubmitLoading(false); // Giải phóng form thường
-=======
-      setLoading(false);
->>>>>>> origin/main
     }
   };
 
   const handleGoogleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
       setError("");
-<<<<<<< HEAD
       setGoogleLoading(true); // 🚀 Chỉ bật hiệu ứng cho nút Google
-=======
-      setLoading(true);
->>>>>>> origin/main
       try {
         const token = tokenResponse.access_token;
         const user = await loginWithGoogle(token);
 
-<<<<<<< HEAD
         const redirectPath = ROLE_ROUTES_MAP[user.role] || "/login";
-=======
-        // 🎯 Sửa lại cho đồng bộ với logic map Route ở trên
-        const redirectPath = ROLE_ROUTES_MAP[user.role] || "/home";
->>>>>>> origin/main
         navigate(redirectPath);
       } catch (err) {
         setError(err.message || `Google login failed`);
       } finally {
-<<<<<<< HEAD
         setGoogleLoading(false); // Giải phóng nút Google
-=======
-        setLoading(false);
->>>>>>> origin/main
       }
     },
     onError: () => {
@@ -177,11 +116,7 @@ export default function Login() {
       <div className="w-full max-w-md relative z-10">
         <div className="backdrop-blur-md bg-[#1e293b]/70 border border-slate-700/50 shadow-2xl rounded-xl p-8">
           <div className="text-center mb-8">
-<<<<<<< HEAD
             <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">eParking</h1>
-=======
-            <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">Smartpark</h1>
->>>>>>> origin/main
             <p className="text-slate-400">Parking Management System</p>
           </div>
 
@@ -192,11 +127,7 @@ export default function Login() {
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-1">Email or Phone</label>
               <div className="relative">
-<<<<<<< HEAD
                 <Contact className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
-=======
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
->>>>>>> origin/main
                 <input
                   type="text"
                   value={email}
@@ -212,10 +143,6 @@ export default function Login() {
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-sm font-medium text-slate-300">Password</label>
-<<<<<<< HEAD
-=======
-
->>>>>>> origin/main
                 <Link to="/forgot-password" className="text-xs font-semibold text-blue-500 hover:text-blue-400 hover:underline transition-colors">
                   Forgot password?
                 </Link>
@@ -234,7 +161,6 @@ export default function Login() {
               </div>
             </div>
 
-<<<<<<< HEAD
             {/* RECAPTCHA WIDGET */}
             <div className="flex justify-center py-2 bg-slate-800/40 ">
               {RECAPTCHA_SITE_KEY ? (
@@ -250,15 +176,6 @@ export default function Login() {
               disabled={submitLoading || googleLoading}
               className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 px-4 rounded-lg transition duration-200 focus:outline-none mt-2 disabled:opacity-50 disabled:cursor-not-allowed">
               {submitLoading ? "Logging in..." : "Login"}
-=======
-            {/* Đã xóa Role Selection form ở đây */}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 px-4 rounded-lg transition duration-200 focus:outline-none mt-2 disabled:opacity-50 disabled:cursor-not-allowed">
-              {loading ? "Logging in..." : "Login"}
->>>>>>> origin/main
             </button>
           </form>
 
@@ -270,7 +187,6 @@ export default function Login() {
           </div>
 
           {/* Google button */}
-<<<<<<< HEAD
           {/* ĐUỢC SỬA: Lắng nghe trạng thái của submitLoading và googleLoading */}
           <button
             type="button"
@@ -279,15 +195,6 @@ export default function Login() {
             className="w-full flex items-center justify-center gap-3 bg-white hover:bg-slate-100 text-slate-700 font-medium py-2.5 px-4 rounded-lg transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
             <img src={googleIcon} alt="Google" className="w-5 h-5" />
             {googleLoading ? "Processing..." : "Continue with Google"}
-=======
-          <button
-            type="button"
-            onClick={() => handleGoogleLogin()}
-            disabled={loading}
-            className="w-full flex items-center justify-center gap-3 bg-white hover:bg-slate-100 text-slate-700 font-medium py-2.5 px-4 rounded-lg transition duration-200">
-            <img src={googleIcon} alt="Google" className="w-5 h-5" />
-            {loading ? "Processing..." : "Continue with Google"}
->>>>>>> origin/main
           </button>
 
           {/* Redirect to Register */}

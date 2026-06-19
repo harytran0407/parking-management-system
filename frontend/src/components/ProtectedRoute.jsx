@@ -25,15 +25,9 @@ export default function ProtectedRoute({ children, allowedRoles }) {
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
-<<<<<<< HEAD
 
   if (allowedRoles && !allowedRoles.includes(user?.role)) {
 
-=======
-  
-  if (allowedRoles && !allowedRoles.includes(user?.role)) {
-   
->>>>>>> origin/main
     return (
       <Navigate
         to={user?.role === "ParkingStaff" ? "/staff/dashboard" : "/"}
@@ -42,10 +36,6 @@ export default function ProtectedRoute({ children, allowedRoles }) {
     );
   }
 
-<<<<<<< HEAD
 
-=======
-  
->>>>>>> origin/main
   return children;
 }

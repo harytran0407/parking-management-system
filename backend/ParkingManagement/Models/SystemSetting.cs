@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -28,18 +27,3 @@ public partial class SystemSetting
     [Column("UPDATE_AT")]
     public DateTime? UpdatedAt { get; set; }
 }
-=======
-﻿using System;
-
-namespace ParkingManagement.Models
-{
-    public class SystemSetting
-    {
-        public int SettingId { get; set; }
-        public string SettingKey { get; set; } = string.Empty;
-        public string SettingValue { get; set; } = string.Empty;
-        public string? Description { get; set; }
-        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
-    }
-}
->>>>>>> origin/main

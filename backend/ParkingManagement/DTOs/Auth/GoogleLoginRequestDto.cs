@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 using System.Text.Json.Serialization;
-=======
-﻿using System.Text.Json.Serialization;
->>>>>>> origin/main
 namespace ParkingManagement.DTOs.Auth
 {
     public class GoogleLoginRequestDto
@@ -16,8 +12,4 @@ namespace ParkingManagement.DTOs.Auth
             return string.Empty;
         }
     }
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> origin/main

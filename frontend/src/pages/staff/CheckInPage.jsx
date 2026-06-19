@@ -6,17 +6,12 @@ import axios from "axios";
 import {
     Camera, CarFront, MapPin, CheckCircle2, RefreshCcw,
     VideoOff, Ban, ParkingSquare, Hash, ArrowDownCircle,
-<<<<<<< HEAD
     Video, X, Maximize2, Search, AlertTriangle, Clock
-=======
-    Video, X, Maximize2, Search
->>>>>>> origin/main
 } from "lucide-react";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const PYTHON_STREAM_URL = import.meta.env.VITE_PYTHON_STREAM_URL;
 
-<<<<<<< HEAD
 const formatDateTime = (dateVal) => {
     if (!dateVal) return "";
     const d = new Date(dateVal);
@@ -25,8 +20,6 @@ const formatDateTime = (dateVal) => {
     return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())} - ${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
 };
 
-=======
->>>>>>> origin/main
 export default function CheckInPage() {
     const webcamRef = useRef(null);
     const [capturedImage, setCapturedImage] = useState(null);
@@ -39,10 +32,7 @@ export default function CheckInPage() {
     const [isStreamConnected, setIsStreamConnected] = useState(true);
 
     const [isLightboxOpen, setIsLightboxOpen] = useState(false);
-<<<<<<< HEAD
     const [earlyCheckInWarning, setEarlyCheckInWarning] = useState(null);
-=======
->>>>>>> origin/main
 
     const vehicleTypes = [
         { id: 1, name: "Motorbike" },
@@ -74,7 +64,6 @@ export default function CheckInPage() {
         }
     };
 
-<<<<<<< HEAD
     const handleConfirmEarlyCheckIn = async (bodyData) => {
         setIsLoading(true);
         setEarlyCheckInWarning(null);
@@ -110,8 +99,6 @@ export default function CheckInPage() {
         }
     };
 
-=======
->>>>>>> origin/main
 
     const handleCaptureAndRecognize = useCallback(async () => {
         if (!webcamRef.current || isLoading) return;
@@ -159,7 +146,6 @@ export default function CheckInPage() {
                 image_url_in: `/uploads/plates/client_captured_${new Date().getTime()}.jpg`,
             };
 
-<<<<<<< HEAD
             try {
                 const response = await api.post(`/parking/check-in`, bodyData);
 
@@ -195,41 +181,12 @@ export default function CheckInPage() {
                     return;
                 }
                 throw error;
-=======
-            console.log("[API Check-In] Gửi Body Data lên Backend:", bodyData);
-            const response = await api.post(`/parking/check-in`, bodyData);
-            console.log("[API Check-In] Kết quả phản hồi từ Backend:", response.data);
-
-            if (response.data && response.data.success) {
-                const sessionData = response.data.data;
-                toast.success(`Successfully checked in vehicle: ${aiPlate}`);
-
-                const hasBooking = sessionData.booking_id !== null && sessionData.booking_id !== undefined && sessionData.booking_id !== "";
-
-                setScanResult({
-                    type: "EntryConfirmed",
-                    isBooking: hasBooking, 
-                    plate: sessionData.license_plate_in || aiPlate,
-                    sessionId: sessionData.session_id,
-                    ticketCode: hasBooking ? null : (sessionData.ticket_code || "N/A"), 
-                    slot: sessionData.slot_name || "N/A",
-                    floor: sessionData.floor !== undefined ? `Floor ${sessionData.floor}` : "N/A",
-                    zone: sessionData.zone || "Unassigned Zone",
-                    vehicleModel: vehicleTypes.find(v => v.id === parseInt(aiVehicleType))?.name || "Vehicle"
-                });
-            } else {
-                throw new Error("Backend server rejected the Check-In command request.");
->>>>>>> origin/main
             }
 
         } catch (error) {
             console.error("Pipeline Error:", error);
-<<<<<<< HEAD
             const errorMsg = error.message || error.response?.data?.message || "License plate processing workflow failed.";
             toast.error(errorMsg);
-=======
-            toast.error(error.response?.data?.message || error.message || "License plate processing workflow failed.");
->>>>>>> origin/main
         } finally {
             setIsLoading(false);
         }
@@ -258,15 +215,10 @@ export default function CheckInPage() {
                 camera_in: camIn,
                 gate_in: gateIn,
                 image_url_in: "/uploads/plates/manual_entry.jpg",
-<<<<<<< HEAD
-=======
-                slot_id: null,
->>>>>>> origin/main
                 booking_id: null
             };
 
             console.log("[API Check-In] Gửi Body Data lên Backend:", bodyData);
-<<<<<<< HEAD
 
             try {
                 const response = await api.post(`/parking/check-in`, bodyData);
@@ -306,31 +258,6 @@ export default function CheckInPage() {
         } catch (error) {
             const errorMsg = error.message || error.response?.data?.message || "Manual check-in registration failed.";
             toast.error(errorMsg);
-=======
-            const response = await api.post(`/parking/check-in`, bodyData);
-            console.log("[API Check-In] Kết quả phản hồi từ Backend:", response.data);
-
-            if (response.data && response.data.success) {
-                const data = response.data.data;
-                toast.success(`Manual Check-In recorded for: ${plateNumber}`);
-
-                const hasBooking = data.booking_id !== null && data.booking_id !== undefined && data.booking_id !== "";
-
-                setScanResult({
-                    type: "EntryConfirmed",
-                    isBooking: hasBooking, 
-                    plate: data.license_plate_in,
-                    ticketCode: hasBooking ? null : (data.ticket_code || "N/A"),
-                    slot: data.slot_name || "N/A",
-                    floor: data.floor !== undefined ? `Floor ${data.floor}` : "N/A",
-                    zone: data.zone || "Unassigned Zone",
-                    sessionId: data.session_id,
-                    vehicleModel: vehicleTypes.find(v => v.id === selectedVehicleType)?.name || "Vehicle"
-                });
-            }
-        } catch (error) {
-            toast.error(error.response?.data?.message || "Manual check-in registration failed.");
->>>>>>> origin/main
         } finally {
             setIsLoading(false);
         }
@@ -340,11 +267,7 @@ export default function CheckInPage() {
         if (!targetPlate || targetPlate.trim() === "" || isLoading) return;
 
         setIsLoading(true);
-<<<<<<< HEAD
         toast.dismiss();
-=======
-        toast.dismiss(); 
->>>>>>> origin/main
         const formattedPlate = targetPlate.toUpperCase().trim();
 
         try {
@@ -376,11 +299,7 @@ export default function CheckInPage() {
         setScanResult(null);
         setPlateNumber("");
         setCapturedImage(null);
-<<<<<<< HEAD
         toast.dismiss();
-=======
-        toast.dismiss(); 
->>>>>>> origin/main
     };
 
 
@@ -466,11 +385,7 @@ export default function CheckInPage() {
                                     placeholder="Enter license plate..."
                                     value={manualInput}
                                     onChange={(e) => setManualInput(e.target.value.toUpperCase())}
-<<<<<<< HEAD
                                     className="flex-1 w-full border border-slate-200 dark:border-slate-800 rounded-lg pl-9 pr-3 py-2 text-sm font-bold bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 tracking-wider focus:outline-none focus:border-slate-400 dark:focus:border-slate-700 focus:bg-white dark:focus:bg-slate-950 transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600 placeholder:font-sans placeholder:font-normal h-10"
-=======
-                                    className="flex-1 w-full border border-slate-200 dark:border-slate-800 rounded-lg pl-9 pr-3 py-2 text-xs font-mono font-bold bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 tracking-wider focus:outline-none focus:border-slate-400 dark:focus:border-slate-700 focus:bg-white dark:focus:bg-slate-950 transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600 placeholder:font-sans placeholder:font-normal h-10"
->>>>>>> origin/main
                                 />
                                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                             </div>
@@ -528,13 +443,8 @@ export default function CheckInPage() {
                                         <div className="grid grid-cols-2 gap-3">
                                             {/* Ô LICENSE PLATE */}
                                             <div className={`border rounded-lg px-3 py-2 transition-all duration-300 ${scanResult.isBooking
-<<<<<<< HEAD
                                                 ? "bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800/60"
                                                 : "bg-slate-50 dark:bg-slate-950 border-slate-100 dark:border-slate-800"
-=======
-                                                    ? "bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800/60"
-                                                    : "bg-slate-50 dark:bg-slate-950 border-slate-100 dark:border-slate-800"
->>>>>>> origin/main
                                                 }`}>
                                                 <span className={`text-[10px] font-bold uppercase block tracking-wider mb-0.5 ${scanResult.isBooking ? "text-blue-500 dark:text-blue-400" : "text-slate-400 dark:text-slate-500"
                                                     }`}>License Plate</span>
@@ -544,13 +454,8 @@ export default function CheckInPage() {
 
                                             {/* Ô TYPE VEHICLE */}
                                             <div className={`border rounded-lg px-3 py-2 transition-all duration-300 ${scanResult.isBooking
-<<<<<<< HEAD
                                                 ? "bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800/60"
                                                 : "bg-slate-50 dark:bg-slate-950 border-slate-100 dark:border-slate-800"
-=======
-                                                    ? "bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800/60"
-                                                    : "bg-slate-50 dark:bg-slate-950 border-slate-100 dark:border-slate-800"
->>>>>>> origin/main
                                                 }`}>
                                                 <span className={`text-[10px] font-bold uppercase block tracking-wider mb-0.5 ${scanResult.isBooking ? "text-blue-500 dark:text-blue-400" : "text-slate-400 dark:text-slate-500"
                                                     }`}>Type</span>
@@ -564,20 +469,13 @@ export default function CheckInPage() {
                                             <>
                                                 <div className="relative overflow-hidden rounded-lg bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-950 dark:to-slate-900 border border-slate-800 p-4 text-white shadow-md">
                                                     <div className="space-y-1 text-center">
-<<<<<<< HEAD
                                                         <div className="text-[10px] font-bold uppercase tracking-wider text-slate-300 dark:text-slate-500">Assigned Zone</div>
                                                         <div className="font-mono text-yellow-400 text-2xl xl:text-3xl font-black ">
                                                             {scanResult.zone}
-=======
-                                                        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-300 dark:text-slate-500">Assigned Slot</div>
-                                                        <div className="font-mono text-yellow-400 text-3xl xl:text-4xl font-black tracking-wider">
-                                                            {scanResult.slot}
->>>>>>> origin/main
                                                         </div>
                                                     </div>
                                                     <div className="mt-4 grid grid-cols-2 gap-2 border-t border-slate-700/50 pt-3 text-xs">
                                                         <div className="flex items-center gap-1.5 font-medium text-white">
-<<<<<<< HEAD
                                                             <MapPin size={13} className="text-white shrink-0" />
                                                             <span className="truncate">{scanResult.floor}</span>
                                                         </div>
@@ -585,14 +483,6 @@ export default function CheckInPage() {
                                                             <Clock size={13} className="text-white shrink-0" />
                                                             <span className="text-white px-1.5 py-0.5 rounded text-[11px]  ">
                                                                 {scanResult.checkInTime}
-=======
-                                                            <MapPin size={13} className="text-slate-400 shrink-0" />
-                                                            <span className="truncate">{scanResult.floor}</span>
-                                                        </div>
-                                                        <div className="text-right font-semibold text-slate-300 flex items-center justify-end gap-1">
-                                                            <span className="text-white px-1.5 py-0.5 rounded text-[11px] font-mono font-bold ">
-                                                                {scanResult.zone}
->>>>>>> origin/main
                                                             </span>
                                                         </div>
                                                     </div>
@@ -605,11 +495,7 @@ export default function CheckInPage() {
                                                             <CheckCircle2 size={17} className="text-blue-100 animate-pulse" /> Booked Vehicle
                                                         </div>
                                                         <p className="text-[10px] text-blue-100 mt-1.5 leading-relaxed">
-<<<<<<< HEAD
                                                             Booking found! No ticket code required.
-=======
-                                                            Valid reservation found. No regular ticket issued.
->>>>>>> origin/main
                                                         </p>
                                                     </div>
                                                 ) : (
@@ -698,7 +584,6 @@ export default function CheckInPage() {
                 </div>
             )}
 
-<<<<<<< HEAD
             {/* EARLY CHECK-IN WARNING MODAL */}
             {earlyCheckInWarning && (
                 <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
@@ -736,8 +621,6 @@ export default function CheckInPage() {
                 </div>
             )}
 
-=======
->>>>>>> origin/main
         </div>
     );
 }

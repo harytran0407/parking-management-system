@@ -1,11 +1,10 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Http;
 
 namespace ParkingManagement.DTOs.Auth
 {
     public class UpdateProfileRequestDto //Dùng để nhận dữ liệu từ Front-end gửi về
     {
-<<<<<<< HEAD
         // [Required(ErrorMessage = "Username is required.")]
         // public string Username { get; set; } = string.Empty;
 
@@ -16,22 +15,10 @@ namespace ParkingManagement.DTOs.Auth
 
         // [EmailAddress(ErrorMessage = "Invalid email format.")]
         // public string Email { get; set; } = string.Empty;
-=======
-        [Required(ErrorMessage = "Username is required.")]
-        public string Username { get; set; } = string.Empty;
-
-        [Required(ErrorMessage = "Email is required.")]
-        [EmailAddress(ErrorMessage = "Invalid email format.")]
-        public string Email { get; set; } = string.Empty;
->>>>>>> origin/main
 
         [Required(ErrorMessage = "Phone number is required.")]
         public string Phone { get; set; } = string.Empty;
 
         public IFormFile? Avatar { get; set; } // Cho phép người dùng cập nhật ảnh đại diện (avatar)
     }
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> origin/main

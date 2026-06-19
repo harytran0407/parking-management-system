@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 using System;
-=======
-﻿using System;
->>>>>>> origin/main
 using System.Collections.Generic;
 
 namespace ParkingManagement.Models;
@@ -44,9 +40,4 @@ public partial class User
     public virtual ICollection<Payment> Payments { get; set; } = new List<Payment>();
 
     public virtual Role? Role { get; set; }
-<<<<<<< HEAD
-=======
-
-    public virtual ICollection<Vehicle> Vehicles { get; set; } = new List<Vehicle>();
->>>>>>> origin/main
 }

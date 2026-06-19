@@ -1,8 +1,5 @@
 using System;
-<<<<<<< HEAD
 using System.Linq;
-=======
->>>>>>> origin/main
 using ParkingManagement.Models; // Đảm bảo đã import đúng namespace chứa PricingPolicy
 
 namespace ParkingManagement.Services.Helpers
@@ -16,7 +13,6 @@ namespace ParkingManagement.Services.Helpers
         public int GracePeriodRemainingSeconds { get; set; }
     }
 
-<<<<<<< HEAD
     public class BookingFeeResult
     {
         public decimal TotalFee { get; set; }
@@ -42,10 +38,6 @@ namespace ParkingManagement.Services.Helpers
             return DateTime.SpecifyKind(dt, DateTimeKind.Unspecified);
         }
 
-=======
-    public static class ParkingCalculationHelper
-    {
->>>>>>> origin/main
         public static int CalculateDurationMinutes(DateTime? checkInTime, DateTime currentTime)
         {
             if (!checkInTime.HasValue) return 0;
@@ -105,11 +97,7 @@ namespace ParkingManagement.Services.Helpers
         /// <summary>
         /// Hàm tính tiền nhận động chuỗi cấu hình giờ hoạt động áp dụng cho ngày hiện tại
         /// </summary>
-<<<<<<< HEAD
         public static ParkingFeeResult CalculateParkingFee(DateTime checkInTime, DateTime checkOutTime, PricingPolicy? policy, string operatingHours, int gracePeriodMinutes = 5)
-=======
-        public static ParkingFeeResult CalculateParkingFee(DateTime checkInTime, DateTime checkOutTime, PricingPolicy policy, string operatingHours, int gracePeriodMinutes = 5)
->>>>>>> origin/main
         {
             // 1. Tính tổng số phút thực tế
             TimeSpan duration = checkOutTime - checkInTime;
@@ -122,22 +110,15 @@ namespace ParkingManagement.Services.Helpers
             int billedHours = 0;
             decimal appliedOvernightFee = 0;
 
-<<<<<<< HEAD
             decimal basePrice = policy?.BasePrice ?? 15000m;
             decimal hourlyRate = policy?.HourlyRate ?? 2000m;
             decimal overnightFee = policy?.OvernightFee ?? 0m;
 
-=======
->>>>>>> origin/main
             // Kiểm tra trạng thái phạt lố giờ hoạt động trước
             bool isOvernight = IsOvernightParking(checkInTime, checkOutTime, operatingHours);
             if (isOvernight)
             {
-<<<<<<< HEAD
                 appliedOvernightFee = overnightFee;
-=======
-                appliedOvernightFee = policy.OvernightFee;
->>>>>>> origin/main
             }
 
             // 2. KIỂM TRA ĐIỀU KIỆN ÂN HẠN (GRACE PERIOD)
@@ -155,20 +136,12 @@ namespace ParkingManagement.Services.Helpers
                 if (billedHours > 0)
                 {
                     // Tiếng đầu tiên tính BasePrice
-<<<<<<< HEAD
                     actualParkingFee = basePrice;
-=======
-                    actualParkingFee = policy.BasePrice;
->>>>>>> origin/main
 
                     // Các tiếng tiếp theo tính lũy tiến theo HourlyRate
                     if (billedHours > 1)
                     {
-<<<<<<< HEAD
                         actualParkingFee += (billedHours - 1) * hourlyRate;
-=======
-                        actualParkingFee += (billedHours - 1) * policy.HourlyRate;
->>>>>>> origin/main
                     }
                 }
 
@@ -195,7 +168,6 @@ namespace ParkingManagement.Services.Helpers
                 GracePeriodRemainingSeconds = gracePeriodRemainingSeconds
             };
         }
-<<<<<<< HEAD
 
         public static decimal CalculateBookingEstimatedFee(DateTime expectedArrival, DateTime expiredAt, PricingPolicy? policy)
         {
@@ -310,7 +282,5 @@ namespace ParkingManagement.Services.Helpers
             var details = CalculateBookingFeeDetails(checkInTime, checkOutTime, booking, policy, operatingHours);
             return details.TotalFee;
         }
-=======
->>>>>>> origin/main
     }
 }

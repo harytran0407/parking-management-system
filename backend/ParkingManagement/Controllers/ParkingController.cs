@@ -60,7 +60,6 @@ namespace ParkingManagement.Controllers
                 var response = await _parkingService.ProcessCheckInAsync(dto, staffId);
                 return Ok(response);
             }
-<<<<<<< HEAD
             catch (InvalidOperationException ex) when (ex.Message.StartsWith("EARLY_CHECKIN_WARNING:"))
             {
                 var parts = ex.Message.Split(':');
@@ -73,8 +72,6 @@ namespace ParkingManagement.Controllers
                     early_minutes = earlyMinutes
                 });
             }
-=======
->>>>>>> origin/main
             catch (InvalidOperationException ex) when (ex.Message == "ACTIVE_SESSION_EXISTS")
             {
                 return StatusCode(StatusCodes.Status409Conflict, new
@@ -174,7 +171,6 @@ namespace ParkingManagement.Controllers
                 var response = await _parkingService.ProcessCheckOutAsync(dto, staffId);
                 return Ok(response);
             }
-<<<<<<< HEAD
             catch (InvalidOperationException ex) when (ex.Message == "VEHICLE_IS_LOCKED")
             {
                 return StatusCode(StatusCodes.Status422UnprocessableEntity, new
@@ -184,8 +180,6 @@ namespace ParkingManagement.Controllers
                     message = "Phương tiện đang được khóa bảo vệ bởi Smart Lock. Vui lòng mở khóa trên ứng dụng hoặc đợi đến 5 phút trước khi hết giờ booking để tự động mở khóa."
                 });
             }
-=======
->>>>>>> origin/main
             catch (InvalidOperationException ex) when (ex.Message == "INVALID_TICKET" || ex.Message == "ACTIVE_SESSION_NOT_FOUND")
             {
                 return NotFound(new
@@ -230,17 +224,11 @@ namespace ParkingManagement.Controllers
         /// 5.3 Get Active Session by License Plate
         /// </summary>
         [HttpGet("sessions/active/{license_plate}")]
-<<<<<<< HEAD
         [Authorize(Roles = "ParkingStaff,ParkingManager,ParkingUser")] 
         [ProducesResponseType(typeof(ActiveSessionResponseDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetActiveSessionByLicensePlate(
             [FromRoute(Name = "license_plate")] string licensePlate,
             [FromQuery(Name = "ticketSuffix")] string? ticketSuffix = null)
-=======
-        [Authorize(Roles = "ParkingStaff,ParkingManager")] 
-        [ProducesResponseType(typeof(ActiveSessionResponseDto), StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetActiveSessionByLicensePlate([FromRoute(Name = "license_plate")] string licensePlate)
->>>>>>> origin/main
         {
             try
             {
@@ -249,7 +237,6 @@ namespace ParkingManagement.Controllers
                     return BadRequest(new { success = false, error_code = "INVALID_TICKET", message = "Biển số xe không được để trống" });
                 }
 
-<<<<<<< HEAD
                 // If user is a customer (ParkingUser), they must enter the ticket suffix
                 bool isUser = User.IsInRole("ParkingUser");
                 if (isUser && (string.IsNullOrWhiteSpace(ticketSuffix) || ticketSuffix.Trim().Length != 5))
@@ -278,11 +265,6 @@ namespace ParkingManagement.Controllers
                     message = "5 ký tự cuối của mã vé xe không đúng, vui lòng nhập lại."
                 });
             }
-=======
-                var response = await _parkingService.GetActiveSessionByLicensePlateAsync(licensePlate);
-                return Ok(response);
-            }
->>>>>>> origin/main
             catch (InvalidOperationException ex) when (ex.Message == "INVALID_TICKET" || ex.Message == "ACTIVE_SESSION_NOT_FOUND")
             {
                 return NotFound(new
@@ -305,7 +287,6 @@ namespace ParkingManagement.Controllers
         }
 
         /// <summary>
-<<<<<<< HEAD
         /// 5.4 Process QuickPay for Active Session (mock payment)
         /// </summary>
         [HttpPost("sessions/active/{session_id}/pay")]
@@ -346,8 +327,6 @@ namespace ParkingManagement.Controllers
         }
 
         /// <summary>
-=======
->>>>>>> origin/main
         /// Get Active Session by Ticket Code 
         /// </summary>
         [HttpGet("tickets/{ticket_code}/active")]

@@ -52,7 +52,6 @@ namespace ParkingManagement.Controllers
             }
             return BadRequest(new { RspCode = "99", RspMessage = "Fail" });
         }
-<<<<<<< HEAD
 
         // POST: api/v1/payments/confirm-mock
         [Authorize]
@@ -82,7 +81,5 @@ namespace ParkingManagement.Controllers
                 return BadRequest(new { success = false, message = ex.Message });
             }
         }
-=======
->>>>>>> origin/main
     }
 }
