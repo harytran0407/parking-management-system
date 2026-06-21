@@ -89,7 +89,7 @@ export default function Profile() {
     syncProfileData();
   }, []);
 
-  
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (modalRef.current && !modalRef.current.contains(event.target)) {
@@ -195,9 +195,8 @@ export default function Profile() {
         {/* NOTIFICATION DYNAMIC LAYER (Vá lỗi biến chưa định nghĩa cũ) */}
         {status.message && (
           <div
-            className={`mx-6 mt-4 p-3.5 rounded-xl text-xs font-semibold flex items-start gap-2 border ${
-              status.type === "success" ? "bg-emerald-950/40 text-emerald-400 border-emerald-800/40" : "bg-rose-950/40 text-rose-400 border-rose-800/40"
-            }`}>
+            className={`mx-6 mt-4 p-3.5 rounded-xl text-xs font-semibold flex items-start gap-2 border ${status.type === "success" ? "bg-emerald-950/40 text-emerald-400 border-emerald-800/40" : "bg-rose-950/40 text-rose-400 border-rose-800/40"
+              }`}>
             <AlertCircle size={16} className="shrink-0 mt-0.5" />
             <div>{status.message}</div>
           </div>
@@ -233,9 +232,8 @@ export default function Profile() {
                   onChange={handleChange}
                   disabled={!isEditing.full_name}
                   maxLength={100} // Chặn lỗi tràn cột VARCHAR(100) của DB
-                  className={`flex-1 bg-transparent text-slate-800 dark:text-white font-medium py-1 border-b-2 transition-colors focus:outline-none ${
-                    isEditing.full_name ? "border-blue-500" : "border-slate-200 dark:border-slate-700"
-                  }`}
+                  className={`flex-1 bg-transparent text-slate-800 dark:text-white font-medium py-1 border-b-2 transition-colors focus:outline-none ${isEditing.full_name ? "border-blue-500" : "border-slate-200 dark:border-slate-700"
+                    }`}
                 />
                 <button
                   type="button"
@@ -270,9 +268,8 @@ export default function Profile() {
                   onChange={handleChange}
                   disabled={!isEditing.phone}
                   maxLength={15} // Giới hạn kích thước độ dài chuỗi cột USERS.PHONE
-                  className={`flex-1 bg-transparent text-slate-800 dark:text-white font-medium py-1 border-b-2 transition-colors focus:outline-none ${
-                    isEditing.phone ? "border-blue-500" : "border-slate-200 dark:border-slate-700"
-                  }`}
+                  className={`flex-1 bg-transparent text-slate-800 dark:text-white font-medium py-1 border-b-2 transition-colors focus:outline-none ${isEditing.phone ? "border-blue-500" : "border-slate-200 dark:border-slate-700"
+                    }`}
                 />
                 <button
                   type="button"

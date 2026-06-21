@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Mail, KeyRound, CheckCircle2, RefreshCcw, Eye, EyeOff,ShieldAlert,Zap } from "lucide-react";
+import { ArrowLeft, Mail, KeyRound, CheckCircle2, RefreshCcw, Eye, EyeOff, ShieldAlert, Zap } from "lucide-react";
 import { toast } from "sonner";
 import api from "../utils/api";
 
@@ -123,7 +123,7 @@ export default function ForgotPassword() {
       <div className="w-full max-w-md relative z-10">
         <div className="backdrop-blur-md bg-[#1e293b]/70 border border-slate-700/50 shadow-2xl rounded-xl p-8">
           <div className="text-center mb-6">
-            <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">Smartpark</h1>
+            <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">eParking</h1>
             <p className="text-slate-400 text-sm">Forgot Password Recovery</p>
           </div>
 

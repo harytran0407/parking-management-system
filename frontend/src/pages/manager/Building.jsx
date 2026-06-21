@@ -176,7 +176,7 @@ export default function ManagerBuilding() {
                 value={formData.buildingName}
                 onChange={(e) => setFormData(prev => ({ ...prev, buildingName: e.target.value }))}
                 className="input-field"
-                placeholder="e.g. Smartpark Central"
+                placeholder="e.g. eParking Central"
               />
             </div>
 

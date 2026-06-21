@@ -127,12 +127,12 @@ export default function AdminSettings() {
     setTimeout(() => {
       setBackupLoading(false);
       
-      const dummySql = `-- Smartpark Database Backup\n-- Created: ${new Date().toLocaleString()}\n-- Version: 1.0.0\n\nUPDATE SystemSettings SET LostTicketFee = ${lostTicketFee}, HoldWindow = ${holdWindow};\n`;
+      const dummySql = `-- eParking Database Backup\n-- Created: ${new Date().toLocaleString()}\n-- Version: 1.0.0\n\nUPDATE SystemSettings SET LostTicketFee = ${lostTicketFee}, HoldWindow = ${holdWindow};\n`;
       const blob = new Blob([dummySql], { type: "text/plain;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.setAttribute("href", url);
-      link.setAttribute("download", `smartpark_db_backup_${new Date().toISOString().slice(0, 10)}.sql`);
+      link.setAttribute("download", `eparking_db_backup_${new Date().toISOString().slice(0, 10)}.sql`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);

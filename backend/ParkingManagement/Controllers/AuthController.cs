@@ -368,10 +368,10 @@ namespace ParkingManagement.Controllers.AuthController
             {
                 try
                 {
-                    string subject = "Smartpark - Reset Password OTP Verification";
+                    string subject = "eParking - Reset Password OTP Verification";
                     string body = $@"
                         <div style='font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ddd; border-radius: 8px; max-width: 600px;'>
-                            <h2 style='color: #2563eb; text-align: center;'>Smartpark Verification Code</h2>
+                            <h2 style='color: #2563eb; text-align: center;'>eParking Verification Code</h2>
                             <p>Hello,</p>
                             <p>We received a request to reset your password. Please use the verification code below to proceed:</p>
                             <div style='text-align: center; margin: 30px 0;'>

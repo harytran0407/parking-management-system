@@ -52,5 +52,34 @@ namespace ParkingManagement.Controllers
             }
             return BadRequest(new { RspCode = "99", RspMessage = "Fail" });
         }
+
+        // POST: api/v1/payments/confirm-mock
+        [Authorize]
+        [HttpPost("confirm-mock")]
+        public async Task<IActionResult> ConfirmMockPayment([FromBody] ConfirmMockPaymentRequest request)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ." });
+                }
+
+                string userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                             ?? User.FindFirst("sub")?.Value
+                             ?? "usr_001";
+
+                var success = await _paymentService.ConfirmMockPaymentAsync(request.BookingId, request.PaymentMethod, userId);
+                if (success)
+                {
+                    return Ok(new { success = true, message = "Thanh toán giả lập thành công." });
+                }
+                return BadRequest(new { success = false, message = "Thanh toán giả lập thất bại." });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+        }
     }
 }

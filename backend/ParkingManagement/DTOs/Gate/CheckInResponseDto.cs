@@ -15,7 +15,7 @@ namespace ParkingManagement.DTOs
     public class CheckInResultDataDto
     {
         [JsonPropertyName("ticket_code")]
-        public string TicketCode { get; set; } = null!;
+        public string? TicketCode { get; set; }
 
         [JsonPropertyName("session_id")]
         public string SessionId { get; set; } = null!;
@@ -23,17 +23,17 @@ namespace ParkingManagement.DTOs
         [JsonPropertyName("license_plate_in")]
         public string LicensePlateIn { get; set; } = null!;
 
-        [JsonPropertyName("slot_id")]
-        public string SlotId { get; set; } = null!;
+        [JsonPropertyName("zone_id")]
+        public int ZoneId { get; set; }
 
-        [JsonPropertyName("slot_name")]
-        public string SlotName { get; set; } = null!;
+        [JsonPropertyName("zone_name")]
+        public string ZoneName { get; set; } = null!;
 
         [JsonPropertyName("floor")]
         public int Floor { get; set; }
 
-        [JsonPropertyName("zone")]
-        public string Zone { get; set; } = null!;
+        [JsonPropertyName("available_capacity")]
+        public int AvailableCapacity { get; set; }
 
         [JsonPropertyName("check_in_time")]
         public DateTime CheckInTime { get; set; }

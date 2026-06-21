@@ -47,10 +47,9 @@ export default function Sidebar({ navigationItems = [], isCollapsed, setIsCollap
         `}>
           <div className={`flex items-center justify-between w-full min-w-0 ${isCollapsed ? "lg:hidden" : "flex"}`}>
             <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-8 h-8 bg-blue-600 text-white rounded-xl flex items-center justify-center font-black text-base shadow-md shrink-0">S</div>
+              <img src="/eParkingLogo.png" alt="eParking Logo" className="w-8 h-8 object-contain rounded-lg shadow-sm shrink-0" />
               <div className="whitespace-nowrap">
-                <h2 className="text-base font-black text-slate-800 dark:text-white tracking-tight leading-none">Smartpark</h2>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">Parking Suite</p>
+                <h2 className="text-base font-black text-blue-900 dark:text-white tracking-tight leading-none">eParking</h2>
               </div>
             </div>
             <button
@@ -62,9 +61,7 @@ export default function Sidebar({ navigationItems = [], isCollapsed, setIsCollap
 
           <div className={`w-10 h-10 items-center justify-center relative group/logo ${isCollapsed ? "hidden lg:flex" : "hidden"}`}>
             <button onClick={() => setIsCollapsed(false)} className="w-10 h-10 flex items-center justify-center rounded-xl transition-all duration-200 focus:outline-none">
-              <div className="absolute inset-0 bg-blue-600 text-white rounded-xl flex items-center justify-center font-black text-base shadow-md transition-all duration-300 scale-100 opacity-100 group-hover/logo:scale-0 group-hover/logo:opacity-0">
-                S
-              </div>
+              <img src="/eParkingLogo.png" alt="eParking Logo" className="absolute inset-0 w-10 h-10 object-contain p-1 rounded-xl  shadow-md transition-all duration-300 scale-100 opacity-100 group-hover/logo:scale-0 group-hover/logo:opacity-0" />
               <div className="absolute inset-0 border border-slate-200 hover:border-blue-500 bg-slate-50 hover:bg-blue-50 text-slate-400 hover:text-blue-600 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-blue-500 dark:hover:bg-blue-950/40 dark:text-slate-500 dark:hover:text-blue-400 rounded-xl flex items-center justify-center transition-all duration-300 scale-0 opacity-0 group-hover/logo:scale-100 group-hover/logo:opacity-100">
                 <PanelLeftOpen size={18} />
               </div>

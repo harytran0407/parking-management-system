@@ -1,20 +1,32 @@
 using Microsoft.EntityFrameworkCore;
 using ParkingManagement.Data;
+using ParkingManagement.Extensions;
 using ParkingManagement.Repositories;
-using ParkingManagement.Services.BuildingServices;
 using ParkingManagement.Services;
 using ParkingManagement.Services.BookingServices;
-using ParkingManagement.Extensions;
-using ParkingManagement.Models;
+using ParkingManagement.Services.BuildingServices;
 using ParkingManagement.Services.EmailServices;
+using ParkingManagement.Services.FeedbackServices;
+using ParkingManagement.Dtos;
+using ParkingManagement.Models;
 
-
-var builder = WebApplication.CreateBuilder(args);
 // ── .ENV Reader ───────────────────────────────────────────────────────────────
 DotNetEnv.Env.Load();
 
+var builder = WebApplication.CreateBuilder(args);
+builder.Configuration.AddEnvironmentVariables();
+
 // ── Database ──────────────────────────────────────────────────────────────────
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+var dbServer = Environment.GetEnvironmentVariable("DB_SERVER");
+var dbPort = Environment.GetEnvironmentVariable("DB_PORT");
+var dbName = Environment.GetEnvironmentVariable("DB_NAME");
+var dbUser = Environment.GetEnvironmentVariable("DB_USER");
+var dbPassword = Environment.GetEnvironmentVariable("DB_PASSWORD");
+
+var connectionString = string.IsNullOrEmpty(dbServer)
+    ? builder.Configuration.GetConnectionString("DefaultConnection")
+    : $"Server={dbServer};Port={dbPort};Database={dbName};User={dbUser};Password={dbPassword};";
+
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString))
 );
@@ -24,6 +36,22 @@ builder.Services.AddControllers()
     .AddJsonOptions(opt =>
         opt.JsonSerializerOptions.PropertyNamingPolicy =
             System.Text.Json.JsonNamingPolicy.SnakeCaseLower);
+
+// ── CORS Policy Definition ────────────────────────────────────────────────────
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowReactFrontend", policy =>
+    {
+        policy.WithOrigins(
+                "http://localhost:5173",  // Vite mặc định (HTTP)
+                "https://localhost:5173", // Vite bảo mật (HTTPS)
+                "http://localhost:3000"   // Cổng phụ/NextJS nếu có
+              )
+              .AllowAnyMethod()
+              .AllowAnyHeader()
+              .AllowCredentials();        // Hỗ trợ truyền cookie/authen bảo mật nếu cần
+    });
+});
 
 // ── Swagger ───────────────────────────────────────────────────────────────────
 builder.Services.AddEndpointsApiExplorer();
@@ -58,7 +86,9 @@ builder.Services.AddSwaggerGen(c =>
             new System.Collections.Generic.List<string>()
         }
     });
-}); builder.Services.AddMemoryCache(); // Thêm bộ nhớ đệm (cache) dùng cho rate limiting.
+});
+
+builder.Services.AddMemoryCache(); // Thêm bộ nhớ đệm (cache) dùng cho rate limiting.
 
 // ── Parking module ───────────────────────────────────────────────────────────────────────
 builder.Services.AddScoped<IParkingRepository, ParkingRepository>();
@@ -66,7 +96,8 @@ builder.Services.AddScoped<IParkingService, ParkingService>();
 
 // ── Booking module ───────────────────────────────────────────────────────────────────────
 builder.Services.AddScoped<IBookingRepository, BookingRepository>();
-builder.Services.AddScoped<IBookingService, BookingService>(); /* ADDED BY ANTIGRAVITY */
+builder.Services.AddScoped<IBookingServiceRepository, BookingServiceRepository>();
+builder.Services.AddScoped<IBookingService, BookingService>();
 
 // ── Payment module ───────────────────────────────────────────────────────────────────────
 builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
@@ -110,7 +141,11 @@ builder.Services.AddScoped<IDashboardService, DashboardService>();
 // ── SystemConfig module ───────────────────────────────────────────────────────
 builder.Services.AddScoped<ISystemConfigService, SystemConfigService>();
 
+// ── Feedback module ───────────────────────────────────────────────────────────
+builder.Services.AddScoped<IFeedbackSerivce, FeedbackService>();
+
 var app = builder.Build();
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -128,7 +163,7 @@ app.UseExceptionHandler(errApp => errApp.Run(async ctx =>
         Console.WriteLine(ex.ToString()); // In trọn vẹn dấu vết lỗi, tên file, số dòng bị sập
         Console.WriteLine("============================================\n");
     }
-    
+
     var (status, message) = ex switch
     {
         KeyNotFoundException => (404, ex.Message),
@@ -143,10 +178,9 @@ app.UseExceptionHandler(errApp => errApp.Run(async ctx =>
 }));
 
 app.UseHttpsRedirection();
-app.UseCors(policy => policy
-    .WithOrigins("http://localhost:5173") // Cho phép duy nhất cổng React Frontend 
-    .AllowAnyMethod()                     // Cho phép mọi phương thức GET, POST, PUT, DELETE
-    .AllowAnyHeader());                   // Cho phép mọi Header truyền lên (Content-Type, Authorization)
+
+app.UseCors("AllowReactFrontend");
+
 // Security
 app.UseMiddleware<ParkingManagement.Middlewares.TokenBlacklistMiddleware>(); // Check blacklist
 app.UseAuthentication(); // Read JWT token

@@ -25,5 +25,15 @@ namespace ParkingManagement.Repositories
         /// Lấy giá sàn cơ bản của chính sách giá áp dụng cho loại phương tiện tương ứng.
         /// </summary>
         Task<decimal> GetBasePriceForVehicleTypeAsync(int vehicleTypeId);
+
+        /// <summary>
+        /// Lấy chính sách giá đang áp dụng cho loại phương tiện tương ứng.
+        /// </summary>
+        Task<PricingPolicy?> GetActivePricingPolicyByVehicleTypeAsync(int vehicleTypeId);
+
+        /// <summary>
+        /// Xử lý thanh toán giả lập: Insert/Update hóa đơn và chuyển trạng thái đặt chỗ sang CONFIRMED.
+        /// </summary>
+        Task<bool> ProcessMockPaymentConfirmationAsync(string bookingId, string paymentMethod, string userId, decimal amount);
     }
 }

@@ -1,4 +1,4 @@
-﻿namespace ParkingManagement.DTOs
+namespace ParkingManagement.DTOs
 {
     public class UserProfileResponseDto
     {

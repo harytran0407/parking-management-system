@@ -119,7 +119,7 @@ export default function Register() {
         //   message: "Account created! Redirecting to login...",
         // });
         toast.success("Account registered successfully!", {
-          description: "Welcome to Parking Management System node.",
+          description: "Welcome to eParking Management System.",
         });
         setTimeout(() => navigate("/login"), 1500);
       }
@@ -186,7 +186,7 @@ export default function Register() {
 
       <div className="w-full max-w-md bg-[#1e293b]/70 backdrop-blur-md rounded-xl shadow-lg border border-slate-700/50 p-8 relative z-10">
         <div className="text-center mb-1">
-          <h2 className="text-3xl font-bold text-white tracking-tight">Smartpark</h2>
+          <h2 className="text-3xl font-bold text-white tracking-tight">eParking</h2>
           <p className="text-slate-400 mt-1">Create your account</p>
         </div>
 
@@ -206,7 +206,7 @@ export default function Register() {
           {/* Email */}
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-1">Email</label>
-            <input type="email" name="email" required value={formData.email} onChange={handleChange} placeholder="name@smartpark.com" className={inputClass("email")} />
+            <input type="email" name="email" required value={formData.email} onChange={handleChange} placeholder="name@eparking.com" className={inputClass("email")} />
           </div>
 
           {/* Phone Number */}

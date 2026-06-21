@@ -1,6 +1,5 @@
 """
 util.py — AI Parking System (Bản nâng cấp tích hợp PaddleOCR ONNX & EasyOCR)
-===========================================================================
 Low-level helpers:
   • Image preprocessing pipeline for license-plate crops
   • PaddleOCR ONNX Pipeline / EasyOCR wrapper
@@ -17,6 +16,7 @@ USING_PADDLE = False
 reader = None
 
 try:
+    # pyrefly: ignore [missing-import]
     from ppocr_onnx.pipeline import DetAndRecONNXPipeline
     
     # Định nghĩa đường dẫn tới các file model ONNX của repo gốc

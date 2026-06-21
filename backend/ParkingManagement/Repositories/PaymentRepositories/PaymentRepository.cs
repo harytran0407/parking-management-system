@@ -20,7 +20,7 @@ namespace ParkingManagement.Repositories
         public async Task<Booking?> GetBookingByIdAsync(string bookingId)
         {
             return await _context.Bookings
-                .Include(b => b.Vehicle)
+                .Include(b => b.VehicleType)
                 .FirstOrDefaultAsync(b => b.BookingId == bookingId);
         }
 
@@ -72,6 +72,71 @@ namespace ParkingManagement.Repositories
                     throw;
                 }
             }
+        }
+
+        public async Task<bool> ProcessMockPaymentConfirmationAsync(string bookingId, string paymentMethod, string userId, decimal amount)
+        {
+            using (var transaction = await _context.Database.BeginTransactionAsync())
+            {
+                try
+                {
+                    var payment = await _context.Payments
+                        .FirstOrDefaultAsync(p => p.BookingId == bookingId);
+
+                    if (payment == null)
+                    {
+                        payment = new Payment
+                        {
+                            PaymentId = "pay_" + Guid.NewGuid().ToString("N").Substring(0, 10).ToUpper(),
+                            PaymentType = "BOOKING",
+                            BookingId = bookingId,
+                            AmountDue = amount,
+                            AmountPaid = amount,
+                            ChangeDue = 0,
+                            PaymentMethod = paymentMethod.ToUpper(),
+                            Status = "SUCCESS",
+                            UserId = userId,
+                            PaymentTime = DateTime.Now,
+                            TransactionId = "MOCK_" + paymentMethod.ToUpper() + "_" + Guid.NewGuid().ToString("N").Substring(0, 8).ToUpper()
+                        };
+                        await _context.Payments.AddAsync(payment);
+                    }
+                    else
+                    {
+                        payment.Status = "SUCCESS";
+                        payment.PaymentMethod = paymentMethod.ToUpper();
+                        payment.AmountPaid = amount;
+                        payment.PaymentTime = DateTime.Now;
+                        payment.TransactionId = "MOCK_" + paymentMethod.ToUpper() + "_" + Guid.NewGuid().ToString("N").Substring(0, 8).ToUpper();
+                        _context.Payments.Update(payment);
+                    }
+
+                    var booking = await _context.Bookings.FirstOrDefaultAsync(b => b.BookingId == bookingId);
+                    if (booking != null)
+                    {
+                        booking.Status = "CONFIRMED";
+                        _context.Bookings.Update(booking);
+                    }
+
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                    return true;
+                }
+                catch (Exception)
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            }
+        }
+
+        public async Task<PricingPolicy?> GetActivePricingPolicyByVehicleTypeAsync(int vehicleTypeId)
+        {
+            var today = DateOnly.FromDateTime(DateTime.Today);
+            return await _context.PricingPolicies
+                .Where(p => p.VehicleTypeId == vehicleTypeId && p.EffectiveDate <= today)
+                .OrderByDescending(p => p.EffectiveDate)
+                .FirstOrDefaultAsync();
         }
     }
 }

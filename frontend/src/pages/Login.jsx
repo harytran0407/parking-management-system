@@ -116,7 +116,7 @@ export default function Login() {
       <div className="w-full max-w-md relative z-10">
         <div className="backdrop-blur-md bg-[#1e293b]/70 border border-slate-700/50 shadow-2xl rounded-xl p-8">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">Smartpark</h1>
+            <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">eParking</h1>
             <p className="text-slate-400">Parking Management System</p>
           </div>
 
