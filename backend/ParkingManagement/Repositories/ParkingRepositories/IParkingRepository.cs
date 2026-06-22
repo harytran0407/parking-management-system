@@ -71,10 +71,7 @@ namespace ParkingManagement.Repositories
         /// </summary>
         Task<ParkingSession?> GetActiveSessionByTicketCodeAsync(string ticketCode);
 
-        /// <summary>
-        /// Cập nhật thông tin Check-out của phiên gửi xe đồng thời giải phóng trạng thái ô đỗ về 'AVAILABLE' trong cùng một Transaction.
-        /// </summary>
-        Task<bool> UpdateSessionAndSlotAsync(ParkingSession session, string slotId);
+
 
         /// <summary>
         /// Tìm kiếm phiên gửi xe đang hoạt động (ACTIVE) trong bãi dựa trên mã định danh duy nhất của phiên gửi (SessionId).
@@ -144,5 +141,10 @@ namespace ParkingManagement.Repositories
         /// Đánh dấu phiên đỗ xe đã thanh toán (QuickPay): tạo bản ghi Payment hợp lệ và cập nhật PaymentStatus trên session.
         /// </summary>
         Task MarkSessionPaidAsync(ParkingSession session, decimal fee);
+
+        /// <summary>
+        /// Lấy thống kê số lượng xe đang giữ chỗ (Booked) và sức chứa thực tế theo thời gian thực của các Zone đang hoạt động.
+        /// </summary>
+        Task<List<ZoneRealtimeStatsDto>> GetZoneRealtimeStatsAsync();
     }
 }

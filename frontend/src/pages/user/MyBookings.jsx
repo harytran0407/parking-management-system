@@ -74,8 +74,10 @@ export default function MyBookings() {
       if (activeRes.data && activeRes.data.success) {
         const list = activeRes.data.data.map(b => {
           const typeId = b.vehicle_type_id;
-          const typeNameLower = b.vehicle_type?.toLowerCase() || "";
-          const isCar = typeId === 2 || typeNameLower.includes("car") || typeNameLower.includes("ô tô") || typeNameLower.includes("automobile") || (typeNameLower !== "motorbike" && typeNameLower !== "xe máy" && typeNameLower !== "1");
+          const typeNameLower = (b.vehicle_type || "").toLowerCase();
+          // typeId 1 = Motorbike, typeId 2 = Car (theo DB schema)
+          // Chỉ coi là Car khi typeId = 2, hoặc typeId chưa xác định nhưng tên chứa "car"/"ô tô"
+          const isCar = typeId === 2 || (typeId !== 1 && (typeNameLower.includes("car") || typeNameLower.includes("ô tô")));
           const defaultPrice = isCar ? 15000 : 5000;
           return {
             id: b.booking_id,
@@ -91,6 +93,7 @@ export default function MyBookings() {
             depositPaid: b.deposit_paid || defaultPrice,
             status: b.status.toLowerCase(),
             isLocked: b.is_locked,
+            bookingTime: b.booking_time,
           };
         });
         setBookings(list);
@@ -275,6 +278,7 @@ export default function MyBookings() {
       day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
+      hour12: false,
     };
     return new Date(dateString).toLocaleDateString(language === "en" ? "en-US" : "vi-VN", options);
   };
@@ -584,7 +588,7 @@ export default function MyBookings() {
 
                       {/* Red/Yellow Late Check-in Warning Alert Box */}
                       {isLateToCheckIn && (
-                        <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/40 rounded-2xl p-4 mb-6 text-left flex gap-3 items-start text-rose-700 dark:text-rose-455 text-xs font-semibold shadow-sm">
+                        <div className="bg-rose-50 dark:bg-rose-950/40  p-4 mb-6 text-left flex gap-3 items-start text-rose-700 dark:text-rose-455 text-xs font-semibold shadow-sm">
                           <AlertTriangle className="text-red-500 shrink-0 mt-0.5" size={18} />
                           <div>
                             <p className="font-extrabold text-sm">{language === "en" ? "Late Arrival Warning!" : "Cảnh báo trễ giờ đỗ xe!"}</p>
@@ -800,7 +804,15 @@ export default function MyBookings() {
                           </div>
 
                           {/* Nút tác vụ nhanh bên dưới */}
-                          <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
+                          <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center pr-4 md:pr-6">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] text-slate-400 dark:text-slate-505 uppercase font-bold tracking-wider">
+                                {language === "en" ? "Booked At:" : "Thời điểm đặt:"}
+                              </span>
+                              <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                                {formatDate(booking.bookingTime)}
+                              </span>
+                            </div>
                             {(() => {
                               if (booking.status === "cancelled" || booking.status === "completed") return null;
                               const canCancel = booking.status !== "active" && booking.status !== "completed" && booking.status !== "cancelled" && new Date(booking.startTime).getTime() - new Date().getTime() >= 60 * 60 * 1000;
@@ -811,13 +823,13 @@ export default function MyBookings() {
                                     e.stopPropagation();
                                     openModal("cancel", booking);
                                   }}
-                                  className={`text-xs font-bold px-4 py-2 rounded-xl transition-colors ${canCancel
+                                  className={`text-xs font-bold px-3 py-2 rounded-md transition-colors ${canCancel
                                     ? "text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 bg-red-50 hover:bg-red-100 dark:bg-red-950/20 cursor-pointer"
                                     : "text-slate-400 dark:text-slate-600 bg-slate-50 dark:bg-slate-900 cursor-not-allowed"
                                     }`}
                                 >
                                   {canCancel
-                                    ? (language === "en" ? "Cancel Reservation" : "Hủy đặt chỗ này")
+                                    ? (language === "en" ? "Cancel Booking" : "Hủy đặt chỗ này")
                                     : (language === "en" ? "Cannot Cancel" : "Không thể hủy")}
                                 </button>
                               );

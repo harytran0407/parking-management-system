@@ -528,6 +528,90 @@ namespace ParkingManagement.Controllers
         }
 
         /// <summary>
+        /// Lấy thống kê số lượng xe đang giữ chỗ (Booked) và sức chứa thực tế theo thời gian thực của các Zone đang hoạt động
+        /// </summary>
+        [HttpGet("zones/stats")]
+        [Authorize(Roles = "ParkingStaff,ParkingManager")]
+        [ProducesResponseType(typeof(List<ZoneRealtimeStatsDto>), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetZoneRealtimeStats()
+        {
+            try
+            {
+                var data = await _parkingService.GetZoneRealtimeStatsAsync();
+                return Ok(data);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new
+                {
+                    success = false,
+                    error_code = "DATABASE_QUERY_FAILED",
+                    message = "Lỗi kết nối cơ sở dữ liệu khi truy vấn tình trạng Zone.",
+                    details = ex.Message
+                });
+            }
+        }
+
+        /// <summary>
+        /// Cập nhật trạng thái hàng loạt ô đỗ (Bulk Update)
+        /// </summary>
+        [HttpPut("slots/bulk-status")]
+        [Authorize(Roles = "ParkingStaff,ParkingManager")]
+        [ProducesResponseType(typeof(BulkUpdateSlotStatusResponseDto), StatusCodes.Status200OK)]
+        public async Task<IActionResult> BulkUpdateSlotStatus([FromBody] BulkUpdateSlotStatusDto dto)
+        {
+            string? staffId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value;
+
+            if (string.IsNullOrEmpty(staffId))
+            {
+                return StatusCode(StatusCodes.Status401Unauthorized, new
+                {
+                    success = false,
+                    error_code = "UNAUTHORIZED_ACCESS",
+                    message = "Phiên làm việc đã hết hạn, vui lòng đăng nhập lại."
+                });
+            }
+
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(new { success = false, message = "Dữ liệu đầu vào không hợp lệ." });
+            }
+
+            try
+            {
+                var response = await _parkingService.BulkUpdateSlotStatusAsync(dto, staffId);
+                return Ok(response);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { success = false, error_code = "INVALID_INPUT_DATA", message = ex.Message });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { success = false, error_code = "SLOT_NOT_FOUND", message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return StatusCode(StatusCodes.Status422UnprocessableEntity, new
+                {
+                    success = false,
+                    error_code = "BULK_UPDATE_INVALID_OPERATION",
+                    message = ex.Message
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new
+                {
+                    success = false,
+                    error_code = "DATABASE_UPDATE_FAILED",
+                    message = "Lỗi kết nối cơ sở dữ liệu, hành động chưa được ghi nhận.",
+                    details = ex.Message
+                });
+            }
+        }
+
+        /// <summary>
         /// 3.2 Get Parking Slots with Real-time Status
         /// </summary>
         [HttpGet("slots")]
