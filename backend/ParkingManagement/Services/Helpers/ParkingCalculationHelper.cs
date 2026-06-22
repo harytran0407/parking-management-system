@@ -195,7 +195,7 @@ namespace ParkingManagement.Services.Helpers
             if (checkOutTime > expiredAt)
             {
                 var overdueMinutes = (checkOutTime - expiredAt).TotalMinutes;
-                if (overdueMinutes > 5) // 5-minute grace period per business rule
+                if (overdueMinutes > 15) // 15-minute grace period
                 {
                     decimal hourlyRate = policy?.HourlyRate ?? 2000m;
                     var overdueBlocks = (int)Math.Ceiling(overdueMinutes / 60.0);
@@ -210,7 +210,7 @@ namespace ParkingManagement.Services.Helpers
             if (booking == null) return 0m;
             var totalPaid = booking.Payments?.Where(p => p.Status == "SUCCESS").Sum(p => p.AmountPaid) ?? 0m;
             var depositPayment = booking.Payments?.FirstOrDefault(p => p.PaymentType == "BOOKING" && p.Status == "SUCCESS");
-
+            
             decimal basePrice = policy?.BasePrice ?? (vehicleTypeId == 1 ? 5000m : 15000m);
             decimal hourlyRate = policy?.HourlyRate ?? 2000m;
             var expectedArrival = booking.ExpectedArrival;
@@ -257,7 +257,7 @@ namespace ParkingManagement.Services.Helpers
             if (checkOutVn > expiredAt)
             {
                 var overdueMinutes = (checkOutVn - expiredAt).TotalMinutes;
-                if (overdueMinutes > 5) // 5-minute grace period per business rule
+                if (overdueMinutes > 15) // 15-minute grace period
                 {
                     decimal hourlyRate = policy?.HourlyRate ?? 2000m;
                     var overdueBlocks = (int)Math.Ceiling(overdueMinutes / 60.0);

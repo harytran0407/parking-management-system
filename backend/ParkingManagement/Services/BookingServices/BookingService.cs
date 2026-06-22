@@ -18,7 +18,7 @@ public class BookingService : IBookingService
 
     private static DateTime ToUtcFromVn(DateTime localVnTime)
     {
-        if (localVnTime.Kind == DateTimeKind.Utc)
+        if (localVnTime.Kind == DateTimeKind.Utc) 
             return localVnTime;
 
         if (localVnTime.Kind == DateTimeKind.Local)
@@ -41,7 +41,7 @@ public class BookingService : IBookingService
     public async Task<BookingPriceResponse> GetPriceEstimateAsync(BookingPriceRequest request)
     {
         var expectedArrivalUtc = ToUtcFromVn(request.ExpectedArrival);
-
+        
         if (expectedArrivalUtc < DateTime.UtcNow.AddMinutes(60))
             throw new ArgumentException("Thời gian đặt chỗ dự kiến phải trước ít nhất 60 phút tính từ thời điểm hiện tại.");
 
@@ -83,44 +83,38 @@ public class BookingService : IBookingService
 
     public async Task<BookingResponse> CreateBookingAsync(string userId, CreateBookingRequest request)
     {
+        // Spam check: block if they cancelled >= 3 unpaid bookings in the last 24 hours
         var checkTime = DateTime.UtcNow.AddHours(-24);
+        var spamCancellationsLast24h = await _context.Bookings
+            .Include(b => b.Payments)
+            .Where(b => b.VehicleUserId == userId 
+                        && b.Status == "CANCELLED" 
+                        && b.BookingTime >= checkTime)
+            .ToListAsync();
 
-        // ── Spam lock: block if account cancelled >= 6 times in last 24 hours ──
-        var cancellationsLast24h = await _context.Bookings
-            .Where(b => b.VehicleUserId == userId
-                        && b.Status == "CANCELLED"
-                        && b.BookingTime >= checkTime
-                        && b.Notes != "CANCELLED_EARLY")   // early-cancel (refunded) not counted
-            .CountAsync();
-
-        if (cancellationsLast24h >= 6)
+        int spamCount = 0;
+        foreach (var b in spamCancellationsLast24h)
         {
-            throw new InvalidOperationException("Tài khoản của bạn tạm thời bị khóa tính năng đặt chỗ trước trong 24 giờ do hủy lịch quá 6 lần/ngày.");
+            if (b.Notes == "CANCELLED_EARLY")
+            {
+                continue;
+            }
+
+            bool wasPaid = b.Payments.Any(p => p.Status == "SUCCESS" && p.PaymentType == "BOOKING");
+            if (!wasPaid)
+            {
+                spamCount++;
+            }
         }
 
-        // ── Daily booking limit: tối đa 6 lần đặt / ngày ────────────────────────
-        var startOfToday = DateTime.UtcNow.Date;                // UTC midnight — safe cross-timezone (VN is UTC+7 so booking at 00:00 VN = 17:00 prev UTC day; using a 24-hour rolling window via checkTime is more accurate)
-        var bookingsLast24h = await _context.Bookings
-            .CountAsync(b => b.VehicleUserId == userId && b.BookingTime >= checkTime);
-
-        if (bookingsLast24h >= 6)
+        if (spamCount >= 3)
         {
-            throw new InvalidOperationException("Bạn đã đạt giới hạn đặt chỗ tối đa 6 lần trong 24 giờ.");
-        }
-
-        // ── Concurrent CONFIRMED limit: tối đa 2 booking đang CONFIRMED / PENDING ─
-        var activeBookingCount = await _context.Bookings
-            .CountAsync(b => b.VehicleUserId == userId
-                          && (b.Status == "CONFIRMED" || b.Status == "PENDING"));
-
-        if (activeBookingCount >= 2)
-        {
-            throw new InvalidOperationException("Bạn chỉ được có tối đa 2 đặt chỗ đang hoạt động cùng lúc. Vui lòng hoàn thành hoặc hủy bớt đặt chỗ hiện tại.");
+            throw new InvalidOperationException("Tài khoản của bạn tạm thời bị khóa tính năng đặt chỗ trước trong 24 giờ do hủy lịch quá 3 lần/ngày.");
         }
 
         // Validate arrival time
         var expectedArrivalUtc = ToUtcFromVn(request.ExpectedArrival);
-
+        
         if (expectedArrivalUtc < DateTime.UtcNow.AddMinutes(60))
             throw new ArgumentException("Thời gian đặt chỗ dự kiến phải trước ít nhất 60 phút tính từ thời điểm hiện tại.");
 
@@ -138,10 +132,10 @@ public class BookingService : IBookingService
 
         // Validate license plate format and check for duplicate bookings
         var cleanPlate = request.LicensePlate.Replace("-", "").Replace(".", "").Replace(" ", "").ToUpper();
-
+        
         var isOverlappingBookingExists = await _context.Bookings
             .AnyAsync(b => (b.Status == "PENDING" || b.Status == "CONFIRMED")
-                        && b.ExpectedArrival < expiredAt
+                        && b.ExpectedArrival < expiredAt 
                         && request.ExpectedArrival < b.ExpiredAt
                         && b.LicensePlate.Replace("-", "").Replace(".", "").Replace(" ", "").ToUpper() == cleanPlate);
 
@@ -161,22 +155,6 @@ public class BookingService : IBookingService
             var availableZone = await _parkingRepo.FindBestAvailableZoneAsync(request.VehicleTypeId);
             if (availableZone == null)
                 throw new InvalidOperationException("Parking lot is currently full for this vehicle type. Cannot book at this time.");
-
-            // ── 50% booking cap: chỉ cho phép booking chiếm tối đa 50% tổng capacity của loại xe ──
-            // Tổng capacity (tất cả slot của loại xe, bất kể trạng thái)
-            var totalCapacityForType = await _context.FloorZones
-                .Where(z => z.VehicleTypeId == request.VehicleTypeId && z.Status == "ACTIVE")
-                .SumAsync(z => z.Capacity);
-
-            int bookingSlotCap = totalCapacityForType / 2; // làm tròn xuống
-
-            // Số booking đang PENDING/CONFIRMED (đã chiếm slot)
-            var currentBookedCount = await _context.Bookings
-                .CountAsync(b => b.VehicleTypeId == request.VehicleTypeId
-                              && (b.Status == "PENDING" || b.Status == "CONFIRMED"));
-
-            if (currentBookedCount >= bookingSlotCap)
-                throw new InvalidOperationException($"Hệ thống đã đạt giới hạn đặt chỗ trước ({bookingSlotCap} chỗ) cho loại xe này. Vui lòng thử lại sau.");
 
             var bookingId = "BKG-" + Guid.NewGuid().ToString("N").Substring(0, 10).ToUpper();
 
@@ -200,10 +178,6 @@ public class BookingService : IBookingService
 
             _context.Bookings.Add(booking);
             await _context.SaveChangesAsync();
-
-            // ── Trừ 1 slot trong AvailableCapacity của zone để tránh overbook ──
-            await _parkingRepo.DecrementZoneCapacityAsync(availableZone.ZoneId);
-
             await transaction.CommitAsync();
 
             // Load VehicleType for mapping
@@ -280,19 +254,6 @@ public class BookingService : IBookingService
             booking.Notes = "CANCELLED_EARLY";
 
             await _context.SaveChangesAsync();
-
-            // ── Hoàn lại slot vào AvailableCapacity của zone ──
-            // Tìm zone phù hợp với vehicle type để hoàn trả (booking không nhất thiết gắn với zone cụ thể lúc tạo)
-            var zoneToRestore = booking.ZoneId.HasValue
-                ? await _context.FloorZones.FindAsync(booking.ZoneId.Value)
-                : await _context.FloorZones
-                    .Where(z => z.VehicleTypeId == booking.VehicleTypeId && z.Status == "ACTIVE")
-                    .OrderBy(z => z.FloorNumber)
-                    .FirstOrDefaultAsync();
-
-            if (zoneToRestore != null)
-                await _parkingRepo.IncrementZoneCapacityAsync(zoneToRestore.ZoneId);
-
             await transaction.CommitAsync();
 
             return await MapToBookingResponseAsync(booking);
@@ -476,28 +437,6 @@ public class BookingService : IBookingService
         return true;
     }
 
-    public async Task<BookingCapacityStatusResponse> GetBookingCapacityStatusAsync(int vehicleTypeId)
-    {
-        var totalCapacity = await _context.FloorZones
-            .Where(z => z.VehicleTypeId == vehicleTypeId && z.Status == "ACTIVE")
-            .SumAsync(z => z.Capacity);
-
-        int bookingCap = totalCapacity / 2;
-
-        var currentBooked = await _context.Bookings
-            .CountAsync(b => b.VehicleTypeId == vehicleTypeId
-                          && (b.Status == "CONFIRMED" || b.Status == "COMPLETED"));
-
-        return new BookingCapacityStatusResponse
-        {
-            VehicleTypeId = vehicleTypeId,
-            TotalCapacity = totalCapacity,
-            BookingCap = bookingCap,
-            CurrentBooked = currentBooked,
-            IsFull = currentBooked >= bookingCap
-        };
-    }
-
     private async Task AutoCancelExpiredBookingsAsync(string userId)
     {
         var vnNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, _vnTz);
@@ -512,17 +451,6 @@ public class BookingService : IBookingService
             foreach (var b in expiredBookings)
             {
                 b.Status = "CANCELLED";
-
-                // Hoàn lại slot vào AvailableCapacity
-                var zoneToRestore = b.ZoneId.HasValue
-                    ? await _context.FloorZones.FindAsync(b.ZoneId.Value)
-                    : await _context.FloorZones
-                        .Where(z => z.VehicleTypeId == b.VehicleTypeId && z.Status == "ACTIVE")
-                        .OrderBy(z => z.FloorNumber)
-                        .FirstOrDefaultAsync();
-
-                if (zoneToRestore != null)
-                    await _parkingRepo.IncrementZoneCapacityAsync(zoneToRestore.ZoneId);
             }
             await _context.SaveChangesAsync();
         }
@@ -536,7 +464,7 @@ public class BookingService : IBookingService
 
         var vnNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, _vnTz);
         var expiredAt = b.ExpiredAt ?? b.ExpectedArrival.AddHours(2);
-
+        
         decimal originalEstimatedFee = ParkingCalculationHelper.CalculateBookingEstimatedFee(b.ExpectedArrival, expiredAt, policy);
 
         decimal estimatedFee = originalEstimatedFee;
