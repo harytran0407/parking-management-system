@@ -393,11 +393,15 @@ export default function UserDashboard() {
               {[
                 {
                   day: language === "en" ? "Mon – Fri" : "Thứ 2 – Thứ 6",
-                  hours: buildingInfo.operation_hours?.weekday_hours || "Open 24/7",
+                  hours: buildingInfo.operation_hours?.is_24_7
+                    ? (language === "en" ? "Open 24/7" : "Mở cửa 24/7")
+                    : (buildingInfo.operation_hours?.weekday_hours || "Open 24/7"),
                 },
                 {
                   day: language === "en" ? "Weekend/Holiday" : "Cuối Tuần/Ngày lễ",
-                  hours: buildingInfo.operation_hours?.weekend_hours || "Open 24/7",
+                  hours: buildingInfo.operation_hours?.is_24_7
+                    ? (language === "en" ? "Open 24/7" : "Mở cửa 24/7")
+                    : (buildingInfo.operation_hours?.weekend_hours || "Open 24/7"),
                 },
 
               ].map((row, i) => (

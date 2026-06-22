@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react'
 import { Search, UserPlus, Edit, Lock, Unlock, Shield, X, Mail, Phone, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 import api from '../../utils/api'
+import { useLanguage } from '../../hooks/useLanguage'
 
 export default function ManagerStaff() {
+  const { language } = useLanguage()
   const [staffList, setStaffList] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
@@ -47,11 +49,11 @@ export default function ManagerStaff() {
       if (response.data && response.data.success) {
         setStaffList(response.data.data)
       } else {
-        toast.error('Failed to load staff list')
+        toast.error(language === 'en' ? 'Failed to load staff list' : 'Không thể tải danh sách nhân viên')
       }
     } catch (error) {
       console.error('Fetch staff error:', error)
-      toast.error(error.message || 'Error connecting to server')
+      toast.error(error.message || (language === 'en' ? 'Error connecting to server' : 'Lỗi kết nối đến máy chủ'))
     } finally {
       setLoading(false)
     }
@@ -73,7 +75,7 @@ export default function ManagerStaff() {
     
     // Quick validation
     if (addForm.password !== addForm.confirmPassword) {
-      toast.error('Passwords do not match')
+      toast.error(language === 'en' ? 'Passwords do not match' : 'Mật khẩu không khớp')
       return
     }
 
@@ -92,7 +94,7 @@ export default function ManagerStaff() {
       })
 
       if (response.data && response.data.success) {
-        toast.success(response.data.message || 'Staff member added successfully')
+        toast.success(response.data.message || (language === 'en' ? 'Staff member added successfully' : 'Thêm nhân viên thành công'))
         setIsAddModalOpen(false)
         setAddForm({
           username: '',
@@ -106,7 +108,7 @@ export default function ManagerStaff() {
       }
     } catch (error) {
       console.error('Add staff error:', error)
-      toast.error(error.message || 'Failed to add staff member')
+      toast.error(error.message || (language === 'en' ? 'Failed to add staff member' : 'Không thể thêm nhân viên'))
     } finally {
       setFormSubmitting(false)
     }
@@ -137,13 +139,13 @@ export default function ManagerStaff() {
       })
 
       if (response.data && response.data.success) {
-        toast.success(response.data.message || 'Staff profile updated successfully')
+        toast.success(response.data.message || (language === 'en' ? 'Staff profile updated successfully' : 'Cập nhật hồ sơ nhân viên thành công'))
         setIsEditModalOpen(false)
         fetchStaff()
       }
     } catch (error) {
       console.error('Edit staff error:', error)
-      toast.error(error.message || 'Failed to update staff member')
+      toast.error(error.message || (language === 'en' ? 'Failed to update staff member' : 'Không thể cập nhật thông tin nhân viên'))
     } finally {
       setFormSubmitting(false)
     }
@@ -162,7 +164,11 @@ export default function ManagerStaff() {
       })
 
       if (response.data && response.data.success) {
-        toast.success(`Staff status updated to ${newStatus} successfully`)
+        toast.success(
+          language === 'en' 
+            ? `Staff status updated to ${newStatus} successfully` 
+            : `Cập nhật trạng thái nhân viên thành ${newStatus === 'ACTIVE' ? 'HOẠT ĐỘNG' : 'BỊ KHÓA'} thành công`
+        )
         // Update local state directly to be fast and smooth
         setStaffList(prev => 
           prev.map(item => item.user_id === target.user_id ? { ...item, status: newStatus } : item)
@@ -172,20 +178,24 @@ export default function ManagerStaff() {
       }
     } catch (error) {
       console.error('Toggle status error:', error)
-      toast.error(error.message || 'Failed to update staff status')
+      toast.error(error.message || (language === 'en' ? 'Failed to update staff status' : 'Không thể cập nhật trạng thái nhân viên'))
     } finally {
       setFormSubmitting(false)
     }
   }
 
   return (
-    <div className="animate-slide-in flex flex-col h-full">
+    <div className="animate-slide-in flex flex-col space-y-6">
       {/* HEADER SECTION */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
-          <h2 className="section-title mb-1">Staff Management</h2>
+          <h2 className="section-title mb-1">
+            {language === 'en' ? 'Staff Management' : 'Quản lý Nhân viên'}
+          </h2>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Create, update, and manage access status for parking operations staff.
+            {language === 'en' 
+              ? 'Create, update, and manage access status for parking operations staff.' 
+              : 'Tạo mới, cập nhật và quản lý trạng thái truy cập của nhân viên vận hành bãi xe.'}
           </p>
         </div>
         <button
@@ -193,7 +203,7 @@ export default function ManagerStaff() {
           className="btn-primary flex items-center gap-2 shadow-lg hover:shadow-blue-500/25 transition-all duration-300"
         >
           <UserPlus size={18} />
-          Add Parking Staff
+          {language === 'en' ? 'Add Parking Staff' : 'Thêm nhân viên'}
         </button>
       </div>
 
@@ -204,7 +214,7 @@ export default function ManagerStaff() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
             <input
               type="text"
-              placeholder="Search by Name, Username, Email, Phone..."
+              placeholder={language === 'en' ? 'Search by Name, Username, Email, Phone...' : 'Tìm kiếm theo Tên, Tên tài khoản, Email, Số điện thoại...'}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="input-field pl-10"
@@ -216,16 +226,16 @@ export default function ManagerStaff() {
               onChange={(e) => setStatusFilter(e.target.value)}
               className="input-field w-full md:w-48"
             >
-              <option value="">All Statuses</option>
-              <option value="ACTIVE">Active</option>
-              <option value="INACTIVE">Inactive</option>
-              <option value="BANNED">Banned</option>
+              <option value="">{language === 'en' ? 'All Statuses' : 'Tất cả trạng thái'}</option>
+              <option value="ACTIVE">{language === 'en' ? 'Active' : 'Hoạt động'}</option>
+              <option value="INACTIVE">{language === 'en' ? 'Inactive' : 'Không hoạt động'}</option>
+              <option value="BANNED">{language === 'en' ? 'Banned' : 'Bị khóa'}</option>
             </select>
             <button
               type="button"
               onClick={fetchStaff}
               className="p-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg transition-colors border border-slate-200 dark:border-slate-700"
-              title="Refresh List"
+              title={language === 'en' ? 'Refresh List' : 'Làm mới danh sách'}
             >
               <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
             </button>
@@ -238,14 +248,20 @@ export default function ManagerStaff() {
         {loading ? (
           <div className="flex flex-col items-center justify-center flex-1 py-20 gap-3">
             <RefreshCw size={32} className="animate-spin text-blue-500" />
-            <p className="text-slate-500 dark:text-slate-400 font-medium">Loading staff records...</p>
+            <p className="text-slate-500 dark:text-slate-400 font-medium">
+              {language === 'en' ? 'Loading staff records...' : 'Đang tải danh sách nhân viên...'}
+            </p>
           </div>
         ) : staffList.length === 0 ? (
           <div className="flex flex-col items-center justify-center flex-1 py-20 text-center">
             <Shield size={48} className="text-slate-300 dark:text-slate-700 mb-3" />
-            <p className="text-slate-500 dark:text-slate-400 font-semibold text-lg">No staff records found</p>
+            <p className="text-slate-500 dark:text-slate-400 font-semibold text-lg">
+              {language === 'en' ? 'No staff records found' : 'Không tìm thấy thông tin nhân viên'}
+            </p>
             <p className="text-slate-400 dark:text-slate-500 text-sm max-w-sm mt-1">
-              Try adjusting your search criteria or add a new parking staff member.
+              {language === 'en' 
+                ? 'Try adjusting your search criteria or add a new parking staff member.' 
+                : 'Thử điều chỉnh điều kiện tìm kiếm hoặc thêm một nhân viên vận hành bãi xe mới.'}
             </p>
           </div>
         ) : (
@@ -253,11 +269,11 @@ export default function ManagerStaff() {
             <table className="w-full border-collapse">
               <thead>
                 <tr>
-                  <th className="table-header">Staff Details</th>
-                  <th className="table-header">Contact Information</th>
-                  <th className="table-header">Status</th>
-                  <th className="table-header">Created At</th>
-                  <th className="table-header text-right">Actions</th>
+                  <th className="table-header">{language === 'en' ? 'Staff Details' : 'Chi tiết nhân viên'}</th>
+                  <th className="table-header">{language === 'en' ? 'Contact Information' : 'Thông tin liên hệ'}</th>
+                  <th className="table-header">{language === 'en' ? 'Status' : 'Trạng thái'}</th>
+                  <th className="table-header">{language === 'en' ? 'Created At' : 'Ngày tạo'}</th>
+                  <th className="table-header text-right">{language === 'en' ? 'Actions' : 'Thao tác'}</th>
                 </tr>
               </thead>
               <tbody>
@@ -302,14 +318,18 @@ export default function ManagerStaff() {
                       </div>
                     </td>
                     <td className="table-cell">
-                      <span className={`badge ${
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-[10px] font-bold border ${
                         staff.status === 'ACTIVE' 
-                          ? 'badge-success' 
+                          ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/30' 
                           : staff.status === 'INACTIVE' 
-                          ? 'badge-warning' 
-                          : 'badge-error'
+                          ? 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/30' 
+                          : 'bg-red-50 text-red-655 border-red-100 dark:bg-red-955/20 dark:text-red-400 dark:border-red-900/30'
                       }`}>
-                        {staff.status}
+                        {staff.status === 'ACTIVE' 
+                          ? (language === 'en' ? 'Active' : 'Hoạt động') 
+                          : staff.status === 'INACTIVE' 
+                          ? (language === 'en' ? 'Inactive' : 'Không hoạt động') 
+                          : (language === 'en' ? 'Banned' : 'Bị khóa')}
                       </span>
                     </td>
                     <td className="table-cell text-xs text-slate-500">
@@ -320,7 +340,7 @@ export default function ManagerStaff() {
                         <button
                           onClick={() => openEditModal(staff)}
                           className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:text-slate-400 dark:hover:text-blue-400 dark:hover:bg-slate-800 rounded-lg transition-all"
-                          title="Edit Details"
+                          title={language === 'en' ? 'Edit Details' : 'Chỉnh sửa chi tiết'}
                         >
                           <Edit size={16} />
                         </button>
@@ -334,7 +354,11 @@ export default function ManagerStaff() {
                               ? 'text-slate-500 hover:text-red-600 hover:bg-red-50 dark:text-slate-400 dark:hover:text-red-400 dark:hover:bg-slate-800'
                               : 'text-red-600 bg-red-50 hover:bg-red-100 dark:text-red-400 dark:bg-red-950/20 dark:hover:bg-red-955/45'
                           }`}
-                          title={staff.status === 'ACTIVE' ? 'Deactivate / Ban Staff' : 'Activate Staff'}
+                          title={
+                            staff.status === 'ACTIVE' 
+                              ? (language === 'en' ? 'Deactivate / Ban Staff' : 'Vô hiệu hóa / Khóa nhân viên') 
+                              : (language === 'en' ? 'Activate Staff' : 'Kích hoạt nhân viên')
+                          }
                         >
                           {staff.status === 'ACTIVE' ? <Lock size={16} /> : <Unlock size={16} />}
                         </button>
@@ -365,52 +389,56 @@ export default function ManagerStaff() {
                 <UserPlus size={22} />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-slate-800 dark:text-white">Add Parking Staff</h3>
-                <p className="text-xs text-slate-500">Create a new operator account for check-in/out duties.</p>
+                <h3 className="text-lg font-bold text-slate-800 dark:text-white">
+                  {language === 'en' ? 'Add Parking Staff' : 'Thêm Nhân viên Bãi xe'}
+                </h3>
+                <p className="text-xs text-slate-500">
+                  {language === 'en' ? 'Create a new operator account for check-in/out duties.' : 'Tạo tài khoản nhân viên mới cho công việc check-in/out.'}
+                </p>
               </div>
             </div>
 
             <form onSubmit={handleAddSubmit} className="space-y-4">
               <div>
-                <label className="label">Full Name *</label>
+                <label className="label">{language === 'en' ? 'Full Name *' : 'Họ và tên *'}</label>
                 <input
                   type="text"
                   required
                   value={addForm.fullName}
                   onChange={(e) => setAddForm(prev => ({ ...prev, fullName: e.target.value }))}
                   className="input-field"
-                  placeholder="e.g. John Doe"
+                  placeholder={language === 'en' ? 'e.g. John Doe' : 'vd: Nguyễn Văn A'}
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="label">Email Address *</label>
+                  <label className="label">{language === 'en' ? 'Email Address *' : 'Địa chỉ email *'}</label>
                   <input
                     type="email"
                     required
                     value={addForm.email}
                     onChange={(e) => setAddForm(prev => ({ ...prev, email: e.target.value.trim() }))}
                     className="input-field"
-                    placeholder="e.g. john@domain.com"
+                    placeholder={language === 'en' ? 'e.g. john@domain.com' : 'vd: name@email.com'}
                   />
                 </div>
                 <div>
-                  <label className="label">Phone Number *</label>
+                  <label className="label">{language === 'en' ? 'Phone Number *' : 'Số điện thoại *'}</label>
                   <input
                     type="tel"
                     required
                     value={addForm.phoneNumber}
                     onChange={(e) => setAddForm(prev => ({ ...prev, phoneNumber: e.target.value.trim() }))}
                     className="input-field"
-                    placeholder="e.g. 0912345678"
+                    placeholder={language === 'en' ? 'e.g. 0912345678' : 'vd: 0912345678'}
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="label">Password *</label>
+                  <label className="label">{language === 'en' ? 'Password *' : 'Mật khẩu *'}</label>
                   <input
                     type="password"
                     required
@@ -422,7 +450,7 @@ export default function ManagerStaff() {
                   />
                 </div>
                 <div>
-                  <label className="label">Confirm Password *</label>
+                  <label className="label">{language === 'en' ? 'Confirm Password *' : 'Xác nhận mật khẩu *'}</label>
                   <input
                     type="password"
                     required
@@ -442,7 +470,7 @@ export default function ManagerStaff() {
                   className="btn-secondary"
                   disabled={formSubmitting}
                 >
-                  Cancel
+                  {language === 'en' ? 'Cancel' : 'Hủy'}
                 </button>
                 <button
                   type="submit"
@@ -450,7 +478,7 @@ export default function ManagerStaff() {
                   disabled={formSubmitting}
                 >
                   {formSubmitting && <RefreshCw size={14} className="animate-spin" />}
-                  Register Staff
+                  {language === 'en' ? 'Register Staff' : 'Đăng ký nhân viên'}
                 </button>
               </div>
             </form>
@@ -475,45 +503,51 @@ export default function ManagerStaff() {
                 <Edit size={22} />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-slate-800 dark:text-white">Edit Staff Details</h3>
-                <p className="text-xs text-slate-500">Update contact and profile details for @{selectedStaff?.username}.</p>
+                <h3 className="text-lg font-bold text-slate-800 dark:text-white">
+                  {language === 'en' ? 'Edit Staff Details' : 'Chỉnh sửa thông tin nhân viên'}
+                </h3>
+                <p className="text-xs text-slate-500">
+                  {language === 'en' 
+                    ? `Update contact and profile details for @${selectedStaff?.username}.` 
+                    : `Cập nhật thông tin liên hệ và hồ sơ cho @${selectedStaff?.username}.`}
+                </p>
               </div>
             </div>
 
             <form onSubmit={handleEditSubmit} className="space-y-4">
               <div>
-                <label className="label">Full Name *</label>
+                <label className="label">{language === 'en' ? 'Full Name *' : 'Họ và tên *'}</label>
                 <input
                   type="text"
                   required
                   value={editForm.fullName}
                   onChange={(e) => setEditForm(prev => ({ ...prev, fullName: e.target.value }))}
                   className="input-field"
-                  placeholder="e.g. John Doe"
+                  placeholder={language === 'en' ? 'e.g. John Doe' : 'vd: Nguyễn Văn A'}
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="label">Email Address *</label>
+                  <label className="label">{language === 'en' ? 'Email Address *' : 'Địa chỉ email *'}</label>
                   <input
                     type="email"
                     required
                     value={editForm.email}
                     onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value.trim() }))}
                     className="input-field"
-                    placeholder="e.g. john@domain.com"
+                    placeholder={language === 'en' ? 'e.g. john@domain.com' : 'vd: name@email.com'}
                   />
                 </div>
                 <div>
-                  <label className="label">Phone Number *</label>
+                  <label className="label">{language === 'en' ? 'Phone Number *' : 'Số điện thoại *'}</label>
                   <input
                     type="tel"
                     required
                     value={editForm.phone}
                     onChange={(e) => setEditForm(prev => ({ ...prev, phone: e.target.value.trim() }))}
                     className="input-field"
-                    placeholder="e.g. 0912345678"
+                    placeholder={language === 'en' ? 'e.g. 0912345678' : 'vd: 0912345678'}
                   />
                 </div>
               </div>
@@ -525,7 +559,7 @@ export default function ManagerStaff() {
                   className="btn-secondary"
                   disabled={formSubmitting}
                 >
-                  Cancel
+                  {language === 'en' ? 'Cancel' : 'Hủy'}
                 </button>
                 <button
                   type="submit"
@@ -533,7 +567,7 @@ export default function ManagerStaff() {
                   disabled={formSubmitting}
                 >
                   {formSubmitting && <RefreshCw size={14} className="animate-spin" />}
-                  Save Changes
+                  {language === 'en' ? 'Save Changes' : 'Lưu thay đổi'}
                 </button>
               </div>
             </form>
@@ -566,12 +600,12 @@ export default function ManagerStaff() {
               </div>
               <div className="min-w-0 flex-1">
                 <h3 className="text-base font-bold text-slate-800 dark:text-white mb-1">
-                  Confirm Action
+                  {language === 'en' ? 'Confirm Action' : 'Xác nhận hành động'}
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
                   {staffToToggle.status === 'ACTIVE' 
-                    ? `Are you sure you want to deactivate @${staffToToggle.username}?`
-                    : `Are you sure you want to activate @${staffToToggle.username}?`
+                    ? (language === 'en' ? `Are you sure you want to deactivate @${staffToToggle.username}?` : `Bạn có chắc chắn muốn vô hiệu hóa tài khoản @${staffToToggle.username}?`)
+                    : (language === 'en' ? `Are you sure you want to activate @${staffToToggle.username}?` : `Bạn có chắc chắn muốn kích hoạt tài khoản @${staffToToggle.username}?`)
                   }
                 </p>
               </div>
@@ -587,7 +621,7 @@ export default function ManagerStaff() {
                 className="btn-secondary text-xs"
                 disabled={formSubmitting}
               >
-                Cancel
+                {language === 'en' ? 'Cancel' : 'Hủy'}
               </button>
               <button
                 type="button"
@@ -600,7 +634,9 @@ export default function ManagerStaff() {
                 disabled={formSubmitting}
               >
                 {formSubmitting && <RefreshCw size={12} className="animate-spin" />}
-                {staffToToggle.status === 'ACTIVE' ? 'Deactivate Account' : 'Activate Account'}
+                {staffToToggle.status === 'ACTIVE' 
+                  ? (language === 'en' ? 'Deactivate Account' : 'Khóa tài khoản') 
+                  : (language === 'en' ? 'Activate Account' : 'Kích hoạt tài khoản')}
               </button>
             </div>
           </div>

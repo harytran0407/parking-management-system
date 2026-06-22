@@ -41,7 +41,6 @@ export default function AdminUsers() {
   const [selectedUser, setSelectedUser] = useState(null);
 
   // Add User Form States
-  const [newUsername, setNewUsername] = useState("");
   const [newFullName, setNewFullName] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [newPhone, setNewPhone] = useState("");
@@ -58,8 +57,10 @@ export default function AdminUsers() {
   const [userToDelete, setUserToDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
-  // Dropdown states
-  const [activeDropdownUserId, setActiveDropdownUserId] = useState(null);
+  // Status toggle modal states
+  const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
+  const [userToToggleStatus, setUserToToggleStatus] = useState(null);
+  const [togglingStatus, setTogglingStatus] = useState(false);
 
   // Initial mockup to populate immediately if backend table is empty or server offline
   const mockUsers = [
@@ -181,35 +182,44 @@ export default function AdminUsers() {
     return matchesSearch && matchesRole && matchesStatus;
   }) : [];
 
-  // Toggle user active / banned status
-  const handleToggleStatus = async (user) => {
-    const newStatus = user.status === "BANNED" ? "ACTIVE" : "BANNED";
-    const uId = user.user_id || user.userId;
-    const uName = user.fullName || user.full_name || user.username;
+  // Trigger status toggle confirm modal
+  const handleToggleStatus = (user) => {
+    setUserToToggleStatus(user);
+    setIsStatusModalOpen(true);
+  };
 
-    // Update local state immediately for snappy responsive feel
-    setUsersList((prev) =>
-      prev.map((u) => ((u.user_id || u.userId) === uId ? { ...u, status: newStatus } : u))
-    );
+  // Toggle user active / banned status from Modal
+  const handleConfirmToggleStatus = async () => {
+    if (!userToToggleStatus) return;
+    const newStatus = userToToggleStatus.status === "BANNED" ? "ACTIVE" : "BANNED";
+    const uId = userToToggleStatus.user_id || userToToggleStatus.userId;
+    const uName = userToToggleStatus.fullName || userToToggleStatus.full_name || userToToggleStatus.username;
 
     try {
-      await api.put(`/admin/users/${uId}/status`, { status: newStatus });
-      if (language === "en") {
-        toast.success(`User "${uName}" is now ${newStatus === "ACTIVE" ? "active" : "suspended"}.`);
-      } else {
-        toast.success(`Người dùng "${uName}" hiện đã ${newStatus === "ACTIVE" ? "hoạt động" : "bị khóa"}.`);
+      setTogglingStatus(true);
+      const response = await api.put(`/admin/users/${uId}/status`, { status: newStatus });
+      if (response.data && response.data.success) {
+        setUsersList((prev) =>
+          prev.map((u) => ((u.user_id || u.userId) === uId ? { ...u, status: newStatus } : u))
+        );
+        if (language === "en") {
+          toast.success(`User "${uName}" is now ${newStatus === "ACTIVE" ? "active" : "suspended"}.`);
+        } else {
+          toast.success(`Người dùng "${uName}" hiện đã ${newStatus === "ACTIVE" ? "hoạt động" : "bị khóa"}.`);
+        }
+        setIsStatusModalOpen(false);
+        setUserToToggleStatus(null);
       }
     } catch (err) {
-      console.error("Failed to update status on server:", err);
-      // Revert on error
-      setUsersList((prev) =>
-        prev.map((u) => ((u.user_id || u.userId) === uId ? { ...u, status: user.status } : u))
-      );
+      console.error("[User Status Toggle Failed]:", err);
+      const msg = err?.response?.data?.message || err?.message || "Unknown error";
       if (language === "en") {
-        toast.error(`Failed to update status for "${uName}".`);
+        toast.error(`Failed to update status for "${uName}": ${msg}`);
       } else {
-        toast.error(`Cập nhật trạng thái cho "${uName}" thất bại.`);
+        toast.error(`Cập nhật trạng thái cho "${uName}" thất bại: ${msg}`);
       }
+    } finally {
+      setTogglingStatus(false);
     }
   };
 
@@ -327,14 +337,19 @@ export default function AdminUsers() {
     setFormError("");
     setFormSuccess("");
 
-    if (!newUsername || !newFullName || !newEmail || !newPhone || !newPassword) {
+    if (!newFullName || !newEmail || !newPhone || !newPassword) {
       setFormError(language === "en" ? "Please fill out all required fields." : "Vui lòng điền đầy đủ các thông tin bắt buộc.");
       return;
     }
 
     try {
+      const emailPrefix = newEmail.split("@")[0];
+      const generatedUsername = emailPrefix + "_" + Math.random().toString(36).substring(2, 6);
+      const generatedUserId = "usr_" + Date.now() + Math.random().toString(36).substring(2, 6);
+
       const response = await api.post("/admin/users", {
-        username: newUsername,
+        user_id: generatedUserId,
+        username: generatedUsername,
         full_name: newFullName,
         email: newEmail,
         phone: newPhone,
@@ -348,7 +363,6 @@ export default function AdminUsers() {
       fetchUsers();
 
       // Reset fields
-      setNewUsername("");
       setNewFullName("");
       setNewEmail("");
       setNewPhone("");
@@ -362,7 +376,7 @@ export default function AdminUsers() {
     } catch (err) {
       console.error(err);
       let errMsg = language === "en" ? "Failed to create user. Verify field constraints." : "Tạo người dùng thất bại. Vui lòng kiểm tra các ràng buộc.";
-      
+
       // Extract detailed validation errors from ASP.NET Core ModelState
       if (err.errors) {
         errMsg = Object.values(err.errors).flat().join(" ");
@@ -445,9 +459,9 @@ export default function AdminUsers() {
             {language === "en" ? "User Accounts & Roles" : "Tài khoản & Vai trò"}
           </h2>
           <p className="text-xs text-slate-550 dark:text-slate-400 mt-1">
-            {language === "en" 
-              ? "Browse registered system accounts, assign core administrative permissions, or lock access."
-              : "Xem các tài khoản đã đăng ký, phân quyền quản trị cốt lõi, hoặc khóa quyền truy cập."}
+            {language === "en"
+              ? "Manage user accounts, assign roles, and control access permissions."
+              : "Xem các tài khoản đã đăng ký, phân quyền quản trị , hoặc khóa quyền truy cập."}
           </p>
         </div>
 
@@ -647,103 +661,70 @@ export default function AdminUsers() {
                               : "bg-red-50 text-red-700 border border-red-200 dark:bg-red-955/20 dark:text-red-400 dark:border-red-900/30"
                             }`}>
                             <span className={`w-1.5 h-1.5 rounded-full ${user.status === "ACTIVE" ? "bg-emerald-500" : "bg-red-500"}`} />
-                            {user.status === "ACTIVE" 
-                              ? (language === "en" ? "ACTIVE" : "HOẠT ĐỘNG") 
+                            {user.status === "ACTIVE"
+                              ? (language === "en" ? "ACTIVE" : "HOẠT ĐỘNG")
                               : (language === "en" ? "BANNED" : "ĐÃ KHÓA")}
                           </span>
                         </td>
 
                         {/* Last Login timestamps */}
                         <td className="py-3 px-4 text-center text-xs text-slate-550 dark:text-slate-400 font-semibold">
-                          {uLastLogin 
-                            ? new Date(uLastLogin).toLocaleString(language === "en" ? "en-US" : "vi-VN") 
+                          {uLastLogin
+                            ? new Date(uLastLogin).toLocaleString(language === "en" ? "en-US" : "vi-VN")
                             : (language === "en" ? "Never logged in" : "Chưa từng đăng nhập")}
                         </td>
 
                         {/* Action buttons */}
                         <td className="py-3 px-4 text-center">
-                          <div className="flex justify-center items-center">
+                          <div className="flex justify-center items-center gap-1.5">
                             {user.role === "SystemAdmin" || uRoleId === 1 ? (
                               <span className="text-slate-400 dark:text-slate-655 font-bold text-[10px] tracking-wider uppercase inline-flex items-center justify-center gap-1 select-none py-2 bg-slate-50 dark:bg-slate-800/40 px-2.5 rounded-lg border border-slate-100 dark:border-slate-800/80">
                                 <ShieldCheck size={13} className="text-purple-500" /> {language === "en" ? "Locked" : "Bảo vệ"}
                               </span>
                             ) : (
-                              <div className="relative">
+                              <>
+                                {/* Action 1: Assign Role */}
                                 <button
-                                  onClick={() => setActiveDropdownUserId(activeDropdownUserId === uId ? null : uId)}
-                                  className="p-2 text-slate-450 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all active:scale-95"
-                                  title={language === "en" ? "Actions" : "Hành động"}
+                                  onClick={() => {
+                                    setSelectedUser(user);
+                                    setTargetRoleId(String(uRoleId));
+                                    setIsEditRoleOpen(true);
+                                  }}
+                                  className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:text-slate-400 dark:hover:text-blue-400 dark:hover:bg-slate-800 rounded-lg transition-all active:scale-95"
+                                  title={language === "en" ? "Assign Role" : "Gán vai trò"}
                                 >
-                                  <MoreVertical size={16} />
+                                  <Key size={15} />
                                 </button>
 
-                                {activeDropdownUserId === uId && (
-                                  <>
-                                    {/* Backdrop transparent click catcher */}
-                                    <div
-                                      className="fixed inset-0 z-40 bg-transparent"
-                                      onClick={() => setActiveDropdownUserId(null)}
-                                    />
+                                {/* Action 2: Change Status (Ban/Activate) */}
+                                <button
+                                  onClick={() => handleToggleStatus(user)}
+                                  className={`p-1.5 rounded-lg transition-all active:scale-95 ${
+                                    user.status === "BANNED"
+                                      ? "text-emerald-600 hover:text-emerald-500 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/20"
+                                      : "text-amber-600 hover:text-amber-500 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-955/20"
+                                  }`}
+                                  title={
+                                    user.status === "BANNED"
+                                      ? (language === "en" ? "Activate User" : "Kích hoạt người dùng")
+                                      : (language === "en" ? "Suspend User" : "Khóa người dùng")
+                                  }
+                                >
+                                  {user.status === "BANNED" ? <UserCheck size={15} /> : <Ban size={15} />}
+                                </button>
 
-                                    {/* Dropdown Menu Panel */}
-                                    <div className="absolute right-0 mt-1.5 w-44 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-50 py-1.5 animate-slide-up-dense">
-                                      {/* Action 1: Edit Role */}
-                                      <button
-                                        onClick={() => {
-                                          setActiveDropdownUserId(null);
-                                          setSelectedUser(user);
-                                          setTargetRoleId(String(uRoleId));
-                                          setIsEditRoleOpen(true);
-                                        }}
-                                        className="w-full px-3.5 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-800/60 text-slate-700 dark:text-slate-300 flex items-center gap-2.5 transition-colors font-medium text-xs"
-                                      >
-                                        <Key size={14} className="text-blue-500 shrink-0" />
-                                        <span>{language === "en" ? "Assign Role" : "Gán vai trò"}</span>
-                                      </button>
-
-                                      {/* Action 2: Change Status */}
-                                      <button
-                                        onClick={() => {
-                                          setActiveDropdownUserId(null);
-                                          handleToggleStatus(user);
-                                        }}
-                                        className={`w-full px-3.5 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-800/60 flex items-center gap-2.5 transition-colors font-medium text-xs
-                                          ${user.status === "BANNED"
-                                            ? "text-emerald-600 hover:text-emerald-500"
-                                            : "text-amber-600 hover:text-amber-500"
-                                          }`}
-                                      >
-                                        {user.status === "BANNED" ? (
-                                          <>
-                                            <UserCheck size={14} className="text-emerald-500 shrink-0" />
-                                            <span>{language === "en" ? "Activate User" : "Kích hoạt"}</span>
-                                          </>
-                                        ) : (
-                                          <>
-                                            <Ban size={14} className="text-amber-500 shrink-0" />
-                                            <span>{language === "en" ? "Suspend User" : "Khóa người dùng"}</span>
-                                          </>
-                                        )}
-                                      </button>
-
-                                      <div className="border-t border-slate-100 dark:border-slate-800 my-1" />
-
-                                      {/* Action 3: Delete (Dangerous) */}
-                                      <button
-                                        onClick={() => {
-                                          setActiveDropdownUserId(null);
-                                          setUserToDelete(user);
-                                          setIsDeleteModalOpen(true);
-                                        }}
-                                        className="w-full px-3.5 py-2 text-left hover:bg-red-50 dark:hover:bg-red-955/20 text-red-600 dark:text-red-500 flex items-center gap-2.5 transition-colors font-semibold text-xs"
-                                      >
-                                        <Trash2 size={14} className="text-red-600 dark:text-red-500 shrink-0" />
-                                        <span>{language === "en" ? "Delete Account" : "Xóa tài khoản"}</span>
-                                      </button>
-                                    </div>
-                                  </>
-                                )}
-                              </div>
+                                {/* Action 3: Delete Account */}
+                                <button
+                                  onClick={() => {
+                                    setUserToDelete(user);
+                                    setIsDeleteModalOpen(true);
+                                  }}
+                                  className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 dark:text-slate-400 dark:hover:text-red-400 dark:hover:bg-red-955/20 rounded-lg transition-all active:scale-95"
+                                  title={language === "en" ? "Delete Account" : "Xóa tài khoản"}
+                                >
+                                  <Trash2 size={15} />
+                                </button>
+                              </>
                             )}
                           </div>
                         </td>
@@ -776,10 +757,10 @@ export default function AdminUsers() {
                 </select>
                 <span>{language === "en" ? "entries" : "mục"}</span>
               </div>
-              
+
               {/* Stats */}
               <span>
-                {language === "en" 
+                {language === "en"
                   ? `Showing ${totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1} to ${Math.min(currentPage * pageSize, totalItems)} of ${totalItems} entries`
                   : `Hiển thị từ ${totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1} đến ${Math.min(currentPage * pageSize, totalItems)} trong tổng số ${totalItems} mục`}
               </span>
@@ -800,11 +781,10 @@ export default function AdminUsers() {
                   <button
                     key={p}
                     onClick={() => setCurrentPage(p)}
-                    className={`w-8 h-8 rounded-lg text-xs font-bold transition-all flex items-center justify-center ${
-                      currentPage === p
+                    className={`w-8 h-8 rounded-lg text-xs font-bold transition-all flex items-center justify-center ${currentPage === p
                         ? "bg-blue-600 text-white shadow-md shadow-blue-500/10"
                         : "border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
-                    }`}
+                      }`}
                   >
                     {p}
                   </button>
@@ -845,9 +825,9 @@ export default function AdminUsers() {
             </div>
 
             <p className="text-xs text-slate-550 dark:text-slate-400 mb-4 leading-relaxed">
-              {language === "en" 
-                ? "Modifying roles alters permission boundaries. User: " 
-                : "Thay đổi vai trò sẽ thay đổi quyền hạn tương ứng. Tài khoản: "} 
+              {language === "en"
+                ? "Modifying roles alters permission boundaries. User: "
+                : "Thay đổi vai trò sẽ thay đổi quyền hạn tương ứng. Tài khoản: "}
               <strong className="text-slate-850 dark:text-white">@{selectedUser.username}</strong>
             </p>
 
@@ -915,61 +895,48 @@ export default function AdminUsers() {
             )}
 
             <form onSubmit={handleAddUserSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-slate-400 dark:text-slate-500 mb-1 uppercase text-[10px] font-bold tracking-wider">
-                    {language === "en" ? "Username" : "Tên đăng nhập"}
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={newUsername}
-                    onChange={(e) => setNewUsername(e.target.value)}
-                    placeholder="e.g. staff_nam"
-                    className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/10 text-xs"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-400 dark:text-slate-500 mb-1 uppercase text-[10px] font-bold tracking-wider">
-                    {language === "en" ? "Full Name" : "Họ và Tên"}
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={newFullName}
-                    onChange={(e) => setNewFullName(e.target.value)}
-                    placeholder="e.g. Nguyen Hoang Nam"
-                    className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/10 text-xs"
-                  />
-                </div>
-              </div>
-
               <div>
                 <label className="block text-slate-400 dark:text-slate-500 mb-1 uppercase text-[10px] font-bold tracking-wider">
-                  {language === "en" ? "Email Address" : "Địa chỉ Email"}
-                </label>
-                <input
-                  type="email"
-                  required
-                  value={newEmail}
-                  onChange={(e) => setNewEmail(e.target.value)}
-                  placeholder="name@eparking.vn"
-                  className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/10 text-xs"
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-400 dark:text-slate-500 mb-1 uppercase text-[10px] font-bold tracking-wider">
-                  {language === "en" ? "Phone Number" : "Số điện thoại"}
+                  {language === "en" ? "Full Name" : "Họ và Tên"}
                 </label>
                 <input
                   type="text"
                   required
-                  value={newPhone}
-                  onChange={(e) => setNewPhone(e.target.value)}
-                  placeholder="090XXXXXXX"
+                  value={newFullName}
+                  onChange={(e) => setNewFullName(e.target.value)}
+                  placeholder="e.g. Nguyen Hoang Nam"
                   className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/10 text-xs"
                 />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-slate-400 dark:text-slate-500 mb-1 uppercase text-[10px] font-bold tracking-wider">
+                    {language === "en" ? "Email Address" : "Địa chỉ Email"}
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
+                    placeholder="name@eparking.vn"
+                    className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/10 text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-400 dark:text-slate-500 mb-1 uppercase text-[10px] font-bold tracking-wider">
+                    {language === "en" ? "Phone Number" : "Số điện thoại"}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newPhone}
+                    onChange={(e) => setNewPhone(e.target.value)}
+                    placeholder="090XXXXXXX"
+                    className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/10 text-xs"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1055,9 +1022,9 @@ export default function AdminUsers() {
             <div className="space-y-4">
               <div className="bg-red-50/50 dark:bg-red-955/10 border border-red-100 dark:border-red-900/40 p-3.5 rounded-xl">
                 <p className="text-xs text-red-700 dark:text-red-400 leading-relaxed font-semibold">
-                  {language === "en" 
-                    ? "Warning: You are about to permanently delete the user account for " 
-                    : "Cảnh báo: Bạn sắp sửa xóa vĩnh viễn tài khoản người dùng cho "} 
+                  {language === "en"
+                    ? "Warning: You are about to permanently delete the user account for "
+                    : "Cảnh báo: Bạn sắp sửa xóa vĩnh viễn tài khoản người dùng cho "}
                   <span className="font-mono text-slate-900 dark:text-white bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-red-200 dark:border-red-900">
                     @{userToDelete.username}
                   </span>{" "}
@@ -1097,6 +1064,129 @@ export default function AdminUsers() {
                     <>
                       <Trash2 size={14} />
                       {language === "en" ? "Confirm Delete" : "Xác nhận Xóa"}
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* POPUP MODAL 4: CONFIRM TOGGLE USER STATUS */}
+      {isStatusModalOpen && userToToggleStatus && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-slate-950/40 backdrop-blur-sm transition-opacity"
+            onClick={() => {
+              if (!togglingStatus) {
+                setIsStatusModalOpen(false);
+                setUserToToggleStatus(null);
+              }
+            }}
+          />
+          <div className="relative w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-xl z-10 text-slate-700 dark:text-slate-350 transform scale-100 transition-transform">
+            <button
+              disabled={togglingStatus}
+              onClick={() => {
+                setIsStatusModalOpen(false);
+                setUserToToggleStatus(null);
+              }}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-655 disabled:opacity-50 transition-colors"
+            >
+              <X size={16} />
+            </button>
+
+            <div className="flex items-center gap-3 mb-4 pb-2 border-b border-slate-100 dark:border-slate-800">
+              <div className={`p-2.5 rounded-xl ${
+                userToToggleStatus.status === "ACTIVE"
+                  ? "bg-amber-50 dark:bg-amber-955/20 text-amber-600 dark:text-amber-400"
+                  : "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400"
+              }`}>
+                {userToToggleStatus.status === "ACTIVE" ? (
+                  <Ban size={20} className="animate-pulse" />
+                ) : (
+                  <UserCheck size={20} />
+                )}
+              </div>
+              <div>
+                <h3 className="text-sm font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">
+                  {userToToggleStatus.status === "ACTIVE"
+                    ? (language === "en" ? "Suspend User Account" : "Khóa tài khoản người dùng")
+                    : (language === "en" ? "Activate User Account" : "Kích hoạt tài khoản người dùng")}
+                </h3>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider mt-0.5">
+                  {language === "en" ? "System Access Control" : "Kiểm soát truy cập hệ thống"}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className={`border p-3.5 rounded-xl ${
+                userToToggleStatus.status === "ACTIVE"
+                  ? "bg-amber-50/50 dark:bg-amber-955/10 border-amber-100 dark:border-amber-900/40 text-amber-700 dark:text-amber-400"
+                  : "bg-emerald-50/50 dark:bg-emerald-950/10 border-emerald-100 dark:border-emerald-900/40 text-emerald-750 dark:text-emerald-400"
+              }`}>
+                <p className="text-xs leading-relaxed font-semibold">
+                  {userToToggleStatus.status === "ACTIVE" ? (
+                    language === "en"
+                      ? "Are you sure you want to suspend this account? The user will be blocked from logging into the platform and all operations immediately."
+                      : "Bạn có chắc chắn muốn khóa tài khoản này? Người dùng sẽ không thể đăng nhập vào hệ thống và mọi hoạt động sẽ bị đình chỉ ngay lập tức."
+                  ) : (
+                    language === "en"
+                      ? "Are you sure you want to reactivate this account? The user will regain standard access to log in and operate."
+                      : "Bạn có chắc chắn muốn kích hoạt lại tài khoản này? Người dùng sẽ lấy lại quyền đăng nhập và hoạt động bình thường."
+                  )}
+                </p>
+                <div className="mt-2.5 flex items-center gap-2">
+                  <span className="text-xs text-slate-550 dark:text-slate-400">Target User:</span>
+                  <span className="font-mono text-xs font-bold text-slate-900 dark:text-white bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700">
+                    @{userToToggleStatus.username}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <button
+                  type="button"
+                  disabled={togglingStatus}
+                  onClick={() => {
+                    setIsStatusModalOpen(false);
+                    setUserToToggleStatus(null);
+                  }}
+                  className="flex-1 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-xl transition-all active:scale-95 disabled:opacity-50"
+                >
+                  {language === "en" ? "Cancel" : "Hủy bỏ"}
+                </button>
+                <button
+                  type="button"
+                  disabled={togglingStatus}
+                  onClick={handleConfirmToggleStatus}
+                  className={`flex-1 px-4 py-2.5 text-white text-xs font-bold rounded-xl shadow-md transition-all hover:scale-[1.01] active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 ${
+                    userToToggleStatus.status === "ACTIVE"
+                      ? "bg-amber-600 hover:bg-amber-500"
+                      : "bg-emerald-600 hover:bg-emerald-500"
+                  }`}
+                >
+                  {togglingStatus ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin" />
+                      {language === "en" ? "Processing..." : "Đang xử lý..."}
+                    </>
+                  ) : (
+                    <>
+                      {userToToggleStatus.status === "ACTIVE" ? (
+                        <>
+                          <Ban size={14} />
+                          {language === "en" ? "Confirm Suspend" : "Xác nhận Khóa"}
+                        </>
+                      ) : (
+                        <>
+                          <UserCheck size={14} />
+                          {language === "en" ? "Confirm Activate" : "Xác nhận Mở"}
+                        </>
+                      )}
                     </>
                   )}
                 </button>

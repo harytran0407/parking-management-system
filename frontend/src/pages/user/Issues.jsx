@@ -323,86 +323,37 @@ export default function Issues() {
           {language === "en" ? "File a Support Request" : "Báo cáo sự cố / Gửi hỗ trợ"}
         </h3>
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Rating Overall */}
+          {/* Category Dropdown Selector */}
           <div>
-            <div className="flex justify-between items-center mb-3">
-              <h3 className="text-sm font-bold text-slate-800 dark:text-white">
-                {language === "en" ? "Overall System Experience" : "Trải nghiệm hệ thống chung"}
-              </h3>
-              <span
-                className={`text-xs font-bold px-2 py-0.5 rounded-md ${formData.rating > 0
-                    ? "bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400"
-                    : "text-slate-400"
-                  }`}
+            <h3 className="text-sm font-bold text-slate-800 dark:text-white mb-2 flex items-center gap-1.5">
+              {language === "en" ? "Issue Category" : "Phân loại sự cố"}
+            </h3>
+            <div className="relative">
+              <select
+                name="issueType"
+                value={formData.issueType}
+                onChange={(e) => setFormData({ ...formData, issueType: e.target.value })}
+                className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 focus:border-blue-500 dark:focus:border-blue-500 rounded-2xl px-5 py-3.5 pr-12 text-slate-800 dark:text-white focus:outline-none transition-all text-sm font-semibold cursor-pointer appearance-none"
               >
-                {ratingLabel}
-              </span>
-            </div>
-            <div className="flex gap-2 bg-slate-50 dark:bg-slate-800/30 p-3 rounded-2xl w-max border border-slate-100 dark:border-slate-800">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <button
-                  key={star}
-                  type="button"
-                  onClick={() => setFormData({ ...formData, rating: star })}
-                  onMouseEnter={() => setHoverRating(star)}
-                  onMouseLeave={() => setHoverRating(0)}
-                  className="focus:outline-none transition-transform hover:scale-110"
-                >
-                  <Star
-                    size={28}
-                    className={`transition-colors duration-200 ${star <= (hoverRating || formData.rating)
-                        ? "fill-amber-400 text-amber-400"
-                        : "fill-transparent text-slate-300 dark:text-slate-600"
-                      }`}
-                  />
-                </button>
-              ))}
+                <option value="SYSTEM_ERROR" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white font-medium">
+                  {language === "en" ? "System & App Error" : "Lỗi ứng dụng & hệ thống"}
+                </option>
+                <option value="LOST_TICKET" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white font-medium">
+                  {language === "en" ? "Lost Ticket" : "Mất thẻ xe"}
+                </option>
+                <option value="WRONG_SLOT" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white font-medium">
+                  {language === "en" ? "Wrong Slot Occupancy" : "Chỗ đỗ xe bị chiếm"}
+                </option>
+                <option value="OTHER" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white font-medium">
+                  {language === "en" ? "Other Feedback / General Inquiry" : "Ý kiến khác / Giải đáp chung"}
+                </option>
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-500 dark:text-slate-400">
+                <ChevronDown size={18} />
+              </div>
             </div>
           </div>
 
-          {/* Category Cards Selector */}
-          <div>
-            <h3 className="text-sm font-bold text-slate-800 dark:text-white mb-3 flex items-center gap-1.5">
-              {language === "en" ? "Issue Category" : "Phân loại sự cố"}
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              {[
-                { value: "SYSTEM_ERROR", label: language === "en" ? "System & App Error" : "Lỗi ứng dụng & hệ thống", description: language === "en" ? "Bugs, scanners, or transaction errors" : "Lỗi phần mềm, máy quét hoặc giao dịch", icon: ShieldAlert },
-                { value: "LOST_TICKET", label: language === "en" ? "Lost Ticket" : "Mất thẻ xe", description: language === "en" ? "Lost cards, card replacements" : "Mất thẻ, cấp đổi thẻ mới", icon: AlertTriangle },
-                { value: "WRONG_SLOT", label: language === "en" ? "Wrong Slot Occupancy" : "Chỗ đỗ xe bị chiếm", description: language === "en" ? "Another vehicle parked in your assigned slot" : "Xe khác đang đỗ ở vị trí của bạn", icon: AlertCircle },
-                { value: "OTHER", label: language === "en" ? "Other Feedback / General Inquiry" : "Ý kiến khác / Giải đáp chung", description: language === "en" ? "General inquiries, suggestions, or other issues" : "Thắc mắc, góp ý hoặc các vấn đề khác", icon: HelpCircle }
-              ].map((cat) => {
-                const Icon = cat.icon;
-                const isSelected = formData.issueType === cat.value;
-                return (
-                  <button
-                    key={cat.value}
-                    type="button"
-                    onClick={() => setFormData({ ...formData, issueType: cat.value })}
-                    className={`text-left p-4 rounded-2xl border-2 transition-all duration-200 flex items-start gap-3.5 relative overflow-hidden ${isSelected
-                        ? "border-blue-500 bg-blue-50/10 dark:bg-blue-950/20 dark:border-blue-400 shadow-sm"
-                        : "border-slate-100 dark:border-slate-800 hover:border-slate-200 dark:hover:border-slate-700 bg-slate-50/30 dark:bg-slate-800/20"
-                      }`}
-                  >
-                    <div className={`p-2.5 rounded-xl shrink-0 transition-colors ${isSelected
-                        ? "bg-blue-600 text-white"
-                        : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400"
-                      }`}>
-                      <Icon size={18} />
-                    </div>
-                    <div className="min-w-0">
-                      <h4 className="text-xs font-black text-slate-800 dark:text-white truncate">
-                        {cat.label}
-                      </h4>
-                      <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium leading-tight mt-0.5">
-                        {cat.description}
-                      </p>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
 
           {/* Subject Title */}
           <div>
@@ -533,6 +484,43 @@ export default function Issues() {
             </div>
           </div>
 
+          {/* Rating Overall */}
+          <div>
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="text-sm font-bold text-slate-800 dark:text-white">
+                {language === "en" ? "Overall System Experience" : "Trải nghiệm hệ thống chung"}
+              </h3>
+              <span
+                className={`text-xs font-bold px-2 py-0.5 rounded-md ${formData.rating > 0
+                    ? "bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400"
+                    : "text-slate-400"
+                  }`}
+              >
+                {ratingLabel}
+              </span>
+            </div>
+            <div className="flex gap-2 bg-slate-50 dark:bg-slate-800/30 p-3 rounded-2xl w-max border border-slate-100 dark:border-slate-800">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  type="button"
+                  onClick={() => setFormData({ ...formData, rating: star })}
+                  onMouseEnter={() => setHoverRating(star)}
+                  onMouseLeave={() => setHoverRating(0)}
+                  className="focus:outline-none transition-transform hover:scale-110"
+                >
+                  <Star
+                    size={28}
+                    className={`transition-colors duration-200 ${star <= (hoverRating || formData.rating)
+                        ? "fill-amber-400 text-amber-400"
+                        : "fill-transparent text-slate-300 dark:text-slate-600"
+                      }`}
+                  />
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Form actions */}
           <div className="pt-5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-3">
             <button
@@ -563,7 +551,7 @@ export default function Issues() {
       <div className="space-y-6">
         <h3 className="text-lg font-black text-slate-800 dark:text-white mb-2 flex items-center gap-2">
           <History className="text-blue-500" size={20} />
-          {language === "en" ? "My Support Tickets" : "Lịch sử yêu cầu hỗ trợ"}
+          {language === "en" ? "My Reported Issues" : "Lịch sử báo cáo sự cố"}
         </h3>
 
         <div className="space-y-4">
@@ -700,9 +688,17 @@ export default function Issues() {
                       {/* Resolved & Feedback Section */}
                       {ticket.resolved_at && (
                         <div className="border-t border-slate-100 dark:border-slate-800/80 pt-3 space-y-2">
-                          <p className="text-[10px] text-emerald-500 dark:text-emerald-400 font-bold">
-                            ✓ {language === "en" ? "Resolved on" : "Đã xử lý lúc"} {new Date(ticket.resolved_at).toLocaleString(language === "en" ? "en-US" : "vi-VN")}
-                          </p>
+                          <div className="text-[10px] text-emerald-500 dark:text-emerald-400 font-bold flex flex-wrap gap-x-2 items-center">
+                            <span>✓</span>
+                            {ticket.resolved_by && (
+                              <span className="bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400 px-1.5 py-0.5 rounded font-mono text-[9px] uppercase">
+                                {language === "en" ? "Resolved by:" : "Người duyệt:"} {ticket.resolved_by}
+                              </span>
+                            )}
+                            <span>
+                              {language === "en" ? "Resolved on" : "Đã xử lý lúc"} {new Date(ticket.resolved_at).toLocaleString(language === "en" ? "en-US" : "vi-VN")}
+                            </span>
+                          </div>
                           {feedback ? (
                             <div className="bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100/50 dark:border-emerald-900/30 rounded-2xl p-4 mt-2">
                               <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 block mb-1 uppercase tracking-wider">
@@ -730,39 +726,6 @@ export default function Issues() {
               );
             })
           )}
-        </div>
-      </div>
-
-      {/* SECTION 3: QUICK FAQS */}
-      <div className="space-y-6 pt-2">
-        <h3 className="text-lg font-black text-slate-800 dark:text-white mb-2 flex items-center gap-2">
-          <HelpCircle className="text-blue-500" size={20} />
-          {language === "en" ? "Quick FAQs" : "Giải đáp nhanh (FAQs)"}
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="p-4 bg-white border border-slate-200 dark:bg-slate-900 dark:border-slate-800 rounded-3xl relative overflow-hidden shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
-            <h4 className="text-xs font-extrabold text-blue-600 dark:text-blue-400 flex items-center gap-1.5 uppercase tracking-wide">
-              <MessageSquare size={14} className="text-blue-500" />
-              {language === "en" ? "QR Ticket Not Generating?" : "Không tạo được vé QR?"}
-            </h4>
-            <p className="text-xs text-slate-600 dark:text-slate-350 mt-2 leading-relaxed font-medium">
-              {language === "en"
-                ? "Ensure your transaction deposit is processed. Clear browser storage or refresh app token."
-                : "Hãy đảm bảo rằng giao dịch thanh toán đặt cọc của bạn đã hoàn tất. Thử làm mới cache trình duyệt hoặc đăng nhập lại."}
-            </p>
-          </div>
-
-          <div className="p-4 bg-white border border-slate-200 dark:bg-slate-900 dark:border-slate-800 rounded-3xl relative overflow-hidden shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
-            <h4 className="text-xs font-extrabold text-amber-700 dark:text-amber-400 flex items-center gap-1.5 uppercase tracking-wide">
-              <AlertTriangle size={14} className="text-amber-500" />
-              {language === "en" ? "Camera Plate Scan Failed?" : "Quét biển số xe tại cổng thất bại?"}
-            </h4>
-            <p className="text-xs text-slate-600 dark:text-slate-350 mt-2 leading-relaxed font-medium">
-              {language === "en"
-                ? "Provide your digital reservation ticket QR directly to the gate guard via mobile dashboard view."
-                : "Hãy xuất trình trực tiếp mã QR vé đặt chỗ trên điện thoại của bạn cho bảo vệ ở cổng bãi đỗ xe."}
-            </p>
-          </div>
         </div>
       </div>
     </div>

@@ -53,7 +53,7 @@ export default function MyBookings() {
   // Search & Filter Client States
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [sortOrder, setSortOrder] = useState("earliest"); // "earliest" or "latest"
+  const [sortOrder, setSortOrder] = useState("newest"); // "newest" or "oldest"
 
   // Modal Controllers
   const [activeModal, setActiveModal] = useState(null);
@@ -70,7 +70,7 @@ export default function MyBookings() {
   // Load dashboard and active bookings
   const loadBookingDashboard = async () => {
     try {
-      const activeRes = await api.get("/bookings/active");
+      const activeRes = await api.get("/bookings/my");
       if (activeRes.data && activeRes.data.success) {
         const list = activeRes.data.data.map(b => {
           const typeId = b.vehicle_type_id;
@@ -195,6 +195,10 @@ export default function MyBookings() {
         matchesStatus = b.status === "active";
       } else if (statusFilter === "pending") {
         matchesStatus = b.status === "pending" || b.status === "confirmed";
+      } else if (statusFilter === "cancelled") {
+        matchesStatus = b.status === "cancelled";
+      } else if (statusFilter === "completed") {
+        matchesStatus = b.status === "completed";
       }
 
       return matchesSearch && matchesStatus;
@@ -374,6 +378,8 @@ export default function MyBookings() {
               <option value="all">{language === "en" ? "All Status" : "Tất cả trạng thái"}</option>
               <option value="active">{language === "en" ? "Active (Inside)" : "Đang đỗ (Trong bãi)"}</option>
               <option value="pending">{language === "en" ? "Awaiting Check-in" : "Chờ xe vào bãi"}</option>
+              <option value="cancelled">{language === "en" ? "Cancelled" : "Đã hủy"}</option>
+              <option value="completed">{language === "en" ? "Completed" : "Hoàn thành"}</option>
             </select>
 
             <select
@@ -381,8 +387,8 @@ export default function MyBookings() {
               onChange={(e) => setSortOrder(e.target.value)}
               className="px-3 py-2 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-650 dark:text-slate-300 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/40 cursor-pointer shadow-sm"
             >
-              <option value="earliest">{language === "en" ? "Entry Time: Earliest" : "Giờ vào: Sớm nhất"}</option>
-              <option value="latest">{language === "en" ? "Entry Time: Latest" : "Giờ vào: Muộn nhất"}</option>
+              <option value="newest">{language === "en" ? "Newest to Oldest" : "Mới nhất"}</option>
+              <option value="oldest">{language === "en" ? "Oldest to Newest" : "Cũ nhất"}</option>
             </select>
           </div>
         </div>
@@ -436,6 +442,14 @@ export default function MyBookings() {
                             <>
                               <span className="font-bold text-emerald-600 dark:text-emerald-405">{booking.zoneName}</span>
                             </>
+                          ) : booking.status === "cancelled" ? (
+                            <span className="text-red-650 dark:text-red-455 font-bold">
+                              {language === "en" ? "Status: Cancelled" : "Trạng thái: Đã hủy"}
+                            </span>
+                          ) : booking.status === "completed" ? (
+                            <span className="text-emerald-600 dark:text-emerald-405 font-bold">
+                              {language === "en" ? "Status: Completed" : "Trạng thái: Hoàn thành"}
+                            </span>
                           ) : (
                             <span className="text-amber-600 dark:text-amber-405 font-bold">
                               {language === "en" ? "Status: Awaiting Check-in" : "Trạng thái: Chờ xe vào bãi"}
@@ -518,6 +532,14 @@ export default function MyBookings() {
                               <Unlock size={10} /> {language === "en" ? "UNLOCKED" : "ĐÃ MỞ KHÓA"}
                             </span>
                           )
+                        ) : booking.status === "cancelled" ? (
+                          <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold tracking-wide bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400 border border-red-100 dark:border-red-900/30">
+                            <X size={10} /> {language === "en" ? "CANCELLED" : "ĐÃ HỦY"}
+                          </span>
+                        ) : booking.status === "completed" ? (
+                          <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold tracking-wide bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30">
+                            <CheckCircle2 size={10} /> {language === "en" ? "COMPLETED" : "HOÀN THÀNH"}
+                          </span>
                         ) : (
                           <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold tracking-wide bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-455 border border-blue-100 dark:border-blue-900/30">
                             <Clock size={10} /> {language === "en" ? "CONFIRMED" : "ĐÃ XÁC NHẬN"}
@@ -578,7 +600,7 @@ export default function MyBookings() {
                       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                         {/* Cột trái: Smart Lock hoặc Badge chờ xe vào bãi */}
                         {booking.status === "active" ? (
-                          <div className="lg:col-span-5 bg-gradient-to-b from-blue-50/50 to-indigo-50/30 dark:from-slate-950/40 dark:to-slate-900/20 p-6 rounded-2xl flex flex-col items-center justify-center border border-slate-100 dark:border-slate-800 shadow-sm">
+                          <div className="lg:col-span-5 bg-gradient-to-b from-blue-50/50 to-indigo-50/30 dark:from-slate-950/40 dark:to-slate-900/20 p-6 flex flex-col items-center justify-center border border-slate-100 dark:border-slate-800 shadow-sm">
                             {locked ? (
                               <>
                                 <div className="p-4 bg-red-300 text-red-950 dark:text-red-50 rounded-full mb-3 shadow-inner">
@@ -647,8 +669,40 @@ export default function MyBookings() {
                               </>
                             )}
                           </div>
+                        ) : booking.status === "cancelled" ? (
+                          <div className="lg:col-span-5 bg-gradient-to-b from-red-200/50 to-rose-200/30 dark:from-slate-950/40 dark:to-slate-900/20 p-6  flex flex-col items-center justify-center border border-slate-200/60 dark:border-slate-800 shadow-sm">
+                            <div className="p-4 bg-red-500/10 text-red-500 dark:text-red-450 rounded-full mb-3 shadow-inner">
+                              <X size={32} className="text-red-500" />
+                            </div>
+                            <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
+                              {language === "en" ? "Booking Cancelled" : "Đã hủy đặt chỗ"}
+                            </h4>
+                            <p className="text-[11px] text-slate-400 dark:text-slate-500 text-center mb-5 max-w-[220px] leading-relaxed">
+                              {language === "en" ? "This booking has been cancelled." : "Yêu cầu đặt chỗ này đã bị hủy."}
+                            </p>
+
+                            <div className="w-full max-w-[240px] py-2.5 text-center border border-dashed border-red-300 dark:border-red-700/60 rounded-xl bg-red-50/30 dark:bg-red-955/10 text-red-650 dark:text-red-400 text-[10px] font-bold uppercase tracking-wider">
+                              {language === "en" ? "Status: Cancelled" : "Trạng thái: Đã hủy"}
+                            </div>
+                          </div>
+                        ) : booking.status === "completed" ? (
+                          <div className="lg:col-span-5 bg-gradient-to-b from-emerald-50/50 to-teal-50/30 dark:from-slate-950/40 dark:to-slate-900/20 p-6 flex flex-col items-center justify-center border border-slate-200/60 dark:border-slate-800 shadow-sm">
+                            <div className="p-4 bg-emerald-500/10 text-emerald-500 dark:text-emerald-450 rounded-full mb-3 shadow-inner">
+                              <CheckCircle2 size={32} className="text-emerald-500" />
+                            </div>
+                            <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
+                              {language === "en" ? "Parking Completed" : "Hoàn thành gửi xe"}
+                            </h4>
+                            <p className="text-[11px] text-slate-400 dark:text-slate-500 text-center mb-5 max-w-[220px] leading-relaxed">
+                              {language === "en" ? "This parking session has completed." : "Lượt gửi xe này đã hoàn tất."}
+                            </p>
+
+                            <div className="w-full max-w-[240px] py-2.5 text-center border border-dashed border-emerald-300 dark:border-emerald-700/60 rounded-xl bg-emerald-50/30 dark:bg-emerald-950/10 text-emerald-600 dark:text-emerald-455 text-[10px] font-bold uppercase tracking-wider">
+                              {language === "en" ? "Status: Completed" : "Trạng thái: Hoàn thành"}
+                            </div>
+                          </div>
                         ) : (
-                          <div className="lg:col-span-5 bg-gradient-to-b from-amber-50/50 to-orange-50/30 dark:from-slate-950/40 dark:to-slate-900/20 p-6 rounded-2xl flex flex-col items-center justify-center border border-slate-200/60 dark:border-slate-800 shadow-sm">
+                          <div className="lg:col-span-5 bg-gradient-to-b from-amber-50/50 to-orange-50/30 dark:from-slate-950/40 dark:to-slate-900/20 p-6 flex flex-col items-center justify-center border border-slate-200/60 dark:border-slate-800 shadow-sm">
                             <div className="p-4 bg-amber-500/10 text-amber-500 dark:text-amber-455 rounded-full mb-3 shadow-inner">
                               <Clock size={32} />
                             </div>
@@ -656,7 +710,7 @@ export default function MyBookings() {
                               {language === "en" ? "Awaiting Check-in" : "Chờ xe vào bãi"}
                             </h4>
                             <p className="text-[11px] text-slate-400 dark:text-slate-500 text-center mb-5 max-w-[220px] leading-relaxed">
-                              {language === "en" ? "This booking has not checked in yet. Smart Lock will activate upon check-in." : "Đặt chỗ này chưa quét xe vào bãi. Khóa thông minh sẽ tự động kích hoạt sau khi check-in."}
+                              {language === "en" ? "This booking has not checked in yet." : "Đặt chỗ này chưa quét xe vào bãi."}
                             </p>
 
                             <div className="w-full max-w-[240px] py-2.5 text-center border border-dashed border-amber-300 dark:border-amber-700/60 rounded-xl bg-amber-50/30 dark:bg-amber-950/10 text-amber-600 dark:text-amber-455 text-[10px] font-bold uppercase tracking-wider">
@@ -748,7 +802,8 @@ export default function MyBookings() {
                           {/* Nút tác vụ nhanh bên dưới */}
                           <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
                             {(() => {
-                              const canCancel = booking.status !== "active" && booking.status !== "completed" && new Date(booking.startTime).getTime() - new Date().getTime() >= 60 * 60 * 1000;
+                              if (booking.status === "cancelled" || booking.status === "completed") return null;
+                              const canCancel = booking.status !== "active" && booking.status !== "completed" && booking.status !== "cancelled" && new Date(booking.startTime).getTime() - new Date().getTime() >= 60 * 60 * 1000;
                               return (
                                 <button
                                   disabled={!canCancel}
