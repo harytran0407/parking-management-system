@@ -58,6 +58,14 @@ export default function BookSlot() {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [loadingPayment, setLoadingPayment] = useState(false);
 
+  // Booking restriction state (checked on mount)
+  // null = no restriction
+  // { type: 'spam_lock' } = bị khóa 24h
+  // { type: 'concurrent_limit' } = đang có 2 booking active
+  const [bookingRestriction, setBookingRestriction] = useState(null);
+  const [restrictionLoading, setRestrictionLoading] = useState(true);
+
+
   // Numeric ID mapping based on selection: 2 = Car, 1 = Motorbike
   const vehicleTypeId = useMemo(() => {
     if (vehicleType === "car") return 2;
@@ -78,6 +86,40 @@ export default function BookSlot() {
       }
     };
     fetchCapacity();
+  }, []);
+
+  // Check booking restrictions on mount: spam lock or concurrent limit
+  useEffect(() => {
+    const checkRestrictions = async () => {
+      setRestrictionLoading(true);
+      try {
+        // Check active bookings count via /bookings/active
+        const res = await api.get("/bookings/active");
+        if (res.data?.success) {
+          const activeBookings = res.data.data ?? [];
+          const confirmedOrPending = activeBookings.filter(
+            (b) => b.status === "CONFIRMED" || b.status === "PENDING"
+          );
+          if (confirmedOrPending.length >= 2) {
+            setBookingRestriction({ type: "concurrent_limit" });
+            setRestrictionLoading(false);
+            return;
+          }
+        }
+        setBookingRestriction(null);
+      } catch (err) {
+        // Nếu server trả 422/400 với message spam lock → parse luôn
+        const msg = err.response?.data?.message ?? "";
+        if (msg.includes("khóa") || msg.includes("spam") || msg.toLowerCase().includes("lock")) {
+          setBookingRestriction({ type: "spam_lock" });
+        } else {
+          setBookingRestriction(null);
+        }
+      } finally {
+        setRestrictionLoading(false);
+      }
+    };
+    checkRestrictions();
   }, []);
 
   // Generate selectable dates (only Today and Tomorrow)
@@ -373,15 +415,19 @@ export default function BookSlot() {
     return licensePlate.trim().length >= 5;
   }, [licensePlate]);
 
+  // Form bị vô hiệu hoá khi có restriction
+  const isFormLocked = !!bookingRestriction;
+
   const isStep1Valid = useMemo(() => {
     return (
+      !isFormLocked &&
       isPlateValid &&
       expectedArrival &&
       expectedDeparture &&
       !dateValidationError &&
       !priceError
     );
-  }, [isPlateValid, expectedArrival, expectedDeparture, dateValidationError, priceError]);
+  }, [isFormLocked, isPlateValid, expectedArrival, expectedDeparture, dateValidationError, priceError]);
 
   const handleNextToStep2 = () => {
     if (isStep1Valid) {
@@ -414,7 +460,12 @@ export default function BookSlot() {
     } catch (error) {
       console.error("Lỗi tạo booking:", error);
       const msg = error.response?.data?.message || error.message || (language === "en" ? "Failed to create booking." : "Tạo đặt chỗ thất bại.");
-      alert(msg);
+      // Nếu server trả về lỗi spam lock hoặc concurrent limit → cập nhật restriction state
+      if (msg.includes("khóa") || msg.includes("spam") || msg.toLowerCase().includes("lock")) {
+        setBookingRestriction({ type: "spam_lock" });
+      } else if (msg.includes("2 đặt chỗ") || msg.includes("tối đa 2") || msg.includes("concurrent")) {
+        setBookingRestriction({ type: "concurrent_limit" });
+      }
     } finally {
       setLoadingPayment(false);
     }
@@ -626,6 +677,54 @@ export default function BookSlot() {
         {/* ========================================================= */}
         {currentStep === 1 && (
           <div className="space-y-5 animate-fade-in">
+
+            {/* ── Booking Restriction Banner ── */}
+            {restrictionLoading && (
+              <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-3 flex items-center gap-2.5 text-xs text-slate-500 dark:text-slate-400 font-semibold animate-pulse">
+                <RefreshCw className="w-4 h-4 animate-spin text-blue-400" />
+                {language === "en" ? "Checking account status..." : "Đang kiểm tra trạng thái tài khoản..."}
+              </div>
+            )}
+
+            {!restrictionLoading && bookingRestriction?.type === "spam_lock" && (
+              <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/60 rounded-2xl px-4 py-4 flex items-start gap-3 text-sm">
+                <ShieldAlert className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-black text-red-700 dark:text-red-400">
+                    {language === "en" ? "Booking feature locked for 24 hours" : "Tính năng đặt chỗ bị khóa 24 giờ"}
+                  </p>
+                  <p className="text-xs text-red-500 dark:text-red-500 mt-1 font-medium">
+                    {language === "en"
+                      ? "Your account has been temporarily locked due to excessive booking cancellations. Please try again after 24 hours."
+                      : "Tài khoản của bạn đã bị khóa tạm thời do hủy đặt chỗ quá nhiều lần trong ngày. Vui lòng thử lại sau 24 giờ."}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {!restrictionLoading && bookingRestriction?.type === "concurrent_limit" && (
+              <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 rounded-2xl px-4 py-4 flex items-start gap-3 text-sm">
+                <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-black text-amber-700 dark:text-amber-400">
+                    {language === "en" ? "Maximum concurrent bookings reached" : "Đã đạt giới hạn đặt chỗ đồng thời"}
+                  </p>
+                  <p className="text-xs text-amber-600 dark:text-amber-500 mt-1 font-medium">
+                    {language === "en"
+                      ? "You already have 2 active bookings. Please complete an existing booking before creating a new one."
+                      : "Bạn đang có 2 đặt chỗ đang hoạt động. Hãy hoàn thành hoặc hủy một đặt chỗ hiện có trước khi đặt thêm."}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => navigate("/user/bookings")}
+                    className="mt-2.5 text-xs font-black text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-300 transition"
+                  >
+                    {language === "en" ? "View my bookings →" : "Xem đặt chỗ của tôi →"}
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Selected Vehicle Type Display */}
             <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800/60 rounded-2xl p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -658,9 +757,14 @@ export default function BookSlot() {
               <input
                 type="text"
                 value={licensePlate}
-                onChange={(e) => setLicensePlate(e.target.value.toUpperCase())}
+                onChange={(e) => !isFormLocked && setLicensePlate(e.target.value.toUpperCase())}
                 placeholder={language === "en" ? "e.g. 51F-12345" : "VD: 51F-12345"}
-                className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60 rounded-2xl px-4 py-3 text-slate-800 dark:text-white text-sm font-bold tracking-widest focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                readOnly={isFormLocked}
+                className={`w-full rounded-2xl px-4 py-3 text-sm font-bold tracking-widest focus:outline-none focus:ring-2 focus:ring-blue-500/40 border ${
+                  isFormLocked
+                    ? "bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed"
+                    : "bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700/60 text-slate-800 dark:text-white"
+                }`}
                 maxLength={12}
                 required
               />
@@ -680,8 +784,9 @@ export default function BookSlot() {
                 </label>
                 <select
                   value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60 rounded-2xl px-4 py-3 text-slate-800 dark:text-white text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/40 cursor-pointer"
+                  onChange={(e) => !isFormLocked && setSelectedDate(e.target.value)}
+                  disabled={isFormLocked}
+                  className={"w-full rounded-2xl px-4 py-3 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/40 border " + (isFormLocked ? "bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed" : "bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700/60 text-slate-800 dark:text-white cursor-pointer")}
                   required
                 >
                   {availableDates.map((d) => (
@@ -699,10 +804,10 @@ export default function BookSlot() {
                 </label>
                 <select
                   value={selectedArrival}
-                  onChange={(e) => setSelectedArrival(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60 rounded-2xl px-4 py-3 text-slate-800 dark:text-white text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/40 cursor-pointer"
+                  onChange={(e) => !isFormLocked && setSelectedArrival(e.target.value)}
+                  disabled={isFormLocked || arrivalTimes.length === 0}
+                  className={"w-full rounded-2xl px-4 py-3 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/40 border " + (isFormLocked ? "bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed" : "bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700/60 text-slate-800 dark:text-white cursor-pointer")}
                   required
-                  disabled={arrivalTimes.length === 0}
                 >
                   {arrivalTimes.length === 0 ? (
                     <option value="">{language === "en" ? "No times available" : "Hết giờ đặt hôm nay"}</option>
@@ -723,8 +828,9 @@ export default function BookSlot() {
                 </label>
                 <select
                   value={selectedEndDate}
-                  onChange={(e) => setSelectedEndDate(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60 rounded-2xl px-4 py-3 text-slate-800 dark:text-white text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/40 cursor-pointer"
+                  onChange={(e) => !isFormLocked && setSelectedEndDate(e.target.value)}
+                  disabled={isFormLocked}
+                  className={"w-full rounded-2xl px-4 py-3 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/40 border " + (isFormLocked ? "bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed" : "bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700/60 text-slate-800 dark:text-white cursor-pointer")}
                   required
                 >
                   {availableEndDates.map((d) => (
@@ -742,8 +848,9 @@ export default function BookSlot() {
                 </label>
                 <select
                   value={selectedDepartureTime}
-                  onChange={(e) => setSelectedDepartureTime(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60 rounded-2xl px-4 py-3 text-slate-800 dark:text-white text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/40 cursor-pointer"
+                  onChange={(e) => !isFormLocked && setSelectedDepartureTime(e.target.value)}
+                  disabled={isFormLocked}
+                  className={"w-full rounded-2xl px-4 py-3 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/40 border " + (isFormLocked ? "bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed" : "bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700/60 text-slate-800 dark:text-white cursor-pointer")}
                   required
                 >
                   {departureTimes.map((t) => (
@@ -756,7 +863,7 @@ export default function BookSlot() {
             </div>
 
             {/* Aggregated Duration Info Panel */}
-            {aggregatedDurationText && (
+            {aggregatedDurationText && !isFormLocked && (
               <div className="bg-slate-50 dark:bg-slate-800/30 border border-slate-200/55 dark:border-slate-800 px-4 py-3.5 rounded-2xl text-xs font-bold text-slate-700 dark:text-slate-350 flex items-center gap-2">
                 <Clock className="w-4 h-4 text-blue-500 animate-pulse" />
                 <span>{aggregatedDurationText}</span>
@@ -772,7 +879,7 @@ export default function BookSlot() {
             )}
 
             {/* Pricing estimate display */}
-            {expectedArrival && expectedDeparture && !dateValidationError && (
+            {expectedArrival && expectedDeparture && !dateValidationError && !isFormLocked && (
               <div className="bg-blue-50 dark:bg-blue-950/20 rounded-2xl p-4 border border-blue-100 dark:border-blue-900/20">
                 <div className="flex justify-between items-center">
                   <span className="text-blue-800 dark:text-blue-300 font-bold text-xs uppercase tracking-wide">

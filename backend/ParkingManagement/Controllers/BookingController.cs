@@ -30,7 +30,7 @@ public class BookingController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetPriceEstimate([FromQuery] BookingPriceRequest request)
     {
-        try 
+        try
         {
             var result = await _service.GetPriceEstimateAsync(request);
             return Ok(new { success = true, data = result });
@@ -226,5 +226,16 @@ public class BookingController : ControllerBase
         {
             return BadRequest(new { success = false, message = ex.Message });
         }
+    }
+
+    // GET: api/v1/bookings/capacity-status?vehicle_type_id=1
+    // Kiểm tra xem loại xe đó còn slot để book không (chưa vượt 50% cap)
+    [HttpGet("capacity-status")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetBookingCapacityStatus([FromQuery] int vehicle_type_id)
+    {
+        var data = await _service.GetBookingCapacityStatusAsync(vehicle_type_id);
+        return Ok(new { success = true, data });
     }
 }
