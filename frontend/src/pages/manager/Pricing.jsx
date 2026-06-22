@@ -1,17 +1,22 @@
 import { useState, useEffect } from 'react'
 import {
   DollarSign, Plus, Edit, Trash2, Calendar, RefreshCw,
-  Layers, X, ShieldAlert, AlertTriangle, Settings, Bike, Car
+  X, ShieldAlert, Bike, Car, Clock
 } from 'lucide-react'
 import { toast } from 'sonner'
 import api from '../../utils/api'
 import { useLanguage } from '../../hooks/useLanguage'
 
+const getTodayStr = () => {
+  const d = new Date()
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 export default function ManagerPricing() {
   const { language } = useLanguage()
-
-  // Tab State: 'policies' | 'vehicleTypes'
-  const [activeTab, setActiveTab] = useState('policies')
 
   // Pricing policies states
   const [policies, setPolicies] = useState([])
@@ -25,7 +30,7 @@ export default function ManagerPricing() {
     hourlyRate: 5000,
     overnightFee: 50000,
     handlingFee: 2000,
-    effectiveDate: new Date().toISOString().split('T')[0]
+    effectiveDate: getTodayStr()
   })
 
   const [editForm, setEditForm] = useState({
@@ -40,31 +45,7 @@ export default function ManagerPricing() {
   // Vehicle types states
   const [vehicleTypes, setVehicleTypes] = useState([])
   const [typesLoading, setTypesLoading] = useState(true)
-  const [isAddTypeModalOpen, setIsAddTypeModalOpen] = useState(false)
-  const [isEditTypeModalOpen, setIsEditTypeModalOpen] = useState(false)
-
-  const [addTypeForm, setAddTypeForm] = useState({
-    typeName: ''
-  })
-
-  const [editTypeForm, setEditTypeForm] = useState({
-    id: '',
-    typeName: ''
-  })
-
-  // Deletion preview modal state
-  const [deletePreview, setDeletePreview] = useState({
-    isOpen: false,
-    typeId: null,
-    typeName: null,
-    slotCount: 0,
-    sessionCount: 0,
-    canDelete: false,
-    reason: null
-  })
-
   const [formSubmitting, setFormSubmitting] = useState(false)
-  const [typeSubmitting, setTypeSubmitting] = useState(false)
 
   // API Call: Fetch Pricing Policies
   const fetchPolicies = async () => {
@@ -193,364 +174,339 @@ export default function ManagerPricing() {
     }
   }
 
-  // CREATE Vehicle Type
-  const handleAddTypeSubmit = async (e) => {
-    e.preventDefault()
-    if (!addTypeForm.typeName.trim()) return
-    setTypeSubmitting(true)
-    try {
-      const response = await api.post('/admin/vehicle-types', {
-        vehicle_type_name: addTypeForm.typeName.trim()
-      })
-      if (response.data && response.data.success) {
-        toast.success(language === 'en' ? 'Vehicle class added successfully' : 'Thêm loại xe thành công')
-        setIsAddTypeModalOpen(false)
-        setAddTypeForm({ typeName: '' })
-        fetchVehicleTypes()
+
+  const getActivePolicyForType = (typeId) => {
+    const today = getTodayStr()
+    const typePolicies = policies.filter(p => p.vehicle_type_id === typeId && p.effective_date <= today)
+    if (typePolicies.length === 0) return null
+    // Sort descending by effective date
+    typePolicies.sort((a, b) => new Date(b.effective_date) - new Date(a.effective_date))
+    return typePolicies[0]
+  }
+
+  const getPolicyStatus = (policy) => {
+    const today = getTodayStr()
+    const activePolicy = getActivePolicyForType(policy.vehicle_type_id)
+    
+    if (activePolicy && policy.policy_id === activePolicy.policy_id) {
+      return {
+        label: language === 'en' ? 'Active' : 'Đang áp dụng',
+        colorClass: 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30'
       }
-    } catch (error) {
-      console.error('Error adding vehicle type:', error)
-      toast.error(error.response?.data?.message || (language === 'en' ? 'Failed to add vehicle class' : 'Không thể thêm loại xe'))
-    } finally {
-      setTypeSubmitting(false)
-    }
-  }
-
-  // UPDATE Vehicle Type
-  const openEditTypeModal = (type) => {
-    setEditTypeForm({
-      id: type.vehicle_type_id,
-      typeName: type.vehicle_type_name
-    })
-    setIsEditTypeModalOpen(true)
-  }
-
-  const handleEditTypeSubmit = async (e) => {
-    e.preventDefault()
-    if (!editTypeForm.typeName.trim()) return
-    setTypeSubmitting(true)
-    try {
-      const response = await api.put(`/admin/vehicle-types/${editTypeForm.id}`, {
-        vehicle_type_name: editTypeForm.typeName.trim()
-      })
-      if (response.data && response.data.success) {
-        toast.success(language === 'en' ? 'Vehicle class updated successfully' : 'Cập nhật loại xe thành công')
-        setIsEditTypeModalOpen(false)
-        fetchVehicleTypes()
-        fetchPolicies() // Update pricing policies as names might change
+    } else if (policy.effective_date > today) {
+      return {
+        label: language === 'en' ? 'Scheduled' : 'Đã lên lịch',
+        colorClass: 'bg-blue-50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-900/30'
       }
-    } catch (error) {
-      console.error('Error updating vehicle type:', error)
-      toast.error(error.response?.data?.message || (language === 'en' ? 'Failed to update vehicle class' : 'Không thể cập nhật loại xe'))
-    } finally {
-      setTypeSubmitting(false)
-    }
-  }
-
-  // DELETE Vehicle Type Click (Pre-check constraint before delete)
-  const handleDeleteTypeClick = async (type) => {
-    try {
-      const response = await api.get(`/admin/vehicle-types/${type.vehicle_type_id}/delete-preview`)
-      if (response.data && response.data.success) {
-        const preview = response.data.data
-        setDeletePreview({
-          isOpen: true,
-          typeId: preview.vehicle_type_id,
-          typeName: preview.vehicle_type_name,
-          slotCount: preview.related_slots_count,
-          sessionCount: preview.active_sessions_count,
-          canDelete: preview.can_delete,
-          reason: preview.reason
-        })
+    } else {
+      return {
+        label: language === 'en' ? 'Historical' : 'Hết hiệu lực',
+        colorClass: 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-transparent'
       }
-    } catch (error) {
-      console.error('Error getting delete preview:', error)
-      toast.error(language === 'en' ? 'Failed to check deletion constraints' : 'Không thể kiểm tra điều kiện ràng buộc xóa')
-    }
-  }
-
-  // Confirm delete vehicle type
-  const handleConfirmDeleteType = async () => {
-    if (!deletePreview.typeId) return
-    setTypeSubmitting(true)
-    try {
-      await api.delete(`/admin/vehicle-types/${deletePreview.typeId}`)
-      toast.success(language === 'en' ? 'Vehicle class deleted successfully' : 'Đã xóa loại xe thành công')
-      setDeletePreview({ isOpen: false, typeId: null, typeName: null, slotCount: 0, sessionCount: 0, canDelete: false, reason: null })
-      fetchVehicleTypes()
-      fetchPolicies()
-    } catch (error) {
-      console.error('Error deleting vehicle type:', error)
-      toast.error(error.response?.data?.message || (language === 'en' ? 'Failed to delete vehicle class' : 'Không thể xóa loại xe'))
-    } finally {
-      setTypeSubmitting(false)
     }
   }
 
   return (
-    <div className="animate-slide-in flex flex-col h-full space-y-6">
+    <div className="animate-slide-in flex flex-col space-y-6">
       {/* HEADER SECTION */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="section-title mb-1">
-            {language === 'en' ? 'Pricing & Classifications' : 'Cấu hình giá & Loại xe'}
+            {language === 'en' ? 'Pricing Policy' : 'Chính sách & Bảng giá'}
           </h2>
           <p className="text-sm text-slate-500 dark:text-slate-400">
             {language === 'en'
-              ? 'Define pricing schedules and manage vehicle classification classes dynamically.'
-              : 'Thiết lập bảng giá đỗ xe và quản lý danh mục phân loại xe trong hệ thống.'}
+              ? 'Configure and manage active pricing rules for Car and Motorbike parking.'
+              : 'Thiết lập và quản lý biểu phí đỗ xe áp dụng cho xe máy và ô tô.'}
           </p>
         </div>
         <div className="flex items-center gap-3">
-          {activeTab === 'policies' ? (
-            <button
-              onClick={() => setIsAddModalOpen(true)}
-              className="btn-primary flex items-center gap-2 shadow-lg hover:shadow-blue-500/25 transition-all duration-300"
-            >
-              <Plus size={18} />
-              {language === 'en' ? 'Add Pricing Policy' : 'Thêm chính sách giá'}
-            </button>
-          ) : (
-            <button
-              onClick={() => setIsAddTypeModalOpen(true)}
-              className="btn-primary flex items-center gap-2 shadow-lg hover:shadow-blue-500/25 transition-all duration-300"
-            >
-              <Plus size={18} />
-              {language === 'en' ? 'Add Vehicle Class' : 'Thêm loại xe'}
-            </button>
-          )}
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            className="btn-primary flex items-center gap-2 shadow-lg hover:shadow-blue-500/25 transition-all duration-300"
+          >
+            <Plus size={18} />
+            {language === 'en' ? 'Add Pricing Policy' : 'Thêm chính sách giá'}
+          </button>
         </div>
       </div>
 
-      {/* TABS SELECTOR */}
-      <div className="flex border-b border-slate-200 dark:border-slate-800">
-        <button
-          onClick={() => setActiveTab('policies')}
-          className={`px-5 py-3 text-sm font-bold border-b-2 transition-all flex items-center gap-2 ${
-            activeTab === 'policies'
-              ? 'border-blue-600 text-blue-600 dark:border-blue-500 dark:text-blue-400'
-              : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
-          }`}
-        >
-          <DollarSign size={16} />
-          {language === 'en' ? 'Pricing Policies' : 'Bảng giá đỗ xe'}
-        </button>
-        <button
-          onClick={() => setActiveTab('vehicleTypes')}
-          className={`px-5 py-3 text-sm font-bold border-b-2 transition-all flex items-center gap-2 ${
-            activeTab === 'vehicleTypes'
-              ? 'border-blue-600 text-blue-600 dark:border-blue-500 dark:text-blue-400'
-              : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
-          }`}
-        >
-          <Layers size={16} />
-          {language === 'en' ? 'Vehicle Classes' : 'Phân loại xe'}
-        </button>
-      </div>
-
-      {/* POLICIES TAB VIEW */}
-      {activeTab === 'policies' && (
-        <div className="card flex-1 overflow-hidden p-0 flex flex-col">
-          {loading ? (
-            <div className="flex flex-col items-center justify-center flex-1 py-16 gap-3">
-              <RefreshCw size={32} className="animate-spin text-blue-500" />
-              <p className="text-slate-500 dark:text-slate-400 font-medium">
-                {language === 'en' ? 'Loading pricing structures...' : 'Đang tải bảng giá đỗ xe...'}
-              </p>
-            </div>
-          ) : policies.length === 0 ? (
-            <div className="flex flex-col items-center justify-center flex-1 py-16 text-center">
-              <DollarSign size={48} className="text-slate-300 dark:text-slate-700 mb-3" />
-              <p className="text-slate-500 dark:text-slate-400 font-semibold text-lg">
-                {language === 'en' ? 'No policies configured' : 'Chưa cấu hình bảng giá nào'}
-              </p>
-              <p className="text-slate-400 dark:text-slate-500 text-sm max-w-sm mt-1">
-                {language === 'en'
-                  ? 'Add your first pricing policy to start charging parked vehicles.'
-                  : 'Hãy cấu hình chính sách giá đầu tiên để bắt đầu thu phí đỗ xe.'}
-              </p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto flex-1">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr>
-                    <th className="table-header">{language === 'en' ? 'Vehicle Category' : 'Loại xe'}</th>
-                    <th className="table-header">{language === 'en' ? 'Base Price (Entry)' : 'Giá sàn (Vào cổng)'}</th>
-                    <th className="table-header">{language === 'en' ? 'Hourly Rate' : 'Giá giờ tiếp theo'}</th>
-                    <th className="table-header">{language === 'en' ? 'Overnight Penalty' : 'Phí gửi qua đêm'}</th>
-                    <th className="table-header">{language === 'en' ? 'Admin/Lost Card Fee' : 'Phí phạt mất thẻ / Admin'}</th>
-                    <th className="table-header">{language === 'en' ? 'Effective Date' : 'Ngày có hiệu lực'}</th>
-                    <th className="table-header text-right">{language === 'en' ? 'Actions' : 'Hành động'}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {policies.map((policy) => (
-                    <tr
-                      key={policy.policy_id}
-                      className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors duration-150"
+      {loading || typesLoading ? (
+        <div className="flex flex-col items-center justify-center flex-1 py-16 gap-3">
+          <RefreshCw size={32} className="animate-spin text-blue-500" />
+          <p className="text-slate-500 dark:text-slate-400 font-medium">
+            {language === 'en' ? 'Loading pricing structures...' : 'Đang tải thông tin bảng giá...'}
+          </p>
+        </div>
+      ) : (
+        <>
+          {/* ACTIVE RATES CARDS GRID */}
+          <div>
+            <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">
+              {language === 'en' ? 'Current Active Rates' : 'Giá vé đang áp dụng hiện tại'}
+            </h3>
+            
+            {vehicleTypes.length === 0 ? (
+              <div className="card text-center py-10">
+                <p className="text-slate-400">{language === 'en' ? 'No vehicle types defined.' : 'Chưa có phân loại xe nào.'}</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {vehicleTypes.map(type => {
+                  const activePolicy = getActivePolicyForType(type.vehicle_type_id);
+                  const isCar = type.vehicle_type_name?.toLowerCase().includes('car') || type.vehicle_type_name?.toLowerCase().includes('ô tô');
+                  
+                  return (
+                    <div 
+                      key={type.vehicle_type_id} 
+                      className={`card relative overflow-hidden transition-all duration-300 hover:shadow-lg border ${
+                        isCar 
+                          ? 'bg-gradient-to-br from-blue-50/40 via-white to-blue-50/10 dark:from-blue-950/10 dark:via-slate-900 dark:to-blue-950/5 border-blue-100 dark:border-blue-900/30' 
+                          : 'bg-gradient-to-br from-amber-50/40 via-white to-amber-50/10 dark:from-amber-950/10 dark:via-slate-900 dark:to-amber-950/5 border-amber-100 dark:border-amber-900/30'
+                      }`}
                     >
-                      <td className="table-cell">
+                      <div className="flex justify-between items-start mb-5">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center">
-                            {policy.vehicle_type_name?.toLowerCase().includes('car') || policy.vehicle_type_name?.toLowerCase().includes('ô tô') ? (
-                              <Car size={18} />
-                            ) : (
-                              <Bike size={18} />
-                            )}
+                          <div className={`p-3 rounded-2xl shadow-sm ${
+                            isCar 
+                              ? 'bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400' 
+                              : 'bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400'
+                          }`}>
+                            {isCar ? <Car size={24} /> : <Bike size={24} />}
                           </div>
                           <div>
-                            <p className="font-bold text-slate-800 dark:text-white">
-                              {policy.vehicle_type_name || `Type ${policy.vehicle_type_id}`}
-                            </p>
-                            <p className="text-[10px] text-slate-400 font-mono">ID: {policy.vehicle_type_id}</p>
+                            <h4 className="text-lg font-bold text-slate-800 dark:text-white leading-tight">
+                              {type.vehicle_type_name}
+                            </h4>
+                            <p className="text-[10px] font-mono text-slate-400 mt-0.5">ID: {type.vehicle_type_id}</p>
                           </div>
                         </div>
-                      </td>
-                      <td className="table-cell font-semibold font-mono text-slate-700 dark:text-slate-300">
-                        {parseFloat(policy.base_price).toLocaleString()} ₫
-                      </td>
-                      <td className="table-cell font-semibold font-mono text-slate-700 dark:text-slate-300">
-                        +{parseFloat(policy.hourly_rate).toLocaleString()} ₫/hr
-                      </td>
-                      <td className="table-cell font-semibold font-mono text-slate-700 dark:text-slate-300">
-                        {parseFloat(policy.overnight_fee).toLocaleString()} ₫
-                      </td>
-                      <td className="table-cell font-semibold font-mono text-slate-700 dark:text-slate-300">
-                        {parseFloat(policy.handling_fee || 0).toLocaleString()} ₫
-                      </td>
-                      <td className="table-cell">
-                        <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold font-mono">
-                          <Calendar size={13} className="text-slate-400" />
-                          <span>{policy.effective_date}</span>
-                        </div>
-                      </td>
-                      <td className="table-cell text-right">
-                        <div className="flex justify-end items-center gap-2">
-                          <button
-                            onClick={() => openEditModal(policy)}
-                            className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:text-slate-400 dark:hover:text-blue-400 dark:hover:bg-slate-800 rounded-lg transition-all"
-                            title="Edit Policy"
-                          >
-                            <Edit size={15} />
-                          </button>
-                          <button
-                            onClick={() => handleDeletePolicy(policy.policy_id)}
-                            className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 dark:text-slate-400 dark:hover:text-red-400 dark:hover:bg-slate-800 rounded-lg transition-all"
-                            title="Delete Policy"
-                          >
-                            <Trash2 size={15} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* VEHICLE TYPES TAB VIEW */}
-      {activeTab === 'vehicleTypes' && (
-        <div className="card flex-1 overflow-hidden p-0 flex flex-col">
-          {typesLoading ? (
-            <div className="flex flex-col items-center justify-center flex-1 py-16 gap-3">
-              <RefreshCw size={32} className="animate-spin text-blue-500" />
-              <p className="text-slate-500 dark:text-slate-400 font-medium">
-                {language === 'en' ? 'Loading vehicle classifications...' : 'Đang tải danh mục xe...'}
-              </p>
-            </div>
-          ) : vehicleTypes.length === 0 ? (
-            <div className="flex flex-col items-center justify-center flex-1 py-16 text-center">
-              <Layers size={48} className="text-slate-300 dark:text-slate-700 mb-3" />
-              <p className="text-slate-500 dark:text-slate-400 font-semibold text-lg">
-                {language === 'en' ? 'No vehicle classes found' : 'Chưa có danh mục phân loại xe'}
-              </p>
-              <p className="text-slate-400 dark:text-slate-500 text-sm max-w-sm mt-1">
-                {language === 'en'
-                  ? 'Add a new vehicle type to configure slots and pricing policies.'
-                  : 'Hãy tạo loại xe mới để thiết lập cấu hình giá đỗ.'}
-              </p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto flex-1">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr>
-                    <th className="table-header w-24">{language === 'en' ? 'ID' : 'Mã số'}</th>
-                    <th className="table-header">{language === 'en' ? 'Class Name' : 'Tên loại xe'}</th>
-                    <th className="table-header">{language === 'en' ? 'Related Slots' : 'Số chỗ đỗ liên kết'}</th>
-                    <th className="table-header">{language === 'en' ? 'Active Sessions' : 'Lượt xe đang đỗ'}</th>
-                    <th className="table-header text-right">{language === 'en' ? 'Actions' : 'Hành động'}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {vehicleTypes.map((type) => (
-                    <tr
-                      key={type.vehicle_type_id}
-                      className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors duration-150"
-                    >
-                      <td className="table-cell font-mono font-bold text-slate-400 dark:text-slate-500">
-                        #{type.vehicle_type_id}
-                      </td>
-                      <td className="table-cell font-bold text-slate-800 dark:text-white">
-                        <div className="flex items-center gap-2.5">
-                          {type.vehicle_type_name?.toLowerCase().includes('car') || type.vehicle_type_name?.toLowerCase().includes('ô tô') ? (
-                            <Car size={16} className="text-blue-500" />
-                          ) : (
-                            <Bike size={16} className="text-amber-500" />
-                          )}
-                          <span>{type.vehicle_type_name}</span>
-                        </div>
-                      </td>
-                      <td className="table-cell font-semibold text-slate-600 dark:text-slate-400">
-                        {type.related_slots_count || 0}
-                      </td>
-                      <td className="table-cell">
-                        {type.active_sessions_count > 0 ? (
-                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-black uppercase bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
-                            {type.active_sessions_count} {language === 'en' ? 'Active' : 'Đang đỗ'}
+                        
+                        {activePolicy ? (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/20">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                            {language === 'en' ? 'Active' : 'Đang áp dụng'}
                           </span>
                         ) : (
-                          <span className="text-slate-400 dark:text-slate-600 font-semibold text-xs">—</span>
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+                            {language === 'en' ? 'No Active Rate' : 'Chưa cấu hình'}
+                          </span>
                         )}
-                      </td>
-                      <td className="table-cell text-right">
-                        <div className="flex justify-end items-center gap-2">
+                      </div>
+
+                      {activePolicy ? (
+                        <div className="space-y-5">
+                          {/* Base Price Display */}
+                          <div className="text-center py-4 bg-slate-50/50 dark:bg-slate-800/10 rounded-2xl border border-slate-100/50 dark:border-slate-800/20">
+                            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 block mb-1">
+                              {language === 'en' ? 'Base Entry Fee' : 'Giá vào cổng'}
+                            </span>
+                            <div className="text-3xl font-black text-slate-800 dark:text-white font-mono flex items-center justify-center gap-1">
+                              {parseFloat(activePolicy.base_price).toLocaleString()}
+                              <span className="text-base font-bold text-slate-400">₫</span>
+                            </div>
+                          </div>
+
+                          {/* Rates Detail list */}
+                          <div className="grid grid-cols-1 gap-3">
+                            <div className="flex items-center justify-between p-3 bg-white/80 dark:bg-slate-900/40 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm">
+                              <div className="flex items-center gap-2">
+                                <Clock size={16} className="text-blue-500" />
+                                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                                  {language === 'en' ? 'Hourly Rate' : 'Giá mỗi giờ tiếp theo'}
+                                </span>
+                              </div>
+                              <span className="text-sm font-bold font-mono text-slate-800 dark:text-white">
+                                +{parseFloat(activePolicy.hourly_rate).toLocaleString()} ₫
+                              </span>
+                            </div>
+
+                            <div className="flex items-center justify-between p-3 bg-white/80 dark:bg-slate-900/40 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm">
+                              <div className="flex items-center gap-2">
+                                <Calendar size={16} className="text-indigo-500" />
+                                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                                  {language === 'en' ? 'Overnight Fee' : 'Phí gửi qua đêm'}
+                                </span>
+                              </div>
+                              <span className="text-sm font-bold font-mono text-slate-800 dark:text-white">
+                                {parseFloat(activePolicy.overnight_fee).toLocaleString()} ₫
+                              </span>
+                            </div>
+
+                            <div className="flex items-center justify-between p-3 bg-white/80 dark:bg-slate-900/40 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm">
+                              <div className="flex items-center gap-2">
+                                <ShieldAlert size={16} className="text-rose-500" />
+                                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                                  {language === 'en' ? 'Lost Card Penalty' : 'Phí phạt mất thẻ'}
+                                </span>
+                              </div>
+                              <span className="text-sm font-bold font-mono text-slate-800 dark:text-white">
+                                {parseFloat(activePolicy.handling_fee || 0).toLocaleString()} ₫
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Effective Date & Quick Actions */}
+                          <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800/60 text-xs">
+                            <div className="flex items-center gap-1.5 font-bold font-mono text-slate-400">
+                              <Calendar size={14} />
+                              <span>
+                                {language === 'en' ? 'Since' : 'Áp dụng từ'}: {activePolicy.effective_date}
+                              </span>
+                            </div>
+                            
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => openEditModal(activePolicy)}
+                                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold rounded-lg transition-all flex items-center gap-1"
+                              >
+                                <Edit size={13} />
+                                {language === 'en' ? 'Edit' : 'Sửa'}
+                              </button>
+                              <button
+                                onClick={() => handleDeletePolicy(activePolicy.policy_id)}
+                                className="px-3 py-1.5 bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 font-bold rounded-lg transition-all flex items-center gap-1"
+                              >
+                                <Trash2 size={13} />
+                                {language === 'en' ? 'Delete' : 'Xóa'}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center py-12 text-center">
+                          <DollarSign size={40} className="text-slate-300 dark:text-slate-700 mb-2" />
+                          <p className="text-slate-500 dark:text-slate-400 font-semibold text-sm">
+                            {language === 'en' ? 'No rates set' : 'Chưa thiết lập phí'}
+                          </p>
                           <button
-                            onClick={() => openEditTypeModal(type)}
-                            className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:text-slate-400 dark:hover:text-blue-400 dark:hover:bg-slate-800 rounded-lg transition-all"
-                            title={language === 'en' ? 'Edit Class' : 'Sửa loại xe'}
+                            onClick={() => {
+                              setAddForm(prev => ({ ...prev, vehicleTypeId: type.vehicle_type_id.toString() }));
+                              setIsAddModalOpen(true);
+                            }}
+                            className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md transition"
                           >
-                            <Edit size={15} />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteTypeClick(type)}
-                            className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 dark:text-slate-400 dark:hover:text-red-400 dark:hover:bg-slate-800 rounded-lg transition-all"
-                            title={language === 'en' ? 'Delete Class' : 'Xóa loại xe'}
-                          >
-                            <Trash2 size={15} />
+                            {language === 'en' ? 'Configure Rates' : 'Thiết lập ngay'}
                           </button>
                         </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* POLICY HISTORY & SCHEDULES TABLE */}
+          <div className="card p-0 overflow-hidden flex flex-col mt-6">
+            <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/10">
+              <div>
+                <h3 className="text-sm font-bold text-slate-800 dark:text-white">
+                  {language === 'en' ? 'Pricing Schedules & Adjustment History' : 'Lịch trình điều chỉnh & Lịch sử giá vé'}
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  {language === 'en' ? 'All historical records and future pricing updates.' : 'Danh sách toàn bộ các mức giá trong quá khứ và lịch trình tăng giảm phí đã lên lịch.'}
+                </p>
+              </div>
             </div>
-          )}
-        </div>
+
+            {policies.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <DollarSign size={40} className="text-slate-300 dark:text-slate-700 mb-2" />
+                <p className="text-slate-500 dark:text-slate-400 font-semibold text-sm">
+                  {language === 'en' ? 'No policy records found' : 'Chưa có bản ghi giá vé nào'}
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr>
+                      <th className="table-header">{language === 'en' ? 'Vehicle Type' : 'Loại xe'}</th>
+                      <th className="table-header">{language === 'en' ? 'Base Price' : 'Giá vào cổng'}</th>
+                      <th className="table-header">{language === 'en' ? 'Hourly Rate' : 'Giá giờ sau'}</th>
+                      <th className="table-header">{language === 'en' ? 'Overnight Fee' : 'Phí qua đêm'}</th>
+                      <th className="table-header">{language === 'en' ? 'Lost Card Penalty' : 'Phí mất thẻ'}</th>
+                      <th className="table-header">{language === 'en' ? 'Effective Date' : 'Ngày hiệu lực'}</th>
+                      <th className="table-header">{language === 'en' ? 'Status' : 'Trạng thái'}</th>
+                      <th className="table-header text-right">{language === 'en' ? 'Actions' : 'Thao tác'}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...policies]
+                      .sort((a, b) => new Date(b.effective_date) - new Date(a.effective_date))
+                      .map((policy) => {
+                        const statusInfo = getPolicyStatus(policy);
+                        const isCar = policy.vehicle_type_name?.toLowerCase().includes('car') || policy.vehicle_type_name?.toLowerCase().includes('ô tô');
+                        
+                        return (
+                          <tr
+                            key={policy.policy_id}
+                            className="hover:bg-slate-50/50 dark:hover:bg-slate-800/10 transition-colors duration-150 border-b border-slate-100 dark:border-slate-800/40"
+                          >
+                            <td className="table-cell">
+                              <div className="flex items-center gap-2">
+                                <div className={`p-1.5 rounded-lg ${isCar ? 'text-blue-500 bg-blue-50 dark:bg-blue-950/40' : 'text-amber-500 bg-amber-50 dark:bg-amber-950/40'}`}>
+                                  {isCar ? <Car size={14} /> : <Bike size={14} />}
+                                </div>
+                                <span className="font-bold text-slate-800 dark:text-slate-200">
+                                  {policy.vehicle_type_name || `Type ${policy.vehicle_type_id}`}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="table-cell font-semibold font-mono text-slate-700 dark:text-slate-300">
+                              {parseFloat(policy.base_price).toLocaleString()} ₫
+                            </td>
+                            <td className="table-cell font-semibold font-mono text-slate-700 dark:text-slate-300">
+                              +{parseFloat(policy.hourly_rate).toLocaleString()} ₫/hr
+                            </td>
+                            <td className="table-cell font-semibold font-mono text-slate-700 dark:text-slate-300">
+                              {parseFloat(policy.overnight_fee).toLocaleString()} ₫
+                            </td>
+                            <td className="table-cell font-semibold font-mono text-slate-700 dark:text-slate-300">
+                              {parseFloat(policy.handling_fee || 0).toLocaleString()} ₫
+                            </td>
+                            <td className="table-cell font-semibold font-mono text-xs text-slate-500 dark:text-slate-400">
+                              {policy.effective_date}
+                            </td>
+                            <td className="table-cell">
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold border ${statusInfo.colorClass}`}>
+                                {statusInfo.label}
+                              </span>
+                            </td>
+                            <td className="table-cell text-right">
+                              <div className="flex justify-end items-center gap-1.5">
+                                <button
+                                  onClick={() => openEditModal(policy)}
+                                  className="p-1 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 rounded transition-all"
+                                  title="Edit Policy"
+                                >
+                                  <Edit size={14} />
+                                </button>
+                                <button
+                                  onClick={() => handleDeletePolicy(policy.policy_id)}
+                                  className="p-1 text-slate-400 hover:text-red-600 dark:hover:text-red-400 rounded transition-all"
+                                  title="Delete Policy"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </>
       )}
 
-      {/* ============================================================
-          ADD PRICING MODAL
-         ============================================================ */}
+      {/* ADD PRICING POLICY MODAL */}
       {isAddModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-fade-in">
-          <div className="card w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl relative animate-slide-in bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+          <div className="card w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl relative animate-slide-in bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6">
             <button
               onClick={() => setIsAddModalOpen(false)}
               className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg transition-all"
@@ -572,88 +528,122 @@ export default function ManagerPricing() {
               </div>
             </div>
 
-            <form onSubmit={handleAddSubmit} className="space-y-4">
+            <form onSubmit={handleAddSubmit} className="space-y-5">
+              {/* INTERACTIVE VEHICLE SELECT CARDS */}
+              <div>
+                <label className="label mb-2">{language === 'en' ? 'Vehicle Category *' : 'Loại phương tiện *'}</label>
+                <div className="grid grid-cols-2 gap-4">
+                  {vehicleTypes.map(type => {
+                    const isCar = type.vehicle_type_name?.toLowerCase().includes('car') || type.vehicle_type_name?.toLowerCase().includes('ô tô');
+                    const isSelected = addForm.vehicleTypeId === type.vehicle_type_id.toString();
+                    
+                    return (
+                      <button
+                        key={type.vehicle_type_id}
+                        type="button"
+                        onClick={() => setAddForm(prev => ({ ...prev, vehicleTypeId: type.vehicle_type_id.toString() }))}
+                        className={`flex flex-col items-center justify-center py-4 px-6 rounded-2xl border-2 transition-all duration-200 gap-2 ${
+                          isSelected
+                            ? 'border-blue-600 bg-blue-50/20 text-blue-600 dark:border-blue-500 dark:bg-blue-950/20 dark:text-blue-400 shadow-md'
+                            : 'border-slate-100 dark:border-slate-800/80 bg-slate-50/30 hover:bg-slate-50 dark:bg-slate-800/20 dark:hover:bg-slate-800/40 text-slate-500 dark:text-slate-400'
+                        }`}
+                      >
+                        <div className={`p-2.5 rounded-xl ${
+                          isSelected 
+                            ? (isCar ? 'bg-blue-100 dark:bg-blue-900/40' : 'bg-amber-100 dark:bg-amber-900/40') 
+                            : 'bg-slate-100 dark:bg-slate-800'
+                        }`}>
+                          {isCar ? <Car size={20} /> : <Bike size={20} />}
+                        </div>
+                        <span className="text-xs font-bold">{type.vehicle_type_name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <label className="label">{language === 'en' ? 'Effective Date *' : 'Ngày có hiệu lực *'}</label>
+                <input
+                  type="date"
+                  required
+                  value={addForm.effectiveDate}
+                  onChange={(e) => setAddForm(prev => ({ ...prev, effectiveDate: e.target.value }))}
+                  className="input-field font-mono font-bold"
+                />
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="label">{language === 'en' ? 'Vehicle Class *' : 'Loại xe *'}</label>
-                  <select
-                    value={addForm.vehicleTypeId}
-                    onChange={(e) => setAddForm(prev => ({ ...prev, vehicleTypeId: e.target.value }))}
-                    className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm rounded-xl text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 cursor-pointer font-bold"
-                  >
-                    <option value="" disabled>
-                      -- {language === 'en' ? 'Choose Class' : 'Chọn loại xe'} --
-                    </option>
-                    {vehicleTypes.map(type => (
-                      <option key={type.vehicle_type_id} value={type.vehicle_type_id}>
-                        {type.vehicle_type_name}
-                      </option>
-                    ))}
-                  </select>
+                  <label className="label">{language === 'en' ? 'Base Price (Entry) *' : 'Giá sàn vào cổng *'}</label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      required
+                      min={0}
+                      value={addForm.basePrice}
+                      onChange={(e) => setAddForm(prev => ({ ...prev, basePrice: e.target.value }))}
+                      className="input-field pr-10 font-mono font-bold"
+                      placeholder="10000"
+                    />
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400 font-bold text-xs">
+                      ₫
+                    </div>
+                  </div>
                 </div>
                 <div>
-                  <label className="label">{language === 'en' ? 'Effective Date *' : 'Ngày có hiệu lực *'}</label>
-                  <input
-                    type="date"
-                    required
-                    value={addForm.effectiveDate}
-                    onChange={(e) => setAddForm(prev => ({ ...prev, effectiveDate: e.target.value }))}
-                    className="input-field font-mono font-bold"
-                  />
+                  <label className="label">{language === 'en' ? 'Hourly Rate *' : 'Giá mỗi giờ tiếp theo *'}</label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      required
+                      min={0}
+                      value={addForm.hourlyRate}
+                      onChange={(e) => setAddForm(prev => ({ ...prev, hourlyRate: e.target.value }))}
+                      className="input-field pr-10 font-mono font-bold"
+                      placeholder="5000"
+                    />
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400 font-bold text-xs">
+                      ₫
+                    </div>
+                  </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="label">{language === 'en' ? 'Base Price (Entry) (₫) *' : 'Giá sàn vào cổng (₫) *'}</label>
-                  <input
-                    type="number"
-                    required
-                    min={0}
-                    value={addForm.basePrice}
-                    onChange={(e) => setAddForm(prev => ({ ...prev, basePrice: e.target.value }))}
-                    className="input-field font-mono font-bold"
-                    placeholder="10000"
-                  />
+                  <label className="label">{language === 'en' ? 'Overnight Penalty *' : 'Phí gửi qua đêm *'}</label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      required
+                      min={0}
+                      value={addForm.overnightFee}
+                      onChange={(e) => setAddForm(prev => ({ ...prev, overnightFee: e.target.value }))}
+                      className="input-field pr-10 font-mono font-bold"
+                      placeholder="50000"
+                    />
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400 font-bold text-xs">
+                      ₫
+                    </div>
+                  </div>
                 </div>
                 <div>
-                  <label className="label">{language === 'en' ? 'Hourly Rate (₫) *' : 'Giá giờ tiếp theo (₫) *'}</label>
-                  <input
-                    type="number"
-                    required
-                    min={0}
-                    value={addForm.hourlyRate}
-                    onChange={(e) => setAddForm(prev => ({ ...prev, hourlyRate: e.target.value }))}
-                    className="input-field font-mono font-bold"
-                    placeholder="5000"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="label">{language === 'en' ? 'Overnight Penalty (₫) *' : 'Phí gửi qua đêm (₫) *'}</label>
-                  <input
-                    type="number"
-                    required
-                    min={0}
-                    value={addForm.overnightFee}
-                    onChange={(e) => setAddForm(prev => ({ ...prev, overnightFee: e.target.value }))}
-                    className="input-field font-mono font-bold"
-                    placeholder="50000"
-                  />
-                </div>
-                <div>
-                  <label className="label">{language === 'en' ? 'Handling/Lost Card Fee (₫) *' : 'Phí phạt mất thẻ / Admin (₫) *'}</label>
-                  <input
-                    type="number"
-                    required
-                    min={0}
-                    value={addForm.handlingFee}
-                    onChange={(e) => setAddForm(prev => ({ ...prev, handlingFee: e.target.value }))}
-                    className="input-field font-mono font-bold"
-                    placeholder="2000"
-                  />
+                  <label className="label">{language === 'en' ? 'Lost Card Penalty *' : 'Phí phạt mất thẻ *'}</label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      required
+                      min={0}
+                      value={addForm.handlingFee}
+                      onChange={(e) => setAddForm(prev => ({ ...prev, handlingFee: e.target.value }))}
+                      className="input-field pr-10 font-mono font-bold"
+                      placeholder="2000"
+                    />
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400 font-bold text-xs">
+                      ₫
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -680,12 +670,10 @@ export default function ManagerPricing() {
         </div>
       )}
 
-      {/* ============================================================
-          EDIT PRICING MODAL
-         ============================================================ */}
+      {/* EDIT PRICING POLICY MODAL */}
       {isEditModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-fade-in">
-          <div className="card w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl relative animate-slide-in bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+          <div className="card w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl relative animate-slide-in bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6">
             <button
               onClick={() => setIsEditModalOpen(false)}
               className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg transition-all"
@@ -707,7 +695,7 @@ export default function ManagerPricing() {
               </div>
             </div>
 
-            <form onSubmit={handleEditSubmit} className="space-y-4">
+            <form onSubmit={handleEditSubmit} className="space-y-5">
               <div>
                 <label className="label">{language === 'en' ? 'Effective Date *' : 'Ngày có hiệu lực *'}</label>
                 <input
@@ -721,51 +709,71 @@ export default function ManagerPricing() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="label">{language === 'en' ? 'Base Price (Entry) (₫) *' : 'Giá sàn vào cổng (₫) *'}</label>
-                  <input
-                    type="number"
-                    required
-                    min={0}
-                    value={editForm.basePrice}
-                    onChange={(e) => setEditForm(prev => ({ ...prev, basePrice: e.target.value }))}
-                    className="input-field font-mono font-bold"
-                  />
+                  <label className="label">{language === 'en' ? 'Base Price (Entry) *' : 'Giá sàn vào cổng *'}</label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      required
+                      min={0}
+                      value={editForm.basePrice}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, basePrice: e.target.value }))}
+                      className="input-field pr-10 font-mono font-bold"
+                    />
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400 font-bold text-xs">
+                      ₫
+                    </div>
+                  </div>
                 </div>
                 <div>
-                  <label className="label">{language === 'en' ? 'Hourly Rate (₫) *' : 'Giá giờ tiếp theo (₫) *'}</label>
-                  <input
-                    type="number"
-                    required
-                    min={0}
-                    value={editForm.hourlyRate}
-                    onChange={(e) => setEditForm(prev => ({ ...prev, hourlyRate: e.target.value }))}
-                    className="input-field font-mono font-bold"
-                  />
+                  <label className="label">{language === 'en' ? 'Hourly Rate *' : 'Giá mỗi giờ tiếp theo *'}</label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      required
+                      min={0}
+                      value={editForm.hourlyRate}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, hourlyRate: e.target.value }))}
+                      className="input-field pr-10 font-mono font-bold"
+                    />
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400 font-bold text-xs">
+                      ₫
+                    </div>
+                  </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="label">{language === 'en' ? 'Overnight Penalty (₫) *' : 'Phí gửi qua đêm (₫) *'}</label>
-                  <input
-                    type="number"
-                    required
-                    min={0}
-                    value={editForm.overnightFee}
-                    onChange={(e) => setEditForm(prev => ({ ...prev, overnightFee: e.target.value }))}
-                    className="input-field font-mono font-bold"
-                  />
+                  <label className="label">{language === 'en' ? 'Overnight Penalty *' : 'Phí gửi qua đêm *'}</label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      required
+                      min={0}
+                      value={editForm.overnightFee}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, overnightFee: e.target.value }))}
+                      className="input-field pr-10 font-mono font-bold"
+                    />
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400 font-bold text-xs">
+                      ₫
+                    </div>
+                  </div>
                 </div>
                 <div>
-                  <label className="label">{language === 'en' ? 'Handling/Lost Ticket Fee (₫) *' : 'Phí phạt mất thẻ / Admin (₫) *'}</label>
-                  <input
-                    type="number"
-                    required
-                    min={0}
-                    value={editForm.handlingFee}
-                    onChange={(e) => setEditForm(prev => ({ ...prev, handlingFee: e.target.value }))}
-                    className="input-field font-mono font-bold"
-                  />
+                  <label className="label">{language === 'en' ? 'Lost Card Penalty *' : 'Phí phạt mất thẻ *'}</label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      required
+                      min={0}
+                      value={editForm.handlingFee}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, handlingFee: e.target.value }))}
+                      className="input-field pr-10 font-mono font-bold"
+                    />
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400 font-bold text-xs">
+                      ₫
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -788,216 +796,6 @@ export default function ManagerPricing() {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* ============================================================
-          ADD VEHICLE CLASS MODAL
-         ============================================================ */}
-      {isAddTypeModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-fade-in">
-          <div className="card w-full max-w-md shadow-2xl relative animate-slide-in bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6">
-            <button
-              onClick={() => setIsAddTypeModalOpen(false)}
-              className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg transition-all"
-            >
-              <X size={18} />
-            </button>
-
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2.5 bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 rounded-xl">
-                <Layers size={22} />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-slate-800 dark:text-white">
-                  {language === 'en' ? 'Add Vehicle Class' : 'Thêm danh mục xe mới'}
-                </h3>
-                <p className="text-xs text-slate-500">
-                  {language === 'en' ? 'Define a new vehicle classification class.' : 'Định nghĩa một loại phương tiện giao thông mới.'}
-                </p>
-              </div>
-            </div>
-
-            <form onSubmit={handleAddTypeSubmit} className="space-y-4">
-              <div>
-                <label className="label">{language === 'en' ? 'Class Name *' : 'Tên loại xe *'}</label>
-                <input
-                  type="text"
-                  required
-                  placeholder={language === 'en' ? 'e.g. Electric SUV, Cargo Truck' : 'Ví dụ: Ô tô điện, Xe tải lớn'}
-                  value={addTypeForm.typeName}
-                  onChange={(e) => setAddTypeForm({ typeName: e.target.value })}
-                  className="input-field font-semibold"
-                />
-              </div>
-
-              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setIsAddTypeModalOpen(false)}
-                  className="btn-secondary"
-                  disabled={typeSubmitting}
-                >
-                  {language === 'en' ? 'Cancel' : 'Hủy bỏ'}
-                </button>
-                <button
-                  type="submit"
-                  className="btn-primary flex items-center gap-2"
-                  disabled={typeSubmitting || !addTypeForm.typeName.trim()}
-                >
-                  {typeSubmitting && <RefreshCw size={14} className="animate-spin" />}
-                  {language === 'en' ? 'Create Class' : 'Tạo phân loại'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ============================================================
-          EDIT VEHICLE CLASS MODAL
-         ============================================================ */}
-      {isEditTypeModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-fade-in">
-          <div className="card w-full max-w-md shadow-2xl relative animate-slide-in bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6">
-            <button
-              onClick={() => setIsEditTypeModalOpen(false)}
-              className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg transition-all"
-            >
-              <X size={18} />
-            </button>
-
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2.5 bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 rounded-xl">
-                <Settings size={22} />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-slate-800 dark:text-white">
-                  {language === 'en' ? 'Edit Vehicle Class' : 'Sửa loại xe'}
-                </h3>
-                <p className="text-xs text-slate-500">
-                  {language === 'en' ? `Update classification details for Type #${editTypeForm.id}.` : `Cập nhật thông tin phân loại cho Phân nhóm #${editTypeForm.id}.`}
-                </p>
-              </div>
-            </div>
-
-            <form onSubmit={handleEditTypeSubmit} className="space-y-4">
-              <div>
-                <label className="label">{language === 'en' ? 'Class Name *' : 'Tên loại xe *'}</label>
-                <input
-                  type="text"
-                  required
-                  value={editTypeForm.typeName}
-                  onChange={(e) => setEditTypeForm(prev => ({ ...prev, typeName: e.target.value }))}
-                  className="input-field font-semibold"
-                />
-              </div>
-
-              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setIsEditTypeModalOpen(false)}
-                  className="btn-secondary"
-                  disabled={typeSubmitting}
-                >
-                  {language === 'en' ? 'Cancel' : 'Hủy bỏ'}
-                </button>
-                <button
-                  type="submit"
-                  className="btn-primary flex items-center gap-2"
-                  disabled={typeSubmitting || !editTypeForm.typeName.trim()}
-                >
-                  {typeSubmitting && <RefreshCw size={14} className="animate-spin" />}
-                  {language === 'en' ? 'Save Changes' : 'Lưu thay đổi'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ============================================================
-          DELETE PREVIEW CONSTRAINT CHECK MODAL
-         ============================================================ */}
-      {deletePreview.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
-          <div className="card w-full max-w-md shadow-2xl relative animate-slide-in bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 p-6">
-            <button
-              onClick={() => setDeletePreview(prev => ({ ...prev, isOpen: false }))}
-              className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg transition-all"
-            >
-              <X size={18} />
-            </button>
-
-            <div className="flex items-center gap-3 mb-5">
-              <div className={`p-2.5 rounded-xl ${deletePreview.canDelete ? 'bg-red-100 dark:bg-red-950/30 text-red-600 dark:text-red-400' : 'bg-amber-100 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400'}`}>
-                {deletePreview.canDelete ? <AlertTriangle size={22} /> : <ShieldAlert size={22} />}
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-slate-800 dark:text-white">
-                  {language === 'en' ? 'Delete Vehicle Class' : 'Xóa phân loại xe'}
-                </h3>
-                <p className="text-xs text-slate-500">
-                  {language === 'en' ? `Verify deletion safety constraints for "${deletePreview.typeName}".` : `Kiểm tra ràng buộc an toàn trước khi xóa "${deletePreview.typeName}".`}
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <p className="text-sm text-slate-600 dark:text-slate-300 font-medium">
-                {language === 'en'
-                  ? `Are you sure you want to permanently delete the classification class "${deletePreview.typeName}"? This action cannot be undone.`
-                  : `Bạn có chắc muốn xóa vĩnh viễn danh mục loại xe "${deletePreview.typeName}" không? Hành động này không thể phục hồi.`}
-              </p>
-
-              {/* Related slot metrics */}
-              <div className="bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-850 p-4 rounded-2xl text-xs space-y-2 font-bold text-slate-500 dark:text-slate-400">
-                <div className="flex justify-between">
-                  <span>{language === 'en' ? 'Linked Parking Slots:' : 'Số chỗ đỗ xe liên kết:'}</span>
-                  <span className={deletePreview.slotCount > 0 ? 'text-amber-500' : 'text-slate-700 dark:text-slate-300'}>
-                    {deletePreview.slotCount}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span>{language === 'en' ? 'Active Parking Sessions:' : 'Số lượt đỗ đang hoạt động:'}</span>
-                  <span className={deletePreview.sessionCount > 0 ? 'text-red-500' : 'text-slate-700 dark:text-slate-300'}>
-                    {deletePreview.sessionCount}
-                  </span>
-                </div>
-              </div>
-
-              {/* Custom Warning message from backend */}
-              {!deletePreview.canDelete && (
-                <div className="p-3.5 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-2xl flex items-start gap-2.5 text-xs font-semibold text-amber-700 dark:text-amber-400">
-                  <ShieldAlert size={16} className="shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-bold mb-0.5">{language === 'en' ? 'Delete Operation Blocked' : 'Khóa thao tác xóa'}</p>
-                    <p className="opacity-90 leading-relaxed">
-                      {deletePreview.reason || (language === 'en' ? 'This class is linked to active parking slots or sessions.' : 'Loại xe này hiện đang được gán cho các chỗ đỗ hoặc có xe đang đỗ trong bãi.')}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setDeletePreview(prev => ({ ...prev, isOpen: false }))}
-                  className="btn-secondary"
-                >
-                  {language === 'en' ? 'Cancel' : 'Hủy bỏ'}
-                </button>
-                <button
-                  onClick={handleConfirmDeleteType}
-                  disabled={!deletePreview.canDelete || typeSubmitting}
-                  className="px-5 py-2.5 bg-red-600 hover:bg-red-700 disabled:bg-slate-200 disabled:text-slate-400 dark:disabled:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-1.5 uppercase transition"
-                >
-                  {typeSubmitting && <RefreshCw size={14} className="animate-spin" />}
-                  {language === 'en' ? 'Confirm Delete' : 'Xác nhận xóa'}
-                </button>
-              </div>
-            </div>
           </div>
         </div>
       )}
