@@ -161,7 +161,24 @@ public class BookingResponse
 
 
 
-/* ADDED BY ANTIGRAVITY (REQUIRED FOR GET STATS ENDPOINT) */
+public class BookingCapacityStatusResponse
+{
+    [JsonPropertyName("vehicle_type_id")]
+    public int VehicleTypeId { get; set; }
+
+    [JsonPropertyName("total_capacity")]
+    public int TotalCapacity { get; set; }
+
+    [JsonPropertyName("booking_cap")]
+    public int BookingCap { get; set; }
+
+    [JsonPropertyName("current_booked")]
+    public int CurrentBooked { get; set; }
+
+    [JsonPropertyName("is_full")]
+    public bool IsFull { get; set; }
+}
+
 public class BookingDashboardStatsResponse
 {
     [JsonPropertyName("total_bookings")]
