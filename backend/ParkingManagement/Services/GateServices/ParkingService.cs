@@ -282,26 +282,6 @@ namespace ParkingManagement.Services
             return MapToCheckOutResponseDto(session, finalFee, durationMinutes, checkOutTime);
         }
 
-        public async Task<bool> IsBookingActiveAsync(string licensePlate)
-        {
-            if (string.IsNullOrWhiteSpace(licensePlate)) return false;
-            return await _parkingRepository.HasActiveBookingByLicensePlateAsync(licensePlate, VnNow);
-        }
-
-        public async Task<bool> IsActiveSessionABookingAsync(string licensePlateOut)
-        {
-            if (string.IsNullOrEmpty(licensePlateOut)) return false;
-            var session = await _parkingRepository.GetActiveSessionByPlateAsync(licensePlateOut);
-            return session != null && !string.IsNullOrEmpty(session.BookingId);
-        }
-
-        public async Task<CheckOutResponseDto> ProcessBookingCheckOutAsync(VehicleCheckOutDto checkOutDto, string staffId)
-        {
-            var session = await _parkingRepository.GetActiveSessionByPlateAsync(checkOutDto.LicensePlateOut)
-                          ?? throw new InvalidOperationException("VEHICLE_NOT_FOUND_IN_PARKING");
-
-            return await ProcessBookingCheckOutWithSessionAsync(session, checkOutDto, staffId);
-        }
 
         private async Task<CheckOutResponseDto> ProcessBookingCheckOutWithSessionAsync(ParkingSession session, VehicleCheckOutDto checkOutDto, string staffId)
         {
@@ -611,6 +591,8 @@ namespace ParkingManagement.Services
                 throw new KeyNotFoundException("SLOT_NOT_AVAILABLE");
             }
 
+            string oldStatus = (slot.Status ?? "AVAILABLE").ToUpper();
+
             if (slot.Status == "OCCUPIED" && (upperStatus == "AVAILABLE" || upperStatus == "RESERVED"))
             {
                 if (string.IsNullOrWhiteSpace(dto.Reason))
@@ -629,7 +611,24 @@ namespace ParkingManagement.Services
                 throw new InvalidOperationException("CANNOT_MAINTAIN_RESERVED_SLOT");
             }
 
-            bool isUpdated = await _parkingRepository.UpdateSlotStatusWithLogAsync(dto.SlotId, upperStatus, staffId, dto.Reason, dto.EstimatedDurationMinutes);
+            bool isUpdated = false;
+
+            await _parkingRepository.SaveChangesWithTransactionAsync(async () =>
+            {
+                isUpdated = await _parkingRepository.UpdateSlotStatusWithLogAsync(dto.SlotId, upperStatus, staffId, dto.Reason, dto.EstimatedDurationMinutes);
+                
+                if (isUpdated)
+                {
+                    if (upperStatus == "MAINTENANCE" && oldStatus == "AVAILABLE")
+                    {
+                        await _parkingRepository.DecrementZoneCapacityAsync(slot.ZoneId);
+                    }
+                    else if (upperStatus == "AVAILABLE" && oldStatus == "MAINTENANCE")
+                    {
+                        await _parkingRepository.IncrementZoneCapacityAsync(slot.ZoneId);
+                    }
+                }
+            });
 
             if (!isUpdated)
             {
@@ -647,6 +646,119 @@ namespace ParkingManagement.Services
                     Status = upperStatus,
                     LastUpdated = DateTime.Now
                 }
+            };
+        }
+
+        public async Task<List<ZoneRealtimeStatsDto>> GetZoneRealtimeStatsAsync()
+        {
+            return await _parkingRepository.GetZoneRealtimeStatsAsync();
+        }
+
+        public async Task<BulkUpdateSlotStatusResponseDto> BulkUpdateSlotStatusAsync(BulkUpdateSlotStatusDto dto, string staffId)
+        {
+            var validStatuses = new[] { "AVAILABLE", "MAINTENANCE" };
+            string upperStatus = dto.Status.ToUpper();
+
+            if (!validStatuses.Contains(upperStatus))
+            {
+                throw new ArgumentException("INVALID_SLOT_STATUS_FOR_BULK_UPDATE");
+            }
+
+            if (dto.SlotIds == null || !dto.SlotIds.Any())
+            {
+                throw new ArgumentException("NO_SLOTS_SELECTED");
+            }
+
+            var updatedSlotIds = new List<string>();
+
+            await _parkingRepository.SaveChangesWithTransactionAsync(async () =>
+            {
+                foreach (var slotId in dto.SlotIds)
+                {
+                    var slot = await _parkingRepository.GetSlotByIdAsync(slotId);
+                    if (slot == null)
+                    {
+                        throw new KeyNotFoundException($"SLOT_NOT_AVAILABLE:{slotId}");
+                    }
+
+                    string oldStatus = (slot.Status ?? "AVAILABLE").ToUpper();
+
+                    if (upperStatus == "MAINTENANCE")
+                    {
+                        if (oldStatus == "OCCUPIED")
+                        {
+                            throw new InvalidOperationException($"CANNOT_MAINTAIN_OCCUPIED_SLOT:{slot.SlotName}");
+                        }
+                        if (oldStatus == "RESERVED")
+                        {
+                            throw new InvalidOperationException($"CANNOT_MAINTAIN_RESERVED_SLOT:{slot.SlotName}");
+                        }
+
+                        if (oldStatus == "AVAILABLE")
+                        {
+                            bool isUpdated = await _parkingRepository.UpdateSlotStatusWithLogAsync(
+                                slotId, 
+                                "MAINTENANCE", 
+                                staffId, 
+                                dto.Reason, 
+                                dto.EstimatedDurationMinutes
+                            );
+                            if (isUpdated)
+                            {
+                                await _parkingRepository.DecrementZoneCapacityAsync(slot.ZoneId);
+                                updatedSlotIds.Add(slotId);
+                            }
+                        }
+                        else if (oldStatus == "MAINTENANCE")
+                        {
+                            bool isUpdated = await _parkingRepository.UpdateSlotStatusWithLogAsync(
+                                slotId, 
+                                "MAINTENANCE", 
+                                staffId, 
+                                dto.Reason, 
+                                dto.EstimatedDurationMinutes
+                            );
+                            if (isUpdated)
+                            {
+                                updatedSlotIds.Add(slotId);
+                            }
+                        }
+                    }
+                    else if (upperStatus == "AVAILABLE")
+                    {
+                        if (oldStatus == "OCCUPIED" || oldStatus == "RESERVED")
+                        {
+                            throw new InvalidOperationException($"CANNOT_BULK_FREE_OCCUPIED_OR_RESERVED_SLOT:{slot.SlotName}");
+                        }
+
+                        if (oldStatus == "MAINTENANCE")
+                        {
+                            bool isUpdated = await _parkingRepository.UpdateSlotStatusWithLogAsync(
+                                slotId, 
+                                "AVAILABLE", 
+                                staffId, 
+                                dto.Reason, 
+                                0
+                            );
+                            if (isUpdated)
+                            {
+                                await _parkingRepository.IncrementZoneCapacityAsync(slot.ZoneId);
+                                updatedSlotIds.Add(slotId);
+                            }
+                        }
+                        else if (oldStatus == "AVAILABLE")
+                        {
+                            updatedSlotIds.Add(slotId);
+                        }
+                    }
+                }
+            });
+
+            return new BulkUpdateSlotStatusResponseDto
+            {
+                Success = true,
+                Message = $"Cập nhật thành công {updatedSlotIds.Count} ô đỗ sang trạng thái {upperStatus}.",
+                UpdatedSlotIds = updatedSlotIds
             };
         }
 

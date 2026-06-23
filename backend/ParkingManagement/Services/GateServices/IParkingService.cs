@@ -20,36 +20,6 @@ namespace ParkingManagement.Services
         Task<CheckOutResponseDto> ProcessCheckOutAsync(VehicleCheckOutDto checkOutDto, string staffId);
 
         /// <summary>
-        /// Xử lý nghiệp vụ Check-in cho xe vãng lai (Walk-in) và cấp phát vị trí đỗ.
-        /// </summary>
-        Task<CheckInResponseDto> ProcessWalkInCheckInAsync(VehicleCheckInDto dto, string staffId);
-
-        /// <summary>
-        /// Xử lý nghiệp vụ Check-in cho xe đã đặt chỗ trước (Booking) dựa trên biển số.
-        /// </summary>
-        Task<CheckInResponseDto> ProcessBookingCheckInAsync(VehicleCheckInDto dto, string staffId);
-
-        /// <summary>
-        /// Xử lý nghiệp vụ Check-out, tính hóa đơn và giải phóng ô đỗ cho xe vãng lai.
-        /// </summary>
-        Task<CheckOutResponseDto> ProcessWalkInCheckOutAsync(ParkingSession session, VehicleCheckOutDto checkOutDto, string staffId);
-
-        /// <summary>
-        /// Xử lý nghiệp vụ Check-out, kết thúc đơn đặt chỗ và giải phóng ô đỗ cho xe Booking.
-        /// </summary>
-        Task<CheckOutResponseDto> ProcessBookingCheckOutAsync(VehicleCheckOutDto checkOutDto, string staffId);
-
-        /// <summary>
-        /// Kiểm tra xem có đơn đặt chỗ (Booking) nào đang hoạt động cho biển số này hay không.
-        /// </summary>
-        Task<bool> IsBookingActiveAsync(string licensePlate);
-
-        /// <summary>
-        /// Kiểm tra xem phiên gửi xe hiện tại của biển số này có phải là xe đặt chỗ trước (Booking) hay không.
-        /// </summary>
-        Task<bool> IsActiveSessionABookingAsync(string licensePlate);
-
-        /// <summary>
         /// Tìm kiếm thông tin phiên gửi xe đang hoạt động (ACTIVE) bằng biển số xe.
         /// </summary>
         Task<ActiveSessionResponseDto> GetActiveSessionByLicensePlateAsync(string licensePlate, string? ticketSuffix = null);
@@ -88,5 +58,15 @@ namespace ParkingManagement.Services
         /// Xử lý thanh toán QuickPay cho phiên đỗ xe đang hoạt động.
         /// </summary>
         Task<bool> ProcessQuickPayPaymentAsync(string sessionId, string paymentMethod, string? userId);
+
+        /// <summary>
+        /// Lấy thống kê số lượng xe đang giữ chỗ (Booked) và sức chứa thực tế theo thời gian thực của các Zone đang hoạt động.
+        /// </summary>
+        Task<System.Collections.Generic.List<ZoneRealtimeStatsDto>> GetZoneRealtimeStatsAsync();
+
+        /// <summary>
+        /// Cập nhật trạng thái hàng loạt ô đỗ xe và tự động tăng/giảm capacity của các zones tương ứng trong Transaction.
+        /// </summary>
+        Task<BulkUpdateSlotStatusResponseDto> BulkUpdateSlotStatusAsync(BulkUpdateSlotStatusDto dto, string staffId);
     }
 }

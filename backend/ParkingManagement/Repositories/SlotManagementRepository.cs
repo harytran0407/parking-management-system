@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using ParkingManagement.Data;
 using ParkingManagement.Models;
 
@@ -7,7 +7,6 @@ namespace ParkingManagement.Repositories;
 public interface ISlotManagementRepository
 {
     Task<FloorZone?> GetZoneWithTypeAsync(int zoneId);
-    Task<List<ParkingSlot>> GetSlotsByZoneAsync(int zoneId);
     Task<ParkingSlot?> GetSlotByIdAsync(string slotId);
     Task<bool> SlotIdExistsAsync(string slotId);
     Task<int> CountSlotsInZoneAsync(int zoneId);
@@ -32,11 +31,6 @@ public class SlotManagementRepository : ISlotManagementRepository
            .Include(z => z.VehicleType)
            .FirstOrDefaultAsync(z => z.ZoneId == zoneId);
 
-    public Task<List<ParkingSlot>> GetSlotsByZoneAsync(int zoneId) =>
-        _db.ParkingSlots
-           .Where(s => s.ZoneId == zoneId)
-           .OrderBy(s => s.SlotName)
-           .ToListAsync();
 
     public Task<ParkingSlot?> GetSlotByIdAsync(string slotId) =>
         _db.ParkingSlots

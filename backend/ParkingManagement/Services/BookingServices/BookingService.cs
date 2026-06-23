@@ -8,6 +8,7 @@ using ParkingManagement.DTOs.Booking;
 using ParkingManagement.Models;
 using ParkingManagement.Repositories;
 using ParkingManagement.Services.Helpers;
+using ParkingManagement.Utils;
 
 namespace ParkingManagement.Services.BookingServices;
 
@@ -83,7 +84,8 @@ public class BookingService : IBookingService
 
     public async Task<BookingResponse> CreateBookingAsync(string userId, CreateBookingRequest request)
     {
-        var checkTime = DateTime.UtcNow.AddHours(-24);
+        var vnNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, _vnTz);
+        var checkTime = vnNow.AddHours(-24);
 
         // ── Spam lock: block if account cancelled >= 6 times in last 24 hours ──
         var cancellationsLast24h = await _context.Bookings
@@ -99,7 +101,7 @@ public class BookingService : IBookingService
         }
 
         // ── Daily booking limit: tối đa 6 lần đặt / ngày ────────────────────────
-        var startOfToday = DateTime.UtcNow.Date;                // UTC midnight — safe cross-timezone (VN is UTC+7 so booking at 00:00 VN = 17:00 prev UTC day; using a 24-hour rolling window via checkTime is more accurate)
+        var startOfToday = vnNow.Date;                // local midnight
         var bookingsLast24h = await _context.Bookings
             .CountAsync(b => b.VehicleUserId == userId && b.BookingTime >= checkTime);
 
@@ -135,6 +137,9 @@ public class BookingService : IBookingService
         var dur = expiredAt - request.ExpectedArrival;
         if (dur.TotalMinutes < 60)
             throw new ArgumentException("Thời lượng đặt chỗ tối thiểu phải là 1 tiếng.");
+
+        // Check for vehicle type consistency for this license plate
+        await ValidationUtils.ValidateVehicleTypeConsistencyAsync(_context, request.LicensePlate, request.VehicleTypeId);
 
         // Validate license plate format and check for duplicate bookings
         var cleanPlate = request.LicensePlate.Replace("-", "").Replace(".", "").Replace(" ", "").ToUpper();
@@ -193,7 +198,7 @@ public class BookingService : IBookingService
                 ZoneId = null, // Assigned at check-in
                 ExpectedArrival = request.ExpectedArrival,
                 ExpiredAt = expiredAt,
-                BookingTime = DateTime.UtcNow,
+                BookingTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, _vnTz),
                 Status = "PENDING",
                 Notes = request.Notes
             };
@@ -261,46 +266,79 @@ public class BookingService : IBookingService
             throw new InvalidOperationException("Không thể hủy đặt chỗ khi xe đã check-in hoặc đặt chỗ đã hoàn thành.");
         }
 
-        var vnNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, _vnTz);
-        if (vnNow >= booking.ExpectedArrival)
+        // If the booking is PENDING, we delete it from DB and increment capacity back.
+        if (booking.Status == "PENDING")
         {
-            throw new InvalidOperationException("Không thể hủy đặt chỗ khi đã quá giờ hẹn.");
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                // Remove the booking record
+                _context.Bookings.Remove(booking);
+                await _context.SaveChangesAsync();
+
+                // Increment zone capacity back
+                var zoneToRestore = booking.ZoneId.HasValue
+                    ? await _context.FloorZones.FindAsync(booking.ZoneId.Value)
+                    : await _context.FloorZones
+                        .Where(z => z.VehicleTypeId == booking.VehicleTypeId && z.Status == "ACTIVE")
+                        .OrderBy(z => z.FloorNumber)
+                        .FirstOrDefaultAsync();
+
+                if (zoneToRestore != null)
+                    await _parkingRepo.IncrementZoneCapacityAsync(zoneToRestore.ZoneId);
+
+                await transaction.CommitAsync();
+
+                return await MapToBookingResponseAsync(booking);
+            }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
         }
-
-        var leadTime = booking.ExpectedArrival - vnNow;
-        if (leadTime.TotalMinutes < 60)
+        else
         {
-            throw new InvalidOperationException("Không thể hủy đặt chỗ khi thời gian tới giờ hẹn còn lại dưới 60 phút.");
-        }
+            var vnNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, _vnTz);
+            if (vnNow >= booking.ExpectedArrival)
+            {
+                throw new InvalidOperationException("Không thể hủy đặt chỗ khi đã quá giờ hẹn.");
+            }
 
-        using var transaction = await _context.Database.BeginTransactionAsync();
-        try
-        {
-            booking.Status = "CANCELLED";
-            booking.Notes = "CANCELLED_EARLY";
+            var leadTime = booking.ExpectedArrival - vnNow;
+            if (leadTime.TotalMinutes < 60)
+            {
+                throw new InvalidOperationException("Không thể hủy đặt chỗ khi thời gian tới giờ hẹn còn lại dưới 60 phút.");
+            }
 
-            await _context.SaveChangesAsync();
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                booking.Status = "CANCELLED";
+                booking.Notes = "CANCELLED_EARLY";
 
-            // ── Hoàn lại slot vào AvailableCapacity của zone ──
-            // Tìm zone phù hợp với vehicle type để hoàn trả (booking không nhất thiết gắn với zone cụ thể lúc tạo)
-            var zoneToRestore = booking.ZoneId.HasValue
-                ? await _context.FloorZones.FindAsync(booking.ZoneId.Value)
-                : await _context.FloorZones
-                    .Where(z => z.VehicleTypeId == booking.VehicleTypeId && z.Status == "ACTIVE")
-                    .OrderBy(z => z.FloorNumber)
-                    .FirstOrDefaultAsync();
+                await _context.SaveChangesAsync();
 
-            if (zoneToRestore != null)
-                await _parkingRepo.IncrementZoneCapacityAsync(zoneToRestore.ZoneId);
+                // ── Hoàn lại slot vào AvailableCapacity của zone ──
+                var zoneToRestore = booking.ZoneId.HasValue
+                    ? await _context.FloorZones.FindAsync(booking.ZoneId.Value)
+                    : await _context.FloorZones
+                        .Where(z => z.VehicleTypeId == booking.VehicleTypeId && z.Status == "ACTIVE")
+                        .OrderBy(z => z.FloorNumber)
+                        .FirstOrDefaultAsync();
 
-            await transaction.CommitAsync();
+                if (zoneToRestore != null)
+                    await _parkingRepo.IncrementZoneCapacityAsync(zoneToRestore.ZoneId);
 
-            return await MapToBookingResponseAsync(booking);
-        }
-        catch (Exception)
-        {
-            await transaction.RollbackAsync();
-            throw;
+                await transaction.CommitAsync();
+
+                return await MapToBookingResponseAsync(booking);
+            }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
         }
     }
 
@@ -312,7 +350,7 @@ public class BookingService : IBookingService
 
         var totalBookings = await _context.Bookings.CountAsync(b => b.VehicleUserId == userId);
 
-        var today = DateTime.UtcNow;
+        var today = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, _vnTz);
         var startOfMonth = new DateTime(today.Year, today.Month, 1);
         var thisMonthNew = await _context.Bookings
             .CountAsync(b => b.VehicleUserId == userId && b.BookingTime >= startOfMonth);
@@ -503,15 +541,22 @@ public class BookingService : IBookingService
         var vnNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, _vnTz);
         var expiredBookings = await _context.Bookings
             .Where(b => b.VehicleUserId == userId
-                        && (b.Status == "PENDING" || b.Status == "CONFIRMED")
-                        && b.ExpectedArrival.AddMinutes(30) < vnNow)
+                        && ((b.Status == "PENDING" && ((b.BookingTime.HasValue && b.BookingTime.Value.AddMinutes(5) < vnNow) || b.ExpectedArrival.AddMinutes(30) < vnNow))
+                            || (b.Status == "CONFIRMED" && b.ExpectedArrival.AddMinutes(30) < vnNow)))
             .ToListAsync();
 
         if (expiredBookings.Any())
         {
             foreach (var b in expiredBookings)
             {
-                b.Status = "CANCELLED";
+                if (b.Status == "PENDING")
+                {
+                    _context.Bookings.Remove(b);
+                }
+                else
+                {
+                    b.Status = "CANCELLED";
+                }
 
                 // Hoàn lại slot vào AvailableCapacity
                 var zoneToRestore = b.ZoneId.HasValue
@@ -578,7 +623,7 @@ public class BookingService : IBookingService
             BookingId = b.BookingId,
             VehicleUserId = b.VehicleUserId ?? string.Empty,
             LicensePlate = b.LicensePlate ?? string.Empty,
-            VehicleType = b.VehicleType?.VehicleTypeName ?? "Car",
+            VehicleType = b.VehicleType?.VehicleTypeName ?? "Unknown",
             VehicleTypeId = b.VehicleTypeId,
             SlotId = null,
             SlotName = "Assigned at Check-in",
@@ -586,7 +631,12 @@ public class BookingService : IBookingService
             ZoneName = b.Zone?.ZoneName,
             ExpectedArrival = b.ExpectedArrival,
             ExpiredAt = b.ExpiredAt,
-            BookingTime = b.BookingTime,
+            // Đảm bảo BookingTime có DateTimeKind.Utc để JSON serializer thêm hậu tố 'Z',
+            // giúp trình duyệt parse đúng múi giờ UTC thay vì hiểu nhầm thành giờ địa phương.
+            // Vì BookingTime lưu theo giờ địa phương Việt Nam (UTC+7), ta chuyển lại sang UTC trước khi gắn nhãn.
+            BookingTime = b.BookingTime.HasValue
+                ? DateTime.SpecifyKind(TimeZoneInfo.ConvertTimeToUtc(b.BookingTime.Value, _vnTz), DateTimeKind.Utc)
+                : (DateTime?)null,
             Status = activeSession != null ? "ACTIVE" : b.Status,
             IsLocked = activeSession != null ? activeSession.IsLocked : false,
             Notes = b.Notes,

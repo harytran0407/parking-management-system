@@ -151,33 +151,7 @@ namespace ParkingManagement.Repositories
                 .FirstOrDefaultAsync(s => s.TicketCode == ticketCode && s.Status == "ACTIVE");
         }
 
-        public async Task<bool> UpdateSessionAndSlotAsync(ParkingSession session, string slotId)
-        {
-            if (session == null || string.IsNullOrWhiteSpace(slotId)) return false;
 
-            using var transaction = await _context.Database.BeginTransactionAsync();
-            try
-            {
-                _context.ParkingSessions.Update(session);
-
-                var slot = await _context.ParkingSlots.FindAsync(slotId);
-                if (slot != null)
-                {
-                    slot.Status = "AVAILABLE";
-                    slot.LastUpdated = DateTime.Now;
-                    _context.ParkingSlots.Update(slot);
-                }
-
-                await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
-                return true;
-            }
-            catch (Exception)
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
-        }
 
         public async Task<ParkingSession?> GetActiveSessionByIdAsync(string sessionId)
         {
@@ -263,18 +237,51 @@ namespace ParkingManagement.Repositories
                 query = query.Where(s => s.Status == filter.Status.Trim().ToUpper());
             }
 
-            var allFilteredSlots = await query.Select(s => new { s.Status }).ToListAsync();
+            var zoneQuery = _context.FloorZones.AsQueryable();
+            if (filter.Floor.HasValue)
+            {
+                zoneQuery = zoneQuery.Where(z => z.FloorNumber == filter.Floor.Value);
+            }
+            if (!string.IsNullOrWhiteSpace(filter.Zone))
+            {
+                zoneQuery = zoneQuery.Where(z => z.ZoneName == filter.Zone.Trim());
+            }
+            if (filter.VehicleTypeId.HasValue)
+            {
+                zoneQuery = zoneQuery.Where(z => z.VehicleTypeId == filter.VehicleTypeId.Value);
+            }
+
+            var matchingZones = await zoneQuery.ToListAsync();
+            var zoneIds = matchingZones.Select(z => z.ZoneId).ToList();
+            var vehicleTypeIds = matchingZones.Select(z => z.VehicleTypeId).Distinct().ToList();
+
+            int totalCapacity = matchingZones.Sum(z => z.Capacity);
+            int availableCapacity = matchingZones.Sum(z => z.AvailableCapacity);
+
+            int occupiedCount = await _context.ParkingSessions
+                .CountAsync(s => s.Status == "ACTIVE" && s.ZoneId.HasValue && zoneIds.Contains(s.ZoneId.Value));
+
+            int reservedCount = await _context.Bookings
+                .CountAsync(b => (b.Status == "CONFIRMED" || b.Status == "PENDING") && 
+                                 ((b.ZoneId.HasValue && zoneIds.Contains(b.ZoneId.Value)) || 
+                                  (!b.ZoneId.HasValue && vehicleTypeIds.Contains(b.VehicleTypeId))));
+
+            var maintQuery = _context.ParkingSlots.AsQueryable();
+            if (filter.Floor.HasValue) maintQuery = maintQuery.Where(s => s.Zone.FloorNumber == filter.Floor.Value);
+            if (!string.IsNullOrWhiteSpace(filter.Zone)) maintQuery = maintQuery.Where(s => s.Zone.ZoneName == filter.Zone.Trim());
+            if (filter.VehicleTypeId.HasValue) maintQuery = maintQuery.Where(s => s.Zone.VehicleTypeId == filter.VehicleTypeId.Value);
+            int maintenanceCount = await maintQuery.CountAsync(s => s.Status == "MAINTENANCE");
 
             var statusCounts = new Dictionary<string, int>
             {
-                { "TOTAL", allFilteredSlots.Count },
-                { "AVAILABLE", allFilteredSlots.Count(s => s.Status == "AVAILABLE") },
-                { "OCCUPIED", allFilteredSlots.Count(s => s.Status == "OCCUPIED") },
-                { "RESERVED", allFilteredSlots.Count(s => s.Status == "RESERVED") },
-                { "MAINTENANCE", allFilteredSlots.Count(s => s.Status == "MAINTENANCE") }
+                { "TOTAL", totalCapacity },
+                { "AVAILABLE", availableCapacity },
+                { "OCCUPIED", occupiedCount },
+                { "RESERVED", reservedCount },
+                { "MAINTENANCE", maintenanceCount }
             };
 
-            int totalCount = allFilteredSlots.Count;
+            int totalCount = await query.CountAsync();
 
             var pagedSlots = await query
                 .OrderBy(s => s.SlotName)
@@ -479,6 +486,43 @@ namespace ParkingManagement.Repositories
             await _context.Payments.AddAsync(payment);
             _context.ParkingSessions.Update(session);
             await _context.SaveChangesAsync();
+        }
+
+        public async Task<List<ZoneRealtimeStatsDto>> GetZoneRealtimeStatsAsync()
+        {
+            var zones = await _context.FloorZones
+                .Include(z => z.VehicleType)
+                .Include(z => z.ParkingSlots)
+                .Where(z => z.Status == "ACTIVE")
+                .ToListAsync();
+
+            // Số xe đang đỗ thực tế theo từng zone (ACTIVE sessions có ZoneId)
+            var occupiedByZone = await _context.ParkingSessions
+                .Where(s => s.Status == "ACTIVE" && s.ZoneId.HasValue)
+                .GroupBy(s => s.ZoneId!.Value)
+                .Select(g => new { ZoneId = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.ZoneId, x => x.Count);
+
+            // Số booking CONFIRMED chưa check-in — đếm theo BookingId (distinct)
+            // Nhóm theo VehicleTypeId vì ZoneId thường null trước khi check-in
+            var bookedByVehicleType = await _context.Bookings
+                .Where(b => b.Status == "CONFIRMED" || b.Status == "PENDING")
+                .GroupBy(b => b.VehicleTypeId)
+                .Select(g => new { VehicleTypeId = g.Key, Count = g.Select(b => b.BookingId).Distinct().Count() })
+                .ToDictionaryAsync(x => x.VehicleTypeId, x => x.Count);
+
+            return zones.Select(z => new ZoneRealtimeStatsDto
+            {
+                ZoneId = z.ZoneId,
+                ZoneName = z.ZoneName,
+                FloorNumber = z.FloorNumber,
+                Capacity = z.Capacity,
+                AvailableCapacity = z.AvailableCapacity,
+                OccupiedCount = occupiedByZone.GetValueOrDefault(z.ZoneId, 0),
+                BookedCount = bookedByVehicleType.GetValueOrDefault(z.VehicleTypeId, 0),
+                MaintenanceCount = z.ParkingSlots.Count(s => s.Status == "MAINTENANCE"),
+                VehicleTypeName = z.VehicleType.VehicleTypeName
+            }).ToList();
         }
     }
 }
