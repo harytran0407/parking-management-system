@@ -243,7 +243,7 @@ export default function BookSlot() {
 
   // Set default date, auto-select tomorrow if today has no slots left
   useEffect(() => {
-    if (availableDates.length > 0) {
+    if (availableDates.length > 0 && selectedDate === "") {
       const today = availableDates[0].value;
       const todaySlots = [];
       for (let h = 0; h < 24; h++) {
@@ -261,7 +261,7 @@ export default function BookSlot() {
         setSelectedDate(availableDates[1].value);
       }
     }
-  }, [availableDates]);
+  }, [availableDates, selectedDate]);
 
   // Compute available arrival times for selected date
   const arrivalTimes = useMemo(() => {
