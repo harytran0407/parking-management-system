@@ -22,12 +22,15 @@ import {
 import { useNavigate } from "react-router-dom";
 import api from "../../utils/api";
 import { useLanguage } from "../../hooks/useLanguage";
+import { useAuth } from "../../hooks/useAuth";
 
 const fmtVND = (val) => (val != null ? val.toLocaleString("vi-VN") : "0");
 
 export default function BookSlot() {
   const navigate = useNavigate();
   const { language } = useLanguage();
+  const { user } = useAuth();
+  const userId = user?.user_id || user?.userId || "";
 
   // Vehicle selection state: null, 'car', or 'motorbike'
   const [vehicleType, setVehicleType] = useState(null);
@@ -144,7 +147,8 @@ export default function BookSlot() {
 
   const handleSelectVehicle = (type) => {
     setVehicleType(type);
-    const agreed = localStorage.getItem("pms_agreed_to_terms") === "true";
+    const agreedKey = userId ? `pms_agreed_to_terms_${userId}` : "pms_agreed_to_terms";
+    const agreed = localStorage.getItem(agreedKey) === "true";
     setSkipRegulations(agreed);
     setAgreedToTerms(agreed);
     setCurrentStep(1);
@@ -1210,7 +1214,8 @@ export default function BookSlot() {
                 type="button"
                 onClick={() => {
                   if (agreedToTerms) {
-                    localStorage.setItem("pms_agreed_to_terms", "true");
+                    const agreedKey = userId ? `pms_agreed_to_terms_${userId}` : "pms_agreed_to_terms";
+                    localStorage.setItem(agreedKey, "true");
                     setCurrentStep(2);
                   }
                 }}

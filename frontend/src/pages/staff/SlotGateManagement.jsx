@@ -8,25 +8,25 @@ import {
 } from "lucide-react";
 
 // ─── Zone Header Card ────────────────────────────────────────────────────────
-function ZoneHeaderCard({ zone, selectedFloor }) {
+function ZoneHeaderCard({ zone }) {
   const {
     zoneName, capacity, occupiedCount, bookedCount,
-    maintenanceCount, availableCapacity, isAggregate
+    maintenanceCount, availableCapacity, isAggregate, floorNumber
   } = zone;
 
   const totalCalculated = availableCapacity + occupiedCount + bookedCount + maintenanceCount;
   // Hàm tính phần trăm dựa trên capacity của zone
   const getPercentage = (val) => capacity > 0 ? ((val / capacity) * 100).toFixed(1) : 0;
 
-  // Tự động chuyển đổi tiêu đề: Nếu chọn tầng cụ thể thì hiển thị "Floor X", ngược lại hiển thị "All Floors"
-  const displayTitle = selectedFloor ? `Floor ${selectedFloor}` : "All Floors";
+  // Tự động chuyển đổi tiêu đề: Nếu là card tổng hợp (isAggregate) thì hiển thị "All Floors", ngược lại hiển thị tầng tương ứng
+  const displayTitle = isAggregate ? "All Floors" : `Floor ${floorNumber}`;
 
   return (
     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-4 shadow-sm space-y-4">
 
       {/* 1. Header Title Row */}
       <div className="flex items-center gap-2">
-        <Layers size={16} className={isAggregate ? "text-slate-400" : "text-blue-500"} />
+        <Layers size={16} className="text-blue-500" />
         <span className="font-bold text-slate-900 dark:text-white text-sm">
           {displayTitle}
         </span>

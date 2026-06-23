@@ -710,7 +710,7 @@ export default function StaffIncidentHandling() {
                                         type="text"
                                         placeholder={currentTabConfig?.searchBySlot ? "Enter slot name (e.g., A101, B205)..." : "Enter vehicle license plate..."}
                                         value={searchQuery}
-                                        onChange={e => setSearchQuery(e.target.value)}
+                                        onChange={e => setSearchQuery(e.target.value.toUpperCase())}
                                         className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-md pl-9 pr-3 py-2 text-xs font-bold outline-none focus:bg-white dark:focus:bg-slate-900 focus:border-slate-900 dark:focus:border-slate-400 transition-all placeholder:font-normal"
                                     />
                                 </div>
