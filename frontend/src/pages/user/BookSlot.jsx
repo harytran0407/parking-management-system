@@ -22,12 +22,15 @@ import {
 import { useNavigate } from "react-router-dom";
 import api from "../../utils/api";
 import { useLanguage } from "../../hooks/useLanguage";
+import { useAuth } from "../../hooks/useAuth";
 
 const fmtVND = (val) => (val != null ? val.toLocaleString("vi-VN") : "0");
 
 export default function BookSlot() {
   const navigate = useNavigate();
   const { language } = useLanguage();
+  const { user } = useAuth();
+  const userId = user?.user_id || user?.userId || "";
 
   // Vehicle selection state: null, 'car', or 'motorbike'
   const [vehicleType, setVehicleType] = useState(null);
@@ -144,7 +147,8 @@ export default function BookSlot() {
 
   const handleSelectVehicle = (type) => {
     setVehicleType(type);
-    const agreed = localStorage.getItem("pms_agreed_to_terms") === "true";
+    const agreedKey = userId ? `pms_agreed_to_terms_${userId}` : "pms_agreed_to_terms";
+    const agreed = localStorage.getItem(agreedKey) === "true";
     setSkipRegulations(agreed);
     setAgreedToTerms(agreed);
     setCurrentStep(1);
@@ -165,37 +169,38 @@ export default function BookSlot() {
     fetchCapacity();
   }, []);
 
+  const checkRestrictions = async () => {
+    setRestrictionLoading(true);
+    try {
+      // Check active bookings count via /bookings/active
+      const res = await api.get("/bookings/active");
+      if (res.data?.success) {
+        const activeBookings = res.data.data ?? [];
+        const confirmedOrPending = activeBookings.filter(
+          (b) => b.status === "CONFIRMED" || b.status === "PENDING"
+        );
+        if (confirmedOrPending.length >= 2) {
+          setBookingRestriction({ type: "concurrent_limit" });
+          setRestrictionLoading(false);
+          return;
+        }
+      }
+      setBookingRestriction(null);
+    } catch (err) {
+      // Nếu server trả 422/400 với message spam lock → parse luôn
+      const msg = err.response?.data?.message ?? "";
+      if (msg.includes("khóa") || msg.includes("spam") || msg.toLowerCase().includes("lock")) {
+        setBookingRestriction({ type: "spam_lock" });
+      } else {
+        setBookingRestriction(null);
+      }
+    } finally {
+      setRestrictionLoading(false);
+    }
+  };
+
   // Check booking restrictions on mount: spam lock or concurrent limit
   useEffect(() => {
-    const checkRestrictions = async () => {
-      setRestrictionLoading(true);
-      try {
-        // Check active bookings count via /bookings/active
-        const res = await api.get("/bookings/active");
-        if (res.data?.success) {
-          const activeBookings = res.data.data ?? [];
-          const confirmedOrPending = activeBookings.filter(
-            (b) => b.status === "CONFIRMED" || b.status === "PENDING"
-          );
-          if (confirmedOrPending.length >= 2) {
-            setBookingRestriction({ type: "concurrent_limit" });
-            setRestrictionLoading(false);
-            return;
-          }
-        }
-        setBookingRestriction(null);
-      } catch (err) {
-        // Nếu server trả 422/400 với message spam lock → parse luôn
-        const msg = err.response?.data?.message ?? "";
-        if (msg.includes("khóa") || msg.includes("spam") || msg.toLowerCase().includes("lock")) {
-          setBookingRestriction({ type: "spam_lock" });
-        } else {
-          setBookingRestriction(null);
-        }
-      } finally {
-        setRestrictionLoading(false);
-      }
-    };
     checkRestrictions();
   }, []);
 
@@ -646,6 +651,8 @@ export default function BookSlot() {
     setAgreedToTerms(false);
     setSubmitAttempted(false);
     setConflictType(null);
+    setBookingRestriction(null);
+    checkRestrictions();
   };
 
   const handleBack = () => {
@@ -916,7 +923,7 @@ export default function BookSlot() {
                   if (!isFormLocked) {
                     setLicensePlate(e.target.value.toUpperCase());
                     setSubmitAttempted(false);
-                    setPlateConflictErrorMsg("");
+                    setConflictType(null);
                   }
                 }}
                 placeholder={language === "en" ? "e.g. 51F-12345" : "VD: 51F-12345"}
@@ -1210,7 +1217,8 @@ export default function BookSlot() {
                 type="button"
                 onClick={() => {
                   if (agreedToTerms) {
-                    localStorage.setItem("pms_agreed_to_terms", "true");
+                    const agreedKey = userId ? `pms_agreed_to_terms_${userId}` : "pms_agreed_to_terms";
+                    localStorage.setItem(agreedKey, "true");
                     setCurrentStep(2);
                   }
                 }}
