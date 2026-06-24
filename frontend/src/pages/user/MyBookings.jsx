@@ -207,11 +207,11 @@ export default function MyBookings() {
       return matchesSearch && matchesStatus;
     });
 
-    // 2. Sort filtered bookings by startTime based on sortOrder
+    // 2. Sort filtered bookings by bookingTime based on sortOrder
     return filtered.sort((a, b) => {
-      const timeA = new Date(a.startTime).getTime();
-      const timeB = new Date(b.startTime).getTime();
-      if (sortOrder === "earliest") {
+      const timeA = new Date(a.bookingTime).getTime();
+      const timeB = new Date(b.bookingTime).getTime();
+      if (sortOrder === "oldest") {
         return timeA - timeB;
       } else {
         return timeB - timeA;

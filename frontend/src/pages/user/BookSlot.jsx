@@ -169,37 +169,38 @@ export default function BookSlot() {
     fetchCapacity();
   }, []);
 
+  const checkRestrictions = async () => {
+    setRestrictionLoading(true);
+    try {
+      // Check active bookings count via /bookings/active
+      const res = await api.get("/bookings/active");
+      if (res.data?.success) {
+        const activeBookings = res.data.data ?? [];
+        const confirmedOrPending = activeBookings.filter(
+          (b) => b.status === "CONFIRMED" || b.status === "PENDING"
+        );
+        if (confirmedOrPending.length >= 2) {
+          setBookingRestriction({ type: "concurrent_limit" });
+          setRestrictionLoading(false);
+          return;
+        }
+      }
+      setBookingRestriction(null);
+    } catch (err) {
+      // Nếu server trả 422/400 với message spam lock → parse luôn
+      const msg = err.response?.data?.message ?? "";
+      if (msg.includes("khóa") || msg.includes("spam") || msg.toLowerCase().includes("lock")) {
+        setBookingRestriction({ type: "spam_lock" });
+      } else {
+        setBookingRestriction(null);
+      }
+    } finally {
+      setRestrictionLoading(false);
+    }
+  };
+
   // Check booking restrictions on mount: spam lock or concurrent limit
   useEffect(() => {
-    const checkRestrictions = async () => {
-      setRestrictionLoading(true);
-      try {
-        // Check active bookings count via /bookings/active
-        const res = await api.get("/bookings/active");
-        if (res.data?.success) {
-          const activeBookings = res.data.data ?? [];
-          const confirmedOrPending = activeBookings.filter(
-            (b) => b.status === "CONFIRMED" || b.status === "PENDING"
-          );
-          if (confirmedOrPending.length >= 2) {
-            setBookingRestriction({ type: "concurrent_limit" });
-            setRestrictionLoading(false);
-            return;
-          }
-        }
-        setBookingRestriction(null);
-      } catch (err) {
-        // Nếu server trả 422/400 với message spam lock → parse luôn
-        const msg = err.response?.data?.message ?? "";
-        if (msg.includes("khóa") || msg.includes("spam") || msg.toLowerCase().includes("lock")) {
-          setBookingRestriction({ type: "spam_lock" });
-        } else {
-          setBookingRestriction(null);
-        }
-      } finally {
-        setRestrictionLoading(false);
-      }
-    };
     checkRestrictions();
   }, []);
 
@@ -242,7 +243,7 @@ export default function BookSlot() {
 
   // Set default date, auto-select tomorrow if today has no slots left
   useEffect(() => {
-    if (availableDates.length > 0) {
+    if (availableDates.length > 0 && selectedDate === "") {
       const today = availableDates[0].value;
       const todaySlots = [];
       for (let h = 0; h < 24; h++) {
@@ -260,7 +261,7 @@ export default function BookSlot() {
         setSelectedDate(availableDates[1].value);
       }
     }
-  }, [availableDates]);
+  }, [availableDates, selectedDate]);
 
   // Compute available arrival times for selected date
   const arrivalTimes = useMemo(() => {
@@ -650,6 +651,8 @@ export default function BookSlot() {
     setAgreedToTerms(false);
     setSubmitAttempted(false);
     setConflictType(null);
+    setBookingRestriction(null);
+    checkRestrictions();
   };
 
   const handleBack = () => {
@@ -920,7 +923,7 @@ export default function BookSlot() {
                   if (!isFormLocked) {
                     setLicensePlate(e.target.value.toUpperCase());
                     setSubmitAttempted(false);
-                    setPlateConflictErrorMsg("");
+                    setConflictType(null);
                   }
                 }}
                 placeholder={language === "en" ? "e.g. 51F-12345" : "VD: 51F-12345"}
