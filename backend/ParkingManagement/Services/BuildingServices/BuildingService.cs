@@ -1,4 +1,4 @@
-﻿using ParkingManagement.DTOs.Building;
+using ParkingManagement.DTOs.Building;
 using ParkingManagement.Repositories;
 
 namespace ParkingManagement.Services.BuildingServices;
@@ -30,6 +30,8 @@ public class BuildingService : IBuildingService
         int total = occupied + available;
         double rate = total > 0 ? Math.Round((double)occupied / total * 100, 1) : 0;
 
+        var vtAvailability = await _repo.GetOccupancyByVehicleTypeAsync(buildingId);
+
         return new BuildingInfoResponse
         {
             BuildingId = building.BuildingId,
@@ -49,7 +51,8 @@ public class BuildingService : IBuildingService
                 TotalOccupied = occupied,
                 TotalAvailable = available,
                 OccupancyRate = rate
-            }
+            },
+            VehicleTypeAvailability = vtAvailability
         };
     }
 

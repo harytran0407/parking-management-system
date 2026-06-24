@@ -17,5 +17,7 @@ public partial class PricingPolicy
 
     public int VehicleTypeId { get; set; }
 
+    public decimal HandlingFee { get; set; }
+
     public virtual VehicleType VehicleType { get; set; } = null!;
 }

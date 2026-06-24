@@ -1,4 +1,8 @@
-﻿using System.Text.RegularExpressions;
+using System;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+using ParkingManagement.Data;
 
 namespace ParkingManagement.Utils
 {
@@ -21,7 +25,7 @@ namespace ParkingManagement.Utils
         public static bool IsValidPassword(string password)
         {
             if (string.IsNullOrEmpty(password)) return false;
-            string passwordPattern = @"^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{6,}$"; // Mật khẩu tối thiểu 6 ký tự, ít nhất một chữ hoa và một số
+            string passwordPattern = @"^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$"; //Cho phép chứa các ký tự đặc biệt như @, $, !, %, *, ?, & giống hệt React
             return Regex.IsMatch(password, passwordPattern);
         }
 
@@ -30,6 +34,29 @@ namespace ParkingManagement.Utils
             if (string.IsNullOrEmpty(username)) return false;
             string usernamePattern = @"^[a-zA-Z0-9._-]{4,20}$";                 // Username tối thiểu 3 ký tự, chỉ chứa chữ cái, số, dấu chấm, gạch dưới hoặc gạch ngang
             return Regex.IsMatch(username, usernamePattern);
+        }
+
+        public static async Task ValidateVehicleTypeConsistencyAsync(AppDbContext context, string licensePlate, int vehicleTypeId)
+        {
+            if (string.IsNullOrEmpty(licensePlate)) return;
+
+            var cleanPlate = licensePlate.Replace("-", "").Replace(".", "").Replace(" ", "").ToUpper();
+            var existingDifferentTypeBooking = await context.Bookings
+                .FirstOrDefaultAsync(b => b.LicensePlate.Replace("-", "").Replace(".", "").Replace(" ", "").ToUpper() == cleanPlate 
+                                          && b.VehicleTypeId != vehicleTypeId);
+
+            if (existingDifferentTypeBooking != null)
+            {
+                if (existingDifferentTypeBooking.VehicleTypeId == 1 && vehicleTypeId == 2)
+                {
+                    throw new InvalidOperationException("Biển số xe này đã được đăng ký cho loại phương tiện là Xe máy. Vui lòng kiểm tra lại loại xe hoặc biển số.");
+                }
+                else
+                {
+                    var existingTypeName = existingDifferentTypeBooking.VehicleTypeId == 1 ? "Xe máy" : "Xe hơi";
+                    throw new InvalidOperationException($"Biển số xe này đã được đăng ký cho loại phương tiện là {existingTypeName}. Vui lòng kiểm tra lại loại xe hoặc biển số.");
+                }
+            }
         }
     }
 }

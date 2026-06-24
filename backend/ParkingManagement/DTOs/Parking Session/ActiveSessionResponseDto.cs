@@ -12,11 +12,20 @@ namespace ParkingManagement.DTOs
         public string LicensePlateIn { get; set; } = null!;
         public DateTime CheckInTime { get; set; }
         public int DurationMinutes { get; set; }
-        public string SlotId { get; set; } = null!;
-        public string SlotName { get; set; } = null!;
+        public int ZoneId { get; set; }
+        public string ZoneName { get; set; } = null!;
         public int Floor { get; set; }
         public decimal CurrentFee { get; set; }
         public string Status { get; set; } = null!;
         public string PaymentStatus { get; set; } = null!;
+        public string? BookingId { get; set; }
+        public int? GracePeriodRemainingSeconds { get; set; }
+        public string? VehicleTypeName { get; set; }
+        public DateTime? ExpectedArrival { get; set; }
+        public DateTime? ExpiredAt { get; set; }
+        public string? BookingStatus { get; set; }
+        public bool IsOverdue { get; set; }
+        public int OverdueMinutes { get; set; }
+        public decimal OverdueFee { get; set; }
     }
 }

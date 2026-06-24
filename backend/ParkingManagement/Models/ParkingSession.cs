@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace ParkingManagement.Models;
@@ -39,13 +39,19 @@ public partial class ParkingSession
 
     public string? PaymentStatus { get; set; }
 
+    public bool? IsLocked { get; set; }
+
     public int VehicleTypeId { get; set; }
 
+    /// <summary>Zone nơi xe được đỗ (cơ chế mới thay thế SlotId trong luồng chính).</summary>
+    public int? ZoneId { get; set; }
+
+    /// <summary>Giữ lại để tương thích ngược với dữ liệu cũ.</summary>
     public string? SlotId { get; set; }
 
-    public int? VehicleId { get; set; }
+    public string? BookingId { get; set; }
 
-    public int? BookingId { get; set; }
+    public string? TicketCode { get; set; }
 
     public virtual Booking? Booking { get; set; }
 
@@ -53,13 +59,13 @@ public partial class ParkingSession
 
     public virtual ICollection<Payment> Payments { get; set; } = new List<Payment>();
 
+    public virtual FloorZone? Zone { get; set; }
+
     public virtual ParkingSlot? Slot { get; set; }
 
     public virtual User? StaffIn { get; set; }
 
     public virtual User? StaffOut { get; set; }
-
-    public virtual Vehicle? Vehicle { get; set; }
 
     public virtual VehicleType VehicleType { get; set; } = null!;
 }

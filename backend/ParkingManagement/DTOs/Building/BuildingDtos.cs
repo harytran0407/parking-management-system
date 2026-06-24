@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 
 namespace ParkingManagement.DTOs.Building;
@@ -30,6 +30,9 @@ public class BuildingInfoResponse
 
     [JsonPropertyName("current_occupancy")]
     public OccupancyDto CurrentOccupancy { get; set; } = null!;
+
+    [JsonPropertyName("vehicle_type_availability")]
+    public List<VehicleTypeAvailabilityDto> VehicleTypeAvailability { get; set; } = new();
 }
 
 public class OperationHoursDto
@@ -55,6 +58,25 @@ public class OccupancyDto
     [JsonPropertyName("occupancy_rate")]
     public double OccupancyRate { get; set; }
 }
+
+public class VehicleTypeAvailabilityDto
+{
+    [JsonPropertyName("vehicle_type_id")]
+    public int VehicleTypeId { get; set; }
+
+    [JsonPropertyName("vehicle_type_name")]
+    public string VehicleTypeName { get; set; } = null!;
+
+    [JsonPropertyName("total_slots")]
+    public int TotalSlots { get; set; }
+
+    [JsonPropertyName("available_slots")]
+    public int AvailableSlots { get; set; }
+
+    [JsonPropertyName("occupied_slots")]
+    public int OccupiedSlots { get; set; }
+}
+
 
 // ─── PUT /api/v1/parking/buildings/info ──────────────────────────────────────
 

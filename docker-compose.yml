@@ -1,0 +1,44 @@
+services:
+  backend:
+    container_name: parking-backend
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    env_file:
+      - ./backend/ParkingManagement/.env
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      # Kết nối trực tiếp tới cơ sở dữ liệu MySQL trên máy thật (Host) qua IP mặc định của Docker Desktop
+      - DB_SERVER=192.168.65.254
+
+      - DB_PORT=3306
+      - DB_PASSWORD=123456;AllowPublicKeyRetrieval=True;SslMode=None
+
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+  frontend:
+    container_name: parking-frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+
+
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    env_file:
+      - ./frontend/.env
+    environment:
+      # Ghi đè VITE_API_BASE_URL để gọi API của Backend thông qua cổng 8080 của máy thật
+      - VITE_API_BASE_URL=http://localhost:8080/api/v1
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+
