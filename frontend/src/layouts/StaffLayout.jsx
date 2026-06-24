@@ -10,40 +10,42 @@ import HistoryPage from "../pages/staff/HistoryPage";
 import IncidentHandlingPage from '../pages/staff/IncidentHandling';
 import SlotGateManagementPage from '../pages/staff/SlotGateManagement';
 import SessionLookupPage from '../pages/staff/SessionLookupPage';
+import { useLanguage } from '../hooks/useLanguage';
 
 export default function StaffLayout() {
+  const { language } = useLanguage();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   // 1. ĐÃ BỎ DASHBOARD KHỎI MENU ĐIỀU HƯỚNG
   const navigationItems = [
     {
       path: "/staff/checkin",
-      label: "Check-In",
+      label: language === 'en' ? "Check-In" : "Cho xe vào cổng",
       icon: <LogIn size={20} />,
     },
     {
       path: "/staff/checkout",
-      label: "Check-Out",
+      label: language === 'en' ? "Check-Out" : "Thanh toán xe ra",
       icon: <LogOut size={20} />,
     },
     {
       path: "/staff/history",
-      label: "Parking History",
+      label: language === 'en' ? "Parking History" : "Lịch sử đỗ xe",
       icon: <History size={20} />,
     },
     {
       path: "/staff/incidents",
-      label: "Incident Handling",
+      label: language === 'en' ? "Incident Handling" : "Xử lý sự cố",
       icon: <AlertTriangle size={20} />,
     },
     {
       path: "/staff/slots",
-      label: "Slot Management",
+      label: language === 'en' ? "Slot Management" : "Giám sát ô đỗ",
       icon: <Map size={20} />,
     },
     {
       path: "/staff/session-lookup",
-      label: "Session Lookup",
+      label: language === 'en' ? "Session Lookup" : "Tra cứu phiên xe",
       icon: <ScanSearch size={20} />,
     },
   ];
@@ -58,7 +60,6 @@ export default function StaffLayout() {
 
       <div className="content-wrapper flex-1 flex flex-col overflow-hidden">
         <Header
-          title="Parking Operations"
           isSidebarCollapsed={isSidebarCollapsed}
           setIsSidebarCollapsed={setIsSidebarCollapsed}
         />
