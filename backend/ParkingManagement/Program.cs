@@ -25,7 +25,7 @@ var dbPassword = Environment.GetEnvironmentVariable("DB_PASSWORD");
 
 var connectionString = string.IsNullOrEmpty(dbServer)
     ? builder.Configuration.GetConnectionString("DefaultConnection")
-    : $"Server={dbServer};Port={dbPort};Database={dbName};User={dbUser};Password={dbPassword};";
+    : $"Server={dbServer};Port={dbPort};Database={dbName};User={dbUser};Password={dbPassword};Connection Timezone=+07:00;";
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString))
