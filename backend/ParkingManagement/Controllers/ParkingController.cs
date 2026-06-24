@@ -207,7 +207,6 @@ namespace ParkingManagement.Controllers
                     success = false,
                     error_code = "CONCURRENCY_CONFLICT",
                     message = "Thao tác check-out thất bại do xung đột dữ liệu đồng thời. Vui lòng thử lại."
->>>>>>> 73af9b11d8867465349b40ca3dc34f803b0ca66a
                 });
             }
             catch (Exception ex)
@@ -286,8 +285,6 @@ namespace ParkingManagement.Controllers
                     message = "Lỗi kết nối cơ sở dữ liệu, hành động chưa được ghi nhận.",
                     details = ex.Message
                 });
-<<<<<<< HEAD
-=======
             }
         }
 
