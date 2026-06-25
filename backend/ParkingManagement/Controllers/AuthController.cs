@@ -13,8 +13,6 @@ using System.Security.Claims;
 using System.Text;
 using Google.Apis.Auth;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Distributed;
-using System.Text.Json;
 
 namespace ParkingManagement.Controllers.AuthController
 {
@@ -27,18 +25,15 @@ namespace ParkingManagement.Controllers.AuthController
 
         private readonly IConfiguration _configuration;
 
-        private readonly IDistributedCache _cache;
-
-        private readonly IMemoryCache _memoryCache;
+        private readonly IMemoryCache _cache;
 
         private readonly IEmailService _emailService;
 
-        public AuthController(AppDbContext context, IConfiguration configuration, IDistributedCache cache, IMemoryCache memoryCache, IEmailService emailService)
+        public AuthController(AppDbContext context, IConfiguration configuration, IMemoryCache cache, IEmailService emailService)
         {
             _context = context;
             _configuration = configuration;
             _cache = cache;
-            _memoryCache = memoryCache;
             _emailService = emailService;
         }
 
@@ -74,89 +69,127 @@ namespace ParkingManagement.Controllers.AuthController
                 });
             }
 
-            var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email || u.Phone == request.PhoneNumber);
+            string hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password);
+            var OtpCode = new Random().Next(100000,999999).ToString();
+            User userToSave;
+
+            var existingUser = await _context.Users.FirstOrDefaultAsync(u =>
+        u.Email == request.Email || u.Phone == request.PhoneNumber);
+
             if (existingUser != null)
             {
-                return Conflict(new { success = false, message = "Email or phone number has been registered" });
+                if (existingUser.Status != "INACTIVE")
+                {
+                    string conflictField = existingUser.Email == request.Email ? "Email" : "Phone number";
+                    return Conflict(new
+                    {
+                        success = false,
+                        error_code = $"{conflictField.ToUpper().Replace(" ", "_")}_ALREADY_EXISTS",
+                        message = $"{conflictField} is already registered"
+                    });
+                }
+                existingUser.FullName = request.FullName;
+                existingUser.Password = hashedPassword;
+                existingUser.Phone = request.PhoneNumber;
+                existingUser.OtpCode = OtpCode;
+                existingUser.OtpExpiredAt = DateTime.UtcNow.AddMinutes(5);
+
+                userToSave = existingUser;
             }
-
-            string hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password);
-            var OtpCode = new Random().Next(100000, 999999).ToString();
-
-            // Lưu vào DTO tạm để quăng lên RAM
-            var cacheData = new RegisterCacheDto
+            else
             {
-                FullName = request.FullName,
-                Email = request.Email,
-                Phone = request.PhoneNumber,
-                Password = hashedPassword,
-                OtpCode = OtpCode
-            };
-
-            var cacheKey = $"register_otp_{request.Email}";
-            var cacheOptions = new DistributedCacheEntryOptions
-            {
-                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5)
-            };
-
-            // Lưu vào Cache
-            await _cache.SetStringAsync(cacheKey, JsonSerializer.Serialize(cacheData), cacheOptions);
+                //-- Tạo mới người dùng và lưu vào Database --//
+                userToSave = new User
+                {
+                    UserId = Guid.NewGuid().ToString(),
+                    FullName = request.FullName,
+                    Email = request.Email,
+                    Phone = request.PhoneNumber,
+                    Password = hashedPassword,
+                    Username = "user_" + Guid.NewGuid().ToString("N").Substring(0, 8),
+                    RoleId = 4,
+                    Status = "INACTIVE",
+                    CreatedAt = DateTime.UtcNow,
+                    OtpCode = OtpCode,
+                    OtpExpiredAt = DateTime.UtcNow.AddMinutes(5)
+                };
+                _context.Users.Add(userToSave);
+            }
+            await _context.SaveChangesAsync();
 
             //-- Gửi Email OTP --//
             string emailSubject = "Xác thực tài khoản Parking Management";
             string emailBody = $@"
-        <h2>Chào mừng {request.FullName} đến với Hệ thống đỗ xe!</h2>
+        <h2>Chào mừng {userToSave.FullName} đến với Hệ thống đỗ xe!</h2>
         <p>Mã OTP xác thực tài khoản của bạn là: <strong style='font-size:24px; color:blue;'>{OtpCode}</strong></p>
         <p>Mã này sẽ hết hạn sau 5 phút. Vui lòng không chia sẻ mã này cho bất kỳ ai.</p>";
 
-            _ = _emailService.SendEmailAsync(request.Email, emailSubject, emailBody);
-            return StatusCode(201, new
+            _ = _emailService.SendEmailAsync(userToSave.Email, emailSubject, emailBody);
+            var responseData = new
             {
                 success = true,
-                message = "Registration successful, please check your email to get OTP."
-            });
+                message = "Registration successful, please check your email to get OTP.",
+                data = new
+                {
+                    user_id = userToSave.UserId,
+                    full_name = userToSave.FullName,
+                    email = userToSave.Email,
+                    phone_number = userToSave.Phone,
+                    role = "ParkingUser",
+                    created_at = userToSave.CreatedAt.Value.ToString("yyyy-MM-ddTHH:mm:ssZ")
+                }
+            };
+
+            return StatusCode(201, responseData);
         }
 
         [HttpPost("verify-otp")]
         public async Task<ActionResult> VerifyOtp([FromBody] VerifyOtpRequestDto request)
         {
-            // Lấy dữ liệu từ cache ra
-            var cacheKey = $"register_otp_{request.Email}";
-            var cachedString = await _cache.GetStringAsync(cacheKey);
+            // Tìm user trong Database dựa vào Email
+            var userInDb = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
 
-            // 1. Kiểm tra xem mã còn tồn tại không (Quá 5 phút là string này sẽ bị null)
-            if (string.IsNullOrEmpty(cachedString))
+            // 1. Nếu không tìm thấy Email trong hệ thống
+            if (userInDb == null)
             {
-                return BadRequest(new { success = false, message = "OTP code has expired or does not exist. Please register again." });
+                return NotFound(new
+                {
+                    success = false,
+                    message = "Cannot find user with this email."
+                });
             }
-
-            // Giải mã JSON thành Object
-            var cacheData = JsonSerializer.Deserialize<RegisterCacheDto>(cachedString);
-
-            // 2. Kiểm tra mã OTP nhập vào có khớp không
-            if (cacheData!.OtpCode != request.OtpCode)
+            // 2. Chặn nếu tài khoản đã được kích hoạt từ trước
+            if (userInDb.Status == "ACTIVE")
             {
-                return BadRequest(new { success = false, message = "OTP code is incorrect." });
+                return BadRequest(new
+                {
+                    success = false,
+                    message = "Account have been activated. Please log in again."
+                });
             }
-
-            // 3. CHÍNH THỨC LƯU VÀO DATABASE
-            var newUser = new User
+            // 3. Kiểm tra xem mã OTP nhập vào có khớp với mã lưu trong DB không
+            if (userInDb.OtpCode != request.OtpCode)
             {
-                UserId = Guid.NewGuid().ToString(),
-                FullName = cacheData.FullName,
-                Email = cacheData.Email,
-                Phone = cacheData.Phone,
-                Password = cacheData.Password, 
-                Username = "user_" + Guid.NewGuid().ToString("N").Substring(0, 8),
-                RoleId = 4,
-                Status = "ACTIVE",
-                CreatedAt = DateTime.UtcNow
-            };
-            _context.Users.Add(newUser);
+                return BadRequest(new
+                {
+                    success = false,
+                    message = "OTP code incorrect."
+                });
+            }
+            // 4. Kiểm tra xem mã OTP đã quá 5 phút chưa
+            if (userInDb.OtpExpiredAt < DateTime.UtcNow)
+            {
+                return BadRequest(new
+                {
+                    sucess = false,
+                    message = "OTP code has expired. Please request to send a new OTP code."
+                });
+            }
+            // 5. Kích hoạt tài khoản
+            userInDb.Status = "ACTIVE";
+            userInDb.OtpCode = null;
+            userInDb.OtpExpiredAt = null;
             await _context.SaveChangesAsync();
-
-            // 4. Dọn dẹp Cache
-            await _cache.RemoveAsync(cacheKey);
 
             return Ok(new
             {
@@ -238,7 +271,7 @@ namespace ParkingManagement.Controllers.AuthController
             string cacheKey = $"LoginAttempts_{request.EmailOrPhone}";
             int attempts = 0;
 
-            if (_memoryCache.TryGetValue(cacheKey, out attempts) && attempts >= 5)
+            if (_cache.TryGetValue(cacheKey, out attempts) && attempts >= 5)
             {
                 return StatusCode(429, new
                 {
@@ -257,7 +290,7 @@ namespace ParkingManagement.Controllers.AuthController
                 attempts++;
                 //Lưu số lần thử vào cache với thời gian hết hạn 1 phút
                 var cacheOptions = new MemoryCacheEntryOptions().SetAbsoluteExpiration(TimeSpan.FromMinutes(1));
-                _memoryCache.Set(cacheKey, attempts, cacheOptions);
+                _cache.Set(cacheKey, attempts, cacheOptions);
 
                 return Unauthorized(new
                 {
@@ -378,7 +411,7 @@ namespace ParkingManagement.Controllers.AuthController
 
             // Đưa token vào Blacklist trong cache với thời gian hết hạn 1 giờ. Sau 1h, Token sẽ tự hết hạn, Cache sẽ tự động xóa cho nhẹ bộ nhớ
             var cacheOptions = new MemoryCacheEntryOptions().SetAbsoluteExpiration(TimeSpan.FromHours(1));
-            _memoryCache.Set($"Blacklist_{token}", true, cacheOptions);
+            _cache.Set($"Blacklist_{token}", true, cacheOptions);
 
             return Ok(new
             {
@@ -400,7 +433,7 @@ namespace ParkingManagement.Controllers.AuthController
             string otp = new Random().Next(100000, 999999).ToString();
 
             var cacheOptions = new MemoryCacheEntryOptions().SetAbsoluteExpiration(TimeSpan.FromMinutes(5));
-            _memoryCache.Set($"OTP_{request.EmailOrPhone}", otp, cacheOptions);
+            _cache.Set($"OTP_{request.EmailOrPhone}", otp, cacheOptions);
 
             // Gửi OTP qua email thực tế nếu tài khoản có email hợp lệ
             if (!string.IsNullOrEmpty(userInDb.Email) && ValidationUtils.IsValidEmail(userInDb.Email))
@@ -440,7 +473,7 @@ namespace ParkingManagement.Controllers.AuthController
         public IActionResult ResetPassword([FromBody] ResetPasswordRequestDto request)
         {
             //Hệ thống sẽ truy soát _cache để tìm xem có phiếu yêu cầu cấp lại mật khẩu nào có đứng tên Email/SĐT
-            if (!_memoryCache.TryGetValue($"OTP_{request.EmailOrPhone}", out string? savedOtp))
+            if (!_cache.TryGetValue($"OTP_{request.EmailOrPhone}", out string? savedOtp))
             {
                 return BadRequest(new
                 {
