@@ -122,7 +122,6 @@ builder.Services.AddScoped<IFloorAllocationService, FloorAllocationService>();
 
 // ── Auth & JWT ─────────────────────────────────────────-────────────────────────
 builder.Services.AddJwtAuthentication(builder.Configuration);
-builder.Services.AddDistributedMemoryCache();
 
 // ── Email module ──────────────────────────────────────────────────────────────
 builder.Services.Configure<MailSettings>(builder.Configuration.GetSection("MailSettings"));
