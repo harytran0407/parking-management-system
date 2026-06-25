@@ -66,9 +66,10 @@ export default function Sidebar({ navigationItems = [], isCollapsed, setIsCollap
               onClick={handleLogoClick}
               className="flex items-center gap-2.5 min-w-0 cursor-pointer hover:opacity-80 transition-opacity"
             >
-              <img src="/eParkingLogo.png" alt="eParking Logo" className="w-8 h-8 object-contain rounded-lg shadow-sm shrink-0" />
-              <div className="whitespace-nowrap">
-                <h2 className="text-base font-black text-blue-900 dark:text-white tracking-tight leading-none">eParking</h2>
+              <img src="/eParkingLogo.png" alt="eParking Logo" className="w-9 h-9 object-contain rounded-xl shadow-sm shrink-0" />
+              <div className="flex flex-col text-left justify-center whitespace-nowrap" style={{ lineHeight: 1.15 }}>
+                <span className="text-base font-extrabold text-slate-800 dark:text-white tracking-tight">e<span className="text-blue-600 dark:text-blue-400">Parking</span></span>
+                <span className="text-[9px] text-slate-400 dark:text-slate-500 font-medium tracking-wider">Management System</span>
               </div>
             </div>
             <button

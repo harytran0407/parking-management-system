@@ -12,6 +12,11 @@ import { useLanguage } from "../../hooks/useLanguage";
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const PYTHON_STREAM_URL = import.meta.env.VITE_PYTHON_STREAM_URL;
 
+const getBackendRootUrl = () => {
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+    return baseUrl.replace("/api/v1", "");
+};
+
 const t = {
     vi: {
         cameraHeader: "Check-Out Camera",
@@ -132,16 +137,18 @@ export default function CheckOutPage() {
     const [ticketCodeInput, setTicketCodeInput] = useState("");
     const [selectedVehicleType, setSelectedVehicleType] = useState(1);
     const [scanResult, setScanResult] = useState(null);
+    const [session, setSession] = useState(null);
 
     const [isLoading, setIsLoading] = useState(false);
     const [isStreamConnected, setIsStreamConnected] = useState(true);
 
-    const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+    const [lightboxImage, setLightboxImage] = useState(null);
 
     const [pendingCameraPlate, setPendingCameraPlate] = useState("");
     const [isPlateMatched, setIsPlateMatched] = useState(false);
 
     const [activeBookingId, setActiveBookingId] = useState(null);
+    const isTicketMissing = pendingCameraPlate && !activeBookingId && !ticketCodeInput;
 
     const vehicleTypes = [
         { id: 1, name: t[language].motorbike },
@@ -204,8 +211,10 @@ export default function CheckOutPage() {
             timeIn: checkInTime ? new Date(checkInTime).toLocaleString(language === "vi" ? "vi-VN" : "en-US") : "N/A",
             duration: durationMinutes !== undefined ? `${durationMinutes} mins` : "0 mins",
             price: currentFee || 0,
-            vehicleModel: vehicleTypes.find(v => v.id === (vehicleTypeId || selectedVehicleType))?.name || t[language].vehicleLabel
+            vehicleModel: vehicleTypes.find(v => v.id === (vehicleTypeId || selectedVehicleType))?.name || t[language].vehicleLabel,
+            imageUrlIn: activeSession.image_url_in || activeSession.imageUrlIn
         });
+        setSession(activeSession);
     };
 
 
@@ -227,6 +236,7 @@ export default function CheckOutPage() {
 
         if (activeSession) {
             setPendingCameraPlate(formattedPlate);
+            setSession(activeSession);
 
             const bookingId = activeSession.booking_id || activeSession.bookingId;
 
@@ -292,6 +302,7 @@ export default function CheckOutPage() {
 
             if (activeSession) {
                 setPendingCameraPlate(aiPlate);
+                setSession(activeSession);
 
                 const bookingId = activeSession.booking_id || activeSession.bookingId;
 
@@ -343,6 +354,7 @@ export default function CheckOutPage() {
         const activeSession = await fetchSessionByTicketCode(formattedTicket);
 
         if (activeSession) {
+            setSession(activeSession);
             const originalPlate = (activeSession.license_plate_in || activeSession.licensePlateIn || "").toUpperCase().trim();
 
             if (pendingCameraPlate === originalPlate) {
@@ -360,7 +372,8 @@ export default function CheckOutPage() {
                     timeIn: "N/A",
                     duration: "N/A",
                     price: (activeSession.current_fee !== undefined ? activeSession.current_fee : activeSession.currentFee) || 0,
-                    vehicleModel: "Mismatch"
+                    vehicleModel: "Mismatch",
+                    imageUrlIn: activeSession.image_url_in || activeSession.imageUrlIn
                 });
                 toast.error(`${t[language].toastPlateMismatchPrefix}${pendingCameraPlate}${t[language].toastPlateMismatchMiddle}${originalPlate}${t[language].toastPlateMismatchSuffix}`);
             }
@@ -389,7 +402,7 @@ export default function CheckOutPage() {
                 license_plate_out: (pendingCameraPlate || scanResult.plate || "").toUpperCase().trim(),
                 camera_out: camOut,
                 gate_out: gateOut,
-                image_url_out: `/uploads/plates/checkout_captured_${Date.now()}.jpg`,
+                image_url_out: capturedImage,
             };
             const response = await api.post(`/parking/check-out`, bodyData);
             if (
@@ -416,6 +429,7 @@ export default function CheckOutPage() {
         setManualInput("");
         setTicketCodeInput("");
         setScanResult(null);
+        setSession(null);
         setPendingCameraPlate("");
         setIsPlateMatched(false);
         setPlateNumber("");
@@ -542,8 +556,9 @@ export default function CheckOutPage() {
                         {/* NHẬP/QUÉT MÃ VÉ ĐỐI CHIẾU */}
                         <div className="flex gap-2 items-end">
                             <div className="flex-1">
-                                <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">
-                                    {t[language].ticketCodeLabel} {activeBookingId && <span className="text-emerald-500 text-[9px] lowercase font-normal">{t[language].notRequiredLabel}</span>}
+                                <label className={`block text-[10px] font-bold uppercase tracking-widest mb-1.5 flex justify-between items-center ${isTicketMissing ? "text-rose-500" : "text-slate-500 dark:text-slate-400"}`}>
+                                    <span>{t[language].ticketCodeLabel}</span>
+                                    {activeBookingId && <span className="text-emerald-500 text-[9px] lowercase font-normal">{t[language].notRequiredLabel}</span>}
                                 </label>
                                 <div className="relative">
                                     <input
@@ -552,9 +567,12 @@ export default function CheckOutPage() {
                                         value={ticketCodeInput}
                                         onChange={(e) => setTicketCodeInput(e.target.value.toUpperCase())}
                                         disabled={!pendingCameraPlate || !!activeBookingId}
-                                        className="w-full border border-slate-200 dark:border-slate-800 rounded-lg pl-9 pr-3 py-2 text-xs font-mono font-bold bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 tracking-wider focus:outline-none focus:border-slate-400 dark:focus:border-slate-700 focus:bg-white dark:focus:bg-slate-950 transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600 placeholder:font-sans placeholder:font-normal h-10 disabled:opacity-60 disabled:cursor-not-allowed"
+                                        className={`w-full border rounded-lg pl-9 pr-3 py-2 text-xs font-mono font-bold bg-slate-50 dark:bg-slate-950 tracking-wider focus:outline-none transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600 placeholder:font-sans placeholder:font-normal h-10 disabled:opacity-60 disabled:cursor-not-allowed ${isTicketMissing
+                                            ? "border-rose-500 dark:border-rose-800 bg-rose-50/50 dark:bg-rose-950/20 text-rose-900 dark:text-rose-100 focus:border-rose-600 dark:focus:border-rose-500"
+                                            : "border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 focus:border-slate-400 dark:focus:border-slate-700 focus:bg-white"
+                                            }`}
                                     />
-                                    <Ticket size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+                                    <Ticket size={14} className={`absolute left-3 top-1/2 -translate-y-1/2 transition-colors ${isTicketMissing ? "text-rose-500" : "text-slate-400 dark:text-slate-500"}`} />
                                 </div>
                             </div>
                             <button
@@ -580,20 +598,48 @@ export default function CheckOutPage() {
                         <div className="flex-1 flex flex-col min-h-0 justify-start overflow-y-auto pr-1 space-y-4 class-scroll-em-di">
                             {scanResult ? (
                                 <>
-                                    {/* ẢNH SNAPSHOT OUTBOUND */}
-                                    <div
-                                        onClick={() => setIsLightboxOpen(true)}
-                                        className="bg-slate-100 dark:bg-slate-950 h-[130px] xl:h-[160px] 2xl:h-[200px] shrink-0 border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm dark:shadow-md relative group cursor-zoom-in rounded-lg transition-colors duration-200"
-                                        title="Click to zoom picture snapshot"
-                                    >
-                                        <img
-                                            src={capturedImage || "https://placehold.co/600x400/0f172a/64748b?text=Snapshot+Outbound"}
-                                            alt="Captured Gate Target Area"
-                                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 opacity-90 dark:opacity-80"
-                                        />
-                                        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 dark:from-slate-950/80 via-transparent to-transparent pointer-events-none" />
-                                        <div className="absolute bottom-2 right-2 bg-white/90 dark:bg-slate-900/90 rounded-md p-1.5 text-slate-700 dark:text-slate-200 opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm border border-slate-200 dark:border-slate-700 shadow-sm">
-                                            <Maximize2 size={12} />
+                                    {/* ẢNH SNAPSHOT COMPARISON */}
+                                    <div className="grid grid-cols-2 gap-3 shrink-0">
+                                        {/* Ảnh check-in */}
+                                        <div
+                                            onClick={() => {
+                                                if (session && session.image_url_in) {
+                                                    setLightboxImage(`${getBackendRootUrl()}${session.image_url_in}`);
+                                                }
+                                            }}
+                                            className="bg-slate-100 dark:bg-slate-950 h-[100px] xl:h-[130px] 2xl:h-[160px] border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm dark:shadow-md relative group cursor-zoom-in rounded-lg transition-colors duration-200"
+                                            title="Click to zoom check-in snapshot"
+                                        >
+                                            <img
+                                                src={session.image_url_in ? `${getBackendRootUrl()}${session.image_url_in}` : "https://placehold.co/600x400/0f172a/64748b?text=No+Checkin+Image"}
+                                                alt="Check-in snapshot"
+                                                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 opacity-90 dark:opacity-80"
+                                            />
+                                            <div className="absolute top-1.5 left-1.5 bg-black/60 text-white text-[9px] px-1.5 py-0.5 rounded font-black uppercase tracking-wider">{language === "vi" ? "Ảnh check-in" : "Check-in Image"}</div>
+                                            <div className="absolute bottom-1.5 right-1.5 bg-white/90 dark:bg-slate-900/90 rounded p-1 text-slate-700 dark:text-slate-200 opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm border border-slate-200 dark:border-slate-700">
+                                                <Maximize2 size={10} />
+                                            </div>
+                                        </div>
+
+                                        {/* Ảnh check-out */}
+                                        <div
+                                            onClick={() => {
+                                                if (capturedImage) {
+                                                    setLightboxImage(capturedImage);
+                                                }
+                                            }}
+                                            className="bg-slate-100 dark:bg-slate-950 h-[100px] xl:h-[130px] 2xl:h-[160px] border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm dark:shadow-md relative group cursor-zoom-in rounded-lg transition-colors duration-200"
+                                            title="Click to zoom check-out snapshot"
+                                        >
+                                            <img
+                                                src={capturedImage || "https://placehold.co/600x400/0f172a/64748b?text=Snapshot+Outbound"}
+                                                alt="Captured Gate Target Area"
+                                                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 opacity-90 dark:opacity-80"
+                                            />
+                                            <div className="absolute top-1.5 left-1.5 bg-black/60 text-white text-[9px] px-1.5 py-0.5 rounded font-black uppercase tracking-wider">{language === "vi" ? "Ảnh check-out" : "Check-out Image"}</div>
+                                            <div className="absolute bottom-1.5 right-1.5 bg-white/90 dark:bg-slate-900/90 rounded p-1 text-slate-700 dark:text-slate-200 opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm border border-slate-200 dark:border-slate-700">
+                                                <Maximize2 size={10} />
+                                            </div>
                                         </div>
                                     </div>
 
@@ -716,16 +762,16 @@ export default function CheckOutPage() {
             </div>
 
             {/* LIGHTBOX MODAL OVERLAY */}
-            {isLightboxOpen && capturedImage && (
+            {lightboxImage && (
                 <div
                     className="fixed inset-0 bg-slate-950/80 dark:bg-slate-950/90 backdrop-blur-md z-50 flex flex-col items-center justify-center p-4 cursor-zoom-out"
-                    onClick={() => setIsLightboxOpen(false)}
+                    onClick={() => setLightboxImage(null)}
                 >
                     <div className="absolute top-5 right-5 text-slate-500 hover:text-slate-200 dark:text-slate-400 dark:hover:text-white bg-white/10 dark:bg-slate-900/60 p-2 rounded-full border border-slate-300 dark:border-slate-800 transition-colors">
                         <X size={20} />
                     </div>
                     <div className="relative max-w-4xl max-h-[85vh] rounded-md overflow-hidden border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-                        <img src={capturedImage} alt="High Resolution Audit" className="w-full h-auto max-h-[85vh] object-contain" />
+                        <img src={lightboxImage} alt="High Resolution Audit" className="w-full h-auto max-h-[85vh] object-contain" />
                         <div className="absolute bottom-0 inset-x-0 bg-slate-900/90 dark:bg-slate-950/80 p-3 text-center border-t border-slate-200 dark:border-slate-800 backdrop-blur-sm">
                             <p className="font-mono font-bold tracking-widest text-sm text-yellow-500 dark:text-yellow-400">{plateNumber || t[language].noPlateDetected}</p>
                         </div>
