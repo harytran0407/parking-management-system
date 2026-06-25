@@ -1,7 +1,8 @@
 import React, { useState, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
-import { Lock, Contact, ArrowLeft } from "lucide-react";
+import { useLanguage } from "../hooks/useLanguage";
+import { Lock, Mail, ArrowLeft, Eye, EyeOff } from "lucide-react";
 import googleIcon from "../assets/google.png";
 import { useGoogleLogin } from "@react-oauth/google";
 import ReCAPTCHA from "react-google-recaptcha";
@@ -15,18 +16,70 @@ const ROLE_ROUTES_MAP = {
   User: "/user",
 };
 
+const t = {
+  vi: {
+    backToHome: "Quay lại trang chủ",
+    title: "eParking",
+    subtitle: "Hệ thống quản lý bãi xe",
+    emailOrPhone: "Email",
+    emailOrPhonePlaceholder: "Nhập địa chỉ email",
+    password: "Mật khẩu",
+    forgotPassword: "Quên mật khẩu?",
+    passwordPlaceholder: "Nhập mật khẩu của bạn",
+    recaptchaError: "Vui lòng hoàn thành xác minh 'Tôi không phải là robot'.",
+    loginBtn: "Đăng nhập",
+    loggingIn: "Đang đăng nhập...",
+    or: "hoặc",
+    googleBtn: "Tiếp tục với Google",
+    processing: "Đang xử lý...",
+    noAccount: "Chưa có tài khoản?",
+    registerLink: "Đăng ký",
+    invalidCredentials: "Email hoặc mật khẩu không chính xác. Vui lòng thử lại.",
+    accountLocked: "Tài khoản này đã bị khóa hoặc tạm ngưng. Vui lòng liên hệ quản trị viên.",
+    accessDenied: "Tài khoản chưa được kích hoạt hoặc chưa xác thực.",
+    tooManyAttempts: "Bạn đã đăng nhập sai quá nhiều lần. Vui lòng thử lại sau.",
+    loginFailed: "Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.",
+    googleFailed: "Đăng nhập bằng Google thất bại. Vui lòng thử lại.",
+  },
+  en: {
+    backToHome: "Back to home",
+    title: "eParking",
+    subtitle: "Parking Management System",
+    emailOrPhone: "Email",
+    emailOrPhonePlaceholder: "Enter your email address",
+    password: "Password",
+    forgotPassword: "Forgot password?",
+    passwordPlaceholder: "Enter your password",
+    recaptchaError: "Please complete 'I am not a robot' verification.",
+    loginBtn: "Login",
+    loggingIn: "Logging in...",
+    or: "or",
+    googleBtn: "Continue with Google",
+    processing: "Processing...",
+    noAccount: "Don't have an account?",
+    registerLink: "Register",
+    invalidCredentials: "Incorrect email or password. Please try again.",
+    accountLocked: "This account has been locked or suspended. Please contact the administrator.",
+    accessDenied: "Account is not activated or verified.",
+    tooManyAttempts: "Too many failed login attempts. Please try again later.",
+    loginFailed: "Login failed. Please check your credentials.",
+    googleFailed: "Login with Google failed. Please try again.",
+  }
+};
+
 export default function Login() {
   const navigate = useNavigate();
   const { login, loginWithGoogle } = useAuth();
+  const { language, toggleLanguage } = useLanguage();
 
   const [captchaToken, setCaptchaToken] = useState(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const recaptchaRef = useRef(null);
   const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
 
-  // 🚀 ĐA SỬA: Tách thành 2 trạng thái loading riêng biệt để tránh xung đột nút bấm
   const [submitLoading, setSubmitLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
@@ -40,11 +93,11 @@ export default function Login() {
     setError("");
 
     if (!captchaToken) {
-      setError("Complete the verification 'I am not a robot'.");
+      setError(t[language].recaptchaError);
       return;
     }
 
-    setSubmitLoading(true); // 🚀 Chỉ bật hiệu ứng cho form thường
+    setSubmitLoading(true);
     try {
       const user = await login(email.trim(), password, captchaToken);
       const redirectPath = ROLE_ROUTES_MAP[user.role] || "/login";
@@ -56,29 +109,29 @@ export default function Login() {
       const errorCode = err?.error_code;
       switch (errorCode) {
         case "INVALID_CREDENTIALS":
-          setError("Invalid email or password. Please try again.");
+          setError(t[language].invalidCredentials);
           break;
         case "ACCOUNT_LOCKED":
-          setError("This account has been banned.");
+          setError(t[language].accountLocked);
           break;
         case "ACCESS_DENIED":
-          setError("Account is inactive or not verified.");
+          setError(t[language].accessDenied);
           break;
         case "TOO_MANY_ATTEMPTS":
-          setError("Too many login attempts. Please try again later.");
+          setError(t[language].tooManyAttempts);
           break;
         default:
-          setError(err?.message || "Login failed. Please verify your credentials.");
+          setError(err?.message || t[language].loginFailed);
       }
     } finally {
-      setSubmitLoading(false); // Giải phóng form thường
+      setSubmitLoading(false);
     }
   };
 
   const handleGoogleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
       setError("");
-      setGoogleLoading(true); // 🚀 Chỉ bật hiệu ứng cho nút Google
+      setGoogleLoading(true);
       try {
         const token = tokenResponse.access_token;
         const user = await loginWithGoogle(token);
@@ -86,19 +139,18 @@ export default function Login() {
         const redirectPath = ROLE_ROUTES_MAP[user.role] || "/login";
         navigate(redirectPath);
       } catch (err) {
-        setError(err.message || `Google login failed`);
+        setError(err.message || t[language].googleFailed);
       } finally {
-        setGoogleLoading(false); // Giải phóng nút Google
+        setGoogleLoading(false);
       }
     },
     onError: () => {
-      setError("Login with Google failed. Please try again");
+      setError(t[language].googleFailed);
     },
   });
 
   return (
     <div className="min-h-screen bg-[#0f172a] flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Background Layer */}
       <div
         className="absolute inset-0 bg-cover bg-center z-0 opacity-25"
         style={{
@@ -107,61 +159,80 @@ export default function Login() {
       />
       <div className="absolute inset-0 bg-gradient-to-b from-slate-900/70 via-slate-900/80 to-slate-950 z-0" />
 
-      {/* Back to Home */}
       <Link to="/" className="absolute top-6 left-6 flex items-center gap-1.5 text-base font-semibold text-gray-400 hover:text-white transition duration-200 z-10">
         <ArrowLeft className="w-3.5 h-3.5" />
-        <span>Back to home</span>
+        <span>{t[language].backToHome}</span>
       </Link>
 
       <div className="w-full max-w-md relative z-10">
-        <div className="backdrop-blur-md bg-[#1e293b]/70 border border-slate-700/50 shadow-2xl rounded-xl p-8">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">eParking</h1>
-            <p className="text-slate-400">Parking Management System</p>
+        <div className="backdrop-blur-md bg-[#1e293b]/70 border border-slate-700/50 shadow-2xl rounded-xl p-8 relative">
+          
+          <div className="absolute top-4 right-4">
+            <button
+              type="button"
+              onClick={toggleLanguage}
+              className="px-2.5 py-1 bg-slate-800/80 border border-slate-700 text-[10px] font-black text-slate-300 hover:text-white rounded-lg transition-all focus:outline-none flex items-center gap-1.5 hover:bg-slate-700"
+              title={language === "en" ? "Switch to Vietnamese" : "Chuyển sang Tiếng Anh"}
+            >
+              <span>🌐</span>
+              <span>{language === "en" ? "EN" : "VI"}</span>
+            </button>
           </div>
 
-          {error && <div className="mb-4 p-4 bg-red-950/50 border border-red-500/50 rounded-lg text-red-200 text-sm font-medium">✕ {error}</div>}
+          <div className="text-center mb-8">
+            <Link to="/" className="inline-block hover:opacity-85 transition-opacity">
+              <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">{t[language].title}</h1>
+            </Link>
+            <p className="text-slate-400">{t[language].subtitle}</p>
+          </div>
+
+          {error && <div className="mb-4 p-4 bg-red-950/50 border border-red-500/50 rounded-lg text-red-200 text-sm font-medium">{error}</div>}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* EMAIL FIELD */}
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">Email or Phone</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1">{t[language].emailOrPhone}</label>
               <div className="relative">
-                <Contact className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
                 <input
-                  type="text"
+                  type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter email or phone number"
+                  placeholder={t[language].emailOrPhonePlaceholder}
                   className="w-full pl-10 pr-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
                   required
                 />
               </div>
             </div>
 
-            {/* PASSWORD FIELD */}
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="block text-sm font-medium text-slate-300">Password</label>
+                <label className="block text-sm font-medium text-slate-300">{t[language].password}</label>
                 <Link to="/forgot-password" className="text-xs font-semibold text-blue-500 hover:text-blue-400 hover:underline transition-colors">
-                  Forgot password?
+                  {t[language].forgotPassword}
                 </Link>
               </div>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your password"
+                  placeholder={t[language].passwordPlaceholder}
                   autoComplete="current-password"
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
+                  className="w-full pl-10 pr-10 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
                   required
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white focus:outline-none"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
               </div>
             </div>
 
-            {/* RECAPTCHA WIDGET */}
             <div className="flex justify-center py-2 bg-slate-800/40 ">
               {RECAPTCHA_SITE_KEY ? (
                 <ReCAPTCHA ref={recaptchaRef} sitekey={RECAPTCHA_SITE_KEY} onChange={handleCaptchaSuccess} theme="dark" />
@@ -170,38 +241,33 @@ export default function Login() {
               )}
             </div>
 
-            {/* ĐUỢC SỬA: Lắng nghe trạng thái của submitLoading và googleLoading */}
             <button
               type="submit"
               disabled={submitLoading || googleLoading}
               className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 px-4 rounded-lg transition duration-200 focus:outline-none mt-2 disabled:opacity-50 disabled:cursor-not-allowed">
-              {submitLoading ? "Logging in..." : "Login"}
+              {submitLoading ? t[language].loggingIn : t[language].loginBtn}
             </button>
           </form>
 
-          {/* DIVIDER */}
           <div className="relative flex py-4 items-center">
             <div className="flex-grow border-t border-slate-700"></div>
-            <span className="flex-shrink mx-4 text-slate-500 text-sm">or</span>
+            <span className="flex-shrink mx-4 text-slate-500 text-sm">{t[language].or}</span>
             <div className="flex-grow border-t border-slate-700"></div>
           </div>
 
-          {/* Google button */}
-          {/* ĐUỢC SỬA: Lắng nghe trạng thái của submitLoading và googleLoading */}
           <button
             type="button"
             onClick={() => handleGoogleLogin()}
             disabled={submitLoading || googleLoading}
             className="w-full flex items-center justify-center gap-3 bg-white hover:bg-slate-100 text-slate-700 font-medium py-2.5 px-4 rounded-lg transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
             <img src={googleIcon} alt="Google" className="w-5 h-5" />
-            {googleLoading ? "Processing..." : "Continue with Google"}
+            {googleLoading ? t[language].processing : t[language].googleBtn}
           </button>
 
-          {/* Redirect to Register */}
           <p className="text-center text-sm text-slate-400 mt-6 mb-2">
-            Don't have an account?{" "}
+            {t[language].noAccount}{" "}
             <Link to="/register" className="text-blue-500 hover:underline font-medium">
-              Register
+              {t[language].registerLink}
             </Link>
           </p>
         </div>

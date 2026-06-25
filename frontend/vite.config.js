@@ -1,6 +1,8 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+const isDocker = process.env.CI === 'true';
+
 export default defineConfig({
   plugins: [react()],
 
@@ -10,8 +12,14 @@ export default defineConfig({
       'Cross-Origin-Embedder-Policy': 'unsafe-none',
     },
     port: 5173,
-    strictPort: false,
-    open: true,
-    
+    strictPort: isDocker,
+    host: isDocker ? '0.0.0.0' : 'localhost',
+    open: !isDocker,
+    watch: isDocker ? {
+      usePolling: true,
+      interval: 100
+    } : undefined
   }
 })
+
+

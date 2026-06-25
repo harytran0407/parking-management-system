@@ -100,7 +100,10 @@ namespace ParkingManagement.Controllers
         {
             if (!ModelState.IsValid)
             {
-                return BadRequest(new { success = false, error_code = "INVALID_INPUT", message = "Dữ liệu đầu vào không hợp lệ." });
+                var errors = string.Join("; ", ModelState.Values
+                    .SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage));
+                return BadRequest(new { success = false, error_code = "INVALID_INPUT", message = $"Dữ liệu đầu vào không hợp lệ: {errors}" });
             }
 
             string? staffId = GetCurrentStaffId();

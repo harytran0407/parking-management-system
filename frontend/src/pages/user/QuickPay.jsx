@@ -101,19 +101,19 @@ export default function SessionLookup() {
       } else {
         setSession(null);
         setError(language === "en"
-          ? "No active parking session found for this vehicle."
-          : "Không tìm thấy phiên đỗ xe đang hoạt động cho phương tiện này.");
+          ? "License plate not found."
+          : "Không tìm thấy biển số xe.");
       }
     } catch (err) {
       setSession(null);
       if (err.response?.status === 404) {
         setError(language === "en"
-          ? "No active parking session found. Please verify your license plate and ticket code."
-          : "Không tìm thấy phiên đỗ xe. Vui lòng kiểm tra lại biển số và 5 ký tự cuối mã vé.");
+          ? "License plate or ticket code not found."
+          : "Không tìm thấy biển số xe hoặc mã vé.");
       } else {
         setError(err.response?.data?.message || (language === "en"
-          ? "No active parking session found. Please verify your license plate and ticket code."
-          : "Không tìm thấy phiên đỗ xe. Vui lòng kiểm tra lại biển số và 5 ký tự cuối mã vé."));
+          ? "License plate or ticket code not found."
+          : "Không tìm thấy biển số xe hoặc mã vé."));
       }
     } finally {
       if (!isSilent) { setLoading(false); setSearched(true); }

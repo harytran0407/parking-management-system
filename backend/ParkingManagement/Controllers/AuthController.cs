@@ -38,7 +38,7 @@ namespace ParkingManagement.Controllers.AuthController
         }
 
         [HttpPost("register")]
-        public IActionResult Register([FromBody] RegisterRequestDto request)
+        public async Task<IActionResult> Register([FromBody] RegisterRequestDto request)
         {
             //-- Các hàm kiểm tra tính hợp lệ của họ tên, email, số điện thoại và mật khẩu --//
             Console.WriteLine("======= KIỂM TRA TRẠNG THÁI VALIDATION =======");
@@ -69,61 +69,133 @@ namespace ParkingManagement.Controllers.AuthController
                 });
             }
 
-            //-- Kiểm tra tính trùng lặp dưới Database --//
-
-            if (_context.Users.Any(u => u.Email == request.Email))
-            {
-                return Conflict(new
-                {
-                    success = false,
-                    error_code = "EMAIL_ALREADY_EXISTS",
-                    message = "Email is already registered"
-                });
-            }
-
-            if (_context.Users.Any(u => u.Phone == request.PhoneNumber))
-            {
-                return Conflict(new
-                {
-                    success = false,
-                    error_code = "PHONE_ALREADY_EXISTS",
-                    message = "Phone number is already registered"
-                });
-            }
-
-            //-- Tạo mới người dùng và lưu vào Database --//
             string hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password);
-            var newUser = new User
-            {
-                UserId = Guid.NewGuid().ToString(),
-                FullName = request.FullName,
-                Email = request.Email,
-                Phone = request.PhoneNumber,
-                Password = hashedPassword,
-                Username = "user_" + Guid.NewGuid().ToString("N").Substring(0, 8),
-                RoleId = 4,
-                Status = "ACTIVE",
-                CreatedAt = DateTime.UtcNow
-            };
-            _context.Users.Add(newUser);
-            _context.SaveChanges();
+            var OtpCode = new Random().Next(100000,999999).ToString();
+            User userToSave;
 
+            var existingUser = await _context.Users.FirstOrDefaultAsync(u =>
+        u.Email == request.Email || u.Phone == request.PhoneNumber);
+
+            if (existingUser != null)
+            {
+                if (existingUser.Status != "INACTIVE")
+                {
+                    string conflictField = existingUser.Email == request.Email ? "Email" : "Phone number";
+                    return Conflict(new
+                    {
+                        success = false,
+                        error_code = $"{conflictField.ToUpper().Replace(" ", "_")}_ALREADY_EXISTS",
+                        message = $"{conflictField} is already registered"
+                    });
+                }
+                existingUser.FullName = request.FullName;
+                existingUser.Password = hashedPassword;
+                existingUser.Phone = request.PhoneNumber;
+                existingUser.OtpCode = OtpCode;
+                existingUser.OtpExpiredAt = DateTime.UtcNow.AddMinutes(5);
+
+                userToSave = existingUser;
+            }
+            else
+            {
+                //-- Tạo mới người dùng và lưu vào Database --//
+                userToSave = new User
+                {
+                    UserId = Guid.NewGuid().ToString(),
+                    FullName = request.FullName,
+                    Email = request.Email,
+                    Phone = request.PhoneNumber,
+                    Password = hashedPassword,
+                    Username = "user_" + Guid.NewGuid().ToString("N").Substring(0, 8),
+                    RoleId = 4,
+                    Status = "INACTIVE",
+                    CreatedAt = DateTime.UtcNow,
+                    OtpCode = OtpCode,
+                    OtpExpiredAt = DateTime.UtcNow.AddMinutes(5)
+                };
+                _context.Users.Add(userToSave);
+            }
+            await _context.SaveChangesAsync();
+
+            //-- Gửi Email OTP --//
+            string emailSubject = "Xác thực tài khoản Parking Management";
+            string emailBody = $@"
+        <h2>Chào mừng {userToSave.FullName} đến với Hệ thống đỗ xe!</h2>
+        <p>Mã OTP xác thực tài khoản của bạn là: <strong style='font-size:24px; color:blue;'>{OtpCode}</strong></p>
+        <p>Mã này sẽ hết hạn sau 5 phút. Vui lòng không chia sẻ mã này cho bất kỳ ai.</p>";
+
+            _ = _emailService.SendEmailAsync(userToSave.Email, emailSubject, emailBody);
             var responseData = new
             {
                 success = true,
-                message = "Registration successful",
+                message = "Registration successful, please check your email to get OTP.",
                 data = new
                 {
-                    user_id = newUser.UserId,
-                    full_name = newUser.FullName,
-                    email = newUser.Email,
-                    phone_number = newUser.Phone,
+                    user_id = userToSave.UserId,
+                    full_name = userToSave.FullName,
+                    email = userToSave.Email,
+                    phone_number = userToSave.Phone,
                     role = "ParkingUser",
-                    created_at = newUser.CreatedAt.Value.ToString("yyyy-MM-ddTHH:mm:ssZ")
+                    created_at = userToSave.CreatedAt.Value.ToString("yyyy-MM-ddTHH:mm:ssZ")
                 }
             };
 
             return StatusCode(201, responseData);
+        }
+
+        [HttpPost("verify-otp")]
+        public async Task<ActionResult> VerifyOtp([FromBody] VerifyOtpRequestDto request)
+        {
+            // Tìm user trong Database dựa vào Email
+            var userInDb = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
+
+            // 1. Nếu không tìm thấy Email trong hệ thống
+            if (userInDb == null)
+            {
+                return NotFound(new
+                {
+                    success = false,
+                    message = "Cannot find user with this email."
+                });
+            }
+            // 2. Chặn nếu tài khoản đã được kích hoạt từ trước
+            if (userInDb.Status == "ACTIVE")
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message = "Account have been activated. Please log in again."
+                });
+            }
+            // 3. Kiểm tra xem mã OTP nhập vào có khớp với mã lưu trong DB không
+            if (userInDb.OtpCode != request.OtpCode)
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message = "OTP code incorrect."
+                });
+            }
+            // 4. Kiểm tra xem mã OTP đã quá 5 phút chưa
+            if (userInDb.OtpExpiredAt < DateTime.UtcNow)
+            {
+                return BadRequest(new
+                {
+                    sucess = false,
+                    message = "OTP code has expired. Please request to send a new OTP code."
+                });
+            }
+            // 5. Kích hoạt tài khoản
+            userInDb.Status = "ACTIVE";
+            userInDb.OtpCode = null;
+            userInDb.OtpExpiredAt = null;
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                sucess = true,
+                message = "Activated account sucessfully! You can log in right now!"
+            });
         }
 
         [HttpPut("update-username")]
@@ -626,8 +698,8 @@ namespace ParkingManagement.Controllers.AuthController
             }
 
             // 4. Kiểm tra dữ liệu đầu vào trống
-            if (string.IsNullOrWhiteSpace(request.CurrentPassword) || 
-                string.IsNullOrWhiteSpace(request.NewPassword) || 
+            if (string.IsNullOrWhiteSpace(request.CurrentPassword) ||
+                string.IsNullOrWhiteSpace(request.NewPassword) ||
                 string.IsNullOrWhiteSpace(request.ConfirmPassword))
             {
                 return UnprocessableEntity(new

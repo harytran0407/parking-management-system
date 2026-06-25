@@ -14,6 +14,7 @@ namespace ParkingManagement.Controllers
 {
     /// <summary>
     /// Controller chịu trách nhiệm tiếp nhận và điều hướng các HTTP Request liên quan đến nghiệp vụ bãi xe.
+    /// Thiết kế tuân thủ nghiêm ngặt bảng danh mục Business Error của hệ thống.
     /// </summary>
     [ApiController]
     [Route("api/v1/parking")]
@@ -83,6 +84,7 @@ namespace ParkingManagement.Controllers
             }
             catch (InvalidOperationException ex) when (ex.Message == "NO_AVAILABLE_SLOT")
             {
+                // Trả về 422 Unprocessable Entity theo bảng Business Error định nghĩa
                 return StatusCode(StatusCodes.Status422UnprocessableEntity, new
                 {
                     success = false,
@@ -180,6 +182,15 @@ namespace ParkingManagement.Controllers
                     message = "Phương tiện đang được khóa bảo vệ bởi Smart Lock. Vui lòng mở khóa trên ứng dụng hoặc đợi đến 5 phút trước khi hết giờ booking để tự động mở khóa."
                 });
             }
+            catch (InvalidOperationException ex) when (ex.Message == "VEHICLE_NOT_FOUND_IN_PARKING")
+            {
+                return NotFound(new
+                {
+                    success = false,
+                    error_code = "VEHICLE_NOT_FOUND_IN_PARKING",
+                    message = "Không tìm thấy biển số xe."
+                });
+            }
             catch (InvalidOperationException ex) when (ex.Message == "INVALID_TICKET" || ex.Message == "ACTIVE_SESSION_NOT_FOUND")
             {
                 return NotFound(new
@@ -224,7 +235,7 @@ namespace ParkingManagement.Controllers
         /// 5.3 Get Active Session by License Plate
         /// </summary>
         [HttpGet("sessions/active/{license_plate}")]
-        [Authorize(Roles = "ParkingStaff,ParkingManager,ParkingUser")] 
+        [Authorize(Roles = "ParkingStaff,ParkingManager,ParkingUser")]
         [ProducesResponseType(typeof(ActiveSessionResponseDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetActiveSessionByLicensePlate(
             [FromRoute(Name = "license_plate")] string licensePlate,
@@ -270,8 +281,8 @@ namespace ParkingManagement.Controllers
                 return NotFound(new
                 {
                     success = false,
-                    error_code = "INVALID_TICKET",
-                    message = "Không tìm thấy thông tin lượt gửi xe này (Mã phiên/Vé không hợp lệ)."
+                    error_code = "ACTIVE_SESSION_NOT_FOUND",
+                    message = "Không tìm thấy biển số xe."
                 });
             }
             catch (Exception ex)
@@ -467,6 +478,13 @@ namespace ParkingManagement.Controllers
         public async Task<IActionResult> UpdateSlotStatus(string slot_id, [FromBody] UpdateSlotStatusDto dto)
         {
             string? staffId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value;
+
+#if DEBUG
+            if (string.IsNullOrEmpty(staffId))
+            {
+                staffId = "usr_001"; // Fallback phục vụ môi trường DEV
+            }
+#endif
 
             if (string.IsNullOrEmpty(staffId))
             {

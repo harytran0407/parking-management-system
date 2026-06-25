@@ -6,14 +6,187 @@ import {
 } from 'lucide-react';
 import { toast } from "sonner";
 import api from "../../utils/api";
+import { useLanguage } from "../../hooks/useLanguage";
 
-const TABS = [
-    { id: "LOST_TICKET", label: "1. Lost Ticket", sub: "Calculate penalty & close session", icon: Ticket, searchBySlot: false },
-    { id: "OCR_MISMATCH", label: "2. Plate Mismatch", sub: "Find by slot & correct plate number", icon: CarFrontIcon, searchBySlot: true },
-    { id: "USER_REPORTED", label: "3. User Issues", sub: "Respond & resolve user reports", icon: MessageSquare, searchBySlot: false },
-];
+const t = {
+    vi: {
+        tabLostTicket: "1. Mất vé",
+        tabLostTicketSub: "Tính phí phạt & kết thúc phiên đỗ",
+        tabOcrMismatch: "2. Sai biển số",
+        tabOcrMismatchSub: "Tìm theo biển số nhận diện sai & sửa lại",
+        tabUserReported: "3. Phản hồi của tài xế",
+        tabUserReportedSub: "Trả lời & giải quyết phản ánh",
+        placeholderSearchReports: "Tìm kiếm báo cáo...",
+        allStatuses: "Tất cả trạng thái",
+        statusOpen: "Chờ xử lý",
+        statusResolved: "Đã giải quyết",
+        btnSearch: "Tìm kiếm",
+        loadingReports: "Đang tải danh sách phản ánh...",
+        noIncidents: "Không tìm thấy báo cáo sự cố nào",
+        noIncidentsSub: "Không có sự cố nào khớp với bộ lọc hiện tại.",
+        reportDetails: "Chi tiết sự cố",
+        reporterLabel: "Người báo cáo",
+        noPhone: "Không có số điện thoại",
+        noEmail: "Không có email",
+        issueTypeLabel: "Loại sự cố",
+        expRatingLabel: "Đánh giá trải nghiệm",
+        subjectLabel: "Chủ đề",
+        descLabel: "Mô tả",
+        noDesc: "Không có mô tả chi tiết.",
+        viewAttachment: "Xem tệp đính kèm",
+        feedbackLabel: "Phản hồi giải quyết",
+        feedbackPlaceholder: "Nhập hướng xử lý hoặc phản hồi cho người dùng...",
+        btnResolve: "Giải quyết & Gửi phản hồi",
+        processing: "Đang xử lý...",
+        resolvedNoFeedback: "Đã giải quyết không có phản hồi thêm.",
+        noIncidentSelected: "Chưa chọn sự cố.",
+        noIncidentSelectedSub: "Vui lòng chọn một sự cố từ danh sách bên trái để xem đầy đủ chi tiết, thông tin liên hệ và giải quyết.",
+        searchTitleLost: "Tìm phiên hoạt động theo Biển kiểm soát",
+        searchTitleOcr: "Tìm phiên hoạt động theo Biển số nhận diện sai",
+        btnClearForm: "Xóa biểu mẫu",
+        placeholderSlotInput: "Nhập tên ô đỗ (vd: A101, B205)...",
+        placeholderPlateInput: "Nhập biển kiểm soát xe...",
+        btnFindSession: "Tìm phiên đỗ",
+        mustFindSessionAlert: "Bạn phải nhập thông tin và nhấn \"Tìm phiên đỗ\" ở trên trước khi xác nhận.",
+        lostTicketReportTitle: "Báo cáo Mất vé xe",
+        correctPlateTitle: "Sửa lại biển kiểm soát",
+        lostPlateLabel: "Biển kiểm soát",
+        staffNotesLabel: "Ghi chú của nhân viên",
+        correctedPlateLabel: "Biển kiểm soát đúng",
+        btnConfirmSystem: "Xác nhận & Cập nhật hệ thống",
+        outputTitle: "Kết quả đầu ra",
+        incidentLogTitle: "Nhật ký xử lý sự cố",
+        typeLabel: "Loại:",
+        timeLabel: "Thời gian:",
+        parkingFeeLabel: "Phí đỗ xe:",
+        penaltyFineLabel: "Phí phạt mất vé:",
+        totalDue: "TỔNG THU:",
+        wrongOcrLabel: "Nhận diện sai",
+        correctedToLabel: "Sửa lại thành",
+        updatedSlotLabel: "Ô đỗ cập nhật:",
+        reasonLabel: "Lý do:",
+        btnNextIssue: "Xử lý sự cố tiếp theo",
+        awaitingAction: "Đang chờ hành động.",
+        awaitingActionLostSub: "Biên lai chi tiết và bảng kê thanh toán sẽ xuất hiện ở đây.",
+        awaitingActionOcrSub: "Thông tin nhật ký chi tiết và lịch sử cập nhật hệ thống sẽ xuất hiện ở đây.",
+        currentSystemData: "Dữ liệu hệ thống hiện tại",
+        parkingSlotLabel: "Ô đỗ xe:",
+        zoneLabel: "Phân khu:",
+        licensePlate: "Biển kiểm soát xe:",
+        checkInTimeLabel: "Thời gian vào:",
+        durationLabel: "Thời lượng:",
+        currentFeeLabel: "Phí hiện tại:",
+        entryImageLabel: "Ảnh chụp cổng vào",
+        toastEnterSearch: "Vui lòng nhập từ khóa tìm kiếm!",
+        toastSessionFound: "Tìm thấy phiên đỗ xe đang hoạt động!",
+        toastSlotEmpty: "Ô đỗ này hiện đang trống hoặc không có phiên đỗ hoạt động.",
+        toastNoSessionPlate: "Không tìm thấy biển số xe.",
+        toastSearchFailed: "Tìm kiếm thất bại. Vui lòng thử lại.",
+        toastResolveSuccess: "Đã xử lý sự cố thành công!",
+        toastResolveFailed: "Không thể giải quyết sự cố.",
+        toastInputFeedback: "Vui lòng nhập phản hồi giải quyết sự cố!",
+        toastIncidentUpdated: "Sự cố đã được giải quyết và cập nhật thành công!",
+        toastActionDenied: "Hành động bị từ chối. Vui lòng kiểm tra lại tham số.",
+        toastLoadIncidentsFailed: "Không thể tải danh sách phản ánh.",
+        lostReasonDefault: "Khách báo mất vé xe",
+        ocrReasonDefault: "Nhận diện OCR nhầm chữ cái",
+        unknownLabel: "Không rõ",
+        systemUser: "Người dùng hệ thống",
+        unassigned: "Chưa phân",
+        mins: "phút",
+        hours: "giờ",
+    },
+    en: {
+        tabLostTicket: "1. Lost Ticket",
+        tabLostTicketSub: "Calculate penalty & close session",
+        tabOcrMismatch: "2. Plate Mismatch",
+        tabOcrMismatchSub: "Find by misread plate & correct it",
+        tabUserReported: "3. User Issues",
+        tabUserReportedSub: "Respond & resolve user reports",
+        placeholderSearchReports: "Search reports...",
+        allStatuses: "All Statuses",
+        statusOpen: "Open",
+        statusResolved: "Resolved",
+        btnSearch: "Search",
+        loadingReports: "Loading user reports...",
+        noIncidents: "No incident reports found",
+        noIncidentsSub: "There are no current reports matching this filter.",
+        reportDetails: "Report Details",
+        reporterLabel: "Reporter",
+        noPhone: "No phone number",
+        noEmail: "No email",
+        issueTypeLabel: "Issue Type",
+        expRatingLabel: "Experience Rating",
+        subjectLabel: "Subject",
+        descLabel: "Description",
+        noDesc: "No description provided.",
+        viewAttachment: "View Attachment File",
+        feedbackLabel: "Resolution Feedback",
+        feedbackPlaceholder: "Type resolution reply or instructions for the user...",
+        btnResolve: "Resolve Ticket & Notify",
+        processing: "Processing...",
+        resolvedNoFeedback: "Resolved without additional feedback.",
+        noIncidentSelected: "No Incident Selected.",
+        noIncidentSelectedSub: "Select an incident from the list on the left to see full details, reporter contact information, and resolve the ticket.",
+        searchTitleLost: "Search active session by Plate Number",
+        searchTitleOcr: "Search active session by Misread Plate",
+        btnClearForm: "Clear Form",
+        placeholderSlotInput: "Enter slot name (e.g., A101, B205)...",
+        placeholderPlateInput: "Enter vehicle license plate...",
+        btnFindSession: "Find Session",
+        mustFindSessionAlert: "You must enter details and click \"Find Session\" above before confirming.",
+        lostTicketReportTitle: "Lost Ticket Report",
+        correctPlateTitle: "Correct Plate Number",
+        lostPlateLabel: "License Plate",
+        staffNotesLabel: "Staff Notes",
+        correctedPlateLabel: "Correct License Plate",
+        btnConfirmSystem: "Confirm & Update System",
+        outputTitle: "Output",
+        incidentLogTitle: "Incident Outcome Log",
+        typeLabel: "Type:",
+        timeLabel: "Time:",
+        parkingFeeLabel: "Parking Fee:",
+        penaltyFineLabel: "Penalty Fine:",
+        totalDue: "TOTAL DUE:",
+        wrongOcrLabel: "Wrong OCR",
+        correctedToLabel: "Corrected To",
+        updatedSlotLabel: "Updated Slot:",
+        reasonLabel: "Reason:",
+        btnNextIssue: "Process Next Issue",
+        awaitingAction: "Awaiting action.",
+        awaitingActionLostSub: "Detailed receipt and payment breakdown will appear here.",
+        awaitingActionOcrSub: "Detailed system logs and update history will be displayed here.",
+        currentSystemData: "Current System Data",
+        parkingSlotLabel: "Parking Slot:",
+        zoneLabel: "Zone:",
+        licensePlate: "License Plate:",
+        checkInTimeLabel: "Check-in Time:",
+        durationLabel: "Duration:",
+        currentFeeLabel: "Current Fee:",
+        entryImageLabel: "Entry Camera Image",
+        toastEnterSearch: "Please enter a search keyword!",
+        toastSessionFound: "Active parking session found!",
+        toastSlotEmpty: "This slot is empty or has no active session.",
+        toastNoSessionPlate: "License plate not found.",
+        toastSearchFailed: "Search failed. Please try again.",
+        toastResolveSuccess: "Incident resolved successfully!",
+        toastResolveFailed: "Failed to resolve incident.",
+        toastInputFeedback: "Please enter a resolution feedback message!",
+        toastIncidentUpdated: "Incident resolved and updated successfully!",
+        toastActionDenied: "Action denied. Please check parameters.",
+        toastLoadIncidentsFailed: "Failed to load user incidents.",
+        lostReasonDefault: "Customer reported lost parking ticket",
+        ocrReasonDefault: "OCR character misread",
+        unknownLabel: "Unknown",
+        systemUser: "System User",
+        unassigned: "Unassigned",
+        mins: "mins",
+        hours: "hours",
+    }
+};
 
 export default function StaffIncidentHandling() {
+    const { language } = useLanguage();
     const [activeTab, setActiveTab] = useState("LOST_TICKET");
 
     const [searchQuery, setSearchQuery] = useState("");
@@ -37,7 +210,13 @@ export default function StaffIncidentHandling() {
     const [userStatusFilter, setUserStatusFilter] = useState("OPEN");
     const [userSearchQuery, setUserSearchQuery] = useState("");
 
-    const currentTabConfig = TABS.find(t => t.id === activeTab);
+    const tabsConfig = [
+        { id: "LOST_TICKET", label: t[language].tabLostTicket, sub: t[language].tabLostTicketSub, icon: Ticket, searchBySlot: false },
+        { id: "OCR_MISMATCH", label: t[language].tabOcrMismatch, sub: t[language].tabOcrMismatchSub, icon: CarFrontIcon, searchBySlot: false },
+        { id: "USER_REPORTED", label: t[language].tabUserReported, sub: t[language].tabUserReportedSub, icon: MessageSquare, searchBySlot: false },
+    ];
+
+    const currentTabConfig = tabsConfig.find(t => t.id === activeTab);
 
     const handleInputChange = (key, value) => {
         setFormValues(prev => ({ ...prev, [key]: value }));
@@ -99,7 +278,7 @@ export default function StaffIncidentHandling() {
     };
 
     const getBackendRootUrl = () => {
-        const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:5077";
+        const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
         return baseUrl.replace("/api/v1", "");
     };
 
@@ -120,7 +299,7 @@ export default function StaffIncidentHandling() {
                 }
             }
         } catch (err) {
-            toast.error(err?.response?.data?.message || "Failed to load user incidents.");
+            toast.error(err?.message || err?.response?.data?.message || t[language].toastLoadIncidentsFailed);
         } finally {
             setUserIncidentsLoading(false);
         }
@@ -136,7 +315,7 @@ export default function StaffIncidentHandling() {
         e.preventDefault();
         if (!selectedIncident) return;
         if (!feedbackText.trim()) {
-            return toast.error("Please enter a resolution feedback message!");
+            return toast.error(t[language].toastInputFeedback);
         }
 
         setIsSubmitting(true);
@@ -146,12 +325,12 @@ export default function StaffIncidentHandling() {
             });
 
             if (res.data?.success) {
-                toast.success("Incident resolved successfully!");
+                toast.success(t[language].toastResolveSuccess);
                 setFeedbackText("");
                 await fetchUserIncidents();
             }
         } catch (err) {
-            toast.error(err?.response?.data?.message || "Failed to resolve incident.");
+            toast.error(err?.message || err?.response?.data?.message || t[language].toastResolveFailed);
         } finally {
             setIsSubmitting(false);
         }
@@ -160,7 +339,7 @@ export default function StaffIncidentHandling() {
     const handleSearchActiveSession = async (e) => {
         e.preventDefault();
         const query = searchQuery.trim().toUpperCase();
-        if (!query) return toast.error("Please enter a search keyword!");
+        if (!query) return toast.error(t[language].toastEnterSearch);
 
         setIsSearching(true);
         setReportData(null);
@@ -183,17 +362,19 @@ export default function StaffIncidentHandling() {
 
                 if (activeTab === "LOST_TICKET") {
                     handleInputChange("lostPlate", session.license_plate_in || query);
+                } else if (activeTab === "OCR_MISMATCH") {
+                    handleInputChange("correctedPlate", session.license_plate_in || query);
                 }
-                toast.success("Active parking session found!");
+                toast.success(t[language].toastSessionFound);
             } else {
                 toast.error(
                     currentTabConfig?.searchBySlot
-                        ? "This slot is empty or has no active session."
-                        : "No active session found for this license plate."
+                        ? t[language].toastSlotEmpty
+                        : t[language].toastNoSessionPlate
                 );
             }
         } catch (err) {
-            toast.error(err?.response?.data?.message || "Search failed. Please try again.");
+            toast.error(err?.message || err?.response?.data?.message || t[language].toastSearchFailed);
         } finally {
             setIsSearching(false);
         }
@@ -211,16 +392,16 @@ export default function StaffIncidentHandling() {
                 body: {
                     session_id: foundSession?.session_id || "sess_unknown",
                     license_plate: formValues.lostPlate.toUpperCase(),
-                    lost_reason: formValues.lostReason || "Customer reported lost parking ticket",
+                    lost_reason: formValues.lostReason || t[language].lostReasonDefault,
                 }
             },
             OCR_MISMATCH: {
                 url: "/staff/correct-mismatch",
                 body: {
-                    slot_name: queryUpper,
+                    slot_name: "",
                     original_license_plate: foundSession?.license_plate_in || "",
                     corrected_license_plate: formValues.correctedPlate.trim().toUpperCase(),
-                    reason: formValues.mismatchReason || "OCR character misread",
+                    reason: formValues.mismatchReason || t[language].ocrReasonDefault,
                 }
             }
         };
@@ -230,12 +411,12 @@ export default function StaffIncidentHandling() {
         try {
             const res = await api.post(targetConfig.url, targetConfig.body);
 
-            toast.success("Incident resolved and updated successfully!");
+            toast.success(t[language].toastIncidentUpdated);
 
             setReportData({
                 success: true,
                 type: activeTab,
-                timestamp: new Date().toLocaleString("en-US"),
+                timestamp: new Date().toLocaleString(language === "vi" ? "vi-VN" : "en-US"),
                 payload: res.data?.data || {},
                 changes: { ...targetConfig.body }
             });
@@ -244,7 +425,7 @@ export default function StaffIncidentHandling() {
             setAssociatedSlot(null);
             setSearchQuery("");
         } catch (err) {
-            toast.error(err?.response?.data?.message || "Action denied. Please check parameters.");
+            toast.error(err?.message || err?.response?.data?.message || t[language].toastActionDenied);
         } finally {
             setIsSubmitting(false);
         }
@@ -255,34 +436,34 @@ export default function StaffIncidentHandling() {
         return (
             <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                    <div className="text-[11px] font-bold text-slate-400 flex items-center gap-1"><Clock size={12} /> Current System Data</div>
+                    <div className="text-[11px] font-bold text-slate-400 flex items-center gap-1"><Clock size={12} /> {t[language].currentSystemData}</div>
                     <div className="bg-slate-50 dark:bg-slate-800 p-3 rounded-md text-xs font-semibold space-y-1.5 border border-slate-200 dark:border-slate-700">
                         {associatedSlot?.slot_name && (
-                            <div className="flex justify-between"><span className="text-slate-400">Parking Slot:</span><span className="font-mono text-emerald-700 dark:text-emerald-400 font-black">{associatedSlot.slot_name}</span></div>
+                            <div className="flex justify-between"><span className="text-slate-400">{t[language].parkingSlotLabel}</span><span className="font-mono text-emerald-700 dark:text-emerald-400 font-black">{associatedSlot.slot_name}</span></div>
                         )}
                         {foundSession.zone_name && (
                             <div className="flex justify-between">
-                                <span className="text-slate-400">Zone:</span>
-                                <span className="font-mono text-emerald-700 dark:text-emerald-400 font-black uppercase">{foundSession.zone_name}</span></div>
+                                <span className="text-slate-400">{t[language].zoneLabel}</span>
+                                <span className="font-mono text-slate-900 dark:text-white rounded font-black uppercase">{foundSession.zone_name}</span></div>
                         )}
                         <div className="flex justify-between">
-                            <span className="text-slate-400">License Plate:</span>
+                            <span className="text-slate-400">{t[language].licensePlate}</span>
                             <span className="font-mono text-slate-900 dark:text-white rounded font-black">{foundSession.license_plate_in}</span>
                         </div>
                         <div className="flex justify-between">
-                            <span className="text-slate-400">Check-in Time:</span>
+                            <span className="text-slate-400">{t[language].checkInTimeLabel}</span>
                             <span className="font-mono text-slate-900 dark:text-white rounded font-black">
                                 {foundSession.check_in_time
-                                    ? `${new Date(foundSession.check_in_time).toLocaleTimeString('en-GB')} ${new Date(foundSession.check_in_time).toLocaleDateString('en-GB')}`
+                                    ? new Date(foundSession.check_in_time).toLocaleString(language === "vi" ? "vi-VN" : "en-US")
                                     : "--:--:-- --/--/----"}
                             </span>
                         </div>
-                        <div className="flex justify-between"><span className="text-slate-400">Duration:</span><span className="font-mono text-slate-900 dark:text-white">{foundSession.duration_minutes} mins</span></div>
-                        <div className="flex justify-between"><span className="text-slate-400">Current Fee:</span><span className="font-mono text-amber-600 dark:text-amber-500">{(foundSession.current_fee || 0).toLocaleString()} VND</span></div>
+                        <div className="flex justify-between"><span className="text-slate-400">{t[language].durationLabel}</span><span className="font-mono text-slate-900 dark:text-white rounded font-black">{foundSession.duration_minutes} {t[language].mins}</span></div>
+                        <div className="flex justify-between"><span className="text-slate-400">{t[language].currentFeeLabel}</span><span className="font-mono text-amber-600 dark:text-amber-500 rounded font-black">{(foundSession.current_fee || 0).toLocaleString()} VND</span></div>
                     </div>
                 </div>
                 <div className="space-y-1.5">
-                    <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1">Entry Camera Image</span>
+                    <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1">{t[language].entryImageLabel}</span>
                     <img
                         src={`/api/v1/parking/sessions/${foundSession.session_id}/entry-image`}
                         alt="Gate Entry"
@@ -302,20 +483,20 @@ export default function StaffIncidentHandling() {
             <div className="space-y-4 animate-fadeIn">
                 <div className="border border-slate-200 dark:border-slate-800 rounded-md p-4 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs space-y-3">
                     <div className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 text-xs border-b pb-2 border-slate-200 dark:border-slate-700">
-                        <ClipboardList size={14} /> Incident Outcome Log
+                        <ClipboardList size={14} /> {t[language].incidentLogTitle}
                     </div>
 
                     <div className="space-y-2">
-                        <div className="flex justify-between"><span className="text-slate-400">Type:</span><span className="font-bold text-slate-900 bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded text-[10px] dark:text-white">{type}</span></div>
-                        <div className="flex justify-between"><span className="text-slate-400">Time:</span><span className="font-mono text-slate-900 dark:text-white">{timestamp}</span></div>
+                        <div className="flex justify-between"><span className="text-slate-400">{t[language].typeLabel}</span><span className="font-bold text-slate-900 bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded text-[10px] dark:text-white">{type}</span></div>
+                        <div className="flex justify-between"><span className="text-slate-400">{t[language].timeLabel}</span><span className="font-mono text-slate-900 dark:text-white">{timestamp}</span></div>
 
                         {type === "LOST_TICKET" && (
                             <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700 space-y-1.5">
-                                <div className="flex justify-between"><span>License Plate:</span><span className="font-mono font-black text-slate-900 dark:text-white">{changes.license_plate}</span></div>
-                                <div className="flex justify-between text-[11px] text-slate-500 dark:text-slate-400"><span>Parking Fee:</span><span>{(payload.breakdown?.actual_parking_fee || payload.parking_fee || 15000).toLocaleString()} VND</span></div>
-                                <div className="flex justify-between text-[11px] text-slate-500 dark:text-slate-400"><span>Penalty Fine:</span><span>{(payload.breakdown?.handling_fee || payload.penalty_fee || 50000).toLocaleString()} VND</span></div>
+                                <div className="flex justify-between"><span>{t[language].licensePlate}:</span><span className="font-mono font-black text-slate-900 dark:text-white">{changes.license_plate}</span></div>
+                                <div className="flex justify-between text-[11px] text-slate-500 dark:text-slate-400"><span>{t[language].parkingFeeLabel}</span><span>{(payload.breakdown?.actual_parking_fee || payload.parking_fee || 15000).toLocaleString()} VND</span></div>
+                                <div className="flex justify-between text-[11px] text-slate-500 dark:text-slate-400"><span>{t[language].penaltyFineLabel}</span><span>{(payload.breakdown?.handling_fee || payload.penalty_fee || 50000).toLocaleString()} VND</span></div>
                                 <div className="border-t pt-1.5 border-slate-200 dark:border-slate-700 flex justify-between items-center text-sm font-black text-slate-900 dark:text-white">
-                                    <span>TOTAL DUE:</span>
+                                    <span>{t[language].totalDue}</span>
                                     <span className="text-red-600 dark:text-red-400">{(payload.calculated_fee || payload.total_fee || 65000).toLocaleString()} VND</span>
                                 </div>
                             </div>
@@ -323,28 +504,28 @@ export default function StaffIncidentHandling() {
 
                         {type === "OCR_MISMATCH" && (
                             <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700 space-y-1.5">
-                                <div className="flex justify-between text-[11px] mb-1"><span className="text-slate-400">Updated Slot:</span><span className="font-bold text-slate-900 dark:text-white uppercase">{changes.slot_name}</span></div>
+                                <div className="flex justify-between text-[11px] mb-1"><span className="text-slate-400">{t[language].updatedSlotLabel}</span><span className="font-bold text-slate-900 dark:text-white uppercase">{changes.slot_name}</span></div>
                                 <div className="grid grid-cols-2 gap-2 bg-white dark:bg-slate-900 p-2 rounded border border-slate-100 dark:border-slate-700 text-center">
                                     <div>
-                                        <div className="text-[10px] text-slate-400">Wrong OCR</div>
+                                        <div className="text-[10px] text-slate-400">{t[language].wrongOcrLabel}</div>
                                         <div className="font-mono font-bold line-through text-red-500">{changes.original_license_plate || "N/A"}</div>
                                     </div>
                                     <div className="border-l border-slate-100 dark:border-slate-700">
-                                        <div className="text-[10px] text-slate-400">Corrected To</div>
+                                        <div className="text-[10px] text-slate-400">{t[language].correctedToLabel}</div>
                                         <div className="font-mono font-black text-emerald-600 dark:text-emerald-400">{changes.corrected_license_plate}</div>
                                     </div>
                                 </div>
                             </div>
                         )}
-                        <div className="text-[11px] text-slate-500 dark:text-slate-400 italic pt-1 border-t border-slate-100 dark:border-slate-700"><strong>Reason:</strong> {changes.reason || changes.lost_reason}</div>
+                        <div className="text-[11px] text-slate-500 dark:text-slate-400  pt-1 border-t border-slate-100 dark:border-slate-700"><strong>{t[language].reasonLabel}</strong> {changes.reason || changes.lost_reason}</div>
                     </div>
                 </div>
 
                 <button
                     onClick={() => resetWorkspace()}
-                    className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white font-bold text-xs rounded-md flex items-center justify-center gap-1.5 transition-colors shadow-sm"
+                    className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 text-white font-bold text-xs rounded-md flex items-center justify-center gap-1.5 transition-colors shadow-sm"
                 >
-                    Process Next Issue
+                    {t[language].btnNextIssue}
                 </button>
             </div>
         );
@@ -355,7 +536,7 @@ export default function StaffIncidentHandling() {
 
             {/* SELECTION TABS GRID */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 shrink-0">
-                {TABS.map(tab => {
+                {tabsConfig.map(tab => {
                     const Icon = tab.icon;
                     const active = activeTab === tab.id;
                     return (
@@ -391,10 +572,10 @@ export default function StaffIncidentHandling() {
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                                 <input
                                     type="text"
-                                    placeholder="Search reports..."
+                                    placeholder={t[language].placeholderSearchReports}
                                     value={userSearchQuery}
                                     onChange={(e) => setUserSearchQuery(e.target.value)}
-                                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-md pl-9 pr-3 py-1.5 text-xs font-bold outline-none focus:bg-white dark:focus:bg-slate-900 focus:border-slate-900 dark:focus:border-slate-400 transition-all"
+                                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-md pl-9 pr-3 py-1.5 text-sm  outline-none focus:bg-white dark:focus:bg-slate-900 focus:border-slate-900 dark:focus:border-slate-400 transition-all"
                                 />
                             </div>
                             <div className="flex gap-2 w-full sm:w-auto items-center">
@@ -403,16 +584,16 @@ export default function StaffIncidentHandling() {
                                     onChange={(e) => setUserStatusFilter(e.target.value)}
                                     className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-md px-3 py-1.5 text-xs font-bold outline-none focus:border-slate-900 dark:focus:border-slate-400 transition-all"
                                 >
-                                    <option value="">All Statuses</option>
-                                    <option value="OPEN">Open</option>
-                                    <option value="RESOLVED">Resolved</option>
+                                    <option value="">{t[language].allStatuses}</option>
+                                    <option value="OPEN">{t[language].statusOpen}</option>
+                                    <option value="RESOLVED">{t[language].statusResolved}</option>
                                 </select>
                                 <button
                                     type="button"
                                     onClick={() => fetchUserIncidents(userStatusFilter, userSearchQuery)}
                                     className="bg-blue-600 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white font-bold text-xs px-3 py-1.5 rounded-md transition-colors"
                                 >
-                                    Search
+                                    {t[language].btnSearch}
                                 </button>
                             </div>
                         </div>
@@ -422,14 +603,14 @@ export default function StaffIncidentHandling() {
                             {userIncidentsLoading ? (
                                 <div className="bg-white dark:bg-slate-900 p-8 border border-slate-200 dark:border-slate-800 rounded-md shadow-sm flex flex-col items-center justify-center gap-3">
                                     <Clock className="animate-spin text-blue-500" size={24} />
-                                    <p className="text-slate-500 dark:text-slate-400 text-xs font-semibold">Loading user reports...</p>
+                                    <p className="text-slate-500 dark:text-slate-400 text-xs font-semibold">{t[language].loadingReports}</p>
                                 </div>
                             ) : userIncidents.length === 0 ? (
                                 <div className="bg-white dark:bg-slate-900 p-12 border border-slate-200 dark:border-slate-800 rounded-md shadow-sm text-center">
                                     <AlertCircle className="mx-auto text-slate-350 dark:text-slate-650 mb-2" size={36} />
-                                    <p className="text-slate-500 dark:text-slate-400 font-bold text-xs uppercase tracking-wide">No incident reports found</p>
-                                    <p className="text-slate-400 dark:text-slate-650 text-[10px] mt-1">
-                                        There are no current reports matching this filter.
+                                    <p className="text-slate-500 dark:text-slate-400 font-bold text-xs uppercase tracking-wide">{t[language].noIncidents}</p>
+                                    <p className="text-slate-400 dark:text-slate-655 text-[10px] mt-1">
+                                        {t[language].noIncidentsSub}
                                     </p>
                                 </div>
                             ) : (
@@ -454,12 +635,12 @@ export default function StaffIncidentHandling() {
                                                         ? "bg-red-50 text-red-600 dark:bg-red-950/20 dark:text-red-400"
                                                         : "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/20 dark:text-emerald-400"
                                                         }`}>
-                                                        {incident.status}
+                                                        {incident.status === "OPEN" ? t[language].statusOpen : t[language].statusResolved}
                                                     </span>
                                                     <span className="text-[10px] font-bold text-slate-400 font-mono">#{incident.log_id}</span>
                                                 </div>
                                                 <span className="text-[10px] text-slate-400 font-mono">
-                                                    {incident.report_time ? new Date(incident.report_time).toLocaleString() : ""}
+                                                    {incident.report_time ? new Date(incident.report_time).toLocaleString(language === "vi" ? "vi-VN" : "en-US") : ""}
                                                 </span>
                                             </div>
 
@@ -480,7 +661,7 @@ export default function StaffIncidentHandling() {
                                                     )}
                                                 </div>
                                                 <span className="text-xs font-bold text-slate-850 dark:text-white truncate">
-                                                    {incident.reporter_name || "System User"}
+                                                    {incident.reporter_name || t[language].systemUser}
                                                 </span>
                                             </div>
 
@@ -493,7 +674,7 @@ export default function StaffIncidentHandling() {
                                                 </div>
                                             )}
                                             <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                                                {message || "No description provided."}
+                                                {message || t[language].noDesc}
                                             </p>
                                         </div>
                                     );
@@ -504,15 +685,15 @@ export default function StaffIncidentHandling() {
 
                     {/* RIGHT COLUMN: DETAIL PANEL */}
                     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md p-5 relative overflow-hidden h-fit space-y-4">
+                        <div className="flex items-center gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
+                            <ClipboardList size={15} className="text-slate-400" />
+                            <h3 className="text-xs font-black uppercase text-slate-500 dark:text-slate-400 tracking-wider">
+                                {t[language].outputTitle}
+                            </h3>
+                        </div>
+
                         {selectedIncident ? (
                             <div className="space-y-4">
-                                <div className="flex items-center gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
-                                    <ClipboardList size={15} className="text-slate-400" />
-                                    <h3 className="text-xs font-black uppercase text-slate-500 dark:text-slate-400 tracking-wider">
-                                        Report Details
-                                    </h3>
-                                </div>
-
                                 {/* REPORTER CARD */}
                                 <div className="flex items-center gap-3 bg-slate-50 dark:bg-slate-800 p-3 rounded-md border border-slate-200 dark:border-slate-700">
                                     <div className="w-10 h-10 rounded-full overflow-hidden bg-blue-100 text-blue-600 dark:bg-blue-950 dark:text-blue-400 font-bold flex items-center justify-center shrink-0 border border-blue-200 dark:border-slate-700 shadow-inner">
@@ -534,10 +715,10 @@ export default function StaffIncidentHandling() {
                                     </div>
                                     <div className="min-w-0">
                                         <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-950/40 text-[9px] font-black uppercase text-blue-600 dark:text-blue-400 tracking-wider mb-0.5">
-                                            Reporter
+                                            {t[language].reporterLabel}
                                         </span>
                                         <p className="text-xs font-black text-slate-850 dark:text-white truncate font-extrabold">
-                                            {selectedIncident.reporter_name || "System User"}
+                                            {selectedIncident.reporter_name || t[language].systemUser}
                                         </p>
                                     </div>
                                 </div>
@@ -552,7 +733,7 @@ export default function StaffIncidentHandling() {
                                     ) : (
                                         <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 dark:bg-slate-800/50 rounded border border-slate-200/50 dark:border-slate-800 text-slate-400">
                                             <Phone size={12} />
-                                            <span className="italic text-[10px]">No phone number</span>
+                                            <span className="italic text-[10px]">{t[language].noPhone}</span>
                                         </div>
                                     )}
 
@@ -564,7 +745,7 @@ export default function StaffIncidentHandling() {
                                     ) : (
                                         <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 dark:bg-slate-800/50 rounded border border-slate-200/50 dark:border-slate-800 text-slate-400">
                                             <Mail size={12} />
-                                            <span className="italic text-[10px]">No email</span>
+                                            <span className="italic text-[10px]">{t[language].noEmail}</span>
                                         </div>
                                     )}
                                 </div>
@@ -575,13 +756,13 @@ export default function StaffIncidentHandling() {
                                     return (
                                         <div className="space-y-3 text-xs">
                                             <div className="border-t border-slate-100 dark:border-slate-800 pt-3">
-                                                <span className="text-[10px] font-black uppercase text-slate-450 tracking-wider block mb-0.5 font-bold">Issue Type</span>
+                                                <span className="text-[10px] font-black uppercase text-slate-450 tracking-wider block mb-0.5 font-bold">{t[language].issueTypeLabel}</span>
                                                 <span className="font-extrabold text-slate-800 dark:text-white uppercase">{selectedIncident.issue_type?.replace("_", " ")}</span>
                                             </div>
 
                                             {rating > 0 && (
                                                 <div>
-                                                    <span className="text-[10px] font-black uppercase text-slate-450 tracking-wider block mb-1 font-bold">Experience Rating</span>
+                                                    <span className="text-[10px] font-black uppercase text-slate-455 tracking-wider block mb-1 font-bold">{t[language].expRatingLabel}</span>
                                                     <div className="flex gap-0.5 text-amber-400">
                                                         {[...Array(5)].map((_, i) => (
                                                             <Star
@@ -596,15 +777,15 @@ export default function StaffIncidentHandling() {
 
                                             {subject && (
                                                 <div>
-                                                    <span className="text-[10px] font-black uppercase text-slate-450 tracking-wider block mb-0.5 font-bold">Subject</span>
-                                                    <p className="font-extrabold text-slate-850 dark:text-white leading-snug">{subject}</p>
+                                                    <span className="text-[10px] font-black uppercase text-slate-450 tracking-wider block mb-0.5 font-bold">{t[language].subjectLabel}</span>
+                                                    <p className="font-extrabold text-slate-855 dark:text-white leading-snug">{subject}</p>
                                                 </div>
                                             )}
 
                                             <div>
-                                                <span className="text-[10px] font-black uppercase text-slate-455 tracking-wider block mb-0.5 font-bold">Description</span>
-                                                <p className="text-slate-605 dark:text-slate-350 bg-slate-50 dark:bg-slate-800/60 p-3 rounded border border-slate-150 dark:border-slate-850 whitespace-pre-wrap font-medium leading-relaxed">
-                                                    {message || "No description provided."}
+                                                <span className="text-[10px] font-black uppercase text-slate-455 tracking-wider block mb-0.5 font-bold">{t[language].descLabel}</span>
+                                                <p className="text-slate-605 dark:text-slate-350 bg-slate-50 dark:bg-slate-800/60 p-3 rounded border border-slate-150 dark:border-slate-855 whitespace-pre-wrap font-medium leading-relaxed">
+                                                    {message || t[language].noDesc}
                                                 </p>
                                             </div>
 
@@ -617,7 +798,7 @@ export default function StaffIncidentHandling() {
                                                         className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-750 border border-slate-250 dark:border-slate-700 rounded text-[11px] font-bold text-blue-600 dark:text-blue-400 transition-colors shadow-xs"
                                                     >
                                                         <Paperclip size={12} className="text-blue-500" />
-                                                        View Attachment File
+                                                        {t[language].viewAttachment}
                                                     </a>
                                                 </div>
                                             )}
@@ -626,13 +807,13 @@ export default function StaffIncidentHandling() {
                                             {selectedIncident.status === "OPEN" ? (
                                                 <form onSubmit={handleResolveUserIncident} className="border-t border-slate-100 dark:border-slate-800 pt-3 space-y-3">
                                                     <div className="space-y-1.5">
-                                                        <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider block font-bold">Resolution Feedback</label>
+                                                        <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider block font-bold">{t[language].feedbackLabel}</label>
                                                         <textarea
                                                             rows={3}
                                                             required
                                                             value={feedbackText}
                                                             onChange={e => setFeedbackText(e.target.value)}
-                                                            placeholder="Type resolution reply or instructions for the user..."
+                                                            placeholder={t[language].feedbackPlaceholder}
                                                             className="w-full bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-semibold rounded-md px-3 py-2 outline-none focus:bg-white dark:focus:bg-slate-900 focus:border-slate-900 dark:focus:border-slate-400 transition-all resize-none"
                                                         />
                                                     </div>
@@ -642,22 +823,22 @@ export default function StaffIncidentHandling() {
                                                         className="w-full py-2 bg-blue-600 hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-700 text-white font-bold text-xs rounded-md shadow-xs flex items-center justify-center gap-1.5 transition-all disabled:opacity-50"
                                                     >
                                                         <CheckCircle size={14} />
-                                                        {isSubmitting ? "Processing..." : "Resolve Ticket & Notify"}
+                                                        {isSubmitting ? t[language].processing : t[language].btnResolve}
                                                     </button>
                                                 </form>
                                             ) : (
                                                 <div className="border-t border-slate-100 dark:border-slate-800 pt-3 space-y-2">
                                                     <div className="p-3 bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 rounded-md">
                                                         <span className="text-[9px] font-black uppercase text-emerald-600 dark:text-emerald-400 block tracking-wider mb-1 font-bold">
-                                                            Resolution Feedback
+                                                            {t[language].feedbackLabel}
                                                         </span>
-                                                        <p className="text-xs text-slate-800 dark:text-slate-300 font-semibold leading-relaxed mb-2">
-                                                            {feedback || "Resolved without additional feedback."}
+                                                        <p className="text-xs text-slate-850 dark:text-slate-300 font-semibold leading-relaxed mb-2">
+                                                            {feedback || t[language].resolvedNoFeedback}
                                                         </p>
                                                         {selectedIncident.resolved_by && (
-                                                            <div className="text-[9px] font-mono text-slate-400 dark:text-slate-500 border-t border-slate-150 dark:border-slate-800/80 pt-1.5 flex justify-between">
+                                                            <div className="text-[9px] font-mono text-slate-400 dark:text-slate-505 border-t border-slate-150 dark:border-slate-800/80 pt-1.5 flex justify-between">
                                                                 <span>By: {selectedIncident.resolved_by}</span>
-                                                                <span>{selectedIncident.resolved_at ? new Date(selectedIncident.resolved_at).toLocaleString() : ""}</span>
+                                                                <span>{selectedIncident.resolved_at ? new Date(selectedIncident.resolved_at).toLocaleString(language === "vi" ? "vi-VN" : "en-US") : ""}</span>
                                                             </div>
                                                         )}
                                                     </div>
@@ -668,11 +849,11 @@ export default function StaffIncidentHandling() {
                                 })()}
                             </div>
                         ) : (
-                            <div className="text-center py-24 text-slate-400 dark:text-slate-500 font-medium text-xs italic space-y-2 font-semibold">
+                            <div className="text-center py-24 text-slate-400 dark:text-slate-500 font-medium text-xs space-y-2 font-semibold">
                                 <ClipboardList size={32} className="mx-auto text-slate-200 dark:text-slate-800 stroke-[1.5]" />
-                                <div>No Incident Selected.</div>
+                                <div>{t[language].noIncidentSelected}</div>
                                 <div className="text-[10px] text-slate-350 dark:text-slate-600 mt-1 max-w-[200px] mx-auto not-italic">
-                                    Select an incident from the list on the left to see full details, reporter contact information, and resolve the ticket.
+                                    {t[language].noIncidentSelectedSub}
                                 </div>
                             </div>
                         )}
@@ -689,7 +870,7 @@ export default function StaffIncidentHandling() {
                             <div className="flex justify-between items-center">
                                 <h3 className="text-xs font-black uppercase text-slate-500 dark:text-slate-400 tracking-wider flex items-center gap-1.5">
                                     <Search size={14} className="text-blue-500" />
-                                    {activeTab === "LOST_TICKET" ? "Search active session by Plate Number" : "Search session by Slot Name (e.g., A101)"}
+                                    {activeTab === "LOST_TICKET" ? t[language].searchTitleLost : t[language].searchTitleOcr}
                                 </h3>
                                 {(searchQuery || foundSession || reportData) && (
                                     <button
@@ -697,7 +878,7 @@ export default function StaffIncidentHandling() {
                                         onClick={() => resetWorkspace()}
                                         className="flex items-center gap-1 px-2 py-1 text-[10px] font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded transition-all">
                                         <Trash2 size={12} />
-                                        <span>Clear Form</span>
+                                        <span>{t[language].btnClearForm}</span>
                                     </button>
                                 )}
                             </div>
@@ -708,21 +889,21 @@ export default function StaffIncidentHandling() {
                                     <CarFront className="absolute left-3 top-2.5 text-slate-400" size={16} />
                                     <input
                                         type="text"
-                                        placeholder={currentTabConfig?.searchBySlot ? "Enter slot name (e.g., A101, B205)..." : "Enter vehicle license plate..."}
+                                        placeholder={currentTabConfig?.searchBySlot ? t[language].placeholderSlotInput : t[language].placeholderPlateInput}
                                         value={searchQuery}
-                                        onChange={e => setSearchQuery(e.target.value)}
-                                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-md pl-9 pr-3 py-2 text-xs font-bold outline-none focus:bg-white dark:focus:bg-slate-900 focus:border-slate-900 dark:focus:border-slate-400 transition-all placeholder:font-normal"
+                                        onChange={e => setSearchQuery(e.target.value.toUpperCase())}
+                                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-md pl-9 pr-3 py-2 text-sm font-bold outline-none focus:bg-white dark:focus:bg-slate-900 focus:border-slate-900 dark:focus:border-slate-400 transition-all placeholder:font-normal"
                                     />
                                 </div>
-                                <button type="submit" disabled={isSearching} className="bg-blue-600 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white font-bold text-xs px-4 rounded-md flex items-center gap-1.5 transition-colors disabled:opacity-50 whitespace-nowrap">
-                                    Find Session
+                                <button type="submit" disabled={isSearching} className="bg-blue-600 hover:bg-blue-500 dark:bg-blue-800 dark:hover:bg-blue-700 text-white font-bold text-xs px-4 rounded-md flex items-center gap-1.5 transition-colors disabled:opacity-50 whitespace-nowrap">
+                                    {t[language].btnFindSession}
                                 </button>
                             </form>
 
                             {!foundSession && (
                                 <div className="p-3 bg-amber-50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-400 font-semibold rounded-md border border-amber-200 dark:border-amber-900/30 text-xs flex items-center gap-2">
                                     <Info size={14} />
-                                    <span>You must enter details and click "Find Session" above before confirming.</span>
+                                    <span>{t[language].mustFindSessionAlert}</span>
                                 </div>
                             )}
 
@@ -732,7 +913,7 @@ export default function StaffIncidentHandling() {
                         {/* INCIDENT DETAILS FORM */}
                         <div className="bg-white dark:bg-slate-900 p-5 border border-slate-200 dark:border-slate-800 rounded-md shadow-sm">
                             <h3 className="text-xs font-black uppercase text-slate-500 dark:text-slate-400 tracking-wider mb-4 border-b border-slate-100 dark:border-slate-800 pb-2">
-                                {activeTab === "LOST_TICKET" ? "Lost Ticket Report" : `Correct Plate Number`}
+                                {activeTab === "LOST_TICKET" ? t[language].lostTicketReportTitle : t[language].correctPlateTitle}
                             </h3>
 
                             {/* FORM XỬ LÝ SỰ CỐ: Nhấn Enter ở bất kỳ ô input/textarea nào trong này sẽ chạy handleSubmitIncident */}
@@ -742,7 +923,7 @@ export default function StaffIncidentHandling() {
                                 {activeTab === "LOST_TICKET" && (
                                     <div className="grid grid-cols-1 gap-4 text-xs">
                                         <div className="space-y-1.5">
-                                            <label className="font-bold text-slate-400 uppercase tracking-wide">License Plate</label>
+                                            <label className="font-bold text-slate-400 uppercase tracking-wide">{t[language].lostPlateLabel}</label>
                                             <input
                                                 type="text" required disabled={!foundSession}
                                                 value={formValues.lostPlate} onChange={e => handleInputChange("lostPlate", e.target.value)}
@@ -750,7 +931,7 @@ export default function StaffIncidentHandling() {
                                             />
                                         </div>
                                         <div className="space-y-1.5">
-                                            <label className="font-bold text-slate-400 uppercase tracking-wide">Staff Notes</label>
+                                            <label className="font-bold text-slate-400 uppercase tracking-wide">{t[language].staffNotesLabel}</label>
                                             <textarea
                                                 rows={2} required disabled={!foundSession}
                                                 value={formValues.lostReason} onChange={e => handleInputChange("lostReason", e.target.value)}
@@ -764,7 +945,7 @@ export default function StaffIncidentHandling() {
                                 {activeTab === "OCR_MISMATCH" && (
                                     <div className="grid grid-cols-1 gap-4 text-xs">
                                         <div className="space-y-1.5">
-                                            <label className="font-bold text-slate-400 uppercase tracking-wide">Correct License Plate</label>
+                                            <label className="font-bold text-slate-400 uppercase tracking-wide">{t[language].correctedPlateLabel}</label>
                                             <input
                                                 type="text" required disabled={!foundSession}
                                                 value={formValues.correctedPlate} onChange={e => handleInputChange("correctedPlate", e.target.value)}
@@ -772,7 +953,7 @@ export default function StaffIncidentHandling() {
                                             />
                                         </div>
                                         <div className="space-y-1.5">
-                                            <label className="font-bold text-slate-400 uppercase tracking-wide">Staff Notes</label>
+                                            <label className="font-bold text-slate-400 uppercase tracking-wide">{t[language].staffNotesLabel}</label>
                                             <input
                                                 type="text" required disabled={!foundSession}
                                                 value={formValues.mismatchReason} onChange={e => handleInputChange("mismatchReason", e.target.value)}
@@ -787,9 +968,9 @@ export default function StaffIncidentHandling() {
                                     <button
                                         type="submit"
                                         disabled={isSubmitting || !foundSession}
-                                        className="w-full sm:w-auto px-6 py-2 bg-blue-600 hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-700 text-white font-bold text-xs rounded-md shadow-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="w-full sm:w-auto px-6 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white font-bold text-xs rounded-md shadow-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
-                                        {isSubmitting ? "Processing..." : "Confirm & Update System"}
+                                        {isSubmitting ? t[language].processing : t[language].btnConfirmSystem}
                                     </button>
                                 </div>
                             </form>
@@ -801,18 +982,18 @@ export default function StaffIncidentHandling() {
                         <div className="flex items-center gap-2 pb-3 border-b border-slate-100 dark:border-slate-800 mb-4">
                             <ClipboardList size={15} className="text-slate-400" />
                             <h3 className="text-xs font-black uppercase text-slate-500 dark:text-slate-400 tracking-wider">
-                                Output
+                                {t[language].outputTitle}
                             </h3>
                         </div>
 
                         {reportData ? renderResultPanel() : (
-                            <div className="text-center py-20 text-slate-400 dark:text-slate-500 font-medium text-xs italic space-y-2">
+                            <div className="text-center py-20 text-slate-400 dark:text-slate-500 font-medium text-xs  space-y-2">
                                 <ClipboardList size={32} className="mx-auto text-slate-200 dark:text-slate-800 stroke-[1.5]" />
-                                <div>Awaiting action.</div>
-                                <div className="text-[10px] text-slate-300 dark:text-slate-600 not-italic max-w-[200px] mx-auto mt-1">
+                                <div>{t[language].awaitingAction}</div>
+                                <div className="text-[10px] text-slate-350 dark:text-slate-600 not-italic max-w-[200px] mx-auto mt-1">
                                     {activeTab === "LOST_TICKET"
-                                        ? "Detailed receipt and payment breakdown will appear here after confirming the lost ticket report."
-                                        : "Detailed system logs and update history will be displayed here."}
+                                        ? t[language].awaitingActionLostSub
+                                        : t[language].awaitingActionOcrSub}
                                 </div>
                             </div>
                         )}

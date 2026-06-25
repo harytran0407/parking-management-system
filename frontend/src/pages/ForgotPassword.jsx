@@ -1,11 +1,76 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, Mail, KeyRound, CheckCircle2, RefreshCcw, Eye, EyeOff, ShieldAlert, Zap } from "lucide-react";
+import { useLanguage } from "../hooks/useLanguage";
 import { toast } from "sonner";
 import api from "../utils/api";
 
+const t = {
+  vi: {
+    backToLogin: "Quay lại đăng nhập",
+    title: "eParking",
+    subtitle: "Khôi phục mật khẩu",
+    emailOrPhone: "Email hoặc Số điện thoại",
+    emailOrPhonePlaceholder: "Nhập email hoặc số điện thoại đã đăng ký",
+    enterEmailOrPhoneToast: "Vui lòng nhập email hoặc số điện thoại.",
+    sendRequestBtn: "Gửi yêu cầu khôi phục",
+    processing: "Đang xử lý...",
+    dispatchSuccessToast: "Mã xác thực đã được gửi thành công!",
+    verificationFailedToast: "Xác thực tài khoản thất bại. Vui lòng thử lại.",
+    enterOtpCode: "Vui lòng nhập mã xác thực gửi đến",
+    otpPlaceholder: "Nhập mã OTP",
+    invalidOtpToast: "Vui lòng nhập mã OTP hợp lệ.",
+    continueBtn: "Tiếp tục",
+    changeContactLink: "Thay đổi Email / Số điện thoại",
+    newPasswordLabel: "Mật khẩu mới",
+    newPasswordPlaceholder: "Tối thiểu 8 ký tự bảo mật",
+    confirmNewPasswordLabel: "Xác nhận mật khẩu mới",
+    confirmNewPasswordPlaceholder: "Nhập lại mật khẩu mới",
+    passwordWeakToast: "Mật khẩu phải từ 8 ký tự trở lên, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt.",
+    passwordMismatchToast: "Mật khẩu xác nhận không trùng khớp.",
+    resetBtn: "Đặt lại mật khẩu",
+    updating: "Đang cập nhật...",
+    cancelRestartLink: "Hủy và bắt đầu lại",
+    resetSuccessToast: "Đặt lại mật khẩu thành công!",
+    resetFailedToast: "Đặt lại mật khẩu thất bại.",
+    successMsg: "Mật khẩu của bạn đã được đặt lại thành công!",
+    returnLoginBtn: "Quay lại trang Đăng nhập",
+  },
+  en: {
+    backToLogin: "Back to login",
+    title: "eParking",
+    subtitle: "Forgot Password Recovery",
+    emailOrPhone: "Email or Phone Number",
+    emailOrPhonePlaceholder: "Enter registered email or phone",
+    enterEmailOrPhoneToast: "Please enter your email or phone number.",
+    sendRequestBtn: "Send Recovery Request",
+    processing: "Processing...",
+    dispatchSuccessToast: "Verification code has been dispatched successfully!",
+    verificationFailedToast: "Account verification failed. Please try again.",
+    enterOtpCode: "Please enter the verification code sent to",
+    otpPlaceholder: "Enter OTP code",
+    invalidOtpToast: "Please enter a valid OTP code.",
+    continueBtn: "Continue",
+    changeContactLink: "Change Email / Phone Number",
+    newPasswordLabel: "New Password",
+    newPasswordPlaceholder: "Minimum 8 secure characters",
+    confirmNewPasswordLabel: "Confirm New Password",
+    confirmNewPasswordPlaceholder: "Re-enter new password",
+    passwordWeakToast: "Password must be at least 8 characters, including uppercase, lowercase, numbers, and special characters.",
+    passwordMismatchToast: "Confirm password does not match.",
+    resetBtn: "Reset My Password",
+    updating: "Updating...",
+    cancelRestartLink: "Cancel and restart",
+    resetSuccessToast: "Password updated successfully!",
+    resetFailedToast: "Failed to reset password.",
+    successMsg: "Your password has been reset successfully!",
+    returnLoginBtn: "Return to Login Page",
+  }
+};
+
 export default function ForgotPassword() {
   const navigate = useNavigate();
+  const { language, toggleLanguage } = useLanguage();
   const [loading, setLoading] = useState(false);
 
   // Flow control: 'request' -> 'otp' -> 'reset' -> 'success'
@@ -24,7 +89,7 @@ export default function ForgotPassword() {
   const handleRequestSubmit = async (e) => {
     e.preventDefault();
     if (!inputValue.trim()) {
-      toast.error("Please enter your email or phone number.");
+      toast.error(t[language].enterEmailOrPhoneToast);
       return;
     }
 
@@ -36,12 +101,12 @@ export default function ForgotPassword() {
       });
 
       if (response.data && response.data.success) {
-        toast.success("Verification code has been dispatched successfully!");
+        toast.success(t[language].dispatchSuccessToast);
         setStep("otp");
       }
     } catch (err) {
       console.error("[Recovery] Request initialization failed:", err);
-      toast.error(err.response?.data?.message || "Account verification failed. Please try again.");
+      toast.error(err.response?.data?.message || t[language].verificationFailedToast);
     } finally {
       setLoading(false);
     }
@@ -53,7 +118,7 @@ export default function ForgotPassword() {
   const handleVerifyOtp = (e) => {
     e.preventDefault();
     if (otpCode.length < 4) {
-      toast.error("Please enter a valid OTP code.");
+      toast.error(t[language].invalidOtpToast);
       return;
     }
     setStep("reset");
@@ -74,12 +139,12 @@ export default function ForgotPassword() {
 
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
     if (!passwordRegex.test(newPassword)) {
-      toast.error("Password must be at least 8 characters, including uppercase, lowercase, numbers, and special characters.");
+      toast.error(t[language].passwordWeakToast);
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      toast.error("Confirm password does not match.");
+      toast.error(t[language].passwordMismatchToast);
       return;
     }
 
@@ -92,12 +157,12 @@ export default function ForgotPassword() {
       });
 
       if (response.data && response.data.success) {
-        toast.success("Password updated successfully!");
+        toast.success(t[language].resetSuccessToast);
         setStep("success");
       }
     } catch (err) {
       console.error("[Recovery] Reset password submission failed:", err);
-      toast.error(err.response?.data?.message || "Failed to reset password.");
+      toast.error(err.response?.data?.message || t[language].resetFailedToast);
     } finally {
       setLoading(false);
     }
@@ -117,23 +182,39 @@ export default function ForgotPassword() {
       {/* Back to Login Button */}
       <Link to="/login" className="absolute top-6 left-6 flex items-center gap-1.5 text-base font-semibold text-gray-400 hover:text-white transition duration-200 z-10">
         <ArrowLeft className="w-3.5 h-3.5" />
-        <span>Back to login</span>
+        <span>{t[language].backToLogin}</span>
       </Link>
 
       <div className="w-full max-w-md relative z-10">
-        <div className="backdrop-blur-md bg-[#1e293b]/70 border border-slate-700/50 shadow-2xl rounded-xl p-8">
+        <div className="backdrop-blur-md bg-[#1e293b]/70 border border-slate-700/50 shadow-2xl rounded-xl p-8 relative">
+          
+          {/* Language Selector */}
+          <div className="absolute top-4 right-4">
+            <button
+              type="button"
+              onClick={toggleLanguage}
+              className="px-2.5 py-1 bg-slate-800/80 border border-slate-700 text-[10px] font-black text-slate-300 hover:text-white rounded-lg transition-all focus:outline-none flex items-center gap-1.5 hover:bg-slate-700"
+              title={language === "en" ? "Switch to Vietnamese" : "Chuyển sang Tiếng Anh"}
+            >
+              <span>🌐</span>
+              <span>{language === "en" ? "EN" : "VI"}</span>
+            </button>
+          </div>
+
           <div className="text-center mb-6">
-            <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">eParking</h1>
-            <p className="text-slate-400 text-sm">Forgot Password Recovery</p>
+            <Link to="/" className="inline-block hover:opacity-85 transition-opacity">
+              <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">{t[language].title}</h1>
+            </Link>
+            <p className="text-slate-400 text-sm">{t[language].subtitle}</p>
           </div>
 
           {/* ============================================================
-              BƯỚC 1: FORM NHẬP EMAIL HOẶC SĐT (ĐÃ GỘP THÀNH 1 INPUT)
+              BƯỚC 1: FORM NHẬP EMAIL HOẶC SĐT
              ============================================================ */}
           {step === "request" && (
             <form onSubmit={handleRequestSubmit} className="space-y-5">
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Email or Phone Number</label>
+                <label className="block text-sm font-medium text-slate-300 mb-1">{t[language].emailOrPhone}</label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
                   <input
@@ -141,7 +222,7 @@ export default function ForgotPassword() {
                     required
                     value={inputValue}
                     onChange={(e) => setInputValue(e.target.value)}
-                    placeholder="Enter registered email or phone"
+                    placeholder={t[language].emailOrPhonePlaceholder}
                     className="w-full pl-10 pr-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
                   />
                 </div>
@@ -152,7 +233,7 @@ export default function ForgotPassword() {
                 disabled={loading}
                 className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 px-4 rounded-lg transition duration-200 disabled:opacity-50 flex items-center justify-center gap-2">
                 {loading && <RefreshCcw size={14} className="animate-spin" />}
-                <span>{loading ? "Processing..." : "Send Recovery Request"}</span>
+                <span>{loading ? t[language].processing : t[language].sendRequestBtn}</span>
               </button>
             </form>
           )}
@@ -163,10 +244,9 @@ export default function ForgotPassword() {
           {step === "otp" && (
             <form onSubmit={handleVerifyOtp} className="space-y-4">
               <div className="text-center text-sm text-slate-300 mb-2">
-                Please enter the verification code sent to <br />
+                {t[language].enterOtpCode} <br />
                 <span className="text-blue-400 font-mono font-semibold">{inputValue}</span>
               </div>
-
 
               <div className="relative">
                 <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
@@ -176,19 +256,19 @@ export default function ForgotPassword() {
                   required
                   value={otpCode}
                   onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
-                  placeholder="Enter OTP code"
+                  placeholder={t[language].otpPlaceholder}
                   className="w-full pl-10 pr-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white text-center font-bold tracking-[0.3em] placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
                 />
               </div>
               <button
                 type="submit"
                 className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 px-4 rounded-lg transition duration-200 flex items-center justify-center">
-                <span>Continue</span>
+                <span>{t[language].continueBtn}</span>
               </button>
 
               <div className="text-center mt-2">
                 <button type="button" onClick={() => setStep("request")} className="text-xs text-blue-500 hover:underline font-medium">
-                  Change Email / Phone Number
+                  {t[language].changeContactLink}
                 </button>
               </div>
             </form>
@@ -200,14 +280,14 @@ export default function ForgotPassword() {
           {step === "reset" && (
             <form onSubmit={handleResetPassword} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">New Password</label>
+                <label className="block text-sm font-medium text-slate-300 mb-1">{t[language].newPasswordLabel}</label>
                 <div className="relative">
                   <input
                     type={showPassword ? "text" : "password"}
                     required
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Minimum 8 secure characters"
+                    placeholder={t[language].newPasswordPlaceholder}
                     className="w-full px-4 pr-10 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
                   />
                   <button
@@ -219,13 +299,13 @@ export default function ForgotPassword() {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Confirm New Password</label>
+                <label className="block text-sm font-medium text-slate-300 mb-1">{t[language].confirmNewPasswordLabel}</label>
                 <input
                   type="password"
                   required
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Re-enter new password"
+                  placeholder={t[language].confirmNewPasswordPlaceholder}
                   className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
                 />
               </div>
@@ -234,12 +314,12 @@ export default function ForgotPassword() {
                 disabled={loading}
                 className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 px-4 rounded-lg transition duration-200 disabled:opacity-50 flex items-center justify-center gap-2">
                 {loading && <RefreshCcw size={14} className="animate-spin" />}
-                <span>{loading ? "Updating..." : "Reset My Password"}</span>
+                <span>{loading ? t[language].updating : t[language].resetBtn}</span>
               </button>
 
               <div className="text-center mt-2">
-                <button type="button" onClick={() => setStep("request")} className="text-xs text-blue-500 hover:underline font-medium">
-                  Cancel and restart
+                <button type="button" onClick={handleRestartFlow} className="text-xs text-blue-500 hover:underline font-medium">
+                  {t[language].cancelRestartLink}
                 </button>
               </div>
             </form>
@@ -253,9 +333,9 @@ export default function ForgotPassword() {
               <div className="flex justify-center text-green-500">
                 <CheckCircle2 size={56} className="animate-bounce" />
               </div>
-              <p className="text-slate-200 font-medium">Your password has been reset successfully!</p>
+              <p className="text-slate-200 font-medium">{t[language].successMsg}</p>
               <button onClick={() => navigate("/login")} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 px-4 rounded-lg transition duration-200">
-                Return to Login Page
+                {t[language].returnLoginBtn}
               </button>
             </div>
           )}
