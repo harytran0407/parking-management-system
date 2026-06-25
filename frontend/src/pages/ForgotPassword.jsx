@@ -202,7 +202,9 @@ export default function ForgotPassword() {
           </div>
 
           <div className="text-center mb-6">
-            <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">{t[language].title}</h1>
+            <Link to="/" className="inline-block hover:opacity-85 transition-opacity">
+              <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">{t[language].title}</h1>
+            </Link>
             <p className="text-slate-400 text-sm">{t[language].subtitle}</p>
           </div>
 

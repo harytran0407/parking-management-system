@@ -4,15 +4,31 @@ import { Link, useLocation } from "react-router-dom";
 import AboutUsModal from "./AboutUsModal";
 import { Menu, X, PanelLeftClose, PanelLeftOpen, Info } from "lucide-react"; // ĐÃ BỔ SUNG: Thêm icon Info cho nhãn About us
 import { useLanguage } from "../hooks/useLanguage";
+import { useAuth } from "../hooks/useAuth";
 
 export default function Sidebar({ navigationItems = [], isCollapsed, setIsCollapsed }) {
   const { language } = useLanguage();
+  const { user } = useAuth();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   //  ĐÃ BỔ SUNG: Khởi tạo trạng thái quản lý đóng/mở cục bộ của Modal quy định bãi xe
   const [isAboutOpen, setIsAboutOpen] = useState(false);
 
   const location = useLocation();
+
+  const handleLogoClick = () => {
+    let target = "/";
+    if (user?.role === "SystemAdmin") {
+      target = "/admin";
+    } else if (user?.role === "ParkingStaff") {
+      target = "/staff/checkin";
+    } else if (user?.role === "ParkingManager") {
+      target = "/manager";
+    } else if (user?.role === "ParkingUser" || user?.role === "User") {
+      target = "/user";
+    }
+    window.location.href = target;
+  };
 
   // LOGIC: Normalize and verify strict navigation active state contexts
   const checkIsActive = (path) => {
@@ -46,7 +62,10 @@ export default function Sidebar({ navigationItems = [], isCollapsed, setIsCollap
           ${isCollapsed ? "lg:px-0 lg:justify-center" : "lg:justify-between"}
         `}>
           <div className={`flex items-center justify-between w-full min-w-0 ${isCollapsed ? "lg:hidden" : "flex"}`}>
-            <div className="flex items-center gap-2.5 min-w-0">
+            <div
+              onClick={handleLogoClick}
+              className="flex items-center gap-2.5 min-w-0 cursor-pointer hover:opacity-80 transition-opacity"
+            >
               <img src="/eParkingLogo.png" alt="eParking Logo" className="w-8 h-8 object-contain rounded-lg shadow-sm shrink-0" />
               <div className="whitespace-nowrap">
                 <h2 className="text-base font-black text-blue-900 dark:text-white tracking-tight leading-none">eParking</h2>

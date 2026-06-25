@@ -45,7 +45,7 @@ export default function LandingPage() {
       {/* 1. TOP NAVIGATION BAR */}
       <nav className="fixed w-full z-50 top-0 transition-all duration-300 bg-[#060a12]/80 backdrop-blur-md border-b border-white/5">
         <div className="max-w-7xl mx-auto flex items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-2 cursor-pointer" onClick={() => scrollToTop()}>
+          <div className="flex items-center gap-2 cursor-pointer" onClick={() => window.location.href = "/"}>
             <img src="/eParkingLogo.png" alt="eParking Logo" className="w-8 h-8 object-contain rounded-lg shadow-sm shrink-0" />
             <span className="text-xl font-bold tracking-tight text-white">eParking</span>
           </div>

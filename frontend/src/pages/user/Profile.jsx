@@ -8,7 +8,7 @@ import { useLanguage } from "../../hooks/useLanguage";
 
 // Hàm tiện ích bóc tách lấy URL gốc của Server cho phần avatar, dọn sạch cụm /api/v1 vướng víu
 const getBackendRootUrl = () => {
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:5077";
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
   return baseUrl.replace("/api/v1", ""); // Nếu có /api/v1 thì cắt bỏ, nếu không có thì giữ nguyên
 };
 
@@ -61,11 +61,11 @@ export default function Profile() {
           });
 
           if (data.avatar_url) {
-            // 1. Lấy URL từ biến môi trường (Ví dụ: http://localhost:5077/api/v1)
-            const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:5077";
+            // 1. Lấy URL từ biến môi trường (Ví dụ: http://localhost:8080/api/v1)
+            const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
             // Nối đúng mã cấu hình host môi trường tĩnh để không bị lỗi vỡ hình ảnh
             const rootUrl = baseUrl.replace("/api/v1", "");
-            // 3. Ghép chuỗi sạch để trình duyệt gọi đúng link: http://localhost:5077/uploads/avatars/...
+            // 3. Ghép chuỗi sạch để trình duyệt gọi đúng link: http://localhost:8080/uploads/avatars/...
             // setPreviewUrl(`${rootUrl}${data.avatar_url}`);
             // Kiểm tra nếu là ảnh Google thì giữ nguyên, ảnh local thì mới nối rootUrl
             if (data.avatar_url.startsWith("http://") || data.avatar_url.startsWith("https://")) {

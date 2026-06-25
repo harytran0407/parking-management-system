@@ -26,6 +26,11 @@ const t = {
     confirmPasswordPlaceholder: "••••••••",
     passwordStrong: "✓ Mật khẩu mạnh và an toàn.",
     passwordWeak: "Mật khẩu phải từ 8 ký tự trở lên, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt.",
+    passwordMinLength: "Tối thiểu 8 ký tự",
+    passwordUppercase: "Ít nhất 1 chữ cái in hoa (A-Z)",
+    passwordLowercase: "Ít nhất 1 chữ cái in thường (a-z)",
+    passwordNumber: "Ít nhất 1 chữ số (0-9)",
+    passwordSpecial: "Ít nhất 1 ký tự đặc biệt (@$!%*?&)",
     passwordsMatch: "✓ Mật khẩu trùng khớp.",
     passwordsMismatch: "Mật khẩu nhập lại không trùng khớp.",
     registerBtn: "Đăng ký",
@@ -59,6 +64,11 @@ const t = {
     confirmPasswordPlaceholder: "••••••••",
     passwordStrong: "✓ Strong and secure password.",
     passwordWeak: "Password must be 8+ characters, with uppercase, lowercase, numbers, and special characters.",
+    passwordMinLength: "Minimum 8 characters",
+    passwordUppercase: "At least 1 uppercase letter (A-Z)",
+    passwordLowercase: "At least 1 lowercase letter (a-z)",
+    passwordNumber: "At least 1 number (0-9)",
+    passwordSpecial: "At least 1 special character (@$!%*?&)",
     passwordsMatch: "✓ Passwords match.",
     passwordsMismatch: "Passwords do not match.",
     registerBtn: "Register",
@@ -131,6 +141,13 @@ export default function Register() {
   const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 
   const isPasswordTyped = formData.password.length > 0;
+  const checks = {
+    minLength: formData.password.length >= 8,
+    hasUpper: /[A-Z]/.test(formData.password),
+    hasLower: /[a-z]/.test(formData.password),
+    hasNumber: /\d/.test(formData.password),
+    hasSpecial: /[@$!%*?&]/.test(formData.password),
+  };
   const isPasswordValid = passwordRegex.test(formData.password);
   const isConfirmTyped = formData.confirm_password.length > 0;
   const isPasswordMatch = formData.password === formData.confirm_password;
@@ -262,7 +279,9 @@ export default function Register() {
         </div>
 
         <div className="text-center mb-1">
-          <h2 className="text-3xl font-bold text-white tracking-tight">{t[language].title}</h2>
+          <Link to="/" className="inline-block hover:opacity-85 transition-opacity">
+            <h2 className="text-3xl font-bold text-white tracking-tight">{t[language].title}</h2>
+          </Link>
           <p className="text-slate-400 mt-1">{t[language].subtitle}</p>
         </div>
 
@@ -335,9 +354,53 @@ export default function Register() {
               </button>
             </div>
             {isPasswordTyped && (
-              <p className={`text-xs mt-1.5 font-medium leading-relaxed transition-colors ${isPasswordValid ? "text-green-400" : "text-red-400"}`}>
-                {isPasswordValid ? t[language].passwordStrong : t[language].passwordWeak}
-              </p>
+              <div className="mt-2.5 space-y-2 bg-slate-900/40 p-3.5 rounded-lg border border-slate-800/80">
+                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                  {language === "vi" ? "Yêu cầu mật khẩu:" : "Password requirements:"}
+                </p>
+                <ul className="space-y-1.5 text-xs">
+                  <li className={`flex items-center gap-2 transition-colors duration-200 ${checks.minLength ? "text-green-400 font-medium" : "text-slate-500"}`}>
+                    {checks.minLength ? (
+                      <CheckCircle className="w-3.5 h-3.5 text-green-500 shrink-0" />
+                    ) : (
+                      <div className="w-3.5 h-3.5 rounded-full border border-slate-600 shrink-0" />
+                    )}
+                    <span>{t[language].passwordMinLength}</span>
+                  </li>
+                  <li className={`flex items-center gap-2 transition-colors duration-200 ${checks.hasUpper ? "text-green-400 font-medium" : "text-slate-500"}`}>
+                    {checks.hasUpper ? (
+                      <CheckCircle className="w-3.5 h-3.5 text-green-500 shrink-0" />
+                    ) : (
+                      <div className="w-3.5 h-3.5 rounded-full border border-slate-600 shrink-0" />
+                    )}
+                    <span>{t[language].passwordUppercase}</span>
+                  </li>
+                  <li className={`flex items-center gap-2 transition-colors duration-200 ${checks.hasLower ? "text-green-400 font-medium" : "text-slate-500"}`}>
+                    {checks.hasLower ? (
+                      <CheckCircle className="w-3.5 h-3.5 text-green-500 shrink-0" />
+                    ) : (
+                      <div className="w-3.5 h-3.5 rounded-full border border-slate-600 shrink-0" />
+                    )}
+                    <span>{t[language].passwordLowercase}</span>
+                  </li>
+                  <li className={`flex items-center gap-2 transition-colors duration-200 ${checks.hasNumber ? "text-green-400 font-medium" : "text-slate-500"}`}>
+                    {checks.hasNumber ? (
+                      <CheckCircle className="w-3.5 h-3.5 text-green-500 shrink-0" />
+                    ) : (
+                      <div className="w-3.5 h-3.5 rounded-full border border-slate-600 shrink-0" />
+                    )}
+                    <span>{t[language].passwordNumber}</span>
+                  </li>
+                  <li className={`flex items-center gap-2 transition-colors duration-200 ${checks.hasSpecial ? "text-green-400 font-medium" : "text-slate-500"}`}>
+                    {checks.hasSpecial ? (
+                      <CheckCircle className="w-3.5 h-3.5 text-green-500 shrink-0" />
+                    ) : (
+                      <div className="w-3.5 h-3.5 rounded-full border border-slate-600 shrink-0" />
+                    )}
+                    <span>{t[language].passwordSpecial}</span>
+                  </li>
+                </ul>
+              </div>
             )}
           </div>
 

@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 
 const getBackendRootUrl = () => {
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:5077";
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
   return baseUrl.replace("/api/v1", "");
 };
 import { useNavigate } from "react-router-dom";

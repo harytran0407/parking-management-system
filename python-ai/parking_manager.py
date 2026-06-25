@@ -35,7 +35,7 @@ logging.basicConfig(
 # Config
 # ══════════════════════════════════════════════════════════════════════════
 COOLDOWN_SECONDS = 15          # Bộ giảm tải quét trùng biển số trong 15 giây
-ASPNET_API_BASE  = 'http://localhost:5077/api/v1'  
+ASPNET_API_BASE  = 'http://localhost:8080/api/v1'  
 PYTHON_STREAM_URL = 'http://localhost:5001/api/v1/stream'
 ASPNET_TIMEOUT   = 4           # Tối ưu thời gian timeout tránh nghẽn camera
 CSV_PATH         = 'parking_history.csv'

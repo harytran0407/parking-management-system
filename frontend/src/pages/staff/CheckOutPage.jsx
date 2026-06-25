@@ -3,20 +3,133 @@ import { toast } from "sonner";
 import Webcam from "react-webcam";
 import api from "../../utils/api";
 import {
-    Camera, CarFront, Search, MapPin, CheckCircle2, RefreshCcw,
+    Camera, CarFront, Search, MapPin, CheckCircle2, RefreshCw,
     VideoOff, Ban, ParkingSquare, Hash, Clock, Calendar,
     Video, X, Maximize2, DollarSign, Ticket
 } from "lucide-react";
+import { useLanguage } from "../../hooks/useLanguage";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const PYTHON_STREAM_URL = import.meta.env.VITE_PYTHON_STREAM_URL;
 
+const t = {
+    vi: {
+        cameraHeader: "Check-Out Camera",
+        btnScanPlate: "Quét biển số",
+        scanPlateTitle: "Nhấn Enter để chụp ảnh",
+        webcamUnavailable: "Không tìm thấy Webcam — kiểm tra quyền thiết bị",
+        manualPlateLabel: "Nhập biển số thủ công",
+        placeholderPlate: "Nhập biển số xe...",
+        btnSearch: "Tìm kiếm",
+        ticketCodeLabel: "Mã vé",
+        notRequiredLabel: "( Không bắt buộc )",
+        placeholderTicket: "Nhập mã vé...",
+        btnVerifyTicket: "Xác thực vé",
+        exitSessionHeader: "Thông tin phiên ra",
+        readyToScan: "Sẵn sàng quét",
+        pressEnterToStart: "Nhấn [Enter] hoặc quét biển số trước, sau đó xác thực mã vé.",
+        cameraScanLabel: "Quét Camera",
+        ticketPlateLabel: "Biển kiểm soát vé",
+        ticketPlateErrorLabel: "Biển kiểm soát vé (Lỗi)",
+        modeLabel: "Hình thức",
+        modeBooking: "ĐẶT TRƯỚC",
+        awaitingLabel: "Đang chờ...",
+        securityAction: "Hành động an ninh",
+        totalFee: "Tổng phí",
+        bookingFee: "Phí đặt chỗ",
+        durationLabel: "Thời lượng",
+        btnConfirm: "Xác nhận",
+        btnReset: "Đặt lại",
+        btnCancel: "Hủy",
+        systemReady: "Hệ thống sẵn sàng",
+        noPlateDetected: "Không phát hiện biển số",
+        motorbike: "Xe máy",
+        car: "Ô tô",
+        toastBookingRecognized: "Phát hiện lượt đặt trước! Xe được xác thực qua Mã đặt chỗ:",
+        toastManualPlateEntered: "Đã nhập biển số thủ công: ",
+        toastManualPlateEnteredSuffix: ". Vui lòng quét hoặc nhập Mã vé để xác thực.",
+        toastPlateNotRegistered: "Không tìm thấy biển số xe.",
+        toastWebcamError: "Không thể chụp ảnh từ Webcam. Vui lòng kiểm tra quyền thiết bị.",
+        toastCameraAwaitingTicket: "Camera phát hiện: ",
+        toastCameraAwaitingTicketSuffix: ". Vui lòng quét hoặc nhập Mã vé để xác thực.",
+        toastCameraPlateNotRegistered: "Không tìm thấy biển số xe.",
+        toastAiFailed: "Hệ thống AI không nhận diện được biển số từ ảnh chụp.",
+        toastProcessingFailed: "Quy trình xử lý biển số thất bại.",
+        toastScanFirst: "Vui lòng quét biển số xe trước khi xác thực vé!",
+        toastVerificationSuccess: "Xác thực thành công: Biển kiểm soát khớp với thông tin gửi xe.",
+        toastPlateMismatchPrefix: "Sai lệch biển kiểm soát: Camera phát hiện [",
+        toastPlateMismatchMiddle: "], nhưng vé đăng ký [",
+        toastPlateMismatchSuffix: "]. Vui lòng kiểm tra kỹ phương tiện trước khi cho ra.",
+        toastTicketInvalid: "Mã vé không hợp lệ hoặc xe đã ra.",
+        toastCheckoutSuccess: "Xe thành công ra khỏi bãi:",
+        toastCheckoutFailed: "Không thể hoàn thành cho xe ra. Máy chủ trả về trạng thái chưa hoàn tất.",
+        toastBackendRejected: "Yêu cầu cho xe ra bị từ chối bởi máy chủ.",
+        floorLabel: "Tầng",
+        vehicleLabel: "Phương tiện"
+    },
+    en: {
+        cameraHeader: "Check-Out Camera",
+        btnScanPlate: "Scan Plate",
+        scanPlateTitle: "Press Enter to trigger snapshot",
+        webcamUnavailable: "Webcam unavailable — check device permissions",
+        manualPlateLabel: "Manual Plate Entry",
+        placeholderPlate: "Enter license plate...",
+        btnSearch: "Search",
+        ticketCodeLabel: "Ticket Code",
+        notRequiredLabel: "( Not required )",
+        placeholderTicket: "Enter ticket code...",
+        btnVerifyTicket: "Verify Ticket",
+        exitSessionHeader: "Exit Session Info",
+        readyToScan: "Ready to Scan",
+        pressEnterToStart: "Press [Enter] or Scan Plate camera first, then pass the ticket code.",
+        cameraScanLabel: "Camera Scan",
+        ticketPlateLabel: "Ticket Plate",
+        ticketPlateErrorLabel: "Ticket Plate (Error)",
+        modeLabel: "Mode",
+        modeBooking: "BOOKING",
+        awaitingLabel: "Awaiting...",
+        securityAction: "Security Action",
+        totalFee: "Total Fee",
+        bookingFee: "Booking Fee",
+        durationLabel: "Duration",
+        btnConfirm: "Confirm",
+        btnReset: "Reset",
+        btnCancel: "Cancel",
+        systemReady: "System Ready",
+        noPlateDetected: "No Plate Detected",
+        motorbike: "Motorbike",
+        car: "Car",
+        toastBookingRecognized: "Booking Recognized! Vehicle verified via Reservation ID:",
+        toastManualPlateEntered: "Manual plate entered: ",
+        toastManualPlateEnteredSuffix: ". Please scan or enter Ticket Code to verify.",
+        toastPlateNotRegistered: "License plate not found.",
+        toastWebcamError: "Cannot capture image from Webcam. Please check device permissions.",
+        toastCameraAwaitingTicket: "Camera detected: ",
+        toastCameraAwaitingTicketSuffix: ". Please scan or enter Ticket Code to verify.",
+        toastCameraPlateNotRegistered: "License plate not found.",
+        toastAiFailed: "AI system failed to recognize license plate from snapshot.",
+        toastProcessingFailed: "License plate processing workflow failed.",
+        toastScanFirst: "Please scan camera plate first before verifying the ticket!",
+        toastVerificationSuccess: "Verification Successful: License plate matches the parking record.",
+        toastPlateMismatchPrefix: "License Plate Mismatch: Camera detected [",
+        toastPlateMismatchMiddle: "], but the parking record shows [",
+        toastPlateMismatchSuffix: "]. Please verify the vehicle before proceeding.",
+        toastTicketInvalid: "Ticket Code is invalid or already checked out.",
+        toastCheckoutSuccess: "Vehicle successfully checked out:",
+        toastCheckoutFailed: "Unable to complete vehicle exit. Server returned uncompleted status.",
+        toastBackendRejected: "Backend validation rejected this checkout request.",
+        floorLabel: "Floor",
+        vehicleLabel: "Vehicle"
+    }
+};
+
 export default function CheckOutPage() {
+    const { language } = useLanguage();
     const webcamRef = useRef(null);
     const [capturedImage, setCapturedImage] = useState(null);
-    const [plateNumber, setPlateNumber] = useState(""); 
-    const [manualInput, setManualInput] = useState(""); 
-    const [ticketCodeInput, setTicketCodeInput] = useState(""); 
+    const [plateNumber, setPlateNumber] = useState("");
+    const [manualInput, setManualInput] = useState("");
+    const [ticketCodeInput, setTicketCodeInput] = useState("");
     const [selectedVehicleType, setSelectedVehicleType] = useState(1);
     const [scanResult, setScanResult] = useState(null);
 
@@ -31,8 +144,8 @@ export default function CheckOutPage() {
     const [activeBookingId, setActiveBookingId] = useState(null);
 
     const vehicleTypes = [
-        { id: 1, name: "Motorbike" },
-        { id: 2, name: "Car" }
+        { id: 1, name: t[language].motorbike },
+        { id: 2, name: t[language].car }
     ];
 
     const videoConstraints = {
@@ -86,12 +199,12 @@ export default function CheckOutPage() {
             sessionId: sessionId,
             plate: displayPlate || licensePlateIn || "N/A",
             slot: zoneName ? `Zone ${zoneName}` : "N/A",
-            floor: activeSession.floor !== undefined ? `Floor ${activeSession.floor}` : "N/A",
+            floor: activeSession.floor !== undefined ? `${t[language].floorLabel} ${activeSession.floor}` : "N/A",
             zone: zoneName || "Unassigned Zone",
-            timeIn: checkInTime ? new Date(checkInTime).toLocaleString("vi-VN") : "N/A",
+            timeIn: checkInTime ? new Date(checkInTime).toLocaleString(language === "vi" ? "vi-VN" : "en-US") : "N/A",
             duration: durationMinutes !== undefined ? `${durationMinutes} mins` : "0 mins",
             price: currentFee || 0,
-            vehicleModel: vehicleTypes.find(v => v.id === (vehicleTypeId || selectedVehicleType))?.name || "Vehicle"
+            vehicleModel: vehicleTypes.find(v => v.id === (vehicleTypeId || selectedVehicleType))?.name || t[language].vehicleLabel
         });
     };
 
@@ -122,7 +235,7 @@ export default function CheckOutPage() {
                 setActiveBookingId(bookingId);
                 setIsPlateMatched(true);
                 populateScanResult(activeSession, formattedPlate, "ExitPending");
-                toast.success(`Booking Recognized! Vehicle [${formattedPlate}] verified via Reservation ID: ${bookingId}.`);
+                toast.success(`${t[language].toastBookingRecognized} ${formattedPlate} / ${bookingId}`);
             } else {
                 // LUỒNG XE VÃNG LAI
                 setScanResult({
@@ -136,10 +249,10 @@ export default function CheckOutPage() {
                     price: 0,
                     vehicleModel: "Checking..."
                 });
-                toast.info(`Manual plate entered: [${formattedPlate}]. Please scan or enter Ticket Code to verify.`);
+                toast.info(`${t[language].toastManualPlateEntered}${formattedPlate}${t[language].toastManualPlateEnteredSuffix}`);
             }
         } else {
-            toast.error(`Plate [${formattedPlate}] is not registered inside the parking lot.`);
+            toast.error(`${t[language].toastPlateNotRegistered} [${formattedPlate}]`);
         }
         setIsLoading(false);
     };
@@ -157,7 +270,7 @@ export default function CheckOutPage() {
 
         const imageSrc = webcamRef.current.getScreenshot();
         if (!imageSrc) {
-            toast.error("Cannot capture image from Webcam. Please check device permissions.");
+            toast.error(t[language].toastWebcamError);
             setIsLoading(false);
             return;
         }
@@ -169,7 +282,7 @@ export default function CheckOutPage() {
             });
 
             if (!aiResponse.data || !aiResponse.data.success) {
-                throw new Error(aiResponse.data?.message || "AI system failed to recognize license plate from snapshot.");
+                throw new Error(aiResponse.data?.message || t[language].toastAiFailed);
             }
 
             const aiPlate = aiResponse.data.plate.toUpperCase().trim();
@@ -187,7 +300,7 @@ export default function CheckOutPage() {
                     setActiveBookingId(bookingId);
                     setIsPlateMatched(true);
                     populateScanResult(activeSession, aiPlate, "ExitPending");
-                    toast.success(`Booking Recognized! Vehicle [${aiPlate}] verified via Reservation ID: ${bookingId}.`);
+                    toast.success(`${t[language].toastBookingRecognized} ${aiPlate} / ${bookingId}`);
                 } else {
                     // LUỒNG XE VÃNG LAI
                     setScanResult({
@@ -201,25 +314,25 @@ export default function CheckOutPage() {
                         price: 0,
                         vehicleModel: "Checking..."
                     });
-                    toast.info(`Camera detected: [${aiPlate}]. Please scan or enter Ticket Code to verify.`);
+                    toast.info(`${t[language].toastCameraAwaitingTicket}${aiPlate}${t[language].toastCameraAwaitingTicketSuffix}`);
                 }
             } else {
-                toast.error(`Plate [${aiPlate}] detected by camera is not registered inside the parking lot.`);
+                toast.error(`${t[language].toastCameraPlateNotRegistered} [${aiPlate}]`);
             }
 
         } catch (error) {
             console.error("Pipeline Error:", error);
-            const errorMsg = error.message || error.response?.data?.message || "License plate processing workflow failed.";
+            const errorMsg = error.message || error.response?.data?.message || t[language].toastProcessingFailed;
             toast.error(errorMsg);
         } finally {
             setIsLoading(false);
         }
-    }, [isLoading]);
+    }, [isLoading, language]);
 
     const handleTicketSearchSubmit = async () => {
         if (!ticketCodeInput || isLoading) return;
         if (!pendingCameraPlate) {
-            toast.warning("Please scan camera plate first before verifying the ticket!");
+            toast.warning(t[language].toastScanFirst);
             return;
         }
 
@@ -234,13 +347,13 @@ export default function CheckOutPage() {
 
             if (pendingCameraPlate === originalPlate) {
                 setIsPlateMatched(true);
-                populateScanResult(activeSession, pendingCameraPlate, "ExitPending"); 
-                toast.success(`Verification Successful: License plate [${pendingCameraPlate}] matches the parking record.`);
+                populateScanResult(activeSession, pendingCameraPlate, "ExitPending");
+                toast.success(t[language].toastVerificationSuccess);
             } else {
                 setIsPlateMatched(false);
                 setScanResult({
                     type: "MismatchBlock",
-                    plate: originalPlate, 
+                    plate: originalPlate,
                     slot: "BLOCKED",
                     floor: "Mismatched Data",
                     zone: "Security Triggered",
@@ -249,10 +362,10 @@ export default function CheckOutPage() {
                     price: (activeSession.current_fee !== undefined ? activeSession.current_fee : activeSession.currentFee) || 0,
                     vehicleModel: "Mismatch"
                 });
-                toast.error(`License Plate Mismatch: Camera detected [${pendingCameraPlate}], but the parking record shows [${originalPlate}]. Please verify the vehicle before proceeding.`);
+                toast.error(`${t[language].toastPlateMismatchPrefix}${pendingCameraPlate}${t[language].toastPlateMismatchMiddle}${originalPlate}${t[language].toastPlateMismatchSuffix}`);
             }
         } else {
-            toast.error(`Ticket Code [${formattedTicket}] is invalid or already checked out.`);
+            toast.error(`${t[language].toastTicketInvalid} [${formattedTicket}]`);
         }
         setIsLoading(false);
     };
@@ -262,7 +375,7 @@ export default function CheckOutPage() {
         if (scanResult.type !== "ExitPending" && !activeBookingId) return;
 
         setIsLoading(true);
-        toast.dismiss(); 
+        toast.dismiss();
         const { camOut, gateOut } = getOpConfig();
 
         try {
@@ -286,14 +399,14 @@ export default function CheckOutPage() {
                 response.data?.status === "COMPLETED" ||
                 response.data?.payment_status === "PAID"
             ) {
-                toast.success(`Vehicle [${bodyData.license_plate_out}] successfully checked out!`);
-                resetTerminal(true); 
+                toast.success(`${t[language].toastCheckoutSuccess} [${bodyData.license_plate_out}]`);
+                resetTerminal(true);
             } else {
-                throw new Error("Unable to complete vehicle exit. Server returned uncompleted status.");
+                throw new Error(t[language].toastCheckoutFailed);
             }
         } catch (error) {
             const backendMessage = error.message || error.response?.data?.message || error.response?.data?.Message || error.response?.data || error;
-            toast.error(typeof backendMessage === "string" ? backendMessage : "Backend validation rejected this checkout request.");
+            toast.error(typeof backendMessage === "string" ? backendMessage : t[language].toastBackendRejected);
         } finally {
             setIsLoading(false);
         }
@@ -353,7 +466,7 @@ export default function CheckOutPage() {
 
         window.addEventListener("keydown", handleGlobalKeyDown);
         return () => window.removeEventListener("keydown", handleGlobalKeyDown);
-    }, [scanResult, handleCaptureAndRecognize, manualInput, ticketCodeInput, plateNumber, isPlateMatched, pendingCameraPlate, activeBookingId]);
+    }, [scanResult, handleCaptureAndRecognize, manualInput, ticketCodeInput, plateNumber, isPlateMatched, pendingCameraPlate, activeBookingId, language]);
 
     return (
         <div className="w-full flex-1 text-slate-800 dark:text-slate-100 bg-slate-50 dark:bg-slate-950 flex flex-col font-sans box-border select-none p-4 transition-colors duration-200">
@@ -367,15 +480,15 @@ export default function CheckOutPage() {
                     <div className="flex items-center justify-between mb-3 shrink-0">
                         <div className="flex items-center gap-2">
                             <Video size={16} className="text-slate-500 dark:text-slate-400" />
-                            <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-400">Check-Out Camera</h3>
+                            <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-400">{t[language].cameraHeader}</h3>
                         </div>
                         <button
                             onClick={handleCaptureAndRecognize}
                             disabled={isLoading}
                             className="bg-slate-900 dark:bg-slate-600 hover:bg-slate-600 dark:hover:bg-slate-500 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 dark:disabled:text-slate-600 text-white font-bold text-xs px-4 py-2.5 rounded-lg transition-all shadow-md shadow-slate-600/10 dark:shadow-lg dark:shadow-slate-950/50 active:scale-98 flex items-center gap-2 uppercase tracking-wide"
-                            title="Press Enter to trigger snapshot"
+                            title={t[language].scanPlateTitle}
                         >
-                            <Camera size={14} /> Scan Plate <kbd className="bg-slate-600 dark:bg-slate-900 text-slate-100 dark:text-slate-200 px-1 rounded text-[9px] ml-1 font-mono font-normal">Enter</kbd>
+                            <Camera size={14} /> {t[language].btnScanPlate} <kbd className="bg-slate-600 dark:bg-slate-900 text-slate-100 dark:text-slate-200 px-1 rounded text-[9px] ml-1 font-mono font-normal">Enter</kbd>
                         </button>
                     </div>
 
@@ -394,7 +507,7 @@ export default function CheckOutPage() {
                         ) : (
                             <div className="flex flex-col items-center gap-2 text-slate-400 dark:text-slate-600">
                                 <VideoOff size={36} className="opacity-40" />
-                                <p className="text-xs font-semibold">Webcam unavailable — check device permissions</p>
+                                <p className="text-xs font-semibold">{t[language].webcamUnavailable}</p>
                             </div>
                         )}
                     </div>
@@ -405,11 +518,11 @@ export default function CheckOutPage() {
                         {/* NHẬP BIỂN SỐ THỦ CÔNG */}
                         <div className="flex gap-2 items-end">
                             <div className="flex-1">
-                                <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">Manual Plate Entry</label>
+                                <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">{t[language].manualPlateLabel}</label>
                                 <div className="relative">
                                     <input
                                         type="text"
-                                        placeholder="Enter license plate..."
+                                        placeholder={t[language].placeholderPlate}
                                         value={manualInput}
                                         onChange={(e) => setManualInput(e.target.value.toUpperCase())}
                                         className="w-full border border-slate-200 dark:border-slate-800 rounded-lg pl-9 pr-3 py-2 text-xs font-mono font-bold bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 tracking-wider focus:outline-none focus:border-slate-400 dark:focus:border-slate-700 focus:bg-white dark:focus:bg-slate-950 transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600 placeholder:font-sans placeholder:font-normal h-10"
@@ -422,7 +535,7 @@ export default function CheckOutPage() {
                                 disabled={isLoading || !manualInput}
                                 className="bg-slate-800 dark:bg-slate-100 dark:hover:bg-slate-200 hover:bg-slate-700 dark:text-slate-700 text-slate-200 px-4 h-10 rounded-lg text-xs font-bold transition-all border dark:border-slate-200 border-slate-700/50 disabled:bg-slate-50 dark:disabled:bg-slate-900 disabled:text-slate-300 dark:disabled:text-slate-600 disabled:border-slate-100 dark:disabled:border-slate-800 tracking-wide flex items-center justify-center gap-1 shrink-0 active:scale-98"
                             >
-                                <RefreshCcw size={12} className={isLoading ? "animate-spin" : ""} /> Search
+                                <RefreshCw size={12} className={isLoading ? "animate-spin" : ""} /> {t[language].btnSearch}
                             </button>
                         </div>
 
@@ -430,12 +543,12 @@ export default function CheckOutPage() {
                         <div className="flex gap-2 items-end">
                             <div className="flex-1">
                                 <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">
-                                    Ticket Code {activeBookingId && <span className="text-emerald-500 text-[9px] lowercase font-normal">( Not required )</span>}
+                                    {t[language].ticketCodeLabel} {activeBookingId && <span className="text-emerald-500 text-[9px] lowercase font-normal">{t[language].notRequiredLabel}</span>}
                                 </label>
                                 <div className="relative">
                                     <input
                                         type="text"
-                                        placeholder="Enter ticket code..."
+                                        placeholder={t[language].placeholderTicket}
                                         value={ticketCodeInput}
                                         onChange={(e) => setTicketCodeInput(e.target.value.toUpperCase())}
                                         disabled={!pendingCameraPlate || !!activeBookingId}
@@ -449,7 +562,7 @@ export default function CheckOutPage() {
                                 disabled={isLoading || !ticketCodeInput || !pendingCameraPlate || !!activeBookingId}
                                 className="bg-slate-800 dark:bg-slate-100 dark:hover:bg-slate-200 hover:bg-slate-700 dark:text-slate-700 text-slate-200 px-4 h-10 rounded-lg text-xs font-bold transition-all border dark:border-slate-200 border-slate-700/50 disabled:bg-slate-50 dark:disabled:bg-slate-900 disabled:text-slate-300 dark:disabled:text-slate-600 disabled:border-slate-100 dark:disabled:border-slate-800 tracking-wide flex items-center justify-center gap-1 shrink-0 active:scale-98"
                             >
-                                <Search size={12} /> Verify Ticket
+                                <Search size={12} /> {t[language].btnVerifyTicket}
                             </button>
                         </div>
 
@@ -460,7 +573,7 @@ export default function CheckOutPage() {
                 <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md p-4 xl:p-5 flex flex-col justify-between shadow-sm dark:shadow-xl min-h-0 transition-colors duration-200">
                     <div className="space-y-4 flex-1 flex flex-col min-h-0">
                         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5 shrink-0 transition-colors duration-200">
-                            <h3 className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Exit Session Info</h3>
+                            <h3 className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">{t[language].exitSessionHeader}</h3>
                         </div>
 
                         {/* Vùng nội dung kết quả */}
@@ -487,31 +600,31 @@ export default function CheckOutPage() {
                                     {/* THÔNG TIN SO SÁNH BIỂN SỐ */}
                                     <div className="grid grid-cols-2 gap-3">
                                         <div className="bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-lg px-3 py-2 transition-colors duration-200">
-                                            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase block tracking-wider mb-0.5">Camera Scan</span>
-                                            <span className="text-base xl:text-lg font-bold text-slate-800 dark:text-slate-200 font-mono">{pendingCameraPlate || "Awaiting..."}</span>
+                                            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase block tracking-wider mb-0.5">{t[language].cameraScanLabel}</span>
+                                            <span className="text-base xl:text-lg font-bold text-slate-800 dark:text-slate-200 font-mono">{pendingCameraPlate || t[language].awaitingLabel}</span>
                                         </div>
 
                                         <div className={`border rounded-lg px-3 py-2 transition-colors duration-200 ${scanResult.type === "MismatchBlock"
-                                                ? "bg-rose-50 border-rose-200 dark:bg-rose-950/20 dark:border-rose-900"
-                                                : activeBookingId
-                                                    ? "bg-blue-100 border-blue-200 dark:bg-blue-950/100 dark:border-blue-900/60"
-                                                    : "bg-slate-50 dark:bg-slate-950 border-slate-100 dark:border-slate-800"
+                                            ? "bg-rose-50 border-rose-200 dark:bg-rose-950/20 dark:border-rose-900"
+                                            : activeBookingId
+                                                ? "bg-blue-100 border-blue-200 dark:bg-blue-950/100 dark:border-blue-900/60"
+                                                : "bg-slate-50 dark:bg-slate-950 border-slate-100 dark:border-slate-800"
                                             }`}>
                                             <span className={`text-[10px] font-bold uppercase block tracking-wider mb-0.5 ${scanResult.type === "MismatchBlock"
-                                                    ? "text-rose-400 dark:text-rose-500"
-                                                    : activeBookingId
-                                                        ? "text-blue-500 dark:text-blue-400"
-                                                        : "text-slate-400 dark:text-slate-500"
+                                                ? "text-rose-400 dark:text-rose-500"
+                                                : activeBookingId
+                                                    ? "text-blue-500 dark:text-blue-400"
+                                                    : "text-slate-400 dark:text-slate-500"
                                                 }`}>
-                                                {scanResult.type === "MismatchBlock" ? "Ticket Plate (Error)" : activeBookingId ? "Mode" : "Ticket Plate"}
+                                                {scanResult.type === "MismatchBlock" ? t[language].ticketPlateErrorLabel : activeBookingId ? t[language].modeLabel : t[language].ticketPlateLabel}
                                             </span>
                                             <span className={`text-base xl:text-lg font-bold font-mono truncate block ${scanResult.type === "MismatchBlock"
-                                                    ? "text-rose-600 dark:text-rose-400"
-                                                    : activeBookingId
-                                                        ? "text-blue-600 dark:text-blue-400 tracking-wide font-sans font-black" 
-                                                        : "text-slate-800 dark:text-slate-200"
+                                                ? "text-rose-600 dark:text-rose-400"
+                                                : activeBookingId
+                                                    ? "text-blue-600 dark:text-blue-400 tracking-wide font-sans font-black"
+                                                    : "text-slate-800 dark:text-slate-200"
                                                 }`}>
-                                                {scanResult.type === "AwaitingVerification" ? "" : activeBookingId ? "BOOKING" : scanResult.plate}
+                                                {scanResult.type === "AwaitingVerification" ? "" : activeBookingId ? t[language].modeBooking : scanResult.plate}
                                             </span>
                                         </div>
                                     </div>
@@ -520,7 +633,7 @@ export default function CheckOutPage() {
                                     <div className={`relative overflow-hidden rounded-lg p-4 text-white shadow-md dark:shadow-inner border ${scanResult.type === "MismatchBlock" ? "bg-rose-700 border-rose-800" : "bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-950 dark:to-slate-900 border border-slate-800"}`}>
                                         <div className="space-y-1 text-center">
                                             <div className="text-[10px] font-bold uppercase tracking-wider text-slate-300 dark:text-slate-400">
-                                                {scanResult.type === "MismatchBlock" ? "Security Action" : activeBookingId ? "Booking Fee" : "Total Fee"}
+                                                {scanResult.type === "MismatchBlock" ? t[language].securityAction : activeBookingId ? t[language].bookingFee : t[language].totalFee}
                                             </div>
                                             <div className={`font-mono text-3xl xl:text-4xl font-black tracking-wider ${scanResult.type === "MismatchBlock" ? "text-white" : "text-yellow-400 drop-shadow-[0_2px_8px_rgba(234,179,8,0.2)]"}`}>
                                                 {scanResult.type === "MismatchBlock" ? "BLOCKED" : `${scanResult.price.toLocaleString("vi-VN")} VND`}
@@ -534,7 +647,7 @@ export default function CheckOutPage() {
                                                 <span className="truncate">{scanResult.timeIn}</span>
                                             </div>
                                             <div className="text-right font-semibold text-slate-300 dark:text-slate-400 flex items-center justify-end gap-1">
-                                                Duration:
+                                                {t[language].durationLabel}:
                                                 <span className="bg-white/10 dark:bg-slate-800 border border-white/5 dark:border-slate-700 text-white dark:text-slate-200 px-1.5 py-0.5 rounded text-[11px] font-mono font-bold ml-1">
                                                     {scanResult.duration}
                                                 </span>
@@ -546,9 +659,9 @@ export default function CheckOutPage() {
                                 /* IDLE EMPTY PLACEHOLDER */
                                 <div className="flex-1 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-lg flex flex-col items-center justify-center text-center p-5 text-slate-400 dark:text-slate-600 bg-slate-50/50 dark:bg-slate-950/40 my-auto transition-colors duration-200">
                                     <CarFront size={32} className="mb-2 opacity-40 text-slate-400" />
-                                    <p className="text-xs font-black uppercase tracking-widest text-slate-600 dark:text-slate-400">Ready to Scan</p>
+                                    <p className="text-xs font-black uppercase tracking-widest text-slate-600 dark:text-slate-400">{t[language].readyToScan}</p>
                                     <p className="text-xs text-slate-400 dark:text-slate-500 mt-1.5 max-w-[200px] leading-normal">
-                                        Press <kbd className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 px-1 py-0.5 rounded text-[10px] font-mono font-bold shadow-sm">[Enter]</kbd> or Scan Plate camera first, then pass the ticket code.
+                                        {t[language].pressEnterToStart}
                                     </p>
                                 </div>
                             )}
@@ -565,7 +678,7 @@ export default function CheckOutPage() {
                                         disabled={isLoading}
                                         className="w-full bg-blue-600 hover:bg-blue-400 dark:hover:bg-blue-500 text-white py-2.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all active:scale-98 shadow-md shadow-blue-600/10 dark:shadow-lg dark:shadow-blue-950/30"
                                     >
-                                        Confirm <span className="font-mono font-normal opacity-70 text-[10px] ml-1">[Enter]</span>
+                                        {t[language].btnConfirm} <span className="font-mono font-normal opacity-70 text-[10px] ml-1">[Enter]</span>
                                     </button>
                                 )}
                                 {scanResult.type === "MismatchBlock" && (
@@ -573,7 +686,7 @@ export default function CheckOutPage() {
                                         onClick={resetTerminal}
                                         className="w-full bg-rose-700 hover:bg-rose-600 text-white py-2.5 rounded-lg text-xs font-black uppercase tracking-widest text-center shadow-md active:scale-98 animate-pulse"
                                     >
-                                        Reset <span className="font-mono font-normal opacity-70 text-[10px] ml-1">[Enter]</span>
+                                        {t[language].btnReset} <span className="font-mono font-normal opacity-70 text-[10px] ml-1">[Enter]</span>
                                     </button>
                                 )}
                                 {scanResult.type === "AwaitingVerification" && (
@@ -582,19 +695,19 @@ export default function CheckOutPage() {
                                         disabled={isLoading || !ticketCodeInput}
                                         className="w-full bg-slate-800 hover:bg-slate-700 text-white py-2.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all active:scale-98 shadow-md"
                                     >
-                                        Confirm <span className="font-mono font-normal opacity-70 text-[10px] ml-1">[Enter]</span>
+                                        {t[language].btnConfirm} <span className="font-mono font-normal opacity-70 text-[10px] ml-1">[Enter]</span>
                                     </button>
                                 )}
                                 <button
                                     onClick={resetTerminal}
                                     className="w-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 py-2 rounded-lg text-xs font-bold uppercase tracking-wide transition-all active:scale-98 shadow-sm"
                                 >
-                                    Cancel <span className="font-mono font-normal opacity-70 text-[10px] ml-1">[Esc]</span>
+                                    {t[language].btnCancel} <span className="font-mono font-normal opacity-70 text-[10px] ml-1">[Esc]</span>
                                 </button>
                             </>
                         ) : (
                             <button disabled className="w-full bg-slate-50 dark:bg-slate-950 text-slate-400 dark:text-slate-600 py-2.5 rounded-lg text-xs font-bold uppercase tracking-widest border border-slate-200 dark:border-slate-800 cursor-not-allowed text-center transition-colors duration-200">
-                                System Ready
+                                {t[language].systemReady}
                             </button>
                         )}
                     </div>
@@ -614,7 +727,7 @@ export default function CheckOutPage() {
                     <div className="relative max-w-4xl max-h-[85vh] rounded-md overflow-hidden border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl" onClick={(e) => e.stopPropagation()}>
                         <img src={capturedImage} alt="High Resolution Audit" className="w-full h-auto max-h-[85vh] object-contain" />
                         <div className="absolute bottom-0 inset-x-0 bg-slate-900/90 dark:bg-slate-950/80 p-3 text-center border-t border-slate-200 dark:border-slate-800 backdrop-blur-sm">
-                            <p className="font-mono font-bold tracking-widest text-sm text-yellow-500 dark:text-yellow-400">{plateNumber || "No Plate Detected"}</p>
+                            <p className="font-mono font-bold tracking-widest text-sm text-yellow-500 dark:text-yellow-400">{plateNumber || t[language].noPlateDetected}</p>
                         </div>
                     </div>
                 </div>

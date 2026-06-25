@@ -4,8 +4,70 @@ import {
     Sliders, Calendar, RefreshCcw, Info,
     Search, ChevronLeft, ChevronRight, Trash2
 } from "lucide-react";
+import { useLanguage } from "../../hooks/useLanguage";
+
+const t = {
+    vi: {
+        filters: "Bộ lọc",
+        enterPlate: "Nhập biển số xe...",
+        allVehicles: "Tất cả loại xe",
+        motorbike: "Xe máy",
+        car: "Ô tô",
+        allStatuses: "Tất cả trạng thái",
+        statusActive: "Đang đỗ",
+        statusCompleted: "Đã ra",
+        statusLostTicket: "Mất vé",
+        statusUnknown: "Không rõ",
+        from: "Từ ngày",
+        to: "Đến ngày",
+        clearFilters: "Xóa tất cả bộ lọc",
+        headerPlate: "Biển kiểm soát",
+        headerType: "Loại xe",
+        headerZone: "Khu vực",
+        headerCheckIn: "Thời gian vào",
+        headerCheckOut: "Thời gian ra",
+        headerStatus: "Trạng thái",
+        headerFee: "Tổng phí",
+        loading: "Đang tải lịch sử đỗ xe...",
+        noData: "Không tìm thấy lịch sử hoạt động hoặc không có dữ liệu khớp với bộ lọc.",
+        refresh: "Làm mới",
+        page: "Trang",
+        errorLoad: "Không thể tải danh sách dữ liệu từ hệ thống.",
+        errorConnect: "Đã xảy ra lỗi khi kết nối tới máy chủ."
+    },
+    en: {
+        filters: "Filters",
+        enterPlate: "Enter license plate...",
+        allVehicles: "All Vehicles",
+        motorbike: "Motorbike",
+        car: "Car",
+        allStatuses: "All Statuses",
+        statusActive: "Active",
+        statusCompleted: "Completed",
+        statusLostTicket: "Lost Ticket",
+        statusUnknown: "Unknown",
+        from: "From",
+        to: "To",
+        clearFilters: "Clear All Filters",
+        headerPlate: "License Plate",
+        headerType: "Vehicle Type",
+        headerZone: "Parking Zone",
+        headerCheckIn: "Check-in Time",
+        headerCheckOut: "Check-out Time",
+        headerStatus: "Status",
+        headerFee: "Total Fee",
+        loading: "Loading parking history...",
+        noData: "No activity history found or no data matches the selected filters.",
+        refresh: "Refresh",
+        page: "Page",
+        errorLoad: "Failed to load activity logs from the system.",
+        errorConnect: "An error occurred while connecting to the server."
+    }
+};
 
 export default function HistoryPage() {
+    const { language } = useLanguage();
+
     // Dữ liệu và trạng thái tải
     const [activities, setActivities] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
@@ -57,11 +119,11 @@ export default function HistoryPage() {
                 setTotalPages(calculatedPages);
 
             } else {
-                setErrorMessage("Không thể tải danh sách dữ liệu từ hệ thống.");
+                setErrorMessage(t[language].errorLoad);
             }
         } catch (error) {
             console.error("Failed to fetch parking history:", error);
-            setErrorMessage(error.response?.data?.message || "Đã xảy ra lỗi khi kết nối tới máy chủ.");
+            setErrorMessage(error.response?.data?.message || t[language].errorConnect);
         } finally {
             setIsLoading(false);
         }
@@ -117,7 +179,7 @@ export default function HistoryPage() {
             {/* FILTER CONTROLS BAR */}
             <div className="flex flex-wrap items-center gap-3 bg-white dark:bg-slate-900 p-4 rounded-md border border-slate-200 dark:border-slate-800 shadow-sm shrink-0">
                 <div className="flex items-center gap-2 text-base font-bold text-slate-900 dark:text-white mr-2">
-                    <Sliders size={16} className="text-blue-500" /> Filters
+                    <Sliders size={16} className="text-blue-500" /> {t[language].filters}
                 </div>
 
                 {/* Tìm kiếm biển số */}
@@ -125,7 +187,7 @@ export default function HistoryPage() {
                     <Search size={14} className="absolute left-3 text-slate-400" />
                     <input
                         type="text"
-                        placeholder="Enter license plate..."
+                        placeholder={t[language].enterPlate}
                         value={filterPlate}
                         onChange={(e) => handleFilterChange("plate", e.target.value)}
                         className="px-3 py-2 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white rounded-lg outline-none pl-9 pr-3 w-44 focus:bg-white dark:focus:bg-slate-900 transition-all placeholder:font-sans placeholder:font-normal"
@@ -137,9 +199,9 @@ export default function HistoryPage() {
                     value={filterVehicleType}
                     onChange={(e) => handleFilterChange("vehicleType", e.target.value)}
                     className="px-3 py-2 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white rounded-lg outline-none cursor-pointer focus:bg-white dark:focus:bg-slate-900 transition-all">
-                    <option value="">All Vehicles</option>
-                    <option value="1">Motorbike</option>
-                    <option value="2">Car</option>
+                    <option value="">{t[language].allVehicles}</option>
+                    <option value="1">{t[language].motorbike}</option>
+                    <option value="2">{t[language].car}</option>
                 </select>
 
                 {/* Lọc trạng thái */}
@@ -147,15 +209,15 @@ export default function HistoryPage() {
                     value={filterStatus}
                     onChange={(e) => handleFilterChange("status", e.target.value)}
                     className="px-3 py-2 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white rounded-lg outline-none cursor-pointer focus:bg-white dark:focus:bg-slate-900 transition-all">
-                    <option value="">All Statuses</option>
-                    <option value="ACTIVE">Active</option>
-                    <option value="COMPLETED">Completed</option>
-                    <option value="LOST-TICKET">Lost Ticket</option>
+                    <option value="">{t[language].allStatuses}</option>
+                    <option value="ACTIVE">{t[language].statusActive}</option>
+                    <option value="COMPLETED">{t[language].statusCompleted}</option>
+                    <option value="LOST-TICKET">{t[language].statusLostTicket}</option>
                 </select>
 
                 {/* Từ ngày */}
                 <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-900 dark:text-white">
-                    <span className="text-[10px] uppercase font-bold text-slate-400">From</span>
+                    <span className="text-[10px] uppercase font-bold text-slate-400">{t[language].from}</span>
                     <input
                         type="date"
                         value={filterFromDate}
@@ -166,7 +228,7 @@ export default function HistoryPage() {
 
                 {/* Đến ngày */}
                 <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-900 dark:text-white">
-                    <span className="text-[10px] uppercase font-bold text-slate-400">To</span>
+                    <span className="text-[10px] uppercase font-bold text-slate-400">{t[language].to}</span>
                     <input
                         type="date"
                         value={filterToDate}
@@ -180,7 +242,7 @@ export default function HistoryPage() {
                     <button
                         onClick={handleResetFilters}
                         className="ml-auto flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-red-500 hover:text-white border border-red-200 hover:bg-red-600 rounded-lg transition-all dark:border-red-900/50 dark:hover:bg-red-900"
-                        title="Delete All Active Filters">
+                        title={t[language].clearFilters}>
                         <Trash2 size={17} />
                     </button>
                 )}
@@ -200,13 +262,13 @@ export default function HistoryPage() {
                     <table className="w-full text-left text-xs border-collapse relative">
                         <thead>
                             <tr className="text-slate-500 dark:text-slate-400 uppercase font-bold text-[10px] tracking-wider border-b border-slate-100 dark:border-slate-800 sticky top-0 bg-white dark:bg-slate-900 z-10 shadow-[0_1px_0_0_rgba(241,245,249,1)] dark:shadow-[0_1px_0_0_rgba(30,41,59,1)]">
-                                <th className="pb-3 font-semibold pl-2">License Plate</th>
-                                <th className="pb-3 font-semibold">Type</th>
-                                <th className="pb-3 font-semibold">Zone</th>
-                                <th className="pb-3 font-semibold">Check-in Time</th>
-                                <th className="pb-3 font-semibold">Check-out Time</th>
-                                <th className="pb-3 font-semibold">Status</th>
-                                <th className="pb-3 font-semibold text-right pr-2">Total Fee</th>
+                                <th className="pb-3 font-semibold pl-2">{t[language].headerPlate}</th>
+                                <th className="pb-3 font-semibold">{t[language].headerType}</th>
+                                <th className="pb-3 font-semibold">{t[language].headerZone}</th>
+                                <th className="pb-3 font-semibold">{t[language].headerCheckIn}</th>
+                                <th className="pb-3 font-semibold">{t[language].headerCheckOut}</th>
+                                <th className="pb-3 font-semibold">{t[language].headerStatus}</th>
+                                <th className="pb-3 font-semibold text-right pr-2">{t[language].headerFee}</th>
                             </tr>
                         </thead>
 
@@ -216,14 +278,14 @@ export default function HistoryPage() {
                                     <td colSpan="7" className="text-center py-20 text-slate-400 dark:text-slate-500 font-semibold">
                                         <div className="flex flex-col items-center justify-center gap-2">
                                             <RefreshCcw size={20} className="animate-spin text-slate-900 dark:text-white" />
-                                            <span>Loading parking history...</span>
+                                            <span>{t[language].loading}</span>
                                         </div>
                                     </td>
                                 </tr>
                             ) : activities.length === 0 ? (
                                 <tr>
                                     <td colSpan="7" className="text-center py-20 text-slate-400 dark:text-slate-500 italic font-semibold text-sm">
-                                        No activity history found or no data matches the selected filters.
+                                        {t[language].noData}
                                     </td>
                                 </tr>
                             ) : (
@@ -233,16 +295,16 @@ export default function HistoryPage() {
                                             {log.licensePlateIn || log.license_plate || "—"}
                                         </td>
                                         <td className="py-3.5 text-xs font-semibold tracking-wide">
-                                            {String(log.vehicleTypeId || log.vehicle_type) === "2" ? "Car" : "Motorbike"}
+                                            {String(log.vehicleTypeId || log.vehicle_type) === "2" ? t[language].car : t[language].motorbike}
                                         </td>
                                         <td className="py-3.5 font-mono text-amber-700 dark:text-amber-500 font-bold text-sm group-hover:translate-x-0.5 transition-transform origin-left">
                                             {log.zoneName || log.zone_name || "—"}
                                         </td>
                                         <td className="py-3.5 text-slate-800 dark:text-slate-200 font-mono text-[11px]">
-                                            {log.checkInTime || log.check_in_time ? new Date(log.checkInTime || log.check_in_time).toLocaleString("en-US") : "—"}
+                                            {log.checkInTime || log.check_in_time ? new Date(log.checkInTime || log.check_in_time).toLocaleString(language === "vi" ? "vi-VN" : "en-US") : "—"}
                                         </td>
                                         <td className="py-3.5 text-slate-800 dark:text-slate-200 font-mono text-[11px]">
-                                            {log.checkOutTime || log.check_out_time ? new Date(log.checkOutTime || log.check_out_time).toLocaleString("en-US") : "—"}
+                                            {log.checkOutTime || log.check_out_time ? new Date(log.checkOutTime || log.check_out_time).toLocaleString(language === "vi" ? "vi-VN" : "en-US") : "—"}
                                         </td>
                                         <td className="py-3.5">
                                             <span className={`inline-flex text-[9px] px-2 py-0.5 rounded font-bold uppercase tracking-wider border transition-all ${log.status?.toUpperCase() === "COMPLETED"
@@ -253,7 +315,13 @@ export default function HistoryPage() {
                                                         ? "bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400 border-red-200 dark:border-red-900/30"
                                                         : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700"
                                                 }`}>
-                                                {log.status || "UNKNOWN"}
+                                                {log.status?.toUpperCase() === "COMPLETED"
+                                                    ? t[language].statusCompleted
+                                                    : log.status?.toUpperCase() === "ACTIVE"
+                                                        ? t[language].statusActive
+                                                        : log.status?.toUpperCase() === "LOST_TICKET" || log.status?.toUpperCase() === "LOST-TICKET"
+                                                            ? t[language].statusLostTicket
+                                                            : log.status || t[language].statusUnknown}
                                             </span>
                                         </td>
                                         <td className="py-3.5 text-right pr-2 font-mono font-bold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-all">
@@ -275,7 +343,7 @@ export default function HistoryPage() {
                         className="flex items-center gap-2 border border-slate-200 dark:border-slate-700 hover:border-slate-800 dark:hover:border-slate-400 rounded-md px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 active:scale-95 transition-all shadow-sm disabled:opacity-50"
                     >
                         <RefreshCcw size={14} className={isLoading ? "animate-spin" : ""} />
-                        Refresh
+                        {t[language].refresh}
                     </button>
 
                     <div className="flex items-center gap-1">
@@ -293,7 +361,7 @@ export default function HistoryPage() {
                         </button>
 
                         <div className="flex items-center gap-1 px-1">
-                            <span className="font-bold text-slate-800 dark:text-white">Trang {currentPage}</span>
+                            <span className="font-bold text-slate-800 dark:text-white">{t[language].page} {currentPage}</span>
                             <span>/</span>
                             <span className="text-slate-400 dark:text-slate-500">{totalPages}</span>
                         </div>
