@@ -85,24 +85,29 @@ function CapacityPill({ icon: Icon, label, available, total, accentColor }) {
   return (
     <div
       style={{
-        background: "#fff",
-        border: "1px solid #e2e8f0",
-        borderRadius: 14,
-        padding: "16px 18px",
+        background: "#ffffff",
+        border: `1.5px solid ${isFull ? "#dc2626" : "rgb(226, 232, 240)"}`,
+        borderRadius: 16,
+        padding: "18px 18px 14px",
         flex: 1,
+        boxShadow: isFull
+          ? "0 4px 18px rgba(220,38,38,0.1)"
+          : "0 4px 18px rgba(15,23,42,0.08)",
       }}
     >
+      {/* Label row */}
       <div
         style={{
           display: "flex",
           alignItems: "center",
           gap: 6,
           fontSize: 12,
-          color: "#64748b",
+          fontWeight: 600,
+          color: isFull ? "#dc2626" : "#475569",
           marginBottom: 10,
         }}
       >
-        <Icon size={13} color={accentColor} />
+        <Icon size={13} color={isFull ? "#dc2626" : "#1d4ed8"} />
         {label}
         {isFull && (
           <span
@@ -113,34 +118,51 @@ function CapacityPill({ icon: Icon, label, available, total, accentColor }) {
               color: "#dc2626",
               padding: "1px 7px",
               borderRadius: 99,
-              fontWeight: 600,
+              fontWeight: 700,
             }}
           >
             Full
           </span>
         )}
       </div>
-      {/* available / total — red when full */}
-      <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginBottom: 10 }}>
-        <span
+
+      {/* ── Hero number ── */}
+      <div style={{ textAlign: "center", padding: "10px 0 12px" }}>
+        <div
           style={{
-            fontSize: 26,
-            fontWeight: 700,
-            color: isFull ? "#dc2626" : "#0f172a",
+            fontSize: 52,
+            fontWeight: 900,
             lineHeight: 1,
+            color: isFull ? "#dc2626" : "#1d4ed8",
+            letterSpacing: "-0.03em",
+            textShadow: isFull
+              ? "0 2px 16px rgba(220,38,38,0.2)"
+              : "0 2px 16px rgba(29,78,216,0.2)",
           }}
         >
           {available != null ? available : "—"}
-        </span>
-        <span style={{ fontSize: 12, color: isFull ? "#dc2626" : "#94a3b8" }}>
-          / {total ?? "—"} spots
-        </span>
+        </div>
+        <div
+          style={{
+            fontSize: 11,
+            fontWeight: 600,
+            color: isFull ? "#ef4444" : "#1d4ed8",
+            letterSpacing: "0.06em",
+            textTransform: "uppercase",
+            marginTop: 4,
+            opacity: 0.7,
+          }}
+        >
+          available slots
+        </div>
       </div>
+
+      {/* Progress bar */}
       <div
         style={{
-          height: 5,
+          height: 6,
           borderRadius: 99,
-          background: "#e2e8f0",
+          background: isFull ? "#fee2e2" : "#dbeafe",
           overflow: "hidden",
         }}
       >
@@ -149,12 +171,14 @@ function CapacityPill({ icon: Icon, label, available, total, accentColor }) {
             height: "100%",
             borderRadius: 99,
             width: `${pct}%`,
-            background: isFull ? "#ef4444" : accentColor,
+            background: isFull ? "#ef4444" : "#1d4ed8",
             transition: "width 0.6s ease",
           }}
         />
       </div>
-      <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 5 }}>{pct}% occupied</div>
+      <div style={{ fontSize: 11, color: isFull ? "#ef4444" : "#93c5fd", marginTop: 5, textAlign: "right" }}>
+        {pct}% occupied
+      </div>
     </div>
   );
 }
