@@ -29,6 +29,8 @@ namespace ParkingManagement.Services.Helpers
         private static readonly TimeZoneInfo _vnTz = TimeZoneInfo.FindSystemTimeZoneById(
             OperatingSystem.IsWindows() ? "SE Asia Standard Time" : "Asia/Ho_Chi_Minh");
 
+        public static DateTime VnNow => TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, _vnTz);
+
         public static DateTime ConvertToVnTime(DateTime dt)
         {
             if (dt.Kind == DateTimeKind.Utc)

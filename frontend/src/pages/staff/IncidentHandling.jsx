@@ -538,7 +538,7 @@ export default function StaffIncidentHandling() {
 
                 <button
                     onClick={() => resetWorkspace()}
-                    className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 text-white font-bold text-xs rounded-md flex items-center justify-center gap-1.5 transition-colors shadow-sm"
+                    className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 dark:bg-blue-600 dark:hover:bg-blue-500 text-white font-bold text-xs rounded-md flex items-center justify-center gap-1.5 transition-colors shadow-sm"
                 >
                     {t[language].btnNextIssue}
                 </button>
@@ -606,7 +606,7 @@ export default function StaffIncidentHandling() {
                                 <button
                                     type="button"
                                     onClick={() => fetchUserIncidents(userStatusFilter, userSearchQuery)}
-                                    className="bg-blue-600 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white font-bold text-xs px-3 py-1.5 rounded-md transition-colors"
+                                    className="bg-blue-600 hover:bg-blue-500 dark:bg-blue-600 dark:hover:bg-blue-500 text-white font-bold text-xs px-3 py-1.5 rounded-md transition-colors"
                                 >
                                     {t[language].btnSearch}
                                 </button>
@@ -835,7 +835,7 @@ export default function StaffIncidentHandling() {
                                                     <button
                                                         type="submit"
                                                         disabled={isSubmitting}
-                                                        className="w-full py-2 bg-blue-600 hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-700 text-white font-bold text-xs rounded-md shadow-xs flex items-center justify-center gap-1.5 transition-all disabled:opacity-50"
+                                                        className="w-full py-2 bg-blue-600 hover:bg-blue-500 dark:bg-blue-600 dark:hover:bg-blue-500 text-white font-bold text-xs rounded-md shadow-xs flex items-center justify-center gap-1.5 transition-all disabled:opacity-50"
                                                     >
                                                         <CheckCircle size={14} />
                                                         {isSubmitting ? t[language].processing : t[language].btnResolve}
@@ -910,7 +910,7 @@ export default function StaffIncidentHandling() {
                                         className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-md pl-9 pr-3 py-2 text-sm font-bold outline-none focus:bg-white dark:focus:bg-slate-900 focus:border-slate-900 dark:focus:border-slate-400 transition-all placeholder:font-normal"
                                     />
                                 </div>
-                                <button type="submit" disabled={isSearching} className="bg-blue-600 hover:bg-blue-500 dark:bg-blue-800 dark:hover:bg-blue-700 text-white font-bold text-xs px-4 rounded-md flex items-center gap-1.5 transition-colors disabled:opacity-50 whitespace-nowrap">
+                                <button type="submit" disabled={isSearching} className="bg-blue-600 hover:bg-blue-500 dark:bg-blue-600 dark:hover:bg-blue-500 text-white font-bold text-xs px-4 rounded-md flex items-center gap-1.5 transition-colors disabled:opacity-50 whitespace-nowrap">
                                     {t[language].btnFindSession}
                                 </button>
                             </form>
@@ -983,7 +983,7 @@ export default function StaffIncidentHandling() {
                                     <button
                                         type="submit"
                                         disabled={isSubmitting || !foundSession}
-                                        className="w-full sm:w-auto px-6 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white font-bold text-xs rounded-md shadow-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="w-full sm:w-auto px-6 py-2 bg-blue-600 hover:bg-blue-500 dark:bg-blue-600 dark:hover:bg-blue-500 text-white font-bold text-xs rounded-md shadow-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                         {isSubmitting ? t[language].processing : t[language].btnConfirmSystem}
                                     </button>

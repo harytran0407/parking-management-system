@@ -239,7 +239,8 @@ namespace ParkingManagement.Controllers
         [ProducesResponseType(typeof(ActiveSessionResponseDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetActiveSessionByLicensePlate(
             [FromRoute(Name = "license_plate")] string licensePlate,
-            [FromQuery(Name = "ticketSuffix")] string? ticketSuffix = null)
+            [FromQuery(Name = "ticketSuffix")] string? ticketSuffix = null,
+            [FromQuery(Name = "exact")] bool exact = false)
         {
             try
             {
@@ -255,7 +256,7 @@ namespace ParkingManagement.Controllers
                     return BadRequest(new { success = false, error_code = "TICKET_CODE_REQUIRED", message = "Vui lòng nhập chính xác 5 ký tự cuối của mã vé xe." });
                 }
 
-                var response = await _parkingService.GetActiveSessionByLicensePlateAsync(licensePlate, ticketSuffix);
+                var response = await _parkingService.GetActiveSessionByLicensePlateAsync(licensePlate, ticketSuffix, exact);
                 return Ok(response);
             }
             catch (InvalidOperationException ex) when (ex.Message == "QUICK_PAY_ONLY_FOR_WALKIN")

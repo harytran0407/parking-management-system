@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using ParkingManagement.Data;
 using ParkingManagement.Models;
 using ParkingManagement.DTOs;
+using ParkingManagement.Services.Helpers;
 
 namespace ParkingManagement.Repositories
 {
@@ -124,19 +125,32 @@ namespace ParkingManagement.Repositories
             }
         }
 
-        public async Task<ParkingSession?> GetActiveSessionByPlateAsync(string licensePlate)
+        public async Task<ParkingSession?> GetActiveSessionByPlateAsync(string licensePlate, bool exactMatch = false)
         {
             if (string.IsNullOrWhiteSpace(licensePlate)) return null;
 
-            var cleanPlate = licensePlate.Replace("-", "").Replace(".", "").Replace(" ", "").ToUpper();
-
-            return await _context.ParkingSessions
-                .Include(s => s.Zone)
-                .Include(s => s.Booking)
-                    .ThenInclude(b => b.Payments)
-                .Include(s => s.Payments)
-                .Include(s => s.VehicleType)
-                .FirstOrDefaultAsync(s => s.LicensePlateIn.Replace("-", "").Replace(".", "").Replace(" ", "").ToUpper() == cleanPlate && s.Status == "ACTIVE");
+            if (exactMatch)
+            {
+                var upperPlate = licensePlate.Trim().ToUpper();
+                return await _context.ParkingSessions
+                    .Include(s => s.Zone)
+                    .Include(s => s.Booking)
+                        .ThenInclude(b => b.Payments)
+                    .Include(s => s.Payments)
+                    .Include(s => s.VehicleType)
+                    .FirstOrDefaultAsync(s => s.LicensePlateIn == upperPlate && s.Status == "ACTIVE");
+            }
+            else
+            {
+                var cleanPlate = licensePlate.Replace("-", "").Replace(".", "").Replace(" ", "").ToUpper();
+                return await _context.ParkingSessions
+                    .Include(s => s.Zone)
+                    .Include(s => s.Booking)
+                        .ThenInclude(b => b.Payments)
+                    .Include(s => s.Payments)
+                    .Include(s => s.VehicleType)
+                    .FirstOrDefaultAsync(s => s.LicensePlateIn.Replace("-", "").Replace(".", "").Replace(" ", "").ToUpper() == cleanPlate && s.Status == "ACTIVE");
+            }
         }
 
         public async Task<ParkingSession?> GetActiveSessionByTicketCodeAsync(string ticketCode)
@@ -173,7 +187,7 @@ namespace ParkingManagement.Repositories
 
             string oldStatus = slot.Status ?? "UNKNOWN";
             slot.Status = status.ToUpper();
-            slot.LastUpdated = DateTime.Now;
+            slot.LastUpdated = ParkingCalculationHelper.VnNow;
 
             var statusLog = new SlotStatusLog
             {
@@ -182,7 +196,7 @@ namespace ParkingManagement.Repositories
                 OldStatus = oldStatus,
                 NewStatus = status.ToUpper(),
                 ChangedBy = staffId ?? "SYSTEM",
-                ChangedAt = DateTime.Now,
+                ChangedAt = ParkingCalculationHelper.VnNow,
                 Reason = string.IsNullOrWhiteSpace(reason) ? "No reason provided" : reason,
                 EstimatedDurationMinutes = estimatedDuration
             };
@@ -476,7 +490,7 @@ namespace ParkingManagement.Repositories
                 PaymentMethod = "CASH",
                 Status = "SUCCESS",
                 UserId = null,
-                PaymentTime = DateTime.Now,
+                PaymentTime = ParkingCalculationHelper.VnNow,
                 TransactionId = "MOCK_" + Guid.NewGuid().ToString("N").Substring(0, 12).ToUpper()
             };
 
