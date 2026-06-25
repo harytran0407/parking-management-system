@@ -290,7 +290,7 @@ export default function ManagerStaff() {
                               src={
                                 staff.avatar_url.startsWith("http://") || staff.avatar_url.startsWith("https://")
                                   ? staff.avatar_url
-                                  : `${(import.meta.env.VITE_API_BASE_URL || "http://localhost:5077").replace("/api/v1", "")}${staff.avatar_url}`
+                                  : `${(import.meta.env.VITE_API_BASE_URL || "http://localhost:8080").replace("/api/v1", "")}${staff.avatar_url}`
                               }
                               alt={staff.full_name}
                               className="w-full h-full object-cover"

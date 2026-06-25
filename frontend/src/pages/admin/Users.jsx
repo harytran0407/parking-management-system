@@ -288,9 +288,9 @@ export default function AdminUsers() {
         toast.error(language === "en" ? `Server Error: ${err.message}` : `Lỗi Máy chủ: ${err.message}`);
       } else if (!status || status === 0) {
         if (language === "en") {
-          toast.error("Cannot reach server. Make sure backend is running on port 5077.");
+          toast.error("Cannot reach server. Make sure backend is running on port 8080.");
         } else {
-          toast.error("Không thể kết nối đến máy chủ. Hãy đảm bảo backend đang chạy tại cổng 5077.");
+          toast.error("Không thể kết nối đến máy chủ. Hãy đảm bảo backend đang chạy tại cổng 8080.");
         }
       } else {
         toast.error(language === "en" ? `Failed to update role: ${msg}` : `Cập nhật vai trò thất bại: ${msg}`);
@@ -614,7 +614,7 @@ export default function AdminUsers() {
                                   src={
                                     user.avatar_url.startsWith("http://") || user.avatar_url.startsWith("https://")
                                       ? user.avatar_url
-                                      : `${(import.meta.env.VITE_API_BASE_URL || "http://localhost:5077").replace("/api/v1", "")}${user.avatar_url}`
+                                      : `${(import.meta.env.VITE_API_BASE_URL || "http://localhost:8080").replace("/api/v1", "")}${user.avatar_url}`
                                   }
                                   alt={uFullName || user.username}
                                   className="w-full h-full object-cover"

@@ -112,44 +112,27 @@ namespace ParkingManagement.Services
         // SỬA SAI LỆCH THÔNG TIN XE 
         public async Task<MismatchCorrectionResponseDto> CorrectMismatchAsync(MismatchCorrectionRequestDto dto, string staffId)
         {
-            if (string.IsNullOrWhiteSpace(dto.SlotName))
+            if (string.IsNullOrWhiteSpace(dto.OriginalLicensePlate))
             {
-                throw new ArgumentException("SLOT_NAME_CANNOT_BE_EMPTY");
+                throw new ArgumentException("ORIGINAL_PLATE_REQUIRED");
             }
-            var slot = await _parkingRepository.GetSlotByNameAsync(dto.SlotName.Trim().ToUpper());
-            if (slot == null)
-            {
-                throw new KeyNotFoundException("SLOT_NOT_FOUND");
-            }
-            if (string.IsNullOrEmpty(slot.CurrentSessionId))
-            {
-                throw new InvalidOperationException("SLOT_IS_CURRENTLY_EMPTY_NO_ACTIVE_SESSION");
-            }
-            var currentSession = await _parkingRepository.GetActiveSessionByIdAsync(slot.CurrentSessionId);
+            var currentSession = await _parkingRepository.GetActiveSessionByPlateAsync(dto.OriginalLicensePlate.Trim().ToUpper());
             if (currentSession == null)
             {
-                throw new KeyNotFoundException("SESSION_NOT_FOUND_FOR_THIS_SLOT");
-            }
-            if (currentSession.LicensePlateIn != dto.OriginalLicensePlate?.Trim().ToUpper())
-            {
-                throw new InvalidOperationException("CONCURRENCY_CONFLICT_PLATE_MISMATCH");
-            }
-            if (currentSession.LicensePlateIn != dto.OriginalLicensePlate?.Trim().ToUpper())
-            {
-                throw new InvalidOperationException("CONCURRENCY_CONFLICT_PLATE_MISMATCH");
+                throw new KeyNotFoundException("SESSION_NOT_FOUND_FOR_THIS_PLATE");
             }
             DateTime correctionTime = DateTime.Now;
             var conflictingSession = await _parkingRepository.GetActiveSessionByPlateAsync(dto.CorrectedLicensePlate.Trim().ToUpper());
             if (conflictingSession != null && conflictingSession.SessionId != currentSession.SessionId)
             {
-                throw new InvalidOperationException("LICENSE_PLATE_ALREADY_ACTIVE_IN_ANOTHER_SLOT");
+                throw new InvalidOperationException("LICENSE_PLATE_ALREADY_ACTIVE_IN_ANOTHER_SESSION");
             }
             var incident = new IncidentLog
             {
                 SessionId = currentSession.SessionId,
                 ReportedBy = staffId,
                 IssueType = "WRONG_SLOT",
-                Description = dto.Reason ?? $"Sửa đổi biển số tại ô {slot.SlotName} từ {dto.OriginalLicensePlate} thành {dto.CorrectedLicensePlate}.",
+                Description = dto.Reason ?? $"Sửa đổi biển số từ {dto.OriginalLicensePlate} thành {dto.CorrectedLicensePlate}.",
                 ReportTime = correctionTime,
                 Status = "RESOLVED"
             };
@@ -167,7 +150,7 @@ namespace ParkingManagement.Services
             return new MismatchCorrectionResponseDto
             {
                 Success = true,
-                Message = $"Nhận diện sai lệch tại ô {slot.SlotName} đã được sửa đổi thành công.",
+                Message = $"Nhận diện sai lệch biển số {dto.OriginalLicensePlate} đã được sửa đổi thành công thành {dto.CorrectedLicensePlate}.",
                 Data = new MismatchCorrectionDataDto
                 {
                     IncidentLogId = incident.LogId,

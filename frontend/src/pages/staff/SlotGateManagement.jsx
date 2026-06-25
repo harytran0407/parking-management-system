@@ -6,9 +6,108 @@ import {
   Car, Layers, Trash2, Activity, ParkingSquare, Wrench, CheckCircle2,
   Calendar, ChevronLeft, ChevronRight, Users
 } from "lucide-react";
+import { useLanguage } from "../../hooks/useLanguage";
+
+const t = {
+  vi: {
+    allFloors: "Tất cả các tầng",
+    floorLabel: "Tầng",
+    totalSlots: "Tổng số ô",
+    available: "Còn trống",
+    occupied: "Có xe",
+    reserved: "Đã đặt",
+    maintenance: "Bảo trì",
+    filters: "Bộ lọc",
+    allVehicles: "Tất cả loại xe",
+    motorbike: "Xe máy",
+    car: "Ô tô",
+    allStatuses: "Tất cả trạng thái",
+    refresh: "Làm mới",
+    clearFilters: "Xóa bộ lọc",
+    slotMap: "Sơ đồ ô đỗ",
+    selectedCount: "đã chọn",
+    clickSelect: "Click để chọn",
+    loadingSlots: "Đang tải danh sách ô đỗ...",
+    noSlots: "Không tìm thấy ô đỗ phù hợp với bộ lọc.",
+    page: "Trang",
+    updateStatusTitle: "Cập nhật trạng thái ô đỗ",
+    selectedSlot: "Ô đỗ đã chọn",
+    changeStatusLabel: "Đổi trạng thái thành",
+    reopenSlotOpt: "AVAILABLE — Mở lại ô đỗ",
+    reopenSlotsOpt: "AVAILABLE — Mở lại các ô đỗ",
+    maintenanceOpt: "MAINTENANCE — Đưa vào bảo trì",
+    estDurationLabel: "Thời gian dự kiến (phút)",
+    reasonLabel: "Lý do",
+    reasonMaintPlaceholder: "vd: Hỏng cảm biến, vệ sinh...",
+    reasonAvailPlaceholder: "vd: Đã sửa xong, giải phóng ô đỗ...",
+    reasonBulkPlaceholder: "vd: Bảo trì định kỳ hàng loạt...",
+    cancelBtn: "Hủy (Esc)",
+    saving: "Đang lưu...",
+    confirmUpdate: "Xác nhận cập nhật",
+    bulkUpdateTitle: "Cập nhật hàng loạt ô đỗ",
+    slotsSelectedLabel: "ô đỗ đã chọn",
+    confirmBulkUpdateBtn: "Xác nhận cập nhật",
+    loadingStats: "Đang tải thống kê phân khu...",
+    errorLoadSlots: "Không thể tải danh sách ô đỗ.",
+    toastUpdatingSlot: "Đang cập nhật ô",
+    toastUpdateSuccess: "Cập nhật thành công ô",
+    toastUpdateError: "Lỗi cập nhật trạng thái.",
+    toastBulkUpdating: "Đang cập nhật",
+    toastBulkSuccess: "Cập nhật thành công",
+    toastBulkError: "Lỗi cập nhật hàng loạt.",
+  },
+  en: {
+    allFloors: "All Floors",
+    floorLabel: "Floor",
+    totalSlots: "Total Slots",
+    available: "Available",
+    occupied: "Occupied",
+    reserved: "Reserved",
+    maintenance: "Maintenance",
+    filters: "Filters",
+    allVehicles: "All Vehicles",
+    motorbike: "Motorbike",
+    car: "Car",
+    allStatuses: "All Statuses",
+    refresh: "Refresh",
+    clearFilters: "Clear Filters",
+    slotMap: "Slot Map",
+    selectedCount: "selected",
+    clickSelect: "Click to select",
+    loadingSlots: "Loading parking slots...",
+    noSlots: "No slots found for selected filters.",
+    page: "Page",
+    updateStatusTitle: "Update Slot Status",
+    selectedSlot: "Selected Slot",
+    changeStatusLabel: "Change Status To",
+    reopenSlotOpt: "AVAILABLE — Reopen slot",
+    reopenSlotsOpt: "AVAILABLE — Reopen slots",
+    maintenanceOpt: "MAINTENANCE — Put to maintenance",
+    estDurationLabel: "Estimated Duration (minutes)",
+    reasonLabel: "Reason",
+    reasonMaintPlaceholder: "e.g. Damaged sensor, cleaning...",
+    reasonAvailPlaceholder: "e.g. Maintenance completed...",
+    reasonBulkPlaceholder: "e.g. Bulk scheduled maintenance...",
+    cancelBtn: "Cancel (Esc)",
+    saving: "Saving...",
+    confirmUpdate: "Confirm Update",
+    bulkUpdateTitle: "Bulk Update Slots",
+    slotsSelectedLabel: "Slots Selected",
+    confirmBulkUpdateBtn: "Confirm Bulk Update",
+    loadingStats: "Loading Zone stats...",
+    errorLoadSlots: "Failed to load parking slots.",
+    toastUpdatingSlot: "Updating slot",
+    toastUpdateSuccess: "Successfully updated slot",
+    toastUpdateError: "Failed to update status.",
+    toastBulkUpdating: "Updating",
+    toastBulkSuccess: "Successfully updated",
+    toastBulkError: "Failed to bulk update status.",
+  }
+};
 
 // ─── Zone Header Card ────────────────────────────────────────────────────────
 function ZoneHeaderCard({ zone }) {
+  const { language } = useLanguage();
   const {
     zoneName, capacity, occupiedCount, bookedCount,
     maintenanceCount, availableCapacity, isAggregate, floorNumber
@@ -19,7 +118,7 @@ function ZoneHeaderCard({ zone }) {
   const getPercentage = (val) => capacity > 0 ? ((val / capacity) * 100).toFixed(1) : 0;
 
   // Tự động chuyển đổi tiêu đề: Nếu là card tổng hợp (isAggregate) thì hiển thị "All Floors", ngược lại hiển thị tầng tương ứng
-  const displayTitle = isAggregate ? "All Floors" : `Floor ${floorNumber}`;
+  const displayTitle = isAggregate ? t[language].allFloors : `${t[language].floorLabel} ${floorNumber}`;
 
   return (
     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-4 shadow-sm space-y-4">
@@ -43,7 +142,7 @@ function ZoneHeaderCard({ zone }) {
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {/* Total Slots */}
         <div className="p-3 bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 rounded-lg text-center flex flex-col justify-center items-center">
-          <span className="text-xs font-bold text-slate-400 uppercase block mb-1">Total Slots</span>
+          <span className="text-xs font-bold text-slate-400 uppercase block mb-1">{t[language].totalSlots}</span>
           <span className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white ">
             {capacity}
           </span>
@@ -52,7 +151,7 @@ function ZoneHeaderCard({ zone }) {
         {/* Available */}
         <div className="p-3 bg-emerald-100/100 dark:bg-emerald-950/20 border border-emerald-100/50 dark:border-emerald-900/30 rounded-lg text-center flex flex-col justify-center items-center">
           <span className="text-xs font-bold text-emerald-500 uppercase block mb-1">
-            Available ({getPercentage(availableCapacity)}%)
+            {t[language].available} ({getPercentage(availableCapacity)}%)
           </span>
           <span className="text-2xl md:text-3xl font-bold text-emerald-600 dark:text-emerald-400 ">
             {availableCapacity}
@@ -62,7 +161,7 @@ function ZoneHeaderCard({ zone }) {
         {/* Occupied */}
         <div className="p-3 bg-red-100/100 dark:bg-red-950/20 border border-red-100/50 dark:border-red-900/30 rounded-lg text-center flex flex-col justify-center items-center">
           <span className="text-xs font-bold text-red-500 uppercase block mb-1">
-            Occupied ({getPercentage(occupiedCount)}%)
+            {t[language].occupied} ({getPercentage(occupiedCount)}%)
           </span>
           <span className="text-2xl md:text-3xl font-bold text-red-600 dark:text-red-400 ">
             {occupiedCount}
@@ -72,7 +171,7 @@ function ZoneHeaderCard({ zone }) {
         {/* Booked / Reserved */}
         <div className="p-3 bg-amber-100/100 dark:bg-amber-950/20 border border-amber-100/50 dark:border-amber-900/30 rounded-lg text-center flex flex-col justify-center items-center">
           <span className="text-xs font-bold text-amber-500 uppercase block mb-1">
-            Reserved ({getPercentage(bookedCount)}%)
+            {t[language].reserved} ({getPercentage(bookedCount)}%)
           </span>
           <span className="text-2xl md:text-3xl font-bold text-amber-600 dark:text-amber-400 ">
             {bookedCount}
@@ -82,7 +181,7 @@ function ZoneHeaderCard({ zone }) {
         {/* Maintenance */}
         <div className="p-3 bg-slate-300 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-center col-span-2 md:col-span-1 flex flex-col justify-center items-center">
           <span className="text-xs font-bold text-slate-400 uppercase block mb-1">
-            Maintenance ({getPercentage(maintenanceCount)}%)
+            {t[language].maintenance} ({getPercentage(maintenanceCount)}%)
           </span>
           <span className="text-2xl md:text-3xl font-bold text-slate-600 dark:text-slate-400 ">
             {maintenanceCount}
@@ -96,28 +195,28 @@ function ZoneHeaderCard({ zone }) {
           <div
             style={{ width: `${(availableCapacity / totalCalculated) * 100}%` }}
             className="bg-emerald-500 transition-all duration-500"
-            title={`Available: ${availableCapacity}`}
+            title={`${t[language].available}: ${availableCapacity}`}
           />
         )}
         {occupiedCount > 0 && (
           <div
             style={{ width: `${(occupiedCount / totalCalculated) * 100}%` }}
             className="bg-red-500 transition-all duration-500"
-            title={`Occupied: ${occupiedCount}`}
+            title={`${t[language].occupied}: ${occupiedCount}`}
           />
         )}
         {bookedCount > 0 && (
           <div
             style={{ width: `${(bookedCount / totalCalculated) * 100}%` }}
             className="bg-amber-500 transition-all duration-500"
-            title={`Booked: ${bookedCount}`}
+            title={`${t[language].reserved}: ${bookedCount}`}
           />
         )}
         {maintenanceCount > 0 && (
           <div
             style={{ width: `${(maintenanceCount / totalCalculated) * 100}%` }}
             className="bg-slate-400 dark:bg-slate-500 transition-all duration-500"
-            title={`Maintenance: ${maintenanceCount}`}
+            title={`${t[language].maintenance}: ${maintenanceCount}`}
           />
         )}
       </div>
@@ -130,6 +229,7 @@ function ZoneHeaderCard({ zone }) {
 
 // ─── Slot Card ───────────────────────────────────────────────────────────────
 function SlotCard({ slot, isSelected, onClick }) {
+  const { language } = useLanguage();
   const isAvailable = slot.status === "AVAILABLE";
   const isMaintenance = slot.status === "MAINTENANCE";
 
@@ -174,13 +274,13 @@ function SlotCard({ slot, isSelected, onClick }) {
       {isMaintenance && (
         <div className="mt-1.5 flex items-center gap-1">
           <Wrench size={10} className="text-slate-300" />
-          <span className="text-[10px] font-semibold text-slate-300">Maintenance</span>
+          <span className="text-[10px] font-semibold text-slate-300">{t[language].maintenance}</span>
         </div>
       )}
 
       {isAvailable && (
         <div className="mt-1.5">
-          <span className="text-[10px] font-semibold text-emerald-200">Available</span>
+          <span className="text-[10px] font-semibold text-emerald-200">{t[language].available}</span>
         </div>
       )}
     </div>
@@ -189,6 +289,8 @@ function SlotCard({ slot, isSelected, onClick }) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function SlotGateManagementPage() {
+  const { language } = useLanguage();
+
   // Filter State
   const [selectedFloor, setSelectedFloor] = useState("");
   const [selectedZone, setSelectedZone] = useState("");
@@ -261,11 +363,11 @@ export default function SlotGateManagementPage() {
       }
     } catch (err) {
       console.error("Fetch Slots Error:", err);
-      toast.error(err.response?.data?.message || "Không thể tải danh sách ô đỗ.");
+      toast.error(err.response?.data?.message || t[language].errorLoadSlots);
     } finally {
       setIsFetchingSlots(false);
     }
-  }, [selectedFloor, selectedZone, selectedVehicleType, selectedStatus, currentPage, pageSize]);
+  }, [selectedFloor, selectedZone, selectedVehicleType, selectedStatus, currentPage, pageSize, language]);
 
   // ── Effects ───────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -330,21 +432,21 @@ export default function SlotGateManagementPage() {
     if (e) e.preventDefault();
     if (!activeSlot) return;
     setIsUpdatingSlot(true);
-    const toastId = toast.loading(`Đang cập nhật ô ${activeSlot.slot_name}...`);
+    const toastId = toast.loading(`${t[language].toastUpdatingSlot} ${activeSlot.slot_name}...`);
     try {
       await api.put(`/parking/slots/${activeSlot.slot_id}/status`, {
         status: newSlotStatus,
         reason: maintenanceReason,
         estimated_duration_minutes: Number(estDuration),
       });
-      toast.success(`Cập nhật thành công ô ${activeSlot.slot_name} → [${newSlotStatus}].`, { id: toastId });
+      toast.success(`${t[language].toastUpdateSuccess} ${activeSlot.slot_name} → [${newSlotStatus}].`, { id: toastId });
       setActiveSlot(null);
       setSelectedSlotIds([]);
       setMaintenanceReason("");
       setEstDuration(60);
       await Promise.all([fetchSlots(), fetchZoneStats()]);
     } catch (err) {
-      toast.error(err.response?.data?.message || "Lỗi cập nhật trạng thái.", { id: toastId });
+      toast.error(err.response?.data?.message || t[language].toastUpdateError, { id: toastId });
     } finally {
       setIsUpdatingSlot(false);
     }
@@ -354,7 +456,7 @@ export default function SlotGateManagementPage() {
     if (e) e.preventDefault();
     if (selectedSlotIds.length === 0) return;
     setIsBulkUpdating(true);
-    const toastId = toast.loading(`Đang cập nhật ${selectedSlotIds.length} ô đỗ...`);
+    const toastId = toast.loading(`${t[language].toastBulkUpdating} ${selectedSlotIds.length} ${t[language].slotsSelectedLabel}...`);
     try {
       await api.put("/parking/slots/bulk-status", {
         slot_ids: selectedSlotIds,
@@ -362,14 +464,14 @@ export default function SlotGateManagementPage() {
         reason: bulkReason,
         estimated_duration_minutes: Number(bulkEstDuration),
       });
-      toast.success(`Cập nhật thành công ${selectedSlotIds.length} ô đỗ → [${bulkStatus}].`, { id: toastId });
+      toast.success(`${t[language].toastBulkSuccess} ${selectedSlotIds.length} ${t[language].slotsSelectedLabel} → [${bulkStatus}].`, { id: toastId });
       setSelectedSlotIds([]);
       setActiveSlot(null);
       setBulkReason("");
       setBulkEstDuration(60);
       await Promise.all([fetchSlots(), fetchZoneStats()]);
     } catch (err) {
-      toast.error(err.response?.data?.message || "Lỗi cập nhật hàng loạt.", { id: toastId });
+      toast.error(err.response?.data?.message || t[language].toastBulkError, { id: toastId });
     } finally {
       setIsBulkUpdating(false);
     }
@@ -432,7 +534,7 @@ export default function SlotGateManagementPage() {
         {isFetchingZones && zoneStats.length === 0 ? (
           <div className="flex items-center gap-2 text-sm text-slate-400 p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg">
             <RefreshCw size={14} className="animate-spin text-blue-500" />
-            <span>Đang tải thống kê Zone...</span>
+            <span>{t[language].loadingStats}</span>
           </div>
         ) : !hasHeaderFilter && aggregatedZone ? (
           // Không có filter → hiển thị 1 card tổng hợp tất cả zones
@@ -449,7 +551,7 @@ export default function SlotGateManagementPage() {
       <div className="flex flex-wrap items-center gap-3 bg-white dark:bg-slate-900 p-4 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm">
         <div className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-white mr-1">
           <Sliders size={15} className="text-blue-500" />
-          Filters
+          {t[language].filters}
         </div>
 
         {/* Floor */}
@@ -458,10 +560,10 @@ export default function SlotGateManagementPage() {
           onChange={(e) => handleFilterChange("floor", e.target.value)}
           className="px-3 py-2 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-semibold text-slate-900 dark:text-white rounded-lg outline-none cursor-pointer"
         >
-          <option value="">All Floors</option>
-          <option value="1">Floor 1</option>
-          <option value="2">Floor 2</option>
-          <option value="3">Floor 3</option>
+          <option value="">{t[language].allFloors}</option>
+          <option value="1">{t[language].floorLabel} 1</option>
+          <option value="2">{t[language].floorLabel} 2</option>
+          <option value="3">{t[language].floorLabel} 3</option>
         </select>
 
         {/* Vehicle Type */}
@@ -470,9 +572,9 @@ export default function SlotGateManagementPage() {
           onChange={(e) => handleFilterChange("vehicleType", e.target.value)}
           className="px-3 py-2 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-semibold text-slate-900 dark:text-white rounded-lg outline-none cursor-pointer"
         >
-          <option value="">All Vehicles</option>
-          <option value="1">Motorbike</option>
-          <option value="2">Car</option>
+          <option value="">{t[language].allVehicles}</option>
+          <option value="1">{t[language].motorbike}</option>
+          <option value="2">{t[language].car}</option>
         </select>
 
         {/* Status – chỉ giữ AVAILABLE & MAINTENANCE */}
@@ -481,9 +583,9 @@ export default function SlotGateManagementPage() {
           onChange={(e) => handleFilterChange("status", e.target.value)}
           className="px-3 py-2 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-semibold text-slate-900 dark:text-white rounded-lg outline-none cursor-pointer"
         >
-          <option value="">All Statuses</option>
-          <option value="AVAILABLE">Available</option>
-          <option value="MAINTENANCE">Maintenance</option>
+          <option value="">{t[language].allStatuses}</option>
+          <option value="AVAILABLE">{t[language].available}</option>
+          <option value="MAINTENANCE">{t[language].maintenance}</option>
         </select>
 
         {/* Refresh button */}
@@ -493,7 +595,7 @@ export default function SlotGateManagementPage() {
           title="Refresh data"
         >
           <RefreshCw size={13} className={isFetchingSlots || isFetchingZones ? "animate-spin" : ""} />
-          Refresh
+          {t[language].refresh}
         </button>
 
         {hasActiveFilters && (
@@ -502,7 +604,7 @@ export default function SlotGateManagementPage() {
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-red-500 hover:text-white border border-red-200 hover:bg-red-600 dark:border-red-900/50 dark:hover:bg-red-900 rounded-lg transition-all"
           >
             <Trash2 size={13} />
-            Clear Filters
+            {t[language].clearFilters}
           </button>
         )}
       </div>
@@ -516,16 +618,16 @@ export default function SlotGateManagementPage() {
           <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
             <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <Grid size={15} className="text-blue-500" />
-              Slot Map
+              {t[language].slotMap}
               {selectedFloor && (
                 <span className="text-xs font-semibold px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-md flex items-center gap-1">
-                  <Layers size={11} /> Floor {selectedFloor}
+                  <Layers size={11} /> {t[language].floorLabel} {selectedFloor}
                 </span>
               )}
             </h3>
             {selectedSlotIds.length > 0 && (
               <span className="text-xs font-bold px-2 py-1 bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900/50 rounded-lg">
-                {selectedSlotIds.length} selected
+                {selectedSlotIds.length} {t[language].selectedCount}
               </span>
             )}
           </div>
@@ -534,14 +636,14 @@ export default function SlotGateManagementPage() {
           <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs font-semibold mb-4">
             <span className="flex items-center gap-1.5">
               <span className="w-3 h-3 rounded bg-emerald-600 inline-block" />
-              <span className="text-emerald-700 dark:text-emerald-400">Available</span>
+              <span className="text-emerald-700 dark:text-emerald-400">{t[language].available}</span>
             </span>
             <span className="flex items-center gap-1.5">
               <span className="w-3 h-3 rounded bg-slate-500 inline-block" />
-              <span className="text-slate-500 dark:text-slate-400">Maintenance</span>
+              <span className="text-slate-500 dark:text-slate-400">{t[language].maintenance}</span>
             </span>
             <span className="flex items-center gap-1.5 ml-auto text-slate-400 dark:text-slate-500">
-              Click to select
+              {t[language].clickSelect}
             </span>
           </div>
 
@@ -550,12 +652,12 @@ export default function SlotGateManagementPage() {
             {isFetchingSlots && slotsData.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full py-20 text-slate-400 gap-2">
                 <RefreshCw size={22} className="animate-spin text-blue-500" />
-                <span className="text-sm font-semibold">Loading parking slots...</span>
+                <span className="text-sm font-semibold">{t[language].loadingSlots}</span>
               </div>
             ) : slotsData.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full py-20 text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-lg">
                 <ParkingSquare size={32} className="mb-2 opacity-30" />
-                <span className="text-sm">No slots found for selected filters.</span>
+                <span className="text-sm">{t[language].noSlots}</span>
               </div>
             ) : (
               <div
@@ -587,7 +689,7 @@ export default function SlotGateManagementPage() {
                 <ChevronLeft size={14} />
               </button>
               <span className="text-xs font-bold text-slate-500">
-                Page {currentPage} / {totalPages}
+                {t[language].page} {currentPage} / {totalPages}
               </span>
               <button
                 disabled={currentPage === totalPages}
@@ -605,43 +707,43 @@ export default function SlotGateManagementPage() {
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-5 shadow-sm flex flex-col min-h-[480px] animate-in fade-in slide-in-from-right-4 duration-200">
             <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 pb-3 border-b border-slate-100 dark:border-slate-800 mb-4">
               <Settings size={15} className="text-blue-500" />
-              Update Slot Status
+              {t[language].updateStatusTitle}
             </h3>
 
             <form onSubmit={handleUpdateSlotStatus} className="flex flex-col flex-1 gap-4">
               {/* Slot info */}
               <div className="p-3 bg-blue-50/60 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30 rounded-lg flex justify-between items-center">
                 <div>
-                  <span className="text-xs font-semibold text-blue-500 uppercase block">Selected Slot</span>
+                  <span className="text-xs font-semibold text-blue-500 uppercase block">{t[language].selectedSlot}</span>
                   <span className="text-base font-bold text-slate-900 dark:text-white">{activeSlot.slot_name}</span>
-                  <span className="text-xs text-slate-500 dark:text-slate-400 block">{activeSlot.zone} — Floor {activeSlot.floor}</span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400 block">{activeSlot.zone} — {t[language].floorLabel} {activeSlot.floor}</span>
                 </div>
                 <span className={`text-xs font-bold px-2.5 py-1 rounded-lg border ${activeSlot.status === "AVAILABLE"
                   ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/50"
                   : "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700"
                   }`}>
-                  {activeSlot.status}
+                  {activeSlot.status === "AVAILABLE" ? t[language].available : t[language].maintenance}
                 </span>
               </div>
 
               <div className="space-y-4 flex-1">
                 {/* Change to */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 uppercase mb-1.5">Change Status To</label>
+                  <label className="block text-xs font-bold text-slate-400 uppercase mb-1.5">{t[language].changeStatusLabel}</label>
                   <select
                     value={newSlotStatus}
                     onChange={(e) => setNewSlotStatus(e.target.value)}
                     className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 text-sm text-slate-900 dark:text-white font-semibold outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
                   >
-                    <option value="AVAILABLE">AVAILABLE — Mở lại ô đỗ</option>
-                    <option value="MAINTENANCE">MAINTENANCE — Đưa vào bảo trì</option>
+                    <option value="AVAILABLE">{t[language].reopenSlotOpt}</option>
+                    <option value="MAINTENANCE">{t[language].maintenanceOpt}</option>
                   </select>
                 </div>
 
                 {/* Duration (maintenance only) */}
                 {newSlotStatus === "MAINTENANCE" && (
                   <div className="animate-in fade-in duration-200">
-                    <label className="block text-xs font-bold text-slate-400 uppercase mb-1.5">Estimated Duration (minutes)</label>
+                    <label className="block text-xs font-bold text-slate-400 uppercase mb-1.5">{t[language].estDurationLabel}</label>
                     <input
                       type="number"
                       required
@@ -655,13 +757,13 @@ export default function SlotGateManagementPage() {
 
                 {/* Reason */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 uppercase mb-1.5">Reason</label>
+                  <label className="block text-xs font-bold text-slate-400 uppercase mb-1.5">{t[language].reasonLabel}</label>
                   <input
                     type="text"
                     required
                     value={maintenanceReason}
                     onChange={(e) => setMaintenanceReason(e.target.value)}
-                    placeholder={newSlotStatus === "MAINTENANCE" ? "e.g. Damaged sensor, scheduled cleaning..." : "e.g. Maintenance completed, slot cleared..."}
+                    placeholder={newSlotStatus === "MAINTENANCE" ? t[language].reasonMaintPlaceholder : t[language].reasonAvailPlaceholder}
                     className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -674,7 +776,7 @@ export default function SlotGateManagementPage() {
                   onClick={handleCancelSelection}
                   className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg font-bold text-xs transition-all"
                 >
-                  Cancel (Esc)
+                  {t[language].cancelBtn}
                 </button>
                 <button
                   type="submit"
@@ -682,7 +784,7 @@ export default function SlotGateManagementPage() {
                   className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white py-2.5 rounded-lg font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-sm"
                 >
                   {isUpdatingSlot && <RefreshCw size={13} className="animate-spin" />}
-                  {isUpdatingSlot ? "Saving..." : "Confirm Update"}
+                  {isUpdatingSlot ? t[language].saving : t[language].confirmUpdate}
                 </button>
               </div>
             </form>
@@ -694,14 +796,14 @@ export default function SlotGateManagementPage() {
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-5 shadow-sm flex flex-col min-h-[480px] animate-in fade-in slide-in-from-right-4 duration-200">
             <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 pb-3 border-b border-slate-100 dark:border-slate-800 mb-4">
               <Settings size={15} className="text-blue-500" />
-              Bulk Update Slots
+              {t[language].bulkUpdateTitle}
             </h3>
 
             <form onSubmit={handleBulkUpdateSlotStatus} className="flex flex-col flex-1 gap-4">
               {/* Selected slots */}
               <div className="p-3 bg-blue-50/60 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30 rounded-lg">
                 <span className="text-xs font-semibold text-blue-500 uppercase block mb-1">
-                  {selectedSlotIds.length} Slots Selected
+                  {selectedSlotIds.length} {t[language].slotsSelectedLabel}
                 </span>
                 <div className="flex flex-wrap gap-1 max-h-20 overflow-y-auto mt-1">
                   {selectedSlotIds.map((id) => {
@@ -718,21 +820,21 @@ export default function SlotGateManagementPage() {
               <div className="space-y-4 flex-1">
                 {/* Status */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 uppercase mb-1.5">Change Status To</label>
+                  <label className="block text-xs font-bold text-slate-400 uppercase mb-1.5">{t[language].changeStatusLabel}</label>
                   <select
                     value={bulkStatus}
                     onChange={(e) => setBulkStatus(e.target.value)}
                     className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 text-sm text-slate-900 dark:text-white font-semibold outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
                   >
-                    <option value="AVAILABLE">AVAILABLE — Mở lại các ô đỗ</option>
-                    <option value="MAINTENANCE">MAINTENANCE — Đưa vào bảo trì</option>
+                    <option value="AVAILABLE">{t[language].reopenSlotsOpt}</option>
+                    <option value="MAINTENANCE">{t[language].maintenanceOpt}</option>
                   </select>
                 </div>
 
                 {/* Duration */}
                 {bulkStatus === "MAINTENANCE" && (
                   <div className="animate-in fade-in duration-200">
-                    <label className="block text-xs font-bold text-slate-400 uppercase mb-1.5">Estimated Duration (minutes)</label>
+                    <label className="block text-xs font-bold text-slate-400 uppercase mb-1.5">{t[language].estDurationLabel}</label>
                     <input
                       type="number"
                       required
@@ -746,13 +848,13 @@ export default function SlotGateManagementPage() {
 
                 {/* Reason */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 uppercase mb-1.5">Reason</label>
+                  <label className="block text-xs font-bold text-slate-400 uppercase mb-1.5">{t[language].reasonLabel}</label>
                   <input
                     type="text"
                     required
                     value={bulkReason}
                     onChange={(e) => setBulkReason(e.target.value)}
-                    placeholder="e.g. Bulk scheduled maintenance, sensor cleanup..."
+                    placeholder={bulkStatus === "MAINTENANCE" ? t[language].reasonBulkPlaceholder : t[language].reasonAvailPlaceholder}
                     className="block w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -765,7 +867,7 @@ export default function SlotGateManagementPage() {
                   onClick={handleCancelSelection}
                   className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg font-bold text-xs transition-all"
                 >
-                  Cancel (Esc)
+                  {t[language].cancelBtn}
                 </button>
                 <button
                   type="submit"
@@ -773,7 +875,7 @@ export default function SlotGateManagementPage() {
                   className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white py-2.5 rounded-lg font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-sm"
                 >
                   {isBulkUpdating && <RefreshCw size={13} className="animate-spin" />}
-                  {isBulkUpdating ? "Saving..." : `Confirm Bulk Update (${selectedSlotIds.length} slots)`}
+                  {isBulkUpdating ? t[language].saving : `${t[language].confirmBulkUpdateBtn} (${selectedSlotIds.length} ${t[language].slotsSelectedLabel})`}
                 </button>
               </div>
             </form>

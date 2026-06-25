@@ -26,6 +26,11 @@ const t = {
     confirmPasswordPlaceholder: "••••••••",
     passwordStrong: "✓ Mật khẩu mạnh và an toàn.",
     passwordWeak: "Mật khẩu phải từ 8 ký tự trở lên, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt.",
+    passwordMinLength: "Tối thiểu 8 ký tự",
+    passwordUppercase: "Ít nhất 1 chữ cái in hoa (A-Z)",
+    passwordLowercase: "Ít nhất 1 chữ cái in thường (a-z)",
+    passwordNumber: "Ít nhất 1 chữ số (0-9)",
+    passwordSpecial: "Ít nhất 1 ký tự đặc biệt (@$!%*?&)",
     passwordsMatch: "✓ Mật khẩu trùng khớp.",
     passwordsMismatch: "Mật khẩu nhập lại không trùng khớp.",
     registerBtn: "Đăng ký",
@@ -59,6 +64,11 @@ const t = {
     confirmPasswordPlaceholder: "••••••••",
     passwordStrong: "✓ Strong and secure password.",
     passwordWeak: "Password must be 8+ characters, with uppercase, lowercase, numbers, and special characters.",
+    passwordMinLength: "Minimum 8 characters",
+    passwordUppercase: "At least 1 uppercase letter (A-Z)",
+    passwordLowercase: "At least 1 lowercase letter (a-z)",
+    passwordNumber: "At least 1 number (0-9)",
+    passwordSpecial: "At least 1 special character (@$!%*?&)",
     passwordsMatch: "✓ Passwords match.",
     passwordsMismatch: "Passwords do not match.",
     registerBtn: "Register",
@@ -131,6 +141,13 @@ export default function Register() {
   const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 
   const isPasswordTyped = formData.password.length > 0;
+  const checks = {
+    minLength: formData.password.length >= 8,
+    hasUpper: /[A-Z]/.test(formData.password),
+    hasLower: /[a-z]/.test(formData.password),
+    hasNumber: /\d/.test(formData.password),
+    hasSpecial: /[@$!%*?&]/.test(formData.password),
+  };
   const isPasswordValid = passwordRegex.test(formData.password);
   const isConfirmTyped = formData.confirm_password.length > 0;
   const isPasswordMatch = formData.password === formData.confirm_password;
@@ -225,20 +242,25 @@ export default function Register() {
 
   // ─── Input class helper ─────────────────────────────────────────────────
   const inputClass = (fieldName) =>
-    `w-full pl-10 pr-4 py-2.5 bg-slate-800 border rounded-lg text-white placeholder-slate-500 focus:outline-none transition ${
-      fieldErrors[fieldName] ? "border-red-500 focus:border-red-500" : "border-slate-700 focus:border-blue-500"
+    `w-full pl-10 pr-4 py-2.5 bg-slate-50 border rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white transition ${fieldErrors[fieldName] ? "border-red-500 focus:border-red-500" : "border-slate-200 focus:border-blue-500"
     }`;
 
   return (
     <div className="min-h-screen bg-[#0f172a] flex items-center justify-center p-4 relative overflow-hidden">
       {/* Background */}
       <div
-        className="absolute inset-0 bg-cover bg-center z-0 opacity-25"
+        className="absolute inset-0 bg-cover bg-center z-0"
         style={{
-          backgroundImage: `url('https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&q=80&w=1920')`,
+          backgroundImage: `url('https://images.pexels.com/photos/1004409/pexels-photo-1004409.jpeg?auto=compress&cs=tinysrgb&w=1400')`,
+          filter: "brightness(0.35)",
         }}
       />
-      <div className="absolute inset-0 bg-gradient-to-b from-slate-900/70 via-dark-900/80 to-dark-900 z-0" />
+      <div
+        className="absolute inset-0 z-0"
+        style={{
+          background: "linear-gradient(120deg, rgba(29,78,216,0.6) 0%, rgba(15,23,42,0.25) 100%)",
+        }}
+      />
 
       {/* Back to Home */}
       <Link to="/" className="absolute top-6 left-6 flex items-center gap-1.5 text-base font-semibold text-gray-400 hover:text-white transition duration-200 z-10">
@@ -246,14 +268,14 @@ export default function Register() {
         <span>{t[language].backToHome}</span>
       </Link>
 
-      <div className="w-full max-w-md bg-[#1e293b]/70 backdrop-blur-md rounded-xl shadow-lg border border-slate-700/50 p-8 relative z-10">
-        
+      <div className="w-full max-w-md bg-white backdrop-blur-md rounded-xl shadow-lg border border-white/20 p-8 relative z-10">
+
         {/* Language Selector */}
         <div className="absolute top-4 right-4">
           <button
             type="button"
             onClick={toggleLanguage}
-            className="px-2.5 py-1 bg-slate-800/80 border border-slate-700 text-[10px] font-black text-slate-300 hover:text-white rounded-lg transition-all focus:outline-none flex items-center gap-1.5 hover:bg-slate-700"
+            className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-[10px] font-black text-slate-600 hover:text-slate-800 rounded-lg transition-all focus:outline-none flex items-center gap-1.5"
             title={language === "en" ? "Switch to Vietnamese" : "Chuyển sang Tiếng Anh"}
           >
             <span>🌐</span>
@@ -261,9 +283,11 @@ export default function Register() {
           </button>
         </div>
 
-        <div className="text-center mb-1">
-          <h2 className="text-3xl font-bold text-white tracking-tight">{t[language].title}</h2>
-          <p className="text-slate-400 mt-1">{t[language].subtitle}</p>
+        <div className="text-center mb-6">
+          <Link to="/" className="inline-block hover:opacity-85 transition-opacity">
+            <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">{t[language].title}</h2>
+          </Link>
+          <p className="text-slate-500 font-medium text-sm mt-1">{t[language].subtitle}</p>
         </div>
 
         {/* ── Alert Banner ── */}
@@ -274,28 +298,28 @@ export default function Register() {
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Full Name */}
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1">{t[language].fullName}</label>
+            <label className="block text-sm font-semibold text-slate-800 mb-1">{t[language].fullName}</label>
             <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 w-5 h-5" />
               <input type="text" name="full_name" required value={formData.full_name} onChange={handleChange} placeholder={t[language].fullNamePlaceholder} className={inputClass("full_name")} />
             </div>
-            {fieldErrors.full_name && <p className="text-red-400 text-xs mt-1.5 font-medium">{fieldErrors.full_name}</p>}
+            {fieldErrors.full_name && <p className="text-red-600 text-xs mt-1.5 font-medium">{fieldErrors.full_name}</p>}
           </div>
 
           {/* Email */}
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1">{t[language].email}</label>
+            <label className="block text-sm font-semibold text-slate-800 mb-1">{t[language].email}</label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 w-5 h-5" />
               <input type="email" name="email" required value={formData.email} onChange={handleChange} placeholder={t[language].emailPlaceholder} className={inputClass("email")} />
             </div>
           </div>
 
           {/* Phone Number */}
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1">{t[language].phoneNumber}</label>
+            <label className="block text-sm font-semibold text-slate-800 mb-1">{t[language].phoneNumber}</label>
             <div className="relative">
-              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 w-5 h-5" />
               <input
                 type="tel"
                 name="phone_number"
@@ -306,14 +330,14 @@ export default function Register() {
                 className={inputClass("phone_number")}
               />
             </div>
-            {fieldErrors.phone_number && <p className="text-red-400 text-xs mt-1.5 font-medium">{fieldErrors.phone_number}</p>}
+            {fieldErrors.phone_number && <p className="text-red-600 text-xs mt-1.5 font-medium">{fieldErrors.phone_number}</p>}
           </div>
 
           {/* Password */}
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1">{t[language].password}</label>
+            <label className="block text-sm font-semibold text-slate-800 mb-1">{t[language].password}</label>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 w-5 h-5" />
               <input
                 type={showPassword ? "text" : "password"}
                 name="password"
@@ -321,31 +345,74 @@ export default function Register() {
                 value={formData.password}
                 onChange={handleChange}
                 placeholder={t[language].confirmPasswordPlaceholder}
-                className={`w-full pl-10 pr-10 py-2.5 bg-slate-800 border rounded-lg text-white placeholder-slate-500 focus:outline-none transition ${
-                  !isPasswordTyped ? "border-slate-700 focus:border-blue-500" : isPasswordValid ? "border-green-500 focus:border-green-500" : "border-red-500 focus:border-red-500"
-                }`}
+                className={`w-full pl-10 pr-10 py-2.5 bg-slate-50/80 border rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-1 focus:ring-blue-500 transition ${!isPasswordTyped ? "border-slate-300 focus:border-blue-500" : isPasswordValid ? "border-green-500 focus:border-green-500" : "border-red-500 focus:border-red-500"
+                  }`}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white focus:outline-none"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-600 hover:text-slate-700 focus:outline-none"
                 aria-label={showPassword ? "Hide password" : "Show password"}
               >
                 {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
             </div>
             {isPasswordTyped && (
-              <p className={`text-xs mt-1.5 font-medium leading-relaxed transition-colors ${isPasswordValid ? "text-green-400" : "text-red-400"}`}>
-                {isPasswordValid ? t[language].passwordStrong : t[language].passwordWeak}
-              </p>
+              <div className="mt-2.5 space-y-2 bg-slate-50 p-3.5 rounded-lg border border-slate-300">
+                <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                  {language === "vi" ? "Yêu cầu mật khẩu:" : "Password requirements:"}
+                </p>
+                <ul className="space-y-1.5 text-xs">
+                  <li className={`flex items-center gap-2 transition-colors duration-200 ${checks.minLength ? "text-green-600 font-medium" : "text-slate-450"}`}>
+                    {checks.minLength ? (
+                      <CheckCircle className="w-3.5 h-3.5 text-green-500 shrink-0" />
+                    ) : (
+                      <div className="w-3.5 h-3.5 rounded-full border border-slate-300 shrink-0" />
+                    )}
+                    <span>{t[language].passwordMinLength}</span>
+                  </li>
+                  <li className={`flex items-center gap-2 transition-colors duration-200 ${checks.hasUpper ? "text-green-600 font-medium" : "text-slate-450"}`}>
+                    {checks.hasUpper ? (
+                      <CheckCircle className="w-3.5 h-3.5 text-green-500 shrink-0" />
+                    ) : (
+                      <div className="w-3.5 h-3.5 rounded-full border border-slate-300 shrink-0" />
+                    )}
+                    <span>{t[language].passwordUppercase}</span>
+                  </li>
+                  <li className={`flex items-center gap-2 transition-colors duration-200 ${checks.hasLower ? "text-green-600 font-medium" : "text-slate-450"}`}>
+                    {checks.hasLower ? (
+                      <CheckCircle className="w-3.5 h-3.5 text-green-500 shrink-0" />
+                    ) : (
+                      <div className="w-3.5 h-3.5 rounded-full border border-slate-300 shrink-0" />
+                    )}
+                    <span>{t[language].passwordLowercase}</span>
+                  </li>
+                  <li className={`flex items-center gap-2 transition-colors duration-200 ${checks.hasNumber ? "text-green-600 font-medium" : "text-slate-450"}`}>
+                    {checks.hasNumber ? (
+                      <CheckCircle className="w-3.5 h-3.5 text-green-500 shrink-0" />
+                    ) : (
+                      <div className="w-3.5 h-3.5 rounded-full border border-slate-300 shrink-0" />
+                    )}
+                    <span>{t[language].passwordNumber}</span>
+                  </li>
+                  <li className={`flex items-center gap-2 transition-colors duration-200 ${checks.hasSpecial ? "text-green-600 font-medium" : "text-slate-450"}`}>
+                    {checks.hasSpecial ? (
+                      <CheckCircle className="w-3.5 h-3.5 text-green-500 shrink-0" />
+                    ) : (
+                      <div className="w-3.5 h-3.5 rounded-full border border-slate-300 shrink-0" />
+                    )}
+                    <span>{t[language].passwordSpecial}</span>
+                  </li>
+                </ul>
+              </div>
             )}
           </div>
 
           {/* Confirm Password */}
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1">{t[language].confirmPassword}</label>
+            <label className="block text-sm font-semibold text-slate-800 mb-1">{t[language].confirmPassword}</label>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 w-5 h-5" />
               <input
                 type={showConfirmPassword ? "text" : "password"}
                 name="confirm_password"
@@ -353,21 +420,20 @@ export default function Register() {
                 value={formData.confirm_password}
                 onChange={handleChange}
                 placeholder={t[language].confirmPasswordPlaceholder}
-                className={`w-full pl-10 pr-10 py-2.5 bg-slate-800 border rounded-lg text-white placeholder-slate-500 focus:outline-none transition ${
-                  !isConfirmTyped ? "border-slate-700 focus:border-blue-500" : isPasswordMatch ? "border-green-500 focus:border-green-500" : "border-red-500 focus:border-red-500"
-                }`}
+                className={`w-full pl-10 pr-10 py-2.5 bg-slate-50/80 border rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-1 focus:ring-blue-500 transition ${!isConfirmTyped ? "border-slate-300 focus:border-blue-500" : isPasswordMatch ? "border-green-500 focus:border-green-500" : "border-red-500 focus:border-red-500"
+                  }`}
               />
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white focus:outline-none"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-600 hover:text-slate-700 focus:outline-none"
                 aria-label={showConfirmPassword ? "Hide password" : "Show password"}
               >
                 {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
             </div>
             {isConfirmTyped && (
-              <p className={`text-xs mt-1.5 font-medium transition-colors ${isPasswordMatch ? "text-green-400" : "text-red-400"}`}>
+              <p className={`text-xs mt-1.5 font-medium transition-colors ${isPasswordMatch ? "text-green-600" : "text-red-600"}`}>
                 {isPasswordMatch ? t[language].passwordsMatch : t[language].passwordsMismatch}
               </p>
             )}
@@ -377,7 +443,7 @@ export default function Register() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 px-4 rounded-lg transition duration-200 focus:outline-none mt-2 disabled:opacity-50 flex items-center justify-center gap-2">
+            className="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 px-4 rounded-lg transition duration-200 focus:outline-none mt-2 disabled:opacity-50 flex items-center justify-center gap-2">
             {loading && <RefreshCcw size={14} className="animate-spin" />}
             <span>{loading ? t[language].registering : t[language].registerBtn}</span>
           </button>
@@ -385,9 +451,9 @@ export default function Register() {
 
         {/* Divider */}
         <div className="relative flex py-4 items-center">
-          <div className="flex-grow border-t border-slate-700" />
-          <span className="flex-shrink mx-4 text-slate-500 text-sm">{t[language].or}</span>
-          <div className="flex-grow border-t border-slate-700" />
+          <div className="flex-grow border-t border-slate-300" />
+          <span className="flex-shrink mx-4 text-slate-500 text-sm font-semibold">{t[language].or}</span>
+          <div className="flex-grow border-t border-slate-300" />
         </div>
 
         {/* Google Sign Up */}
@@ -395,15 +461,15 @@ export default function Register() {
           type="button"
           onClick={() => handleGoogleLogin()}
           disabled={loading}
-          className="w-full flex items-center justify-center gap-3 bg-white hover:bg-slate-100 text-slate-700 font-medium py-2.5 px-4 rounded-lg transition duration-200">
+          className="w-full flex items-center justify-center gap-3 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-medium py-2.5 px-4 rounded-lg transition duration-200">
           <img src={googleIcon} alt="Google" className="w-5 h-5" />
           {loading ? t[language].processing : t[language].googleBtn}
         </button>
 
         {/* Login Link */}
-        <p className="text-center text-sm text-slate-400 mt-6">
+        <p className="text-center text-sm text-slate-600 mt-6">
           {t[language].alreadyHaveAccount}{" "}
-          <Link to="/login" className="text-blue-500 hover:underline font-medium">
+          <Link to="/login" className="text-blue-600 hover:underline font-medium">
             {t[language].loginLink}
           </Link>
         </p>

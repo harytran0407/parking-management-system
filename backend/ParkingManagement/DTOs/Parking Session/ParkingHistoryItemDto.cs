@@ -14,5 +14,7 @@ namespace ParkingManagement.DTOs
         public string StaffCheckIn { get; set; } = null!;
         public string? StaffCheckOut { get; set; }
         public string Status { get; set; } = null!;
+        public string? ImageUrlIn { get; set; }
+        public string? ImageUrlOut { get; set; }
     }
 }

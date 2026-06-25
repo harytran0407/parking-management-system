@@ -35,6 +35,8 @@ export default function Header({ title, isSidebarCollapsed, setIsSidebarCollapse
       "/staff/incidents": "Incident Handling",
       "/staff": "Dashboard",
       "/staff/slots": "Slots and Gate Management",
+      "/staff/history": "Parking History",
+      "/staff/session-lookup": "Session Lookup",
       "/admin": "Admin Dashboard",
       "/admin/users": "User Accounts & Roles",
       "/admin/logs": "Role Audit Logs",
@@ -58,6 +60,8 @@ export default function Header({ title, isSidebarCollapsed, setIsSidebarCollapse
       "/staff/incidents": "Báo cáo sự cố",
       "/staff": "Bảng điều khiển",
       "/staff/slots": "Giám sát ô đỗ",
+      "/staff/history": "Lịch sử đỗ xe",
+      "/staff/session-lookup": "Tra cứu phiên xe",
       "/admin": "Bảng điều khiển Admin",
       "/admin/users": "Quản lý tài khoản",
       "/admin/logs": "Nhật ký phân quyền",
@@ -73,7 +77,7 @@ export default function Header({ title, isSidebarCollapsed, setIsSidebarCollapse
 
   // CLEAR AVATAR LINK (GIỮ NGUYÊN VẸN CỦA BẠN)
   const getBackendRootUrl = () => {
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:5077";
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
     return baseUrl.replace("/api/v1", "");
   };
 

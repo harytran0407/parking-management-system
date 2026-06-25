@@ -15,17 +15,104 @@ import {
   Hash,
   CheckCircle,
   Bike,
+  X,
+  Maximize2,
 } from "lucide-react";
+import { useLanguage } from "../../hooks/useLanguage";
 
 const fmtVND = (val) => (val != null ? Number(val).toLocaleString("vi-VN") : "0");
 
+const getBackendRootUrl = () => {
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+  return baseUrl.replace("/api/v1", "");
+};
+
+const t = {
+  vi: {
+    title: "Tra cứu phiên đỗ xe",
+    subtitle: "Tìm kiếm thông tin phiên đỗ xe đang hoạt động theo biển số",
+    enterPlateLabel: "Nhập biển số xe",
+    placeholderPlate: "VD: 51F-123.45",
+    btnSearch: "Tìm phương tiện",
+    errorTitle: "Lỗi",
+    errorNoSession: "Không tìm thấy biển số xe.",
+    errorNotFound: "Không tìm thấy biển số xe.",
+    statusParking: "Đang đỗ",
+    labelDuration: "Thời lượng",
+    labelCheckInDate: "Ngày vào",
+    labelCheckInTime: "Giờ vào",
+    labelFloor: "Tầng",
+    labelZone: "Khu vực",
+    bookingInfo: "Thông tin đặt chỗ",
+    overdue: "Quá hạn",
+    onTime: "Trong hạn",
+    expectedArrival: "Giờ vào dự kiến:",
+    expectedDeparture: "Giờ ra dự kiến:",
+    bookingStatus: "Trạng thái đặt chỗ:",
+    bookingActive: "Đang hoạt động",
+    overdueDuration: "Thời gian quá hạn:",
+    overdueFine: "Phí phạt quá hạn:",
+    overdueAlert: "Xe đỗ quá giờ đăng ký. Nhân viên vui lòng nhắc nhở và kiểm tra kỹ khi cho xe ra.",
+    onTimeAlert: "Phương tiện đỗ đúng hạn đăng ký",
+    ticketTypeLabel: "Loại vé:",
+    ticketWalkIn: "Vé vãng lai",
+    ticketPreBooked: "Đặt trước",
+    estimatedFee: "Phí tạm tính",
+    feeNotice: "Phí này cập nhật theo thời gian thực và có thể thay đổi khi xe ra.",
+    statusLabel: "Trạng thái",
+    paymentLabel: "Thanh toán",
+    viewOnlyTitle: "Chỉ xem thông tin",
+    viewOnlyNotice: "Trang này chỉ dùng để tra cứu trạng thái xe. Thanh toán và check-out được thực hiện tại màn hình Check-Out.",
+    emptyNotice: "Nhập biển số xe để tra cứu trạng thái đỗ xe, khu vực, thời lượng và phí tạm tính theo thời gian thực."
+  },
+  en: {
+    title: "Session Lookup",
+    subtitle: "Search for active parking session by license plate",
+    enterPlateLabel: "Enter license plate",
+    placeholderPlate: "e.g., 51F-123.45",
+    btnSearch: "Search Vehicle",
+    errorTitle: "Error",
+    errorNoSession: "License plate not found.",
+    errorNotFound: "License plate not found.",
+    statusParking: "Parked",
+    labelDuration: "Duration",
+    labelCheckInDate: "Check-in Date",
+    labelCheckInTime: "Check-in Time",
+    labelFloor: "Floor",
+    labelZone: "Zone",
+    bookingInfo: "Booking Information",
+    overdue: "Overdue",
+    onTime: "On Time",
+    expectedArrival: "Expected Arrival:",
+    expectedDeparture: "Expected Departure:",
+    bookingStatus: "Booking Status:",
+    bookingActive: "Active",
+    overdueDuration: "Overdue Duration:",
+    overdueFine: "Overdue Fine:",
+    overdueAlert: "Vehicle has parked past the expected departure. Please advise and check carefully at exit.",
+    onTimeAlert: "Vehicle parked within the registered time",
+    ticketTypeLabel: "Ticket Type:",
+    ticketWalkIn: "Walk-in Ticket",
+    ticketPreBooked: "Pre-booked",
+    estimatedFee: "Estimated Fee",
+    feeNotice: "This fee is updated in real time and may change upon exit.",
+    statusLabel: "Status",
+    paymentLabel: "Payment",
+    viewOnlyTitle: "View Only",
+    viewOnlyNotice: "This page is for lookup only. Payments and check-outs are handled on the Check-Out screen.",
+    emptyNotice: "Enter a license plate to lookup parking status, zone, duration and real-time estimated fee."
+  }
+};
+
 export default function SessionLookupPage() {
+  const { language } = useLanguage();
   const [licensePlate, setLicensePlate] = useState("");
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [error, setError] = useState("");
   const [session, setSession] = useState(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [lightboxImage, setLightboxImage] = useState(null);
 
   // Auto-refresh every 30 s when a session is displayed
   useEffect(() => {
@@ -56,15 +143,15 @@ export default function SessionLookupPage() {
         if (!isSilent) setElapsedSeconds(0);
       } else {
         setSession(null);
-        if (!isSilent) setError("Không tìm thấy phiên đỗ xe đang hoạt động cho biển số này.");
+        if (!isSilent) setError(t[language].errorNoSession);
       }
     } catch (err) {
       setSession(null);
       if (!isSilent) {
         if (err.response?.status === 404) {
-          setError("Không tìm thấy phiên đỗ xe. Vui lòng kiểm tra lại biển số.");
+          setError(t[language].errorNotFound);
         } else {
-          setError(err.response?.data?.message || "Không tìm thấy phiên đỗ xe. Vui lòng kiểm tra lại biển số.");
+          setError(err.response?.data?.message || t[language].errorNotFound);
         }
       }
     } finally {
@@ -81,14 +168,14 @@ export default function SessionLookupPage() {
   };
 
   const formatTime = (iso) =>
-    new Date(iso).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+    new Date(iso).toLocaleTimeString(language === "vi" ? "vi-VN" : "en-US", { hour: "2-digit", minute: "2-digit" });
 
   const formatDate = (iso) =>
-    new Date(iso).toLocaleDateString("vi-VN", { day: "2-digit", month: "short", year: "numeric" });
+    new Date(iso).toLocaleDateString(language === "vi" ? "vi-VN" : "en-US", { day: "2-digit", month: "short", year: "numeric" });
 
   const floorLabel = (floor) => {
-    if (floor === 0) return "Tầng G";
-    return `Tầng ${floor}`;
+    if (floor === 0) return language === "vi" ? "Tầng G" : "Ground Floor";
+    return language === "vi" ? `Tầng ${floor}` : `Floor ${floor}`;
   };
 
   const isWalkIn = session && !session.booking_id;
@@ -96,20 +183,12 @@ export default function SessionLookupPage() {
   return (
     <div className="animate-slide-in w-full max-w-3xl xl:max-w-5xl 2xl:max-w-6xl mx-auto px-4 md:px-6 xl:px-8 py-4 md:py-6 transition-colors duration-300">
 
-      {/* Header */}
-      <div className="mb-6">
-        <h2 className="text-xl xl:text-2xl font-black text-slate-800 dark:text-white leading-tight">
-          Tra cứu phiên đỗ xe
-        </h2>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-          Tìm kiếm thông tin phiên đỗ xe đang hoạt động theo biển số
-        </p>
-      </div>
+
 
       {/* ── SEARCH CARD ── */}
       <div className="bg-white dark:bg-slate-900 rounded-md shadow-lg shadow-slate-200/60 dark:shadow-slate-950/60 border border-slate-100 dark:border-slate-800 p-6 xl:p-7 mb-4">
         <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">
-          Nhập biển số xe
+          {t[language].enterPlateLabel}
         </p>
         <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
@@ -121,7 +200,7 @@ export default function SessionLookupPage() {
               id="staff-session-lookup-plate"
               value={licensePlate}
               onChange={(e) => setLicensePlate(e.target.value.toUpperCase())}
-              placeholder="VD: 51F-123.45"
+              placeholder={t[language].placeholderPlate}
               className="w-full pl-11 pr-4 py-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-slate-800 dark:text-white text-base font-bold placeholder-slate-300 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition-all tracking-widest"
               required
             />
@@ -133,7 +212,7 @@ export default function SessionLookupPage() {
             className="flex items-center justify-center gap-2 px-8 py-3.5 bg-blue-700 hover:bg-blue-600 active:bg-blue-800 text-white font-bold text-sm rounded-md shadow-lg shadow-blue-700/25 transition-all active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
           >
             {loading ? <RefreshCw size={15} className="animate-spin" /> : <Search size={15} />}
-            Tìm phương tiện
+            {t[language].btnSearch}
           </button>
         </form>
 
@@ -142,7 +221,7 @@ export default function SessionLookupPage() {
           <div className="mt-4 flex items-start gap-3 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 rounded-md p-4">
             <AlertCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
             <div>
-              <p className="text-xs font-bold text-rose-700 dark:text-rose-400">Lỗi</p>
+              <p className="text-xs font-bold text-rose-700 dark:text-rose-400">{t[language].errorTitle}</p>
               <p className="text-xs text-rose-600/80 dark:text-rose-400/70 mt-0.5 leading-relaxed">{error}</p>
             </div>
           </div>
@@ -171,7 +250,7 @@ export default function SessionLookupPage() {
                     </span>
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wide bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                      Đang đỗ
+                      {t[language].statusParking}
                     </span>
                   </div>
                   <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{session.vehicle_type_name || "—"}</p>
@@ -181,9 +260,9 @@ export default function SessionLookupPage() {
               <div className="text-right shrink-0">
                 <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest mb-1 flex items-center gap-1.5">
                   <Clock size={11} />
-                  Thời lượng
+                  {t[language].labelDuration}
                 </p>
-                <p className="text-xl xl:text-2xl font-semibold text-slate-700 dark:text-white tracking-wider tabular-nums min-w-[7rem] text-right">
+                <p className="text-xl xl:text-2xl font-bold text-slate-700 dark:text-white tracking-wider tabular-nums min-w-[7rem] text-right">
                   {formatDuration(session.duration_minutes, elapsedSeconds)}
                 </p>
               </div>
@@ -194,7 +273,7 @@ export default function SessionLookupPage() {
               <div>
                 <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1.5">
                   <Calendar size={11} />
-                  Ngày vào
+                  {t[language].labelCheckInDate}
                 </p>
                 <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
                   {formatDate(session.check_in_time)}
@@ -203,7 +282,7 @@ export default function SessionLookupPage() {
               <div>
                 <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1.5">
                   <LogOut size={11} className="rotate-180" />
-                  Giờ vào
+                  {t[language].labelCheckInTime}
                 </p>
                 <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
                   {formatTime(session.check_in_time)}
@@ -212,7 +291,7 @@ export default function SessionLookupPage() {
               <div>
                 <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1.5">
                   <Layers size={13} />
-                  Tầng
+                  {t[language].labelFloor}
                 </p>
                 <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
                   {floorLabel(session.floor)}
@@ -221,7 +300,7 @@ export default function SessionLookupPage() {
               <div>
                 <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1.5">
                   <MapPin size={11} />
-                  Khu vực
+                  {t[language].labelZone}
                 </p>
                 <span className="text-sm font-black text-amber-700 dark:text-amber-400">
                   {session.zone_name || "—"}
@@ -231,25 +310,23 @@ export default function SessionLookupPage() {
 
             {/* Booking & Overdue Info */}
             {!isWalkIn && (
-              <div className={`px-6 xl:px-7 py-5 border-b ${
-                session.is_overdue 
-                  ? "bg-rose-50/40 dark:bg-rose-950/10 border-rose-100 dark:border-rose-900/40" 
-                  : "bg-blue-50/20 dark:bg-blue-950/5 border-slate-100 dark:border-slate-800"
-              }`}>
+              <div className={`px-6 xl:px-7 py-5 border-b ${session.is_overdue
+                ? "bg-rose-50/40 dark:bg-rose-950/10 border-rose-100 dark:border-rose-900/40"
+                : "bg-blue-50/20 dark:bg-blue-950/5 border-slate-100 dark:border-slate-800"
+                }`}>
                 <div className="flex items-center justify-between mb-4">
-                  <h4 className={`text-xs font-black uppercase tracking-wider flex items-center gap-1.5 ${
-                    session.is_overdue ? "text-rose-700 dark:text-rose-400" : "text-blue-700 dark:text-blue-400"
-                  }`}>
+                  <h4 className={`text-xs font-black uppercase tracking-wider flex items-center gap-1.5 ${session.is_overdue ? "text-rose-700 dark:text-rose-400" : "text-blue-700 dark:text-blue-400"
+                    }`}>
                     <Calendar size={13} />
-                    Thông tin đặt chỗ
+                    {t[language].bookingInfo}
                   </h4>
                   {session.is_overdue ? (
                     <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wide bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900 animate-pulse">
-                      Quá hạn
+                      {t[language].overdue}
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wide bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900">
-                      Trong hạn
+                      {t[language].onTime}
                     </span>
                   )}
                 </div>
@@ -257,21 +334,21 @@ export default function SessionLookupPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <div className="space-y-2.5">
                     <div className="flex justify-between items-center text-xs">
-                      <span className="text-slate-400 dark:text-slate-500 font-medium">Giờ vào dự kiến:</span>
+                      <span className="text-slate-400 dark:text-slate-500 font-medium">{t[language].expectedArrival}</span>
                       <span className="font-bold text-slate-700 dark:text-slate-200">
                         {formatTime(session.expected_arrival)} {formatDate(session.expected_arrival)}
                       </span>
                     </div>
                     <div className="flex justify-between items-center text-xs">
-                      <span className="text-slate-400 dark:text-slate-500 font-medium">Giờ ra dự kiến:</span>
+                      <span className="text-slate-400 dark:text-slate-500 font-medium">{t[language].expectedDeparture}</span>
                       <span className="font-bold text-slate-700 dark:text-slate-200">
                         {formatTime(session.expired_at)} {formatDate(session.expired_at)}
                       </span>
                     </div>
                     <div className="flex justify-between items-center text-xs">
-                      <span className="text-slate-400 dark:text-slate-500 font-medium">Trạng thái đặt chỗ:</span>
+                      <span className="text-slate-400 dark:text-slate-500 font-medium">{t[language].bookingStatus}</span>
                       <span className="font-bold text-slate-700 dark:text-slate-200 capitalize">
-                        {session.booking_status || "Đang hoạt động"}
+                        {session.booking_status === "ACTIVE" ? t[language].bookingActive : (session.booking_status || "—")}
                       </span>
                     </div>
                   </div>
@@ -280,26 +357,26 @@ export default function SessionLookupPage() {
                     {session.is_overdue ? (
                       <div className="flex flex-col gap-2">
                         <div className="flex justify-between items-center text-xs">
-                          <span className="text-rose-600 dark:text-rose-400 font-bold">Thời gian quá hạn:</span>
+                          <span className="text-rose-600 dark:text-rose-400 font-bold">{t[language].overdueDuration}</span>
                           <span className="font-black text-rose-700 dark:text-rose-400 tabular-nums">
                             {formatDuration(session.overdue_minutes)}
                           </span>
                         </div>
                         <div className="flex justify-between items-center text-xs">
-                          <span className="text-rose-600 dark:text-rose-400 font-bold font-sans">Phí phạt quá hạn:</span>
+                          <span className="text-rose-600 dark:text-rose-400 font-bold font-sans">{t[language].overdueFine}</span>
                           <span className="font-black text-rose-700 dark:text-rose-400 tracking-wider">
                             {fmtVND(session.overdue_fee)} VNĐ
                           </span>
                         </div>
                         <div className="text-[10px] text-rose-600/90 dark:text-rose-400/90 bg-rose-50 dark:bg-rose-950/20 rounded p-2 border border-rose-100 dark:border-rose-900/30 font-medium leading-relaxed mt-1 flex items-start gap-1">
                           <AlertCircle size={12} className="shrink-0 mt-0.5" />
-                          <span>Xe đỗ quá giờ đăng ký. Nhân viên vui lòng nhắc nhở và kiểm tra kỹ khi cho xe ra.</span>
+                          <span>{t[language].overdueAlert}</span>
                         </div>
                       </div>
                     ) : (
                       <div className="h-full flex flex-col justify-center items-center text-xs text-slate-400 dark:text-slate-500 italic py-2 text-center">
                         <CheckCircle size={18} className="text-emerald-500 mb-1.5" />
-                        Phương tiện đỗ đúng hạn đăng ký
+                        {t[language].onTimeAlert}
                       </div>
                     )}
                   </div>
@@ -310,9 +387,9 @@ export default function SessionLookupPage() {
             {/* Ticket type */}
             <div className="px-6 xl:px-7 py-4 flex items-center gap-3">
               <Hash size={13} className="text-slate-400" />
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Loại vé:</span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t[language].ticketTypeLabel}</span>
               <span className={`text-xs font-black ${isWalkIn ? "text-emerald-600 dark:text-emerald-400" : "text-blue-600 dark:text-blue-400"}`}>
-                {isWalkIn ? "Vé vãng lai" : "Đặt trước"}
+                {isWalkIn ? t[language].ticketWalkIn : t[language].ticketPreBooked}
               </span>
             </div>
           </div>
@@ -323,7 +400,7 @@ export default function SessionLookupPage() {
             <div className="bg-blue-700 dark:bg-blue-800 rounded-md shadow-lg shadow-blue-700/25 overflow-hidden flex-1">
               <div className="px-6 xl:px-7 pt-6 pb-5">
                 <p className="text-[10px] font-black text-blue-200 uppercase tracking-widest mb-3">
-                  Phí tạm tính
+                  {t[language].estimatedFee}
                 </p>
                 <div className="flex items-baseline gap-2 mb-1">
                   <span className="text-4xl xl:text-5xl font-black text-white leading-none">
@@ -332,18 +409,18 @@ export default function SessionLookupPage() {
                   <span className="text-base font-bold text-blue-300">VNĐ</span>
                 </div>
                 <p className="text-[10px] text-blue-300 mt-2 leading-relaxed">
-                  Phí này cập nhật theo thời gian thực và có thể thay đổi khi xe ra.
+                  {t[language].feeNotice}
                 </p>
               </div>
 
               <div className="px-6 xl:px-7 pb-6">
                 <div className="bg-blue-800/50 dark:bg-blue-900/50 rounded-md px-4 py-3 border border-blue-600/30 space-y-2">
                   <div className="flex justify-between items-center text-xs">
-                    <span className="text-blue-300">Trạng thái</span>
+                    <span className="text-blue-300">{t[language].statusLabel}</span>
                     <span className="font-black text-white uppercase">{session.status}</span>
                   </div>
                   <div className="flex justify-between items-center text-xs">
-                    <span className="text-blue-300">Thanh toán</span>
+                    <span className="text-blue-300">{t[language].paymentLabel}</span>
                     <span className={`font-black uppercase ${session.payment_status === "PAID" ? "text-emerald-300" : "text-amber-300"}`}>
                       {session.payment_status}
                     </span>
@@ -352,16 +429,33 @@ export default function SessionLookupPage() {
               </div>
             </div>
 
-            {/* Info notice */}
-            <div className="bg-white dark:bg-slate-900 rounded-md border border-blue-100 dark:border-blue-900/40 shadow-lg shadow-slate-200/60 dark:shadow-slate-950/60 px-6 xl:px-7 py-5 flex items-start gap-3">
-              <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0 mt-0.5">
-                <Info size={14} className="text-blue-600 dark:text-blue-400" />
-              </div>
-              <div>
-                <p className="text-xs font-black text-blue-700 dark:text-blue-400 mb-1">Chỉ xem thông tin</p>
-                <p className="text-xs text-blue-600/80 dark:text-blue-400/70 leading-relaxed">
-                  Trang này chỉ dùng để tra cứu trạng thái xe. Thanh toán và check-out được thực hiện tại màn hình Check-Out.
-                </p>
+            {/* Vehicle Entry Snapshot */}
+            <div className="bg-white dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-800 shadow-lg shadow-slate-200/60 dark:shadow-slate-950/60 px-6 xl:px-7 py-5 flex flex-col gap-3">
+              <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+                <Car size={13} />
+                {language === "vi" ? "Ảnh check-in" : "Check-in Image"}
+              </p>
+              <div
+                onClick={() => {
+                  if (session && session.image_url_in) {
+                    setLightboxImage(`${getBackendRootUrl()}${session.image_url_in}`);
+                  }
+                }}
+                className="bg-slate-100 dark:bg-slate-950 h-[150px] xl:h-[180px] rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 relative group cursor-zoom-in transition-colors duration-200"
+                title="Click to zoom check-in snapshot"
+              >
+                <img
+                  src={session.image_url_in ? `${getBackendRootUrl()}${session.image_url_in}` : "https://placehold.co/600x400/0f172a/64748b?text=No+Checkin+Image"}
+                  alt="Vehicle Check-in snapshot"
+                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 opacity-90 dark:opacity-80"
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = "https://placehold.co/600x400/0f172a/64748b?text=No+Checkin+Image";
+                  }}
+                />
+                <div className="absolute bottom-2.5 right-2.5 bg-white/90 dark:bg-slate-900/90 rounded p-1 text-slate-700 dark:text-slate-200 opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm border border-slate-200 dark:border-slate-700">
+                  <Maximize2 size={12} />
+                </div>
               </div>
             </div>
           </div>
@@ -373,8 +467,26 @@ export default function SessionLookupPage() {
         <div className="flex items-start gap-3 bg-blue-50/60 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30 rounded-md p-4">
           <CheckCircle size={15} className="text-blue-500 shrink-0 mt-0.5" />
           <p className="text-xs text-blue-600/80 dark:text-blue-400/80 leading-relaxed">
-            Nhập biển số xe để tra cứu trạng thái đỗ xe, khu vực, thời lượng và phí tạm tính theo thời gian thực.
+            {t[language].emptyNotice}
           </p>
+        </div>
+      )}
+
+      {/* LIGHTBOX MODAL OVERLAY */}
+      {lightboxImage && (
+        <div
+          className="fixed inset-0 bg-slate-950/80 dark:bg-slate-950/90 backdrop-blur-md z-50 flex flex-col items-center justify-center p-4 cursor-zoom-out"
+          onClick={() => setLightboxImage(null)}
+        >
+          <div className="absolute top-5 right-5 text-slate-500 hover:text-slate-200 dark:text-slate-400 dark:hover:text-white bg-white/10 dark:bg-slate-900/60 p-2 rounded-full border border-slate-300 dark:border-slate-800 transition-colors">
+            <X size={20} />
+          </div>
+          <div className="relative max-w-4xl max-h-[85vh] rounded-md overflow-hidden border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <img src={lightboxImage} alt="High Resolution Audit" className="w-full h-auto max-h-[85vh] object-contain" />
+            <div className="absolute bottom-0 inset-x-0 bg-slate-900/90 dark:bg-slate-950/80 p-3 text-center border-t border-slate-200 dark:border-slate-800 backdrop-blur-sm">
+              <p className="font-mono font-bold tracking-widest text-sm text-yellow-500 dark:text-yellow-400">{licensePlate || "No Plate Info"}</p>
+            </div>
+          </div>
         </div>
       )}
     </div>

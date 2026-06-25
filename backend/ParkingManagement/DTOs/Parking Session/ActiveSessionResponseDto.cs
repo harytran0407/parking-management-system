@@ -27,5 +27,7 @@ namespace ParkingManagement.DTOs
         public bool IsOverdue { get; set; }
         public int OverdueMinutes { get; set; }
         public decimal OverdueFee { get; set; }
+        public string? ImageUrlIn { get; set; }
+        public string? ImageUrlOut { get; set; }
     }
 }
