@@ -165,6 +165,74 @@ namespace ParkingManagement.Controllers.AuthController
             });
         }
 
+
+        [HttpPost("resend-otp")]
+        public async Task<IActionResult> ResendOtp([FromBody] ResendOtpRequestDto request)
+        {
+            // 1. Kiểm tra xem tài khoản đã vào được Database
+            var userInDb = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
+            if (userInDb != null)
+            {
+                return BadRequest(new { success = false, message = "Account has already been activated. Please log in." });
+            }
+
+            // 2. Kiểm tra xem đã hết 60s để resend lại mã mối chưa
+            var lockKey = $"resend_lock_{request.Email}";
+            var isLocked = await _cache.GetStringAsync(lockKey);
+            if (!string.IsNullOrEmpty(isLocked))
+            {
+                return StatusCode(429, new { success = false, message = "Please wait 60 seconds before requesting a new OTP." });
+            }
+
+            // 3. Tìm thông tin đăng ký cũ trong "Phòng chờ" (Cache)
+            var cacheKey = $"register_otp_{request.Email}";
+            var cachedString = await _cache.GetStringAsync(cacheKey);
+
+            // Nếu quá 5 phút dữ liệu đã bị Cache xóa mất
+            if (string.IsNullOrEmpty(cachedString))
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message = "Registration session has expired. Please fill out the registration form again."
+                });
+            }
+
+            // 4. Sinh OTP mới và cập nhật lại Cache
+            var cacheData = JsonSerializer.Deserialize<RegisterCacheDto>(cachedString);
+            string newOtpCode = new Random().Next(100000, 999999).ToString();
+
+            // Cập nhật mã mới vào DTO
+            cacheData!.OtpCode = newOtpCode;
+
+            // Lưu đè lại vào Cache, gia hạn bộ đếm về lại 5 phút
+            var cacheOptions = new DistributedCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5)
+            };
+            await _cache.SetStringAsync(cacheKey, JsonSerializer.Serialize(cacheData), cacheOptions);
+
+            // 5. Chống Spam: Tạo một cái Khóa 60s
+            var lockOptions = new DistributedCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(1)
+            };
+            await _cache.SetStringAsync(lockKey, "locked", lockOptions);
+
+            // 6. Gửi Email mới
+            string emailSubject = "Gửi lại mã xác thực - Parking Management";
+            string emailBody = $@"
+        <h2>Chào {cacheData.FullName},</h2>
+        <p>Theo yêu cầu, chúng tôi gửi lại mã OTP mới cho bạn:</p>
+        <strong style='font-size:24px; color:blue;'>{newOtpCode}</strong>
+        <p>Mã này sẽ hết hạn sau 5 phút.</p>";
+
+            _ = _emailService.SendEmailAsync(request.Email, emailSubject, emailBody);
+
+            return Ok(new { success = true, message = "A new OTP has been sent to your email." });
+        }
+
+
         [HttpPut("update-username")]
         public IActionResult UpdateUsername(UpdateUserNameDto request)
         {
