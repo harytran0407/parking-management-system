@@ -574,6 +574,10 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.AvatarUrl)
                 .HasColumnName("AvatarUrl")
                 .HasColumnType("LONGTEXT");
+            entity.Property(e => e.OtpCode)
+                .HasColumnName("OTP_CODE");
+            entity.Property(e => e.OtpExpiredAt)
+                .HasColumnName("OTP_EXPIRED_AT");
         });
 
 
