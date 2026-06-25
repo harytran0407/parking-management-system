@@ -1,430 +1,580 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { MapPin, Car, Clock, ShieldCheck, Zap, CreditCard, LayoutDashboard, Check, ArrowUp, TrendingUp, Github, Mail } from "lucide-react";
+import {
+  Car,
+  Bike,
+  CalendarCheck,
+  Scan,
+  Lock,
+  Bell,
+  BarChart2,
+  History,
+  CheckCircle2,
+} from "lucide-react";
+import api from "../utils/api";
 
-export default function LandingPage() {
-  const navigate = useNavigate();
 
-  const scrollToSection = (id) => {
-    const element = document.getElementById(id);
-    if (element) {
-      const offset = 80;
-      const elementPosition = element.getBoundingClientRect().top;
-      const offsetPosition = elementPosition + window.scrollY - offset;
+// ─── Static content ───────────────────────────────────────────────────────────
+const FEATURES = [
+  {
+    icon: CalendarCheck,
+    title: "Advance Booking",
+    desc: "Reserve a spot 1 to 8 hours ahead. Your slot is held for up to 30 minutes past your arrival time — no stress about losing it.",
+  },
+  {
+    icon: Scan,
+    title: "Automatic Check-in",
+    desc: "Cameras read your license plate at the gate. No app needed, no access card — just drive in.",
+  },
+  {
+    icon: Lock,
+    title: "Remote Vehicle Lock",
+    desc: 'Activate "Lock Vehicle" in the app after parking. A barrier blocks the exit lane until you unlock it.',
+  },
+  {
+    icon: Bell,
+    title: "Smart Reminders",
+    desc: "Get notified before your booking starts and warned when time is running low — extend your stay or leave on time.",
+  },
+  {
+    icon: BarChart2,
+    title: "Live Capacity",
+    desc: "See exactly how many spots are available before you drive over. Data updates in real time.",
+  },
+  {
+    icon: History,
+    title: "Booking History",
+    desc: "View your full history, invoices, and status for every booking — anytime, anywhere in the app.",
+  },
+];
 
-      window.scrollTo({
-        top: offsetPosition,
-        behavior: "smooth",
-      });
-    }
-  };
+const STEPS = [
+  {
+    n: "1",
+    title: "Choose Vehicle Type",
+    desc: "Select car or motorbike to see available capacity and matching slots.",
+  },
+  {
+    n: "2",
+    title: "Enter Details",
+    desc: "Enter your plate number, pick arrival and departure times. The system calculates your fee instantly.",
+  },
+  {
+    n: "3",
+    title: "Pay Deposit",
+    desc: "Pay the deposit via VNPAY. Your spot is reserved the moment payment is confirmed.",
+  },
+  {
+    n: "4",
+    title: "Drive In",
+    desc: "Cameras read your plate and the barrier opens automatically. Park in your assigned zone.",
+  },
+];
 
-  const [showScrollTop, setShowScrollTop] = useState(false);
+const TRUST_ITEMS = [
+  "Automatic check-in via license plate recognition camera",
+  "Secure payment through VNPAY",
+  "24/7 continuous support",
+];
 
-  useEffect(() => {
-    const handleScroll = () => {
-      setShowScrollTop(window.scrollY > 300);
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
+// ─── CapacityPill ─────────────────────────────────────────────────────────────
+function CapacityPill({ icon: Icon, label, available, total, accentColor }) {
+  const pct = total > 0 ? Math.round(((total - available) / total) * 100) : 0;
+  const isFull = available === 0;
 
   return (
-    <div className="min-h-screen bg-[#060a12] text-white relative overflow-x-hidden selection:bg-blue-500/30 font-sans">
-      {/* BACKGROUND ELEMENTS */}
-      <div className="fixed inset-0 z-0 pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-blue-600/10 blur-[120px]" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-orange-600/10 blur-[120px]" />
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] mix-blend-overlay"></div>
+    <div
+      style={{
+        background: "#fff",
+        border: "1px solid #e2e8f0",
+        borderRadius: 14,
+        padding: "16px 18px",
+        flex: 1,
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          fontSize: 12,
+          color: "#64748b",
+          marginBottom: 10,
+        }}
+      >
+        <Icon size={13} color={accentColor} />
+        {label}
+        {isFull && (
+          <span
+            style={{
+              marginLeft: "auto",
+              fontSize: 10,
+              background: "#fee2e2",
+              color: "#dc2626",
+              padding: "1px 7px",
+              borderRadius: 99,
+              fontWeight: 600,
+            }}
+          >
+            Full
+          </span>
+        )}
       </div>
+      {/* available / total — red when full */}
+      <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginBottom: 10 }}>
+        <span
+          style={{
+            fontSize: 26,
+            fontWeight: 700,
+            color: isFull ? "#dc2626" : "#0f172a",
+            lineHeight: 1,
+          }}
+        >
+          {available != null ? available : "—"}
+        </span>
+        <span style={{ fontSize: 12, color: isFull ? "#dc2626" : "#94a3b8" }}>
+          / {total ?? "—"} spots
+        </span>
+      </div>
+      <div
+        style={{
+          height: 5,
+          borderRadius: 99,
+          background: "#e2e8f0",
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            height: "100%",
+            borderRadius: 99,
+            width: `${pct}%`,
+            background: isFull ? "#ef4444" : accentColor,
+            transition: "width 0.6s ease",
+          }}
+        />
+      </div>
+      <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 5 }}>{pct}% occupied</div>
+    </div>
+  );
+}
 
-      {/* 1. TOP NAVIGATION BAR */}
-      <nav className="fixed w-full z-50 top-0 transition-all duration-300 bg-[#060a12]/80 backdrop-blur-md border-b border-white/5">
-        <div className="max-w-7xl mx-auto flex items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-2 cursor-pointer" onClick={() => window.location.href = "/"}>
-            <img src="/eParkingLogo.png" alt="eParking Logo" className="w-8 h-8 object-contain rounded-lg shadow-sm shrink-0" />
-            <span className="text-xl font-bold tracking-tight text-white">eParking</span>
+// ─── Main ─────────────────────────────────────────────────────────────────────
+export default function LandingPage() {
+  const navigate = useNavigate();
+  const [capacity, setCapacity] = useState(null);
+  const [capacityLoading, setCapacityLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchCapacity = async () => {
+      try {
+        const res = await api.get("/parking/buildings/info");
+        if (res.data?.success) setCapacity(res.data.data);
+      } catch {
+        // silently fail — capacity pills show "—"
+      } finally {
+        setCapacityLoading(false);
+      }
+    };
+    fetchCapacity();
+  }, []);
+
+  // Parse vehicle_type_availability array from API
+  // vehicle_type_id: 1 = Motorbike, 2 = Car
+  const vehicleTypes = capacity?.vehicle_type_availability ?? [];
+  const motoData = vehicleTypes.find((v) => v.vehicle_type_id === 1);
+  const carData  = vehicleTypes.find((v) => v.vehicle_type_id === 2);
+
+  const motoAvail = motoData?.available_slots ?? null;
+  const motoTotal = motoData?.total_slots     ?? null;
+  const carAvail  = carData?.available_slots  ?? null;
+  const carTotal  = carData?.total_slots      ?? null;
+
+  // Total slots from building root
+  const totalSlots = capacity?.total_slots ?? null;
+
+  // Status: "ACTIVE" → Open, anything else → Closed
+  const isOpen   = capacity?.status === "ACTIVE";
+  const statusLabel = capacity == null ? "Live" : isOpen ? "Open" : "Closed";
+  const statusColor = capacity == null
+    ? { text: "#16a34a", bg: "#f0fdf4", border: "#bbf7d0" }
+    : isOpen
+    ? { text: "#16a34a", bg: "#f0fdf4", border: "#bbf7d0" }
+    : { text: "#dc2626", bg: "#fef2f2", border: "#fecaca" };
+
+  return (
+    <div style={{ fontFamily: "inherit", background: "#fff", minHeight: "100vh" }}>
+
+      {/* ── Navbar ── */}
+      <nav
+        style={{
+          position: "sticky", top: 0, zIndex: 50,
+          background: "rgba(255,255,255,0.92)",
+          backdropFilter: "blur(12px)",
+          borderBottom: "1px solid #e2e8f0",
+          padding: "0 40px", height: 64,
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <img src="/eParkingLogo.png" alt="eParking logo" style={{ width: 38, height: 38, borderRadius: 10, objectFit: "contain" }} />
+          <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.15 }}>
+            <span style={{ fontSize: 15, fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em" }}>e<span style={{ color: "#1d4ed8" }}>Parking</span></span>
+            <span style={{ fontSize: 10, color: "#94a3b8", fontWeight: 500, letterSpacing: "0.04em" }}>Management System</span>
           </div>
+        </div>
 
-          <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-300">
-            {[
-              { id: "home", label: "Home" },
-              { id: "features", label: "Features" },
-              { id: "rates", label: "Pricing" },
-            ].map((item) => (
-              <button key={item.id} onClick={() => scrollToSection(item.id)} className="hover:text-blue-400 transition-colors duration-200 relative group whitespace-nowrap">
-                {item.label}
-                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-blue-500 transition-all group-hover:w-full"></span>
-              </button>
-            ))}
-          </div>
+        <div style={{ display: "flex", gap: 32 }}>
+          {["Parking", "How It Works", "Support"].map((l) => (
+            <a key={l} href="#" style={{ fontSize: 14, color: "#475569", textDecoration: "none" }}>{l}</a>
+          ))}
+        </div>
 
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <button
             onClick={() => navigate("/login")}
-            className="bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm px-6 py-2.5 rounded-full transition-all duration-300 shadow-[0_0_15px_rgba(37,99,235,0.4)]">
-            Sign in
+            style={{ background: "transparent", border: "1px solid #e2e8f0", color: "#0f172a", padding: "8px 18px", borderRadius: 8, fontSize: 14, fontWeight: 500, cursor: "pointer" }}
+          >
+            Log In
+          </button>
+          <button
+            onClick={() => navigate("/user/book")}
+            style={{ background: "#1d4ed8", color: "#fff", border: "none", padding: "8px 20px", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+          >
+            Book a Spot
           </button>
         </div>
       </nav>
 
-      {/* 2. HERO SECTION */}
-      <div id="home" className="relative z-10 max-w-7xl mx-auto px-6 pt-40 pb-16 flex flex-col items-center justify-center text-center">
-        <div className="animate-fade-in-up">
-          <span className="inline-flex items-center gap-2 bg-blue-500/10 text-blue-400 text-xs font-semibold px-4 py-1.5 rounded-full border border-blue-500/20 mb-8 tracking-widest backdrop-blur-sm uppercase">
-            <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
-            Next-Gen Parking System
-          </span>
+      {/* ── Hero ── */}
+      <section style={{ position: "relative", overflow: "hidden", minHeight: 580, display: "flex", alignItems: "center" }}>
+        {/* Bg image */}
+        <div
+          style={{
+            position: "absolute", inset: 0,
+            backgroundImage: "url(https://images.pexels.com/photos/1004409/pexels-photo-1004409.jpeg?auto=compress&cs=tinysrgb&w=1400)",
+            backgroundSize: "cover", backgroundPosition: "center 60%",
+            filter: "brightness(0.35)",
+          }}
+        />
+        {/* Tint */}
+        <div
+          style={{
+            position: "absolute", inset: 0,
+            background: "linear-gradient(120deg, rgba(29,78,216,0.6) 0%, rgba(15,23,42,0.25) 100%)",
+          }}
+        />
 
-          <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight max-w-4xl mx-auto leading-[1.1] mb-8">
-            Experience Seamless <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-blue-500 to-orange-500">Urban Mobility</span>
-          </h1>
+        {/* Content */}
+        <div
+          style={{
+            position: "relative", zIndex: 2,
+            maxWidth: 1100, margin: "0 auto", padding: "80px 40px 72px",
+            width: "100%", display: "grid", gridTemplateColumns: "1fr 1fr",
+            gap: 56, alignItems: "center",
+          }}
+        >
+          {/* Left */}
+          <div>
+            <div
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 6,
+                background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)",
+                borderRadius: 99, padding: "5px 14px", fontSize: 12,
+                color: "#bfdbfe", fontWeight: 500, marginBottom: 22,
+              }}
+            >
+              <div
+                style={{
+                  width: 7, height: 7, borderRadius: "50%",
+                  background: isOpen ? "#4ade80" : "#f87171",
+                }}
+              />
+              {isOpen ? "Live — updating in real time" : "Currently closed"}
+            </div>
 
-          <p className="text-slate-400 text-lg md:text-xl max-w-2xl mx-auto mb-16 leading-relaxed">
-            Eliminate the stress of finding a parking spot. Real-time availability, AI security, and automated payments—all in one unified platform.
-          </p>
-        </div>
+            <h1
+              style={{
+                fontSize: 44, fontWeight: 800, color: "#fff",
+                lineHeight: 1.1, letterSpacing: "-0.03em", marginBottom: 18,
+              }}
+            >
+              Smart parking,{" "}
+              <span style={{ color: "#60a5fa" }}>no more</span>
+              <br />running late
+            </h1>
 
-        {/* HERO METRICS (Thay thế cho thanh Search cũ) */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-4xl mx-auto mt-4 animate-slide-up">
-          <div className="bg-white/5 border border-white/5 rounded-2xl p-6 flex flex-col items-center justify-center backdrop-blur-sm">
-            <TrendingUp className="text-blue-500 w-6 h-6 mb-3" />
-            <span className="text-2xl font-bold text-white">500+</span>
-            <span className="text-slate-400 text-sm mt-1">Parking Spots</span>
-          </div>
-          <div className="bg-white/5 border border-white/5 rounded-2xl p-6 flex flex-col items-center justify-center backdrop-blur-sm">
-            <ShieldCheck className="text-blue-500 w-6 h-6 mb-3" />
-            <span className="text-2xl font-bold text-white">24/7</span>
-            <span className="text-slate-400 text-sm mt-1">Monitoring</span>
-          </div>
-          <div className="bg-white/5 border border-white/5 rounded-2xl p-6 flex flex-col items-center justify-center backdrop-blur-sm">
-            <Zap className="text-blue-500 w-6 h-6 mb-3" />
-            <span className="text-2xl font-bold text-white">99.9%</span>
-            <span className="text-slate-400 text-sm mt-1">Uptime</span>
-          </div>
-        </div>
-      </div>
-
-      {/* 3. PARKING INFO FACILITY */}
-      <div className="relative z-10 max-w-7xl mx-auto px-6 py-20 mt-12">
-        <div className="bg-white/5 border border-white/10 rounded-[2rem] overflow-hidden backdrop-blur-md flex flex-col md:flex-row transition-all duration-500">
-          <div className="w-full md:w-5/12 relative min-h-[300px] md:min-h-full">
-            <img
-              src="https://images.unsplash.com/photo-1573348722427-f1d6819fdf98?auto=format&fit=crop&q=80&w=1200"
-              alt="eParking Facility"
-              className="absolute inset-0 w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t md:bg-gradient-to-l from-[#060a12] to-transparent opacity-90 md:opacity-100"></div>
-          </div>
-
-          <div className="w-full md:w-7/12 p-8 md:p-14 flex flex-col justify-center relative z-10">
-            <span className="inline-block px-3 py-1 bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold uppercase tracking-widest rounded-full mb-6 w-max">
-              Premium Location
-            </span>
-            <h3 className="text-3xl md:text-4xl font-bold text-white mb-4">eParking Innovation Hub</h3>
-
-            <p className="text-slate-400 flex items-start gap-3 text-sm mb-8 leading-relaxed">
-              <MapPin className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
-              <span>
-                <strong className="text-white text-base block mb-1">Saigon Hi-Tech Park, Thu Duc City, HCMC.</strong>
-                Strategically located to provide a secure, easily accessible, and smart parking environment for all modern commuters.
-              </span>
+            <p style={{ fontSize: 15, color: "rgba(255,255,255,0.72)", lineHeight: 1.75, marginBottom: 32, maxWidth: 400 }}>
+              Check live capacity, book up to 1 hour ahead, and check in automatically
+              with license plate recognition — no access card required.
             </p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-              <div className="flex items-center gap-4 p-5 rounded-2xl bg-[#0a101d] border border-white/5">
-                <div className="p-3 bg-blue-500/10 rounded-xl text-blue-400">
-                  <Clock size={20} />
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold text-white">Flexible Hours</h4>
-                  <p className="text-xs text-slate-400 mt-1">06:00 - 23:00 Daily</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-4 p-5 rounded-2xl bg-[#0a101d] border border-white/5">
-                <div className="p-3 bg-blue-500/10 rounded-xl text-blue-400">
-                  <Car size={20} />
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold text-white">High Capacity</h4>
-                  <p className="text-xs text-slate-400 mt-1">500+ Vehicles</p>
-                </div>
-              </div>
+            <div style={{ display: "flex", gap: 12, marginBottom: 36 }}>
+              <button
+                onClick={() => navigate("/user/book")}
+                style={{
+                  background: "#1d4ed8", color: "#fff", border: "none",
+                  padding: "13px 28px", borderRadius: 10, fontSize: 15, fontWeight: 600,
+                  cursor: "pointer", display: "flex", alignItems: "center", gap: 8,
+                  boxShadow: "0 4px 20px rgba(29,78,216,0.5)",
+                }}
+              >
+                <CalendarCheck size={17} /> Book a Spot
+              </button>
+              <button
+                style={{
+                  background: "rgba(255,255,255,0.1)", color: "#fff",
+                  border: "1px solid rgba(255,255,255,0.25)",
+                  padding: "13px 24px", borderRadius: 10, fontSize: 15, fontWeight: 500, cursor: "pointer",
+                }}
+              >
+                See How It Works
+              </button>
             </div>
 
-            <button className="bg-blue-600 hover:bg-blue-500 text-white font-semibold px-8 py-3 rounded-xl transition-all w-max shadow-[0_0_15px_rgba(37,99,235,0.3)]">
-              Explore Location
-            </button>
+            <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+              {TRUST_ITEMS.map((t) => (
+                <div key={t} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "rgba(255,255,255,0.68)" }}>
+                  <CheckCircle2 size={14} color="#4ade80" /> {t}
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      </div>
 
-      {/* 4. FEATURES SECTION */}
-      <div id="features" className="relative z-10 max-w-7xl mx-auto px-6 py-24">
-        <div className="text-center mb-16">
-          <span className="inline-block px-4 py-1.5 border border-blue-500/30 text-blue-400 text-xs font-semibold uppercase tracking-widest rounded-full mb-6">
-            System Features
-          </span>
-          <h2 className="text-4xl md:text-5xl font-bold mt-2 tracking-tight">
-            Cutting-Edge <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-orange-400">Solutions</span>
-          </h2>
-          <p className="text-slate-400 mt-4 max-w-2xl mx-auto">Everything you need to manage parking efficiently with advanced technology and automation.</p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {[
-            {
-              icon: Zap,
-              title: "Real-Time Tracking",
-              desc: "Instantly monitor empty parking slots with integrated smart sensors across the facility.",
-            },
-            {
-              icon: ShieldCheck,
-              title: "AI Plate Recognition",
-              desc: "Automated license plate scanning at gate control ensures maximum security and speed.",
-            },
-            {
-              icon: CreditCard,
-              title: "Automated Billing",
-              desc: "Secure payment integration supporting instant digital invoicing and multiple methods.",
-            },
-            {
-              icon: LayoutDashboard,
-              title: "Role-Based Dashboards",
-              desc: "Tailored interfaces designed specifically for Admins, Managers, and Staff.",
-            },
-          ].map((feat, idx) => (
+          {/* Right — capacity card */}
+          <div>
             <div
-              key={idx}
-              className="bg-white/5 border border-white/10 p-8 rounded-3xl hover:bg-white/10 hover:-translate-y-2 hover:border-blue-500/30 transition-all duration-300 group">
-              <div className="w-14 h-14 border border-blue-500/30 rounded-2xl flex items-center justify-center text-white mb-6 group-hover:scale-110 group-hover:bg-blue-500 transition-all">
-                <feat.icon className="w-6 h-6" />
-              </div>
-              <h3 className="text-xl font-bold text-white mb-3">{feat.title}</h3>
-              <p className="text-slate-400 text-sm leading-relaxed">{feat.desc}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* 5. PARKING RATES */}
-      <div id="rates" className="relative z-10 max-w-7xl mx-auto px-6 py-24">
-        <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-bold tracking-tight">
-            Flexible Parking <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-orange-400">Rates</span>
-          </h2>
-          <p className="text-slate-400 mt-4 max-w-xl mx-auto">Choose the perfect plan for your parking needs with transparent and competitive pricing.</p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
-          {/* Plan 1 */}
-          <div className="bg-[#0a101d] border border-white/5 p-8 rounded-[2rem] hover:border-white/10 transition-colors">
-            <h3 className="text-2xl font-bold text-white mb-2">Motorbike</h3>
-            <p className="text-slate-500 text-sm mb-6">Perfect for daily commuters</p>
-            <div className="mb-8 flex items-end gap-1">
-              <span className="text-5xl font-bold text-white">$0.50</span>
-              <span className="text-slate-500 mb-1">/hr</span>
-            </div>
-            <ul className="space-y-4 mb-10 text-sm text-slate-300">
-              <li className="flex items-center gap-3">
-                <Check className="w-5 h-5 text-emerald-400" /> Dedicated zone
-              </li>
-              <li className="flex items-center gap-3">
-                <Check className="w-5 h-5 text-emerald-400" /> Security monitoring
-              </li>
-              <li className="flex items-center gap-3">
-                <Check className="w-5 h-5 text-emerald-400" /> Real-time availability
-              </li>
-            </ul>
-            <button className="w-full bg-white/5 hover:bg-white/10 text-white font-medium py-3 rounded-xl transition-colors">Select Plan</button>
-          </div>
-
-          {/* Plan 2: MOST POPULAR */}
-          <div className="bg-[#0c1527] border border-blue-500 p-10 rounded-[2rem] relative shadow-[0_0_40px_rgba(37,99,235,0.1)] md:-translate-y-4">
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#ea580c] text-white text-[10px] font-bold px-4 py-1.5 rounded-full uppercase tracking-wider">
-              Most Popular
-            </div>
-            <h3 className="text-2xl font-bold text-white mb-2">Standard Car</h3>
-            <p className="text-blue-200/60 text-sm mb-6">Ideal for sedans, SUVs, and vans</p>
-            <div className="mb-8 flex items-end gap-1">
-              <span className="text-5xl font-bold text-white">$2.00</span>
-              <span className="text-blue-200/60 mb-1">/hr</span>
-            </div>
-            <ul className="space-y-4 mb-10 text-sm text-white">
-              <li className="flex items-center gap-3">
-                <Check className="w-5 h-5 text-blue-400" /> Wide-space automated slots
-              </li>
-              <li className="flex items-center gap-3">
-                <Check className="w-5 h-5 text-blue-400" /> Premium AI gate control
-              </li>
-              <li className="flex items-center gap-3">
-                <Check className="w-5 h-5 text-blue-400" /> Mobile space tracking
-              </li>
-              <li className="flex items-center gap-3">
-                <Check className="w-5 h-5 text-blue-400" /> Automated billing
-              </li>
-            </ul>
-            <button className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-blue-500/25">Get Started</button>
-          </div>
-
-          {/* Plan 3 */}
-          <div className="bg-[#0a101d] border border-white/5 p-8 rounded-[2rem] hover:border-white/10 transition-colors">
-            <h3 className="text-2xl font-bold text-white mb-2">Monthly Pass</h3>
-            <p className="text-slate-500 text-sm mb-6">For VIP & regular drivers</p>
-            <div className="mb-8 flex items-end gap-1">
-              <span className="text-5xl font-bold text-white">$45.00</span>
-              <span className="text-slate-500 mb-1">/mo</span>
-            </div>
-            <ul className="space-y-4 mb-10 text-sm text-slate-300">
-              <li className="flex items-center gap-3">
-                <Check className="w-5 h-5 text-emerald-400" /> Fixed reserved slot
-              </li>
-              <li className="flex items-center gap-3">
-                <Check className="w-5 h-5 text-emerald-400" /> VIP lane access
-              </li>
-              <li className="flex items-center gap-3">
-                <Check className="w-5 h-5 text-emerald-400" /> Priority support
-              </li>
-              <li className="flex items-center gap-3">
-                <Check className="w-5 h-5 text-emerald-400" /> Free premium features
-              </li>
-            </ul>
-            <button className="w-full bg-white/5 hover:bg-white/10 text-white font-medium py-3 rounded-xl transition-colors">Select Plan</button>
-          </div>
-        </div>
-      </div>
-
-      {/* 6. FOOTER (Tái tạo chính xác theo Screenshot) */}
-      <footer className="relative z-10 bg-[#04070d] border-t border-white/5 pt-20 pb-8 mt-12">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
-            <div className="md:col-span-2">
-              <div className="flex items-center gap-2 mb-6">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center font-bold text-white">e</div>
-                <span className="text-2xl font-bold text-white tracking-tight">eParking</span>
-              </div>
-              <p className="text-sm text-slate-400 max-w-sm leading-relaxed mb-8">
-                An intelligent parking management system designed to optimize urban space, enhance security, and deliver a seamless automated billing experience.
-              </p>
-
-              {/* Team Avatars */}
-              <div className="flex gap-3">
-                {["Lê Nguyễn Thiên Minh", "Vũ Minh Tiến", "Huỳnh Nguyễn Bảo Khang", "Đinh Nguyễn Thịnh", "Trần Đình Quốc Hưng"].map((name, i) => (
+              style={{
+                background: "rgba(255,255,255,0.97)", borderRadius: 20, padding: 24,
+                border: "1px solid rgba(255,255,255,0.6)",
+                boxShadow: "0 8px 48px rgba(0,0,0,0.2)",
+              }}
+            >
+              {/* Header */}
+              <div
+                style={{
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                  marginBottom: 20, paddingBottom: 16, borderBottom: "1px solid #f1f5f9",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, fontWeight: 600, color: "#0f172a" }}>
                   <div
-                    key={i}
-                    className="w-10 h-10 rounded-full bg-[#111827] border border-white/10 flex items-center justify-center text-sm font-medium text-slate-300 cursor-help hover:border-blue-500 hover:text-blue-400 transition-colors"
-                    title={name}>
-                    {name.split(" ").pop()[0]}
+                    style={{
+                      width: 8, height: 8, borderRadius: "50%",
+                      background: isOpen ? "#22c55e" : "#ef4444",
+                      boxShadow: isOpen ? "0 0 0 3px #dcfce7" : "0 0 0 3px #fee2e2",
+                    }}
+                  />
+                  Parking Capacity
+                </div>
+                {/* Status badge from API */}
+                <span
+                  style={{
+                    fontSize: 11,
+                    color: statusColor.text,
+                    background: statusColor.bg,
+                    padding: "3px 10px",
+                    borderRadius: 99,
+                    fontWeight: 600,
+                    border: `1px solid ${statusColor.border}`,
+                  }}
+                >
+                  {statusLabel}
+                </span>
+              </div>
+
+              {/* Pills */}
+              {capacityLoading ? (
+                <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
+                  {[1, 2].map((i) => (
+                    <div key={i} style={{ flex: 1, height: 100, borderRadius: 14, background: "#f1f5f9", animation: "ldpulse 1.5s infinite" }} />
+                  ))}
+                </div>
+              ) : (
+                <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
+                  <CapacityPill icon={Bike} label="Motorbikes" available={motoAvail} total={motoTotal} accentColor="#0ea5e9" />
+                  <CapacityPill icon={Car}  label="Cars"       available={carAvail}  total={carTotal}  accentColor="#1d4ed8" />
+                </div>
+              )}
+
+              {/* Stats row */}
+              <div
+                style={{
+                  display: "grid", gridTemplateColumns: "repeat(3, 1fr)",
+                  background: "#f8fafc", borderRadius: 12, border: "1px solid #e2e8f0", overflow: "hidden",
+                }}
+              >
+                {[
+                  [totalSlots != null ? String(totalSlots) : "—", "Parking Spots"],
+                  ["98%", "On-time Check-in"],
+                  ["24/7", "Open"],
+                ].map(([val, lbl], i) => (
+                  <div key={lbl} style={{ padding: "14px 0", textAlign: "center", borderRight: i < 2 ? "1px solid #e2e8f0" : "none" }}>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: "#1d4ed8" }}>{val}</div>
+                    <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>{lbl}</div>
                   </div>
                 ))}
               </div>
             </div>
+          </div>
+        </div>
+      </section>
 
-            {/* Links Columns */}
-            <div>
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-6">PRODUCT</h3>
-              <ul className="space-y-4 text-sm text-slate-400">
-                <li>
-                  <button onClick={() => scrollToSection("features")} className="hover:text-blue-400 transition-colors">
-                    Features
-                  </button>
-                </li>
-                <li>
-                  <button onClick={() => scrollToSection("rates")} className="hover:text-blue-400 transition-colors">
-                    Pricing
-                  </button>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-blue-400 transition-colors">
-                    Security
-                  </a>
-                </li>
-              </ul>
+      {/* ── Features ── */}
+      <section style={{ background: "#fff", padding: "72px 40px", maxWidth: 1100, margin: "0 auto" }}>
+        <p style={{ fontSize: 12, color: "#1d4ed8", textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 600, marginBottom: 10 }}>Features</p>
+        <h2 style={{ fontSize: 30, fontWeight: 800, color: "#0f172a", marginBottom: 40, letterSpacing: "-0.02em" }}>
+          Everything you need to park with ease
+        </h2>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}>
+          {FEATURES.map(({ icon: Icon, title, desc }) => (
+            <div key={title} style={{ background: "#f8fafc", borderRadius: 14, padding: "22px 20px", border: "1px solid #e2e8f0" }}>
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: "#eff6ff", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+                <Icon size={20} color="#1d4ed8" />
+              </div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: "#0f172a", marginBottom: 8 }}>{title}</div>
+              <div style={{ fontSize: 13, color: "#64748b", lineHeight: 1.7 }}>{desc}</div>
             </div>
+          ))}
+        </div>
+      </section>
 
-            <div>
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-6">COMPANY</h3>
-              <ul className="space-y-4 text-sm text-slate-400">
-                <li>
-                  <a href="#" className="hover:text-blue-400 transition-colors">
-                    About
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-blue-400 transition-colors">
-                    Blog
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-blue-400 transition-colors">
-                    Contact
-                  </a>
-                </li>
-              </ul>
+      {/* ── Steps ── */}
+      <section style={{ background: "#f0f7ff", borderTop: "1px solid #dbeafe", borderBottom: "1px solid #dbeafe", padding: "72px 40px" }}>
+        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+          <p style={{ fontSize: 12, color: "#1d4ed8", textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 600, marginBottom: 10 }}>How It Works</p>
+          <h2 style={{ fontSize: 30, fontWeight: 800, color: "#0f172a", marginBottom: 40, letterSpacing: "-0.02em" }}>
+            Book a spot in 4 simple steps
+          </h2>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 24, position: "relative" }}>
+            {STEPS.map(({ n, title, desc }, i) => (
+              <div key={n} style={{ position: "relative" }}>
+                {i < STEPS.length - 1 && (
+                  <div style={{ position: "absolute", top: 20, left: "calc(50% + 22px)", right: "-50%", height: 1, background: "#bfdbfe", zIndex: 0 }} />
+                )}
+                <div style={{ position: "relative", zIndex: 1 }}>
+                  <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#1d4ed8", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 700, marginBottom: 14, border: "3px solid #dbeafe" }}>
+                    {n}
+                  </div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: "#0f172a", marginBottom: 8 }}>{title}</div>
+                  <div style={{ fontSize: 13, color: "#475569", lineHeight: 1.7 }}>{desc}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── CTA band ── */}
+      <section style={{ background: "#1d4ed8", padding: "72px 40px" }}>
+        <div style={{ maxWidth: 700, margin: "0 auto", textAlign: "center" }}>
+          <h2 style={{ fontSize: 34, fontWeight: 800, color: "#fff", letterSpacing: "-0.02em", marginBottom: 14 }}>
+            Ready to book today?
+          </h2>
+          <p style={{ fontSize: 15, color: "#bfdbfe", marginBottom: 36, lineHeight: 1.75 }}>
+            Dozens of spots are open right now — reserve ahead so you don't miss out.<br />
+            Takes 2 minutes, no app required.
+          </p>
+          <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
+            <button
+              onClick={() => navigate("/login")}
+              style={{ background: "transparent", color: "#fff", border: "1px solid rgba(255,255,255,0.35)", padding: "13px 28px", borderRadius: 10, fontSize: 15, fontWeight: 500, cursor: "pointer" }}
+            >
+              Log In
+            </button>
+            <button
+              onClick={() => navigate("/user/book")}
+              style={{ background: "#fff", color: "#1d4ed8", border: "none", padding: "13px 32px", borderRadius: 10, fontSize: 15, fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 16px rgba(0,0,0,0.15)" }}
+            >
+              Book a Spot →
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Footer ── */}
+      <footer style={{ background: "#0f172a", color: "#cbd5e1" }}>
+        {/* Main footer grid */}
+        <div style={{ maxWidth: 1100, margin: "0 auto", padding: "56px 40px 40px", display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 48 }}>
+          {/* Brand column */}
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
+              <img src="/eParkingLogo.png" alt="eParking logo" style={{ width: 36, height: 36, borderRadius: 9, objectFit: "contain" }} />
+              <div style={{ lineHeight: 1.2 }}>
+                <div style={{ fontSize: 15, fontWeight: 800, color: "#fff", letterSpacing: "-0.02em" }}>e<span style={{ color: "#60a5fa" }}>Parking</span></div>
+                <div style={{ fontSize: 10, color: "#475569", letterSpacing: "0.04em" }}>Management System</div>
+              </div>
+            </div>
+            <p style={{ fontSize: 13, color: "#64748b", lineHeight: 1.75, maxWidth: 260, marginBottom: 24 }}>
+              Smart parking management and booking system. Automatic check-in via license plate recognition camera.
+            </p>
+            <div style={{ display: "flex", gap: 10 }}>
+              {[
+                { label: "24/7 Support", icon: "🕐" },
+                { label: "SSL Secured", icon: "🔒" },
+              ].map(({ label, icon }) => (
+                <div key={label} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "#475569", background: "#1e293b", padding: "5px 10px", borderRadius: 6 }}>
+                  <span>{icon}</span> {label}
+                </div>
+              ))}
             </div>
           </div>
 
-          {/* 3 Contact Info Boxes */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
-            <div className="bg-[#0a101d] border border-white/5 p-6 rounded-2xl flex items-center gap-4">
-              <Mail className="w-6 h-6 text-blue-400" />
-              <div>
-                <p className="text-xs text-slate-500 mb-0.5">Email</p>
-                <p className="text-sm font-semibold text-white">hello@eparking.vn</p>
-              </div>
-            </div>
-
-            <div className="bg-[#0a101d] border border-white/5 p-6 rounded-2xl flex items-center gap-4">
-              <MapPin className="w-6 h-6 text-blue-400" />
-              <div>
-                <p className="text-xs text-slate-500 mb-0.5">Location</p>
-                <p className="text-sm font-semibold text-white">Thu Duc City, HCMC</p>
-              </div>
-            </div>
-
-            <div className="bg-[#0a101d] border border-white/5 p-6 rounded-2xl flex items-center gap-4">
-              <Github className="w-6 h-6 text-blue-400" />
-              <div>
-                <p className="text-xs text-slate-500 mb-0.5">GitHub</p>
-                <a href="#" className="text-sm font-semibold text-white hover:text-blue-400 transition-colors">
-                  github.com/eparking
-                </a>
-              </div>
+          {/* Col: Services */}
+          <div>
+            <h4 style={{ fontSize: 12, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 18 }}>Services</h4>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {["Advance Booking", "Car Parking", "Motorbike Parking", "VNPAY Payment", "Remote Vehicle Lock"].map(l => (
+                <a key={l} href="#" style={{ fontSize: 13, color: "#64748b", textDecoration: "none" }}>{l}</a>
+              ))}
             </div>
           </div>
 
-          {/* Bottom Copyright Line */}
-          <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-slate-500">
-            <p>© 2026 eParking Team. All rights reserved.</p>
-            <p>Designed with ❤️ by SE Students</p>
-            <div className="flex gap-6">
-              <a href="#" className="hover:text-white transition-colors">
-                Privacy
-              </a>
-              <a href="#" className="hover:text-white transition-colors">
-                Terms
-              </a>
-              <a href="#" className="hover:text-white transition-colors">
-                Cookies
-              </a>
+          {/* Col: Support */}
+          <div>
+            <h4 style={{ fontSize: 12, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 18 }}>Support</h4>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {["User Guide", "FAQ", "Parking Rules", "Cancellation Policy", "Contact Support"].map(l => (
+                <a key={l} href="#" style={{ fontSize: 13, color: "#64748b", textDecoration: "none" }}>{l}</a>
+              ))}
             </div>
+          </div>
+
+          {/* Col: Contact */}
+          <div>
+            <h4 style={{ fontSize: 12, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 18 }}>Contact</h4>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {[
+                { icon: "📍", text: "Ho Chi Minh City, Vietnam" },
+                { icon: "📞", text: "1900 xxxx" },
+                { icon: "✉️", text: "support@eparking.vn" },
+              ].map(({ icon, text }) => (
+                <div key={text} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 13, color: "#64748b" }}>
+                  <span style={{ flexShrink: 0 }}>{icon}</span>
+                  <span>{text}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Divider */}
+        <div style={{ borderTop: "1px solid #1e293b" }} />
+
+        {/* Bottom bar */}
+        <div style={{ maxWidth: 1100, margin: "0 auto", padding: "20px 40px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <p style={{ fontSize: 12, color: "#334155" }}>© 2026 eParking Management System. All rights reserved.</p>
+          <div style={{ display: "flex", gap: 24 }}>
+            {["Privacy Policy", "Terms of Use", "Cancellation Policy"].map(l => (
+              <a key={l} href="#" style={{ fontSize: 12, color: "#334155", textDecoration: "none" }}>{l}</a>
+            ))}
           </div>
         </div>
       </footer>
 
-      {/* SCROLL TO TOP */}
-      {showScrollTop && (
-        <button
-          onClick={scrollToTop}
-          className="fixed bottom-8 right-8 z-50 p-3 bg-blue-600/80 backdrop-blur-md hover:bg-blue-500 text-white rounded-full shadow-lg shadow-blue-500/20 transition-all duration-300 hover:-translate-y-1">
-          <ArrowUp className="w-5 h-5" />
-        </button>
-      )}
+      <style>{`
+        @keyframes ldpulse { 0%,100%{opacity:1} 50%{opacity:.45} }
+      `}</style>
     </div>
   );
 }
