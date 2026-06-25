@@ -27,10 +27,6 @@ public partial class User
 
     public string? AvatarUrl { get; set; }
 
-    public string? OtpCode { get; set; }
-
-    public DateTime? OtpExpiredAt { get; set; }
-
     public virtual ICollection<Booking> Bookings { get; set; } = new List<Booking>();
 
     public virtual ICollection<IncidentLog> IncidentLogReportedByNavigations { get; set; } = new List<IncidentLog>();
