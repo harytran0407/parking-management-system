@@ -52,9 +52,9 @@ const t = {
         toastSuccessCheckIn: "Đăng ký xe vào thành công:",
         toastEarlyCheckInFailed: "Đăng ký đến sớm thất bại.",
         toastWebcamError: "Không thể chụp ảnh từ Webcam. Vui lòng kiểm tra quyền thiết bị.",
-        toastDuplicatePlate: "Xe này hiện đang trong bãi. Vui lòng kiểm tra biển số và thử lại.",
+        toastDuplicatePlate: "Trùng biển số: Xe {plate} đang đỗ trong bãi xe.",
         toastBackendError: "Máy chủ từ chối yêu cầu Check-In.",
-        toastDuplicatePlateManual: "Trùng biển số: Xe với biển số này đang đỗ trong bãi xe.",
+        toastDuplicatePlateManual: "Trùng biển số: Xe {plate} đang đỗ trong bãi xe.",
         toastManualCheckInSuccess: "Đăng ký Check-In thủ công thành công cho:",
         toastManualCheckInFailed: "Đăng ký Check-In thủ công thất bại.",
         toastPrepareManualError: "Đã xảy ra lỗi khi chuẩn bị phiên đăng ký thủ công.",
@@ -95,9 +95,9 @@ const t = {
         toastSuccessCheckIn: "Successfully checked in vehicle:",
         toastEarlyCheckInFailed: "Early check-in failed.",
         toastWebcamError: "Cannot capture image from Webcam. Please check device permissions.",
-        toastDuplicatePlate: "This vehicle is currently parked. Please verify the license plate number and try again.",
+        toastDuplicatePlate: "Duplicate License Plate: Vehicle {plate} is already parked in the lot.",
         toastBackendError: "Backend server rejected the Check-In command request.",
-        toastDuplicatePlateManual: "Duplicate License Plate: The vehicle with license plate is already parked in the parking lot.",
+        toastDuplicatePlateManual: "Duplicate License Plate: Vehicle {plate} is already parked in the lot.",
         toastManualCheckInSuccess: "Manual Check-In recorded for:",
         toastManualCheckInFailed: "Manual check-in registration failed.",
         toastPrepareManualError: "An error occurred while preparing manual entry session.",
@@ -222,7 +222,7 @@ export default function CheckInPage() {
             const isDuplicate = await checkIsPlateDuplicate(aiPlate);
             if (isDuplicate) {
                 setScanResult(null);
-                toast.error(t[language].toastDuplicatePlate);
+                toast.error(t[language].toastDuplicatePlate.replace("{plate}", aiPlate));
                 setIsLoading(false);
                 return;
             }
@@ -233,7 +233,7 @@ export default function CheckInPage() {
                 vehicle_type_id: parseInt(aiVehicleType, 10),
                 camera_in: camIn,
                 gate_in: gateIn,
-                image_url_in: `/uploads/plates/client_captured_${new Date().getTime()}.jpg`,
+                image_url_in: imageSrc,
             };
 
             try {
@@ -291,7 +291,7 @@ export default function CheckInPage() {
 
         const isDuplicate = await checkIsPlateDuplicate(plateNumber);
         if (isDuplicate) {
-            toast.error(`${t[language].toastDuplicatePlateManual} [${plateNumber}]`);
+            toast.error(t[language].toastDuplicatePlateManual.replace("{plate}", plateNumber));
             setIsLoading(false);
             return;
         }
@@ -364,7 +364,7 @@ export default function CheckInPage() {
             const isDuplicate = await checkIsPlateDuplicate(formattedPlate);
             if (isDuplicate) {
                 setScanResult(null);
-                toast.error(`${t[language].toastDuplicatePlateManual} [${formattedPlate}]`);
+                toast.error(t[language].toastDuplicatePlateManual.replace("{plate}", formattedPlate));
                 setIsLoading(false);
                 return;
             }

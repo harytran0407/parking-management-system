@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Car,
@@ -10,6 +10,10 @@ import {
   BarChart2,
   History,
   CheckCircle2,
+  MapPin,
+  Phone,
+  Mail,
+  Clock,
 } from "lucide-react";
 import api from "../utils/api";
 
@@ -189,6 +193,68 @@ export default function LandingPage() {
   const [capacity, setCapacity] = useState(null);
   const [capacityLoading, setCapacityLoading] = useState(true);
 
+  const [activeSection, setActiveSection] = useState("parking");
+  const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
+  const tabRefs = useRef({});
+
+  const scrollToSection = (id) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
+  // Scrollspy logic
+  useEffect(() => {
+    const sections = ["parking", "features", "how-it-works"];
+
+    const observerCallback = (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          setActiveSection(entry.target.id);
+        }
+      });
+    };
+
+    const observerOptions = {
+      root: null,
+      rootMargin: "-40% 0px -50% 0px", // Trigger when the section occupies the central area
+      threshold: 0.05,
+    };
+
+    const observer = new IntersectionObserver(observerCallback, observerOptions);
+
+    sections.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) {
+        observer.observe(el);
+      }
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
+  // Update sliding indicator line
+  useEffect(() => {
+    const updateIndicator = () => {
+      const activeTab = tabRefs.current[activeSection];
+      if (activeTab) {
+        setIndicatorStyle({
+          left: activeTab.offsetLeft,
+          width: activeTab.offsetWidth,
+        });
+      }
+    };
+
+    const timer = setTimeout(updateIndicator, 50);
+
+    window.addEventListener("resize", updateIndicator);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("resize", updateIndicator);
+    };
+  }, [activeSection]);
+
   useEffect(() => {
     const fetchCapacity = async () => {
       try {
@@ -207,24 +273,24 @@ export default function LandingPage() {
   // vehicle_type_id: 1 = Motorbike, 2 = Car
   const vehicleTypes = capacity?.vehicle_type_availability ?? [];
   const motoData = vehicleTypes.find((v) => v.vehicle_type_id === 1);
-  const carData  = vehicleTypes.find((v) => v.vehicle_type_id === 2);
+  const carData = vehicleTypes.find((v) => v.vehicle_type_id === 2);
 
   const motoAvail = motoData?.available_slots ?? null;
-  const motoTotal = motoData?.total_slots     ?? null;
-  const carAvail  = carData?.available_slots  ?? null;
-  const carTotal  = carData?.total_slots      ?? null;
+  const motoTotal = motoData?.total_slots ?? null;
+  const carAvail = carData?.available_slots ?? null;
+  const carTotal = carData?.total_slots ?? null;
 
   // Total slots from building root
   const totalSlots = capacity?.total_slots ?? null;
 
   // Status: "ACTIVE" → Open, anything else → Closed
-  const isOpen   = capacity?.status === "ACTIVE";
+  const isOpen = capacity?.status === "ACTIVE";
   const statusLabel = capacity == null ? "Live" : isOpen ? "Open" : "Closed";
   const statusColor = capacity == null
     ? { text: "#16a34a", bg: "#f0fdf4", border: "#bbf7d0" }
     : isOpen
-    ? { text: "#16a34a", bg: "#f0fdf4", border: "#bbf7d0" }
-    : { text: "#dc2626", bg: "#fef2f2", border: "#fecaca" };
+      ? { text: "#16a34a", bg: "#f0fdf4", border: "#bbf7d0" }
+      : { text: "#dc2626", bg: "#fef2f2", border: "#fecaca" };
 
   return (
     <div style={{ fontFamily: "inherit", background: "#fff", minHeight: "100vh" }}>
@@ -248,22 +314,55 @@ export default function LandingPage() {
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: 32 }}>
-          {["Parking", "How It Works", "Support"].map((l) => (
-            <a key={l} href="#" style={{ fontSize: 14, color: "#475569", textDecoration: "none" }}>{l}</a>
+        <div style={{ display: "flex", gap: 32, position: "relative", height: "100%", alignItems: "center" }}>
+          {[
+            { label: "Parking", id: "parking" },
+            { label: "Features", id: "features" },
+            { label: "How It Works", id: "how-it-works" }
+          ].map(({ label, id }) => (
+            <a
+              key={label}
+              ref={(el) => (tabRefs.current[id] = el)}
+              href={`#${id}`}
+              className={`nav-link ${activeSection === id ? "active" : ""}`}
+              onClick={(e) => {
+                e.preventDefault();
+                scrollToSection(id);
+              }}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                height: "100%",
+                padding: "0 4px",
+              }}
+            >
+              {label}
+            </a>
           ))}
+          {/* Sliding indicator */}
+          <div
+            style={{
+              position: "absolute",
+              bottom: 0,
+              height: 3,
+              background: "#1d4ed8",
+              borderRadius: "99px 99px 0 0",
+              transition: "all 0.35s cubic-bezier(0.4, 0, 0.2, 1)",
+              ...indicatorStyle
+            }}
+          />
         </div>
 
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <button
             onClick={() => navigate("/login")}
-            style={{ background: "transparent", border: "1px solid #e2e8f0", color: "#0f172a", padding: "8px 18px", borderRadius: 8, fontSize: 14, fontWeight: 500, cursor: "pointer" }}
+            className="btn-nav-login"
           >
             Log In
           </button>
           <button
             onClick={() => navigate("/user/book")}
-            style={{ background: "#1d4ed8", color: "#fff", border: "none", padding: "8px 20px", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+            className="btn-nav-book"
           >
             Book a Spot
           </button>
@@ -271,7 +370,7 @@ export default function LandingPage() {
       </nav>
 
       {/* ── Hero ── */}
-      <section style={{ position: "relative", overflow: "hidden", minHeight: 580, display: "flex", alignItems: "center" }}>
+      <section id="parking" style={{ position: "relative", overflow: "hidden", minHeight: 580, display: "flex", alignItems: "center" }}>
         {/* Bg image */}
         <div
           style={{
@@ -336,21 +435,13 @@ export default function LandingPage() {
             <div style={{ display: "flex", gap: 12, marginBottom: 36 }}>
               <button
                 onClick={() => navigate("/user/book")}
-                style={{
-                  background: "#1d4ed8", color: "#fff", border: "none",
-                  padding: "13px 28px", borderRadius: 10, fontSize: 15, fontWeight: 600,
-                  cursor: "pointer", display: "flex", alignItems: "center", gap: 8,
-                  boxShadow: "0 4px 20px rgba(29,78,216,0.5)",
-                }}
+                className="btn-hero-book"
               >
                 <CalendarCheck size={17} /> Book a Spot
               </button>
               <button
-                style={{
-                  background: "rgba(255,255,255,0.1)", color: "#fff",
-                  border: "1px solid rgba(255,255,255,0.25)",
-                  padding: "13px 24px", borderRadius: 10, fontSize: 15, fontWeight: 500, cursor: "pointer",
-                }}
+                onClick={() => scrollToSection("how-it-works")}
+                className="btn-hero-how"
               >
                 See How It Works
               </button>
@@ -417,7 +508,7 @@ export default function LandingPage() {
               ) : (
                 <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
                   <CapacityPill icon={Bike} label="Motorbikes" available={motoAvail} total={motoTotal} accentColor="#0ea5e9" />
-                  <CapacityPill icon={Car}  label="Cars"       available={carAvail}  total={carTotal}  accentColor="#1d4ed8" />
+                  <CapacityPill icon={Car} label="Cars" available={carAvail} total={carTotal} accentColor="#1d4ed8" />
                 </div>
               )}
 
@@ -445,7 +536,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── Features ── */}
-      <section style={{ background: "#fff", padding: "72px 40px", maxWidth: 1100, margin: "0 auto" }}>
+      <section id="features" style={{ background: "#fff", padding: "72px 40px", maxWidth: 1100, margin: "0 auto" }}>
         <p style={{ fontSize: 12, color: "#1d4ed8", textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 600, marginBottom: 10 }}>Features</p>
         <h2 style={{ fontSize: 30, fontWeight: 800, color: "#0f172a", marginBottom: 40, letterSpacing: "-0.02em" }}>
           Everything you need to park with ease
@@ -464,7 +555,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── Steps ── */}
-      <section style={{ background: "#f0f7ff", borderTop: "1px solid #dbeafe", borderBottom: "1px solid #dbeafe", padding: "72px 40px" }}>
+      <section id="how-it-works" style={{ background: "#f0f7ff", borderTop: "1px solid #dbeafe", borderBottom: "1px solid #dbeafe", padding: "72px 40px" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <p style={{ fontSize: 12, color: "#1d4ed8", textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 600, marginBottom: 10 }}>How It Works</p>
           <h2 style={{ fontSize: 30, fontWeight: 800, color: "#0f172a", marginBottom: 40, letterSpacing: "-0.02em" }}>
@@ -502,13 +593,13 @@ export default function LandingPage() {
           <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
             <button
               onClick={() => navigate("/login")}
-              style={{ background: "transparent", color: "#fff", border: "1px solid rgba(255,255,255,0.35)", padding: "13px 28px", borderRadius: 10, fontSize: 15, fontWeight: 500, cursor: "pointer" }}
+              className="btn-cta-login"
             >
               Log In
             </button>
             <button
               onClick={() => navigate("/user/book")}
-              style={{ background: "#fff", color: "#1d4ed8", border: "none", padding: "13px 32px", borderRadius: 10, fontSize: 15, fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 16px rgba(0,0,0,0.15)" }}
+              className="btn-cta-book"
             >
               Book a Spot →
             </button>
@@ -534,11 +625,11 @@ export default function LandingPage() {
             </p>
             <div style={{ display: "flex", gap: 10 }}>
               {[
-                { label: "24/7 Support", icon: "🕐" },
-                { label: "SSL Secured", icon: "🔒" },
-              ].map(({ label, icon }) => (
+                { label: "24/7 Support", icon: Clock },
+                { label: "SSL Secured", icon: Lock },
+              ].map(({ label, icon: Icon }) => (
                 <div key={label} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "#475569", background: "#1e293b", padding: "5px 10px", borderRadius: 6 }}>
-                  <span>{icon}</span> {label}
+                  <Icon size={12} color="#475569" style={{ flexShrink: 0 }} /> {label}
                 </div>
               ))}
             </div>
@@ -569,12 +660,12 @@ export default function LandingPage() {
             <h4 style={{ fontSize: 12, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 18 }}>Contact</h4>
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               {[
-                { icon: "📍", text: "Ho Chi Minh City, Vietnam" },
-                { icon: "📞", text: "1900 xxxx" },
-                { icon: "✉️", text: "support@eparking.vn" },
-              ].map(({ icon, text }) => (
-                <div key={text} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 13, color: "#64748b" }}>
-                  <span style={{ flexShrink: 0 }}>{icon}</span>
+                { icon: MapPin, text: "Ho Chi Minh City, Vietnam" },
+                { icon: Phone, text: "1900 xxxx" },
+                { icon: Mail, text: "support@eparking.vn" },
+              ].map(({ icon: Icon, text }) => (
+                <div key={text} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#64748b" }}>
+                  <Icon size={14} color="#64748b" style={{ flexShrink: 0 }} />
                   <span>{text}</span>
                 </div>
               ))}
@@ -598,6 +689,146 @@ export default function LandingPage() {
 
       <style>{`
         @keyframes ldpulse { 0%,100%{opacity:1} 50%{opacity:.45} }
+        .nav-link {
+          font-size: 14px;
+          color: #475569;
+          text-decoration: none;
+          font-weight: 500;
+          transition: color 0.2s ease;
+        }
+        .nav-link:hover, .nav-link.active {
+          color: #1d4ed8;
+        }
+        html { scroll-behavior: smooth; }
+
+        .btn-nav-login {
+          background: transparent;
+          border: 1px solid #e2e8f0;
+          color: #0f172a;
+          padding: 8px 18px;
+          border-radius: 8px;
+          font-size: 14px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .btn-nav-login:hover {
+          background: #f8fafc;
+          border-color: #cbd5e1;
+          transform: translateY(-1px);
+        }
+        .btn-nav-login:active {
+          transform: translateY(1px);
+        }
+
+        .btn-nav-book {
+          background: #1d4ed8;
+          color: #fff;
+          border: none;
+          padding: 8px 20px;
+          border-radius: 8px;
+          font-size: 14px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+          box-shadow: 0 2px 8px rgba(29, 78, 216, 0.2);
+        }
+        .btn-nav-book:hover {
+          background: #1e40af;
+          box-shadow: 0 4px 12px rgba(29, 78, 216, 0.35);
+          transform: translateY(-1px);
+        }
+        .btn-nav-book:active {
+          transform: translateY(1px);
+          box-shadow: 0 1px 4px rgba(29, 78, 216, 0.2);
+        }
+
+        .btn-hero-book {
+          background: #1d4ed8;
+          color: #fff;
+          border: none;
+          padding: 13px 28px;
+          border-radius: 10px;
+          font-size: 15px;
+          font-weight: 600;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+          box-shadow: 0 4px 20px rgba(29, 78, 216, 0.4);
+        }
+        .btn-hero-book:hover {
+          background: #1e40af;
+          box-shadow: 0 6px 24px rgba(29, 78, 216, 0.6);
+          transform: translateY(-2px);
+        }
+        .btn-hero-book:active {
+          transform: translateY(1px);
+          box-shadow: 0 2px 10px rgba(29, 78, 216, 0.4);
+        }
+
+        .btn-hero-how {
+          background: rgba(255, 255, 255, 0.1);
+          color: #fff;
+          border: 1px solid rgba(255, 255, 255, 0.25);
+          padding: 13px 24px;
+          border-radius: 10px;
+          font-size: 15px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .btn-hero-how:hover {
+          background: rgba(255, 255, 255, 0.2);
+          border-color: rgba(255, 255, 255, 0.4);
+          transform: translateY(-2px);
+        }
+        .btn-hero-how:active {
+          transform: translateY(1px);
+        }
+
+        .btn-cta-login {
+          background: transparent;
+          color: #fff;
+          border: 1px solid rgba(255, 255, 255, 0.35);
+          padding: 13px 28px;
+          border-radius: 10px;
+          font-size: 15px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .btn-cta-login:hover {
+          background: rgba(255, 255, 255, 0.1);
+          border-color: #fff;
+          transform: translateY(-2px);
+        }
+        .btn-cta-login:active {
+          transform: translateY(1px);
+        }
+
+        .btn-cta-book {
+          background: #fff;
+          color: #1d4ed8;
+          border: none;
+          padding: 13px 32px;
+          border-radius: 10px;
+          font-size: 15px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+        }
+        .btn-cta-book:hover {
+          background: #f8fafc;
+          box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+          transform: translateY(-2px);
+        }
+        .btn-cta-book:active {
+          transform: translateY(1px);
+          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+        }
       `}</style>
     </div>
   );

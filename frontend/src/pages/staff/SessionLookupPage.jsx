@@ -15,10 +15,17 @@ import {
   Hash,
   CheckCircle,
   Bike,
+  X,
+  Maximize2,
 } from "lucide-react";
 import { useLanguage } from "../../hooks/useLanguage";
 
 const fmtVND = (val) => (val != null ? Number(val).toLocaleString("vi-VN") : "0");
+
+const getBackendRootUrl = () => {
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+  return baseUrl.replace("/api/v1", "");
+};
 
 const t = {
   vi: {
@@ -105,6 +112,7 @@ export default function SessionLookupPage() {
   const [error, setError] = useState("");
   const [session, setSession] = useState(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [lightboxImage, setLightboxImage] = useState(null);
 
   // Auto-refresh every 30 s when a session is displayed
   useEffect(() => {
@@ -421,16 +429,33 @@ export default function SessionLookupPage() {
               </div>
             </div>
 
-            {/* Info notice */}
-            <div className="bg-white dark:bg-slate-900 rounded-md border border-blue-100 dark:border-blue-900/40 shadow-lg shadow-slate-200/60 dark:shadow-slate-950/60 px-6 xl:px-7 py-5 flex items-start gap-3">
-              <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0 mt-0.5">
-                <Info size={14} className="text-blue-600 dark:text-blue-400" />
-              </div>
-              <div>
-                <p className="text-xs font-black text-blue-700 dark:text-blue-400 mb-1">{t[language].viewOnlyTitle}</p>
-                <p className="text-xs text-blue-600/80 dark:text-blue-400/70 leading-relaxed">
-                  {t[language].viewOnlyNotice}
-                </p>
+            {/* Vehicle Entry Snapshot */}
+            <div className="bg-white dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-800 shadow-lg shadow-slate-200/60 dark:shadow-slate-950/60 px-6 xl:px-7 py-5 flex flex-col gap-3">
+              <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+                <Car size={13} />
+                {language === "vi" ? "Ảnh check-in" : "Check-in Image"}
+              </p>
+              <div
+                onClick={() => {
+                  if (session && session.image_url_in) {
+                    setLightboxImage(`${getBackendRootUrl()}${session.image_url_in}`);
+                  }
+                }}
+                className="bg-slate-100 dark:bg-slate-950 h-[150px] xl:h-[180px] rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 relative group cursor-zoom-in transition-colors duration-200"
+                title="Click to zoom check-in snapshot"
+              >
+                <img
+                  src={session.image_url_in ? `${getBackendRootUrl()}${session.image_url_in}` : "https://placehold.co/600x400/0f172a/64748b?text=No+Checkin+Image"}
+                  alt="Vehicle Check-in snapshot"
+                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 opacity-90 dark:opacity-80"
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = "https://placehold.co/600x400/0f172a/64748b?text=No+Checkin+Image";
+                  }}
+                />
+                <div className="absolute bottom-2.5 right-2.5 bg-white/90 dark:bg-slate-900/90 rounded p-1 text-slate-700 dark:text-slate-200 opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm border border-slate-200 dark:border-slate-700">
+                  <Maximize2 size={12} />
+                </div>
               </div>
             </div>
           </div>
@@ -444,6 +469,24 @@ export default function SessionLookupPage() {
           <p className="text-xs text-blue-600/80 dark:text-blue-400/80 leading-relaxed">
             {t[language].emptyNotice}
           </p>
+        </div>
+      )}
+
+      {/* LIGHTBOX MODAL OVERLAY */}
+      {lightboxImage && (
+        <div
+          className="fixed inset-0 bg-slate-950/80 dark:bg-slate-950/90 backdrop-blur-md z-50 flex flex-col items-center justify-center p-4 cursor-zoom-out"
+          onClick={() => setLightboxImage(null)}
+        >
+          <div className="absolute top-5 right-5 text-slate-500 hover:text-slate-200 dark:text-slate-400 dark:hover:text-white bg-white/10 dark:bg-slate-900/60 p-2 rounded-full border border-slate-300 dark:border-slate-800 transition-colors">
+            <X size={20} />
+          </div>
+          <div className="relative max-w-4xl max-h-[85vh] rounded-md overflow-hidden border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <img src={lightboxImage} alt="High Resolution Audit" className="w-full h-auto max-h-[85vh] object-contain" />
+            <div className="absolute bottom-0 inset-x-0 bg-slate-900/90 dark:bg-slate-950/80 p-3 text-center border-t border-slate-200 dark:border-slate-800 backdrop-blur-sm">
+              <p className="font-mono font-bold tracking-widest text-sm text-yellow-500 dark:text-yellow-400">{licensePlate || "No Plate Info"}</p>
+            </div>
+          </div>
         </div>
       )}
     </div>

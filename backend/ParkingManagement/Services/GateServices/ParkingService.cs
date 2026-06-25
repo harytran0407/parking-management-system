@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Collections.Generic;
@@ -90,6 +91,8 @@ namespace ParkingManagement.Services
             string ticketCode = GenerateTicketCode();
             DateTime checkInTime = DateTime.Now;
 
+            string? savedImageUrl = await SaveBase64ImageAsync(dto.ImageUrlIn, "checkin", sessionId) ?? "/uploads/plates/manual_entry.jpg";
+
             await _parkingRepository.SaveChangesWithTransactionAsync(async () =>
             {
                 await _parkingRepository.DecrementZoneCapacityAsync(zone.ZoneId);
@@ -103,7 +106,7 @@ namespace ParkingManagement.Services
                     VehicleTypeId = dto.VehicleTypeId,
                     CameraIn = dto.CameraIn,
                     GateIn = dto.GateIn,
-                    ImageUrlIn = dto.ImageUrlIn,
+                    ImageUrlIn = savedImageUrl,
                     StaffInId = staffId,
                     ZoneId = zone.ZoneId,
                     SlotId = null,
@@ -149,6 +152,8 @@ namespace ParkingManagement.Services
             string sessionId = GenerateSessionId();
             DateTime checkInTime = DateTime.Now;
         
+            string? savedImageUrl = await SaveBase64ImageAsync(dto.ImageUrlIn, "checkin", sessionId) ?? "/uploads/plates/manual_entry.jpg";
+        
             await _parkingRepository.SaveChangesWithTransactionAsync(async () =>
             {
                 await _parkingRepository.DecrementZoneCapacityAsync(zone.ZoneId);
@@ -162,7 +167,7 @@ namespace ParkingManagement.Services
                     VehicleTypeId = booking.VehicleTypeId,
                     CameraIn = dto.CameraIn,
                     GateIn = dto.GateIn,
-                    ImageUrlIn = dto.ImageUrlIn,
+                    ImageUrlIn = savedImageUrl,
                     StaffInId = staffId,
                     ZoneId = zone.ZoneId,
                     SlotId = null,
@@ -267,6 +272,9 @@ namespace ParkingManagement.Services
                 finalFee = feeResult.CurrentFee;
             }
 
+            string? savedImageUrl = await SaveBase64ImageAsync(checkOutDto.ImageUrlOut, "checkout", session.SessionId);
+            checkOutDto.ImageUrlOut = savedImageUrl;
+
             await _parkingRepository.SaveChangesWithTransactionAsync(async () =>
             {
                 UpdateSessionForCheckOut(session, checkOutDto, staffId, checkOutTime, durationMinutes, finalFee);
@@ -358,6 +366,9 @@ namespace ParkingManagement.Services
                     );
                 }
             }
+
+            string? savedImageUrl = await SaveBase64ImageAsync(checkOutDto.ImageUrlOut, "checkout", session.SessionId);
+            checkOutDto.ImageUrlOut = savedImageUrl;
 
             await _parkingRepository.SaveChangesWithTransactionAsync(async () =>
             {
@@ -839,7 +850,9 @@ namespace ParkingManagement.Services
                 StaffCheckIn = s.StaffInId ?? "System",
                 StaffCheckOut = s.StaffOutId,
                 
-                Status = s.Status?.ToUpper() ?? (s.CheckOutTime.HasValue ? "COMPLETED" : "ACTIVE")
+                Status = s.Status?.ToUpper() ?? (s.CheckOutTime.HasValue ? "COMPLETED" : "ACTIVE"),
+                ImageUrlIn = s.ImageUrlIn,
+                ImageUrlOut = s.ImageUrlOut
             }).ToList();
         
             return new PagedHistoryResponseDto
@@ -878,6 +891,39 @@ namespace ParkingManagement.Services
             var randomString = new string(Enumerable.Repeat(chars, 5)
                                                     .Select(s => s[random.Next(s.Length)]).ToArray());
             return $"TICKET-{randomString}"; // Ví dụ: TICKET-X9R2A
+        }
+
+        private async Task<string?> SaveBase64ImageAsync(string? base64OrUrl, string prefix, string id)
+        {
+            if (string.IsNullOrEmpty(base64OrUrl)) return null;
+
+            if (base64OrUrl.StartsWith("data:image"))
+            {
+                try
+                {
+                    var parts = base64OrUrl.Split(',');
+                    var base64Data = parts.Length > 1 ? parts[1] : parts[0];
+                    var imageBytes = Convert.FromBase64String(base64Data);
+
+                    var uploadFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "plates");
+                    if (!Directory.Exists(uploadFolder))
+                    {
+                        Directory.CreateDirectory(uploadFolder);
+                    }
+
+                    var fileName = $"{prefix}_{id}_{DateTime.Now:yyyyMMddHHmmss}.jpg";
+                    var filePath = Path.Combine(uploadFolder, fileName);
+                    await File.WriteAllBytesAsync(filePath, imageBytes);
+
+                    return $"/uploads/plates/{fileName}";
+                }
+                catch (Exception)
+                {
+                    return null;
+                }
+            }
+
+            return base64OrUrl;
         }
 
         #endregion
@@ -986,7 +1032,9 @@ namespace ParkingManagement.Services
                     BookingStatus = bookingStatus,
                     IsOverdue = isOverdue,
                     OverdueMinutes = overdueMinutes,
-                    OverdueFee = overdueFee
+                    OverdueFee = overdueFee,
+                    ImageUrlIn = session.ImageUrlIn,
+                    ImageUrlOut = session.ImageUrlOut
                 }
             };
         }

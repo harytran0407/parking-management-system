@@ -2,7 +2,8 @@ import React, { useState, useEffect } from "react";
 import {
     FileQuestion, ScanFace, Clock, ClipboardList,
     Search, CarFront, Sliders, Trash2, Info,
-    Star, Paperclip, AlertCircle, CheckCircle, Phone, Mail, Ticket, CarFrontIcon, MessageSquare
+    Star, Paperclip, AlertCircle, CheckCircle, Phone, Mail, Ticket, CarFrontIcon, MessageSquare,
+    X, Maximize2
 } from 'lucide-react';
 import { toast } from "sonner";
 import api from "../../utils/api";
@@ -76,7 +77,7 @@ const t = {
         checkInTimeLabel: "Thời gian vào:",
         durationLabel: "Thời lượng:",
         currentFeeLabel: "Phí hiện tại:",
-        entryImageLabel: "Ảnh chụp cổng vào",
+        entryImageLabel: "Ảnh check-in",
         toastEnterSearch: "Vui lòng nhập từ khóa tìm kiếm!",
         toastSessionFound: "Tìm thấy phiên đỗ xe đang hoạt động!",
         toastSlotEmpty: "Ô đỗ này hiện đang trống hoặc không có phiên đỗ hoạt động.",
@@ -163,7 +164,7 @@ const t = {
         checkInTimeLabel: "Check-in Time:",
         durationLabel: "Duration:",
         currentFeeLabel: "Current Fee:",
-        entryImageLabel: "Entry Camera Image",
+        entryImageLabel: "Check-in Image",
         toastEnterSearch: "Please enter a search keyword!",
         toastSessionFound: "Active parking session found!",
         toastSlotEmpty: "This slot is empty or has no active session.",
@@ -195,6 +196,7 @@ export default function StaffIncidentHandling() {
     const [associatedSlot, setAssociatedSlot] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [reportData, setReportData] = useState(null);
+    const [lightboxImage, setLightboxImage] = useState(null);
 
     const [formValues, setFormValues] = useState({
         lostPlate: "",
@@ -462,14 +464,27 @@ export default function StaffIncidentHandling() {
                         <div className="flex justify-between"><span className="text-slate-400">{t[language].currentFeeLabel}</span><span className="font-mono text-amber-600 dark:text-amber-500 rounded font-black">{(foundSession.current_fee || 0).toLocaleString()} VND</span></div>
                     </div>
                 </div>
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                     <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1">{t[language].entryImageLabel}</span>
-                    <img
-                        src={`/api/v1/parking/sessions/${foundSession.session_id}/entry-image`}
-                        alt="Gate Entry"
-                        onError={(e) => { e.target.onerror = null; e.target.src = "https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?q=80&w=600"; }}
-                        className="w-full h-32 object-cover border border-slate-200 dark:border-slate-700 rounded-md bg-slate-100 dark:bg-slate-800"
-                    />
+                    <div
+                        onClick={() => {
+                            if (foundSession && foundSession.image_url_in) {
+                                setLightboxImage(`${getBackendRootUrl()}${foundSession.image_url_in}`);
+                            }
+                        }}
+                        className="bg-slate-100 dark:bg-slate-950 h-32 border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm dark:shadow-md relative group cursor-zoom-in rounded-md transition-colors duration-200"
+                        title="Click to zoom check-in snapshot"
+                    >
+                        <img
+                            src={foundSession.image_url_in ? `${getBackendRootUrl()}${foundSession.image_url_in}` : "https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?q=80&w=600"}
+                            alt="Gate Entry"
+                            onError={(e) => { e.target.onerror = null; e.target.src = "https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?q=80&w=600"; }}
+                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 opacity-90 dark:opacity-80"
+                        />
+                        <div className="absolute bottom-2 right-2 bg-white/90 dark:bg-slate-900/90 rounded p-1 text-slate-700 dark:text-slate-200 opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm border border-slate-200 dark:border-slate-700">
+                            <Maximize2 size={10} />
+                        </div>
+                    </div>
                 </div>
             </div>
         );
@@ -999,6 +1014,25 @@ export default function StaffIncidentHandling() {
                         )}
                     </div>
 
+                </div>
+            )}
+            {/* LIGHTBOX MODAL OVERLAY */}
+            {lightboxImage && (
+                <div
+                    className="fixed inset-0 bg-slate-950/80 dark:bg-slate-950/90 backdrop-blur-md z-50 flex flex-col items-center justify-center p-4 cursor-zoom-out"
+                    onClick={() => setLightboxImage(null)}
+                >
+                    <div className="absolute top-5 right-5 text-slate-500 hover:text-slate-200 dark:text-slate-400 dark:hover:text-white bg-white/10 dark:bg-slate-900/60 p-2 rounded-full border border-slate-300 dark:border-slate-800 transition-colors">
+                        <X size={20} />
+                    </div>
+                    <div className="relative max-w-4xl max-h-[85vh] rounded-md overflow-hidden border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                        <img src={lightboxImage} alt="High Resolution Audit" className="w-full h-auto max-h-[85vh] object-contain" />
+                        <div className="absolute bottom-0 inset-x-0 bg-slate-900/90 dark:bg-slate-950/80 p-3 text-center border-t border-slate-200 dark:border-slate-800 backdrop-blur-sm">
+                            <p className="font-mono font-bold tracking-widest text-sm text-yellow-500 dark:text-yellow-400">
+                                {foundSession?.license_plate_in || "No Plate Info"}
+                            </p>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

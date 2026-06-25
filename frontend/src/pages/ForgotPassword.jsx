@@ -13,7 +13,7 @@ const t = {
     emailOrPhone: "Email hoặc Số điện thoại",
     emailOrPhonePlaceholder: "Nhập email hoặc số điện thoại đã đăng ký",
     enterEmailOrPhoneToast: "Vui lòng nhập email hoặc số điện thoại.",
-    sendRequestBtn: "Gửi yêu cầu khôi phục",
+    sendRequestBtn: "Gửi mã OTP khôi phục",
     processing: "Đang xử lý...",
     dispatchSuccessToast: "Mã xác thực đã được gửi thành công!",
     verificationFailedToast: "Xác thực tài khoản thất bại. Vui lòng thử lại.",
@@ -43,11 +43,11 @@ const t = {
     emailOrPhone: "Email or Phone Number",
     emailOrPhonePlaceholder: "Enter registered email or phone",
     enterEmailOrPhoneToast: "Please enter your email or phone number.",
-    sendRequestBtn: "Send Recovery Request",
+    sendRequestBtn: "Send OTP Code",
     processing: "Processing...",
-    dispatchSuccessToast: "Verification code has been dispatched successfully!",
+    dispatchSuccessToast: "OTP code has been sent successfully!",
     verificationFailedToast: "Account verification failed. Please try again.",
-    enterOtpCode: "Please enter the verification code sent to",
+    enterOtpCode: "Please enter the OTP code sent to",
     otpPlaceholder: "Enter OTP code",
     invalidOtpToast: "Please enter a valid OTP code.",
     continueBtn: "Continue",
@@ -172,12 +172,18 @@ export default function ForgotPassword() {
     <div className="min-h-screen bg-[#0f172a] flex items-center justify-center p-4 relative overflow-hidden">
       {/* Background Layer */}
       <div
-        className="absolute inset-0 bg-cover bg-center z-0 opacity-25"
+        className="absolute inset-0 bg-cover bg-center z-0"
         style={{
-          backgroundImage: `url('https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&q=80&w=1920')`,
+          backgroundImage: `url('https://images.pexels.com/photos/1004409/pexels-photo-1004409.jpeg?auto=compress&cs=tinysrgb&w=1400')`,
+          filter: "brightness(0.35)",
         }}
       />
-      <div className="absolute inset-0 bg-gradient-to-b from-slate-900/70 via-slate-900/80 to-slate-950 z-0" />
+      <div
+        className="absolute inset-0 z-0"
+        style={{
+          background: "linear-gradient(120deg, rgba(29,78,216,0.6) 0%, rgba(15,23,42,0.25) 100%)",
+        }}
+      />
 
       {/* Back to Login Button */}
       <Link to="/login" className="absolute top-6 left-6 flex items-center gap-1.5 text-base font-semibold text-gray-400 hover:text-white transition duration-200 z-10">
@@ -186,14 +192,14 @@ export default function ForgotPassword() {
       </Link>
 
       <div className="w-full max-w-md relative z-10">
-        <div className="backdrop-blur-md bg-[#1e293b]/70 border border-slate-700/50 shadow-2xl rounded-xl p-8 relative">
-          
+        <div className="backdrop-blur-md bg-white border border-white/20 shadow-2xl rounded-xl p-8 relative">
+
           {/* Language Selector */}
           <div className="absolute top-4 right-4">
             <button
               type="button"
               onClick={toggleLanguage}
-              className="px-2.5 py-1 bg-slate-800/80 border border-slate-700 text-[10px] font-black text-slate-300 hover:text-white rounded-lg transition-all focus:outline-none flex items-center gap-1.5 hover:bg-slate-700"
+              className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-[10px] font-black text-slate-600 hover:text-slate-800 rounded-lg transition-all focus:outline-none flex items-center gap-1.5"
               title={language === "en" ? "Switch to Vietnamese" : "Chuyển sang Tiếng Anh"}
             >
               <span>🌐</span>
@@ -203,9 +209,9 @@ export default function ForgotPassword() {
 
           <div className="text-center mb-6">
             <Link to="/" className="inline-block hover:opacity-85 transition-opacity">
-              <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">{t[language].title}</h1>
+              <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">{t[language].title}</h1>
             </Link>
-            <p className="text-slate-400 text-sm">{t[language].subtitle}</p>
+            <p className="text-slate-500 font-medium text-sm mt-1">{t[language].subtitle}</p>
           </div>
 
           {/* ============================================================
@@ -214,16 +220,16 @@ export default function ForgotPassword() {
           {step === "request" && (
             <form onSubmit={handleRequestSubmit} className="space-y-5">
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">{t[language].emailOrPhone}</label>
+                <label className="block text-sm font-semibold text-slate-800 mb-1">{t[language].emailOrPhone}</label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 w-5 h-5" />
                   <input
                     type="text"
                     required
                     value={inputValue}
                     onChange={(e) => setInputValue(e.target.value)}
                     placeholder={t[language].emailOrPhonePlaceholder}
-                    className="w-full pl-10 pr-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
+                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50/80 border border-slate-300 rounded-lg text-slate-900 placeholder-slate-450 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-500 transition"
                   />
                 </div>
               </div>
@@ -231,7 +237,7 @@ export default function ForgotPassword() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 px-4 rounded-lg transition duration-200 disabled:opacity-50 flex items-center justify-center gap-2">
+                className="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 px-4 rounded-lg transition duration-200 disabled:opacity-50 flex items-center justify-center gap-2">
                 {loading && <RefreshCcw size={14} className="animate-spin" />}
                 <span>{loading ? t[language].processing : t[language].sendRequestBtn}</span>
               </button>
@@ -243,13 +249,13 @@ export default function ForgotPassword() {
              ============================================================ */}
           {step === "otp" && (
             <form onSubmit={handleVerifyOtp} className="space-y-4">
-              <div className="text-center text-sm text-slate-300 mb-2">
+              <div className="text-center text-sm text-slate-655 mb-2 font-medium">
                 {t[language].enterOtpCode} <br />
-                <span className="text-blue-400 font-mono font-semibold">{inputValue}</span>
+                <span className="text-blue-600 font-mono font-semibold">{inputValue}</span>
               </div>
 
               <div className="relative">
-                <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+                <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-450 w-5 h-5" />
                 <input
                   type="text"
                   maxLength={6}
@@ -257,17 +263,17 @@ export default function ForgotPassword() {
                   value={otpCode}
                   onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
                   placeholder={t[language].otpPlaceholder}
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white text-center font-bold tracking-[0.3em] placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
+                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50/80 border border-slate-300 rounded-lg text-slate-900 text-center font-bold tracking-[0.3em] placeholder-slate-450 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-500 transition"
                 />
               </div>
               <button
                 type="submit"
-                className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 px-4 rounded-lg transition duration-200 flex items-center justify-center">
+                className="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 px-4 rounded-lg transition duration-200 flex items-center justify-center">
                 <span>{t[language].continueBtn}</span>
               </button>
 
               <div className="text-center mt-2">
-                <button type="button" onClick={() => setStep("request")} className="text-xs text-blue-500 hover:underline font-medium">
+                <button type="button" onClick={() => setStep("request")} className="text-xs text-blue-600 hover:text-blue-700 hover:underline font-semibold">
                   {t[language].changeContactLink}
                 </button>
               </div>
@@ -280,7 +286,7 @@ export default function ForgotPassword() {
           {step === "reset" && (
             <form onSubmit={handleResetPassword} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">{t[language].newPasswordLabel}</label>
+                <label className="block text-sm font-semibold text-slate-800 mb-1">{t[language].newPasswordLabel}</label>
                 <div className="relative">
                   <input
                     type={showPassword ? "text" : "password"}
@@ -288,37 +294,37 @@ export default function ForgotPassword() {
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder={t[language].newPasswordPlaceholder}
-                    className="w-full px-4 pr-10 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
+                    className="w-full px-4 pr-10 py-2.5 bg-slate-50/80 border border-slate-300 rounded-lg text-slate-900 placeholder-slate-450 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-500 transition"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition">
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-450 hover:text-slate-700 transition">
                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">{t[language].confirmNewPasswordLabel}</label>
+                <label className="block text-sm font-semibold text-slate-800 mb-1">{t[language].confirmNewPasswordLabel}</label>
                 <input
                   type="password"
                   required
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder={t[language].confirmNewPasswordPlaceholder}
-                  className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
+                  className="w-full px-4 py-2.5 bg-slate-50/80 border border-slate-300 rounded-lg text-slate-900 placeholder-slate-455 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-500 transition"
                 />
               </div>
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 px-4 rounded-lg transition duration-200 disabled:opacity-50 flex items-center justify-center gap-2">
+                className="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 px-4 rounded-lg transition duration-200 disabled:opacity-50 flex items-center justify-center gap-2">
                 {loading && <RefreshCcw size={14} className="animate-spin" />}
                 <span>{loading ? t[language].updating : t[language].resetBtn}</span>
               </button>
 
               <div className="text-center mt-2">
-                <button type="button" onClick={handleRestartFlow} className="text-xs text-blue-500 hover:underline font-medium">
+                <button type="button" onClick={handleRestartFlow} className="text-xs text-blue-650 hover:underline font-semibold">
                   {t[language].cancelRestartLink}
                 </button>
               </div>
@@ -333,8 +339,8 @@ export default function ForgotPassword() {
               <div className="flex justify-center text-green-500">
                 <CheckCircle2 size={56} className="animate-bounce" />
               </div>
-              <p className="text-slate-200 font-medium">{t[language].successMsg}</p>
-              <button onClick={() => navigate("/login")} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 px-4 rounded-lg transition duration-200">
+              <p className="text-slate-750 font-semibold">{t[language].successMsg}</p>
+              <button onClick={() => navigate("/login")} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 px-4 rounded-lg transition duration-200">
                 {t[language].returnLoginBtn}
               </button>
             </div>
