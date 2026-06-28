@@ -63,7 +63,7 @@ namespace ParkingManagement.Services
             vnpayLib.AddRequestData("vnp_Command", "pay");
             vnpayLib.AddRequestData("vnp_TmnCode", tmnCode);
             vnpayLib.AddRequestData("vnp_Amount", vnpAmount.ToString());
-            vnpayLib.AddRequestData("vnp_CreateDate", DateTime.Now.ToString("yyyyMMddHHmmss"));
+            vnpayLib.AddRequestData("vnp_CreateDate", ParkingCalculationHelper.VnNow.ToString("yyyyMMddHHmmss"));
             vnpayLib.AddRequestData("vnp_CurrCode", "VND");
             vnpayLib.AddRequestData("vnp_IpAddr", "127.0.0.1");
             vnpayLib.AddRequestData("vnp_Locale", "vn");

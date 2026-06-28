@@ -169,7 +169,7 @@ export default function CheckOutPage() {
     const fetchActiveSession = async (targetPlate) => {
         try {
             const formattedPlate = targetPlate.toUpperCase().trim();
-            const response = await api.get(`/parking/sessions/active/${formattedPlate}`);
+            const response = await api.get(`/parking/sessions/active/${formattedPlate}?exact=true`);
             if (response.status === 200 && response.data && response.data.success) {
                 return response.data.data;
             }
@@ -483,7 +483,7 @@ export default function CheckOutPage() {
     }, [scanResult, handleCaptureAndRecognize, manualInput, ticketCodeInput, plateNumber, isPlateMatched, pendingCameraPlate, activeBookingId, language]);
 
     return (
-        <div className="w-full flex-1 text-slate-800 dark:text-slate-100 bg-slate-50 dark:bg-slate-950 flex flex-col font-sans box-border select-none p-4 transition-colors duration-200">
+        <div className="w-full flex-1 text-slate-800 dark:text-slate-100 flex flex-col font-sans box-border select-none transition-colors duration-200">
 
             {/* MAIN CONTENT AREA — CSS GRID ĐỒNG BỘ CHIỀU CAO TUYỆT ĐỐI */}
             <div className="flex-1 w-full gap-4 xl:gap-5 flex flex-col lg:grid lg:grid-cols-[1.5fr_1fr] xl:grid-cols-[1.62fr_1fr] items-stretch min-h-0">
@@ -499,10 +499,10 @@ export default function CheckOutPage() {
                         <button
                             onClick={handleCaptureAndRecognize}
                             disabled={isLoading}
-                            className="bg-slate-900 dark:bg-slate-600 hover:bg-slate-600 dark:hover:bg-slate-500 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 dark:disabled:text-slate-600 text-white font-bold text-xs px-4 py-2.5 rounded-lg transition-all shadow-md shadow-slate-600/10 dark:shadow-lg dark:shadow-slate-950/50 active:scale-98 flex items-center gap-2 uppercase tracking-wide"
+                            className="bg-blue-600 dark:bg-blue-600 hover:bg-blue-500 dark:hover:bg-blue-500 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 dark:disabled:text-slate-600 text-white font-bold text-xs px-4 py-2.5 rounded-md transition-all shadow-md shadow-slate-600/10 dark:shadow-lg dark:shadow-slate-950/50 active:scale-98 flex items-center gap-2 uppercase tracking-wide"
                             title={t[language].scanPlateTitle}
                         >
-                            <Camera size={14} /> {t[language].btnScanPlate} <kbd className="bg-slate-600 dark:bg-slate-900 text-slate-100 dark:text-slate-200 px-1 rounded text-[9px] ml-1 font-mono font-normal">Enter</kbd>
+                            <Camera size={14} /> {t[language].btnScanPlate} <kbd className=" text-white  px-1 rounded text-[9px] ml-1 font-mono font-normal">[Enter]</kbd>
                         </button>
                     </div>
 
@@ -527,7 +527,7 @@ export default function CheckOutPage() {
                     </div>
 
                     {/* MANUAL PANEL: BIỂN SỐ & MÃ VÉ HAI BÊN SONG SONG */}
-                    <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-slate-100 dark:border-slate-800 pt-4 shrink-0 transition-colors duration-200">
+                    <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-slate-200 dark:border-slate-800 pt-4 shrink-0 transition-colors duration-200">
 
                         {/* NHẬP BIỂN SỐ THỦ CÔNG */}
                         <div className="flex gap-2 items-end">
@@ -539,7 +539,7 @@ export default function CheckOutPage() {
                                         placeholder={t[language].placeholderPlate}
                                         value={manualInput}
                                         onChange={(e) => setManualInput(e.target.value.toUpperCase())}
-                                        className="w-full border border-slate-200 dark:border-slate-800 rounded-lg pl-9 pr-3 py-2 text-xs font-mono font-bold bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 tracking-wider focus:outline-none focus:border-slate-400 dark:focus:border-slate-700 focus:bg-white dark:focus:bg-slate-950 transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600 placeholder:font-sans placeholder:font-normal h-10"
+                                        className="w-full border border-slate-200 dark:border-slate-700 rounded-md pl-9 pr-3 py-2 text-xs font-mono font-bold bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100 tracking-wider focus:outline-none focus:border-blue-500 dark:focus:border-blue-600 focus:bg-white dark:focus:bg-slate-950 transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600 placeholder:font-sans placeholder:font-normal h-10"
                                     />
                                     <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                                 </div>
@@ -547,7 +547,7 @@ export default function CheckOutPage() {
                             <button
                                 onClick={handleManualSearchSubmit}
                                 disabled={isLoading || !manualInput}
-                                className="bg-slate-800 dark:bg-slate-100 dark:hover:bg-slate-200 hover:bg-slate-700 dark:text-slate-700 text-slate-200 px-4 h-10 rounded-lg text-xs font-bold transition-all border dark:border-slate-200 border-slate-700/50 disabled:bg-slate-50 dark:disabled:bg-slate-900 disabled:text-slate-300 dark:disabled:text-slate-600 disabled:border-slate-100 dark:disabled:border-slate-800 tracking-wide flex items-center justify-center gap-1 shrink-0 active:scale-98"
+                                className="bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-500 hover:bg-blue-500 text-white px-4 h-10 rounded-md text-xs font-bold transition-all disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:text-slate-400 dark:disabled:text-slate-600 tracking-wide flex items-center justify-center gap-1 shrink-0 active:scale-98"
                             >
                                 <RefreshCw size={12} className={isLoading ? "animate-spin" : ""} /> {t[language].btnSearch}
                             </button>
@@ -567,7 +567,7 @@ export default function CheckOutPage() {
                                         value={ticketCodeInput}
                                         onChange={(e) => setTicketCodeInput(e.target.value.toUpperCase())}
                                         disabled={!pendingCameraPlate || !!activeBookingId}
-                                        className={`w-full border rounded-lg pl-9 pr-3 py-2 text-xs font-mono font-bold bg-slate-50 dark:bg-slate-950 tracking-wider focus:outline-none transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600 placeholder:font-sans placeholder:font-normal h-10 disabled:opacity-60 disabled:cursor-not-allowed ${isTicketMissing
+                                        className={`w-full border rounded-md pl-9 pr-3 py-2 text-xs font-mono font-bold bg-slate-50 dark:bg-slate-950 tracking-wider focus:outline-none transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600 placeholder:font-sans placeholder:font-normal h-10 disabled:opacity-60 disabled:cursor-not-allowed ${isTicketMissing
                                             ? "border-rose-500 dark:border-rose-800 bg-rose-50/50 dark:bg-rose-950/20 text-rose-900 dark:text-rose-100 focus:border-rose-600 dark:focus:border-rose-500"
                                             : "border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 focus:border-slate-400 dark:focus:border-slate-700 focus:bg-white"
                                             }`}
@@ -578,7 +578,7 @@ export default function CheckOutPage() {
                             <button
                                 onClick={handleTicketSearchSubmit}
                                 disabled={isLoading || !ticketCodeInput || !pendingCameraPlate || !!activeBookingId}
-                                className="bg-slate-800 dark:bg-slate-100 dark:hover:bg-slate-200 hover:bg-slate-700 dark:text-slate-700 text-slate-200 px-4 h-10 rounded-lg text-xs font-bold transition-all border dark:border-slate-200 border-slate-700/50 disabled:bg-slate-50 dark:disabled:bg-slate-900 disabled:text-slate-300 dark:disabled:text-slate-600 disabled:border-slate-100 dark:disabled:border-slate-800 tracking-wide flex items-center justify-center gap-1 shrink-0 active:scale-98"
+                                className="bg-blue-600 dark:bg-blue-600 dark:hover:bg-white hover:bg-blue-500 dark:text-white text-slate-200 px-4 h-10 rounded-md text-xs font-bold transition-all  disabled:bg-slate-50 dark:disabled:bg-slate-900 disabled:text-slate-300 dark:disabled:text-slate-600 disabled:border-slate-100 dark:disabled:border-slate-800 tracking-wide flex items-center justify-center gap-1 shrink-0 active:scale-98"
                             >
                                 <Search size={12} /> {t[language].btnVerifyTicket}
                             </button>
@@ -607,7 +607,7 @@ export default function CheckOutPage() {
                                                     setLightboxImage(`${getBackendRootUrl()}${session.image_url_in}`);
                                                 }
                                             }}
-                                            className="bg-slate-100 dark:bg-slate-950 h-[100px] xl:h-[130px] 2xl:h-[160px] border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm dark:shadow-md relative group cursor-zoom-in rounded-lg transition-colors duration-200"
+                                            className="bg-slate-100 dark:bg-slate-950 h-[100px] xl:h-[130px] 2xl:h-[160px] border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm dark:shadow-md relative group cursor-zoom-in rounded-md transition-colors duration-200"
                                             title="Click to zoom check-in snapshot"
                                         >
                                             <img
@@ -628,7 +628,7 @@ export default function CheckOutPage() {
                                                     setLightboxImage(capturedImage);
                                                 }
                                             }}
-                                            className="bg-slate-100 dark:bg-slate-950 h-[100px] xl:h-[130px] 2xl:h-[160px] border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm dark:shadow-md relative group cursor-zoom-in rounded-lg transition-colors duration-200"
+                                            className="bg-slate-100 dark:bg-slate-950 h-[100px] xl:h-[130px] 2xl:h-[160px] border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm dark:shadow-md relative group cursor-zoom-in rounded-md transition-colors duration-200"
                                             title="Click to zoom check-out snapshot"
                                         >
                                             <img
@@ -645,16 +645,16 @@ export default function CheckOutPage() {
 
                                     {/* THÔNG TIN SO SÁNH BIỂN SỐ */}
                                     <div className="grid grid-cols-2 gap-3">
-                                        <div className="bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-lg px-3 py-2 transition-colors duration-200">
+                                        <div className="bg-slate-50 dark:bg-slate-950 border border-slate-600 dark:border-slate-300 rounded-md px-3 py-2 transition-colors duration-200">
                                             <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase block tracking-wider mb-0.5">{t[language].cameraScanLabel}</span>
                                             <span className="text-base xl:text-lg font-bold text-slate-800 dark:text-slate-200 font-mono">{pendingCameraPlate || t[language].awaitingLabel}</span>
                                         </div>
 
-                                        <div className={`border rounded-lg px-3 py-2 transition-colors duration-200 ${scanResult.type === "MismatchBlock"
+                                        <div className={`border rounded-md px-3 py-2 transition-colors duration-200 ${scanResult.type === "MismatchBlock"
                                             ? "bg-rose-50 border-rose-200 dark:bg-rose-950/20 dark:border-rose-900"
                                             : activeBookingId
                                                 ? "bg-blue-100 border-blue-200 dark:bg-blue-950/100 dark:border-blue-900/60"
-                                                : "bg-slate-50 dark:bg-slate-950 border-slate-100 dark:border-slate-800"
+                                                : "bg-slate-50 dark:bg-slate-950 border-slate-600 dark:border-slate-300"
                                             }`}>
                                             <span className={`text-[10px] font-bold uppercase block tracking-wider mb-0.5 ${scanResult.type === "MismatchBlock"
                                                 ? "text-rose-400 dark:text-rose-500"
@@ -674,27 +674,47 @@ export default function CheckOutPage() {
                                             </span>
                                         </div>
                                     </div>
-
+                                    
                                     {/* BANNER TÍNH TIỀN KHI ĐÃ KHỚP HOẶC HIỂN THỊ LỖI KHI BỊ CHẶN */}
-                                    <div className={`relative overflow-hidden rounded-lg p-4 text-white shadow-md dark:shadow-inner border ${scanResult.type === "MismatchBlock" ? "bg-rose-700 border-rose-800" : "bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-950 dark:to-slate-900 border border-slate-800"}`}>
+                                    <div className={`relative overflow-hidden rounded-md p-4 border transition-colors duration-200 ${
+                                        scanResult.type === "MismatchBlock" 
+                                            ? "bg-rose-50 dark:bg-rose-950/20 border-rose-500 text-rose-900 dark:text-rose-100" 
+                                            : "bg-slate-50 dark:bg-slate-950 border-slate-600 dark:border-slate-300 text-slate-800 dark:text-slate-100"
+                                    }`}>
                                         <div className="space-y-1 text-center">
-                                            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-300 dark:text-slate-400">
+                                            <div className={`text-[10px] font-bold uppercase tracking-wider ${
+                                                scanResult.type === "MismatchBlock" ? "text-rose-500 dark:text-rose-400" : "text-slate-400 dark:text-slate-500"
+                                            }`}>
                                                 {scanResult.type === "MismatchBlock" ? t[language].securityAction : activeBookingId ? t[language].bookingFee : t[language].totalFee}
                                             </div>
-                                            <div className={`font-mono text-3xl xl:text-4xl font-black tracking-wider ${scanResult.type === "MismatchBlock" ? "text-white" : "text-yellow-400 drop-shadow-[0_2px_8px_rgba(234,179,8,0.2)]"}`}>
+                                            <div className={`font-mono text-2xl xl:text-3xl font-black tracking-wider ${
+                                                scanResult.type === "MismatchBlock" ? "text-rose-600 dark:text-rose-400" : "text-slate-800 dark:text-slate-100"
+                                            }`}>
                                                 {scanResult.type === "MismatchBlock" ? "BLOCKED" : `${scanResult.price.toLocaleString("vi-VN")} VND`}
                                             </div>
                                         </div>
 
                                         {/* LOGISTIC TIMELINE INFO PANEL */}
-                                        <div className="mt-4 grid grid-cols-2 gap-2 border-t border-slate-700/50 dark:border-slate-800 pt-3 text-xs">
-                                            <div className="flex items-center gap-1.5 font-medium text-slate-300 dark:text-slate-400">
-                                                <Clock size={13} className="text-slate-400 dark:text-slate-500 shrink-0" />
+                                        <div className={`mt-4 grid grid-cols-2 gap-2 border-t pt-3 text-xs ${
+                                            scanResult.type === "MismatchBlock" ? "border-rose-200 dark:border-rose-800" : "border-slate-200 dark:border-slate-700"
+                                        }`}>
+                                            <div className={`flex items-center gap-1.5 font-medium ${
+                                                scanResult.type === "MismatchBlock" ? "text-rose-600 dark:text-rose-400" : "text-slate-800 dark:text-slate-100"
+                                            }`}>
+                                                <Clock size={13} className={`shrink-0 ${
+                                                    scanResult.type === "MismatchBlock" ? "text-rose-400 dark:text-rose-500" : "text-slate-500 dark:text-slate-400"
+                                                }`} />
                                                 <span className="truncate">{scanResult.timeIn}</span>
                                             </div>
-                                            <div className="text-right font-semibold text-slate-300 dark:text-slate-400 flex items-center justify-end gap-1">
+                                            <div className={`text-right font-semibold flex items-center justify-end gap-1 ${
+                                                scanResult.type === "MismatchBlock" ? "text-rose-600 dark:text-rose-400" : "text-slate-800 dark:text-slate-100"
+                                            }`}>
                                                 {t[language].durationLabel}:
-                                                <span className="bg-white/10 dark:bg-slate-800 border border-white/5 dark:border-slate-700 text-white dark:text-slate-200 px-1.5 py-0.5 rounded text-[11px] font-mono font-bold ml-1">
+                                                <span className={`px-1.5 py-0.5 rounded text-[11px] font-mono font-bold ml-1 border ${
+                                                    scanResult.type === "MismatchBlock" 
+                                                        ? "bg-rose-100/50 dark:bg-rose-900/40 border-rose-300 dark:border-rose-700 text-rose-800 dark:text-rose-200" 
+                                                        : "bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-100"
+                                                }`}>
                                                     {scanResult.duration}
                                                 </span>
                                             </div>
@@ -703,7 +723,7 @@ export default function CheckOutPage() {
                                 </>
                             ) : (
                                 /* IDLE EMPTY PLACEHOLDER */
-                                <div className="flex-1 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-lg flex flex-col items-center justify-center text-center p-5 text-slate-400 dark:text-slate-600 bg-slate-50/50 dark:bg-slate-950/40 my-auto transition-colors duration-200">
+                                <div className="flex-1 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-md flex flex-col items-center justify-center text-center p-5 text-slate-400 dark:text-slate-600 bg-slate-50/50 dark:bg-slate-950/40 my-auto transition-colors duration-200">
                                     <CarFront size={32} className="mb-2 opacity-40 text-slate-400" />
                                     <p className="text-xs font-black uppercase tracking-widest text-slate-600 dark:text-slate-400">{t[language].readyToScan}</p>
                                     <p className="text-xs text-slate-400 dark:text-slate-500 mt-1.5 max-w-[200px] leading-normal">
@@ -722,7 +742,7 @@ export default function CheckOutPage() {
                                     <button
                                         onClick={handleConfirmCheckOut}
                                         disabled={isLoading}
-                                        className="w-full bg-blue-600 hover:bg-blue-400 dark:hover:bg-blue-500 text-white py-2.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all active:scale-98 shadow-md shadow-blue-600/10 dark:shadow-lg dark:shadow-blue-950/30"
+                                        className="w-full bg-blue-600 hover:bg-blue-400 dark:hover:bg-blue-500 text-white py-2.5 rounded-md text-xs font-black uppercase tracking-widest transition-all active:scale-98 shadow-md shadow-blue-600/10 dark:shadow-lg dark:shadow-blue-950/30"
                                     >
                                         {t[language].btnConfirm} <span className="font-mono font-normal opacity-70 text-[10px] ml-1">[Enter]</span>
                                     </button>
@@ -730,7 +750,7 @@ export default function CheckOutPage() {
                                 {scanResult.type === "MismatchBlock" && (
                                     <button
                                         onClick={resetTerminal}
-                                        className="w-full bg-rose-700 hover:bg-rose-600 text-white py-2.5 rounded-lg text-xs font-black uppercase tracking-widest text-center shadow-md active:scale-98 animate-pulse"
+                                        className="w-full bg-rose-700 hover:bg-rose-600 text-white py-2.5 rounded-md text-xs font-black uppercase tracking-widest text-center shadow-md active:scale-98 animate-pulse"
                                     >
                                         {t[language].btnReset} <span className="font-mono font-normal opacity-70 text-[10px] ml-1">[Enter]</span>
                                     </button>
@@ -739,20 +759,20 @@ export default function CheckOutPage() {
                                     <button
                                         onClick={handleTicketSearchSubmit}
                                         disabled={isLoading || !ticketCodeInput}
-                                        className="w-full bg-slate-800 hover:bg-slate-700 text-white py-2.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all active:scale-98 shadow-md"
+                                        className="w-full bg-blue-600 hover:bg-blue-500 text-white py-2.5 rounded-md text-xs font-black uppercase tracking-widest transition-all active:scale-98 shadow-md"
                                     >
                                         {t[language].btnConfirm} <span className="font-mono font-normal opacity-70 text-[10px] ml-1">[Enter]</span>
                                     </button>
                                 )}
                                 <button
                                     onClick={resetTerminal}
-                                    className="w-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 py-2 rounded-lg text-xs font-bold uppercase tracking-wide transition-all active:scale-98 shadow-sm"
+                                    className="w-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 py-2 rounded-md text-xs font-bold uppercase tracking-wide transition-all active:scale-98 shadow-sm"
                                 >
                                     {t[language].btnCancel} <span className="font-mono font-normal opacity-70 text-[10px] ml-1">[Esc]</span>
                                 </button>
                             </>
                         ) : (
-                            <button disabled className="w-full bg-slate-50 dark:bg-slate-950 text-slate-400 dark:text-slate-600 py-2.5 rounded-lg text-xs font-bold uppercase tracking-widest border border-slate-200 dark:border-slate-800 cursor-not-allowed text-center transition-colors duration-200">
+                            <button disabled className="w-full bg-slate-50 dark:bg-slate-950 text-slate-400 dark:text-slate-600 py-2.5 rounded-md text-xs font-bold uppercase tracking-widest border border-slate-200 dark:border-slate-800 cursor-not-allowed text-center transition-colors duration-200">
                                 {t[language].systemReady}
                             </button>
                         )}

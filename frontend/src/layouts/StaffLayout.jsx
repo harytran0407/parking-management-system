@@ -64,7 +64,7 @@ export default function StaffLayout() {
           setIsSidebarCollapsed={setIsSidebarCollapsed}
         />
 
-        <main className="page-content flex-1 flex flex-col min-h-0 bg-gray-50 p-6 overflow-hidden">
+        <main className="page-content flex-1 flex flex-col min-h-0 bg-gray-50 p-3 md:p-6 overflow-hidden">
           <Routes>
             {/* 2. ĐỔI ROUTE MẶC ĐỊNH: Tự động chuyển hướng sang trang Check-In khi vào /staff */}
             <Route path="/" element={<Navigate to="/staff/checkin" replace />} />

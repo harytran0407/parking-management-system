@@ -33,9 +33,9 @@ const t = {
     updateStatusTitle: "Cập nhật trạng thái ô đỗ",
     selectedSlot: "Ô đỗ đã chọn",
     changeStatusLabel: "Đổi trạng thái thành",
-    reopenSlotOpt: "AVAILABLE — Mở lại ô đỗ",
-    reopenSlotsOpt: "AVAILABLE — Mở lại các ô đỗ",
-    maintenanceOpt: "MAINTENANCE — Đưa vào bảo trì",
+    reopenSlotOpt: "AVAILABLE",
+    reopenSlotsOpt: "AVAILABLE",
+    maintenanceOpt: "MAINTENANCE",
     estDurationLabel: "Thời gian dự kiến (phút)",
     reasonLabel: "Lý do",
     reasonMaintPlaceholder: "vd: Hỏng cảm biến, vệ sinh...",
@@ -55,6 +55,10 @@ const t = {
     toastBulkUpdating: "Đang cập nhật",
     toastBulkSuccess: "Cập nhật thành công",
     toastBulkError: "Lỗi cập nhật hàng loạt.",
+    cannotMaintainCapacitySingle: "Không thể bảo trì ô này vì xe đang đỗ/đã đặt.",
+    cannotMaintainCapacityBulk: "Không thể bảo trì các ô này vì xe đang đỗ/đã đặt.",
+    warningLowCapacitySingle: "Cảnh báo: Bảo trì ô này sẽ khiến phân khu chỉ còn {count} ô trống khả dụng.",
+    warningLowCapacityBulk: "Cảnh báo: Bảo trì các ô này sẽ khiến phân khu chỉ còn {count} ô trống khả dụng.",
   },
   en: {
     allFloors: "All Floors",
@@ -80,9 +84,9 @@ const t = {
     updateStatusTitle: "Update Slot Status",
     selectedSlot: "Selected Slot",
     changeStatusLabel: "Change Status To",
-    reopenSlotOpt: "AVAILABLE — Reopen slot",
-    reopenSlotsOpt: "AVAILABLE — Reopen slots",
-    maintenanceOpt: "MAINTENANCE — Put to maintenance",
+    reopenSlotOpt: "AVAILABLE",
+    reopenSlotsOpt: "AVAILABLE",
+    maintenanceOpt: "MAINTENANCE",
     estDurationLabel: "Estimated Duration (minutes)",
     reasonLabel: "Reason",
     reasonMaintPlaceholder: "e.g. Damaged sensor, cleaning...",
@@ -93,7 +97,7 @@ const t = {
     confirmUpdate: "Confirm Update",
     bulkUpdateTitle: "Bulk Update Slots",
     slotsSelectedLabel: "Slots Selected",
-    confirmBulkUpdateBtn: "Confirm Bulk Update",
+    confirmBulkUpdateBtn: "Confirm Update",
     loadingStats: "Loading Zone stats...",
     errorLoadSlots: "Failed to load parking slots.",
     toastUpdatingSlot: "Updating slot",
@@ -102,6 +106,10 @@ const t = {
     toastBulkUpdating: "Updating",
     toastBulkSuccess: "Successfully updated",
     toastBulkError: "Failed to bulk update status.",
+    cannotMaintainCapacitySingle: "Cannot place this slot under maintenance because this slot is OCCUPIED or RESERVED.",
+    cannotMaintainCapacityBulk: "Cannot place these slots under maintenance because this slot is OCCUPIED or RESERVED.",
+    warningLowCapacitySingle: "Warning: Putting this slot under maintenance will leave only {count} available slot(s) in this zone.",
+    warningLowCapacityBulk: "Warning: Putting these slots under maintenance will leave only {count} available slot(s) in this zone.",
   }
 };
 
@@ -110,10 +118,12 @@ function ZoneHeaderCard({ zone }) {
   const { language } = useLanguage();
   const {
     zoneName, capacity, occupiedCount, bookedCount,
-    maintenanceCount, availableCapacity, isAggregate, floorNumber
+    maintenanceCount, isAggregate, floorNumber
   } = zone;
 
-  const totalCalculated = availableCapacity + occupiedCount + bookedCount + maintenanceCount;
+  // Tính lại available từ thực tế để tránh drift của counter trong DB
+  const computedAvailable = Math.max(0, capacity - occupiedCount - bookedCount - maintenanceCount);
+  const totalCalculated = computedAvailable + occupiedCount + bookedCount + maintenanceCount;
   // Hàm tính phần trăm dựa trên capacity của zone
   const getPercentage = (val) => capacity > 0 ? ((val / capacity) * 100).toFixed(1) : 0;
 
@@ -151,10 +161,10 @@ function ZoneHeaderCard({ zone }) {
         {/* Available */}
         <div className="p-3 bg-emerald-100/100 dark:bg-emerald-950/20 border border-emerald-100/50 dark:border-emerald-900/30 rounded-lg text-center flex flex-col justify-center items-center">
           <span className="text-xs font-bold text-emerald-500 uppercase block mb-1">
-            {t[language].available} ({getPercentage(availableCapacity)}%)
+            {t[language].available} ({getPercentage(computedAvailable)}%)
           </span>
           <span className="text-2xl md:text-3xl font-bold text-emerald-600 dark:text-emerald-400 ">
-            {availableCapacity}
+            {computedAvailable}
           </span>
         </div>
 
@@ -191,11 +201,11 @@ function ZoneHeaderCard({ zone }) {
 
       {/* 3. Multi-color Progress Bar */}
       <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden flex shadow-inner">
-        {availableCapacity > 0 && (
+        {computedAvailable > 0 && (
           <div
-            style={{ width: `${(availableCapacity / totalCalculated) * 100}%` }}
+            style={{ width: `${(computedAvailable / totalCalculated) * 100}%` }}
             className="bg-emerald-500 transition-all duration-500"
-            title={`${t[language].available}: ${availableCapacity}`}
+            title={`${t[language].available}: ${computedAvailable}`}
           />
         )}
         {occupiedCount > 0 && (
@@ -232,19 +242,21 @@ function SlotCard({ slot, isSelected, onClick }) {
   const { language } = useLanguage();
   const isAvailable = slot.status === "AVAILABLE";
   const isMaintenance = slot.status === "MAINTENANCE";
+  const isOccupied = slot.status === "OCCUPIED";
+  const isReserved = slot.status === "RESERVED";
 
   let cardClasses = "";
-  let labelClasses = "";
 
   if (isAvailable) {
-    cardClasses = "bg-emerald-600 dark:bg-emerald-700 border-transparent";
-    labelClasses = "text-emerald-100";
+    cardClasses = "bg-emerald-600 dark:bg-emerald-700 border-transparent text-white";
   } else if (isMaintenance) {
-    cardClasses = "bg-slate-500 dark:bg-slate-600 border-transparent";
-    labelClasses = "text-slate-200";
+    cardClasses = "bg-slate-500 dark:bg-slate-600 border-transparent text-white";
+  } else if (isOccupied) {
+    cardClasses = "bg-rose-600 dark:bg-rose-700 border-transparent text-white";
+  } else if (isReserved) {
+    cardClasses = "bg-amber-500 dark:bg-amber-600 border-transparent text-white";
   } else {
-    cardClasses = "bg-slate-200 dark:bg-slate-700 border-slate-300 dark:border-slate-600";
-    labelClasses = "text-slate-500";
+    cardClasses = "bg-slate-200 dark:bg-slate-700 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200";
   }
 
   return (
@@ -260,13 +272,13 @@ function SlotCard({ slot, isSelected, onClick }) {
       `}
     >
       <div className="flex justify-between items-start">
-        <span className="text-sm font-bold text-white truncate">{slot.slot_name}</span>
+        <span className="text-sm font-bold truncate">{slot.slot_name}</span>
         <div className="flex items-center gap-0.5 ml-1 shrink-0">
           {slot.is_electric_charging && (
-            <BatteryCharging size={11} className="text-teal-200" title="EV Charging" />
+            <BatteryCharging size={11} className={isAvailable ? "text-teal-200" : isOccupied ? "text-rose-200" : "text-amber-200"} title="EV Charging" />
           )}
           {slot.is_handicap && (
-            <Accessibility size={11} className="text-indigo-200" title="Accessible" />
+            <Accessibility size={11} className={isAvailable ? "text-indigo-200" : isOccupied ? "text-rose-200" : "text-amber-200"} title="Accessible" />
           )}
         </div>
       </div>
@@ -274,13 +286,28 @@ function SlotCard({ slot, isSelected, onClick }) {
       {isMaintenance && (
         <div className="mt-1.5 flex items-center gap-1">
           <Wrench size={10} className="text-slate-300" />
-          <span className="text-[10px] font-semibold text-slate-300">{t[language].maintenance}</span>
+          <span className="text-[10px] font-semibold text-slate-200">{t[language].maintenance}</span>
         </div>
       )}
 
       {isAvailable && (
-        <div className="mt-1.5">
-          <span className="text-[10px] font-semibold text-emerald-200">{t[language].available}</span>
+        <div className="mt-1.5 flex items-center gap-1">
+          <CheckCircle2 size={10} className="text-emerald-200" />
+          <span className="text-[10px] font-semibold text-emerald-100">{t[language].available}</span>
+        </div>
+      )}
+
+      {isOccupied && (
+        <div className="mt-1.5 flex items-center gap-1">
+          <Car size={10} className="text-rose-200" />
+          <span className="text-[10px] font-semibold text-rose-100">{t[language].occupied}</span>
+        </div>
+      )}
+
+      {isReserved && (
+        <div className="mt-1.5 flex items-center gap-1">
+          <Calendar size={10} className="text-amber-200" />
+          <span className="text-[10px] font-semibold text-amber-100">{t[language].reserved}</span>
         </div>
       )}
     </div>
@@ -300,6 +327,56 @@ export default function SlotGateManagementPage() {
   // Data State
   const [slotsData, setSlotsData] = useState([]);
   const [zoneStats, setZoneStats] = useState([]);
+
+  // ── Virtual Slot Mapping ───────────────────────────────────────────────
+  const mappedSlots = React.useMemo(() => {
+    // 1. Group slots by zone
+    const slotsByZone = {};
+    slotsData.forEach(slot => {
+      const zName = slot.zone || "N/A";
+      if (!slotsByZone[zName]) {
+        slotsByZone[zName] = [];
+      }
+      slotsByZone[zName].push({ ...slot });
+    });
+
+    // 2. For each zone, virtually assign OCCUPIED and RESERVED to AVAILABLE slots
+    Object.keys(slotsByZone).forEach(zName => {
+      const zoneStat = zoneStats.find(z => (z.zone_name ?? z.zoneName) === zName);
+      if (!zoneStat) return;
+
+      const occupiedCount = zoneStat.occupied_count ?? zoneStat.occupiedCount ?? 0;
+      const bookedCount = zoneStat.booked_count ?? zoneStat.bookedCount ?? 0;
+
+      let occupiedAssigned = 0;
+      let bookedAssigned = 0;
+
+      // Filter slots in this zone that have status === "AVAILABLE"
+      const availableSlots = slotsByZone[zName].filter(s => s.status === "AVAILABLE");
+
+      availableSlots.forEach(slot => {
+        if (occupiedAssigned < occupiedCount) {
+          slot.status = "OCCUPIED";
+          occupiedAssigned++;
+        } else if (bookedAssigned < bookedCount) {
+          slot.status = "RESERVED";
+          bookedAssigned++;
+        }
+      });
+    });
+
+    // 3. Return flattened array maintaining original order
+    return slotsData.map(slot => {
+      const zoneGroup = slotsByZone[slot.zone || "N/A"] || [];
+      const found = zoneGroup.find(s => s.slot_id === slot.slot_id);
+      return found || slot;
+    });
+  }, [slotsData, zoneStats]);
+
+  const filteredMappedSlots = React.useMemo(() => {
+    if (!selectedStatus) return mappedSlots;
+    return mappedSlots.filter(s => s.status === selectedStatus);
+  }, [mappedSlots, selectedStatus]);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -325,6 +402,73 @@ export default function SlotGateManagementPage() {
 
   const isBulkMode = selectedSlotIds.length > 1;
 
+  // ── Capacity Guard Calculations ──────────────────────────────────────────
+  const singleCheck = React.useMemo(() => {
+    if (!activeSlot || newSlotStatus !== "MAINTENANCE" || activeSlot.status === "MAINTENANCE") {
+      return { allowed: true, remaining: 0, warning: false };
+    }
+    const zoneStat = zoneStats.find(z => (z.zone_name ?? z.zoneName) === activeSlot.zone);
+    if (!zoneStat) return { allowed: true, remaining: 0, warning: false };
+
+    // Tính available từ thực tế để tránh drift
+    const cap = zoneStat.capacity ?? 0;
+    const occ = zoneStat.occupied_count ?? zoneStat.occupiedCount ?? 0;
+    const bkd = zoneStat.booked_count ?? zoneStat.bookedCount ?? 0;
+    const mnt = zoneStat.maintenance_count ?? zoneStat.maintenanceCount ?? 0;
+    const computedAvail = Math.max(0, cap - occ - bkd - mnt);
+    const remaining = computedAvail - 1;
+    return {
+      allowed: remaining >= 0,
+      remaining,
+      warning: remaining <= 1
+    };
+  }, [activeSlot, newSlotStatus, zoneStats]);
+
+  const bulkCheck = React.useMemo(() => {
+    if (!isBulkMode || bulkStatus !== "MAINTENANCE") {
+      return { allowed: true, violatedZones: [], remainingByZone: {}, warning: false };
+    }
+
+    const selectedSlots = selectedSlotIds.map(id => mappedSlots.find(s => s.slot_id === id)).filter(Boolean);
+    const maintainCountByZone = {};
+    selectedSlots.forEach(slot => {
+      if (slot.status !== "MAINTENANCE") {
+        const zName = slot.zone || "N/A";
+        maintainCountByZone[zName] = (maintainCountByZone[zName] || 0) + 1;
+      }
+    });
+
+    const violatedZones = [];
+    const remainingByZone = {};
+    let isWarning = false;
+
+    Object.keys(maintainCountByZone).forEach(zName => {
+      const zoneStat = zoneStats.find(z => (z.zone_name ?? z.zoneName) === zName);
+      // Tính available từ thực tế để tránh drift
+      const cap = zoneStat ? (zoneStat.capacity ?? 0) : 0;
+      const occ = zoneStat ? (zoneStat.occupied_count ?? zoneStat.occupiedCount ?? 0) : 0;
+      const bkd = zoneStat ? (zoneStat.booked_count ?? zoneStat.bookedCount ?? 0) : 0;
+      const mnt = zoneStat ? (zoneStat.maintenance_count ?? zoneStat.maintenanceCount ?? 0) : 0;
+      const avail = Math.max(0, cap - occ - bkd - mnt);
+      const count = maintainCountByZone[zName];
+      const remaining = avail - count;
+      remainingByZone[zName] = remaining;
+
+      if (remaining < 0) {
+        violatedZones.push({ zone: zName, available: avail, requested: count });
+      } else if (remaining <= 1) {
+        isWarning = true;
+      }
+    });
+
+    return {
+      allowed: violatedZones.length === 0,
+      violatedZones,
+      remainingByZone,
+      warning: isWarning
+    };
+  }, [isBulkMode, bulkStatus, selectedSlotIds, mappedSlots, zoneStats]);
+
   // ── Fetch Zone Stats ──────────────────────────────────────────────────────
   const fetchZoneStats = useCallback(async () => {
     setIsFetchingZones(true);
@@ -349,7 +493,9 @@ export default function SlotGateManagementPage() {
           floor: selectedFloor || undefined,
           zone: selectedZone || undefined,
           vehicle_type_id: selectedVehicleType ? Number(selectedVehicleType) : undefined,
-          status: selectedStatus || undefined,
+          status: (selectedStatus === "OCCUPIED" || selectedStatus === "RESERVED")
+            ? "AVAILABLE"
+            : (selectedStatus || undefined),
           page: currentPage,
           page_size: pageSize,
         },
@@ -420,11 +566,33 @@ export default function SlotGateManagementPage() {
     if (selectedSlotIds.includes(slot.slot_id)) {
       const next = selectedSlotIds.filter((id) => id !== slot.slot_id);
       setSelectedSlotIds(next);
-      setActiveSlot(next.length === 1 ? slotsData.find((x) => x.slot_id === next[0]) || null : null);
+
+      // Single slot fallback
+      const nextActive = next.length === 1 ? mappedSlots.find((x) => x.slot_id === next[0]) || null : null;
+      setActiveSlot(nextActive);
+      if (nextActive) setNewSlotStatus(nextActive.status === "MAINTENANCE" ? "AVAILABLE" : "MAINTENANCE");
+
+      // Bulk default: nếu tất cả slot còn lại đều là MAINTENANCE → AVAILABLE
+      if (next.length > 1) {
+        const nextSlots = next.map(id => mappedSlots.find(s => s.slot_id === id)).filter(Boolean);
+        const allMaint = nextSlots.every(s => s.status === "MAINTENANCE");
+        setBulkStatus(allMaint ? "AVAILABLE" : "MAINTENANCE");
+      }
     } else {
       const next = [...selectedSlotIds, slot.slot_id];
       setSelectedSlotIds(next);
-      setActiveSlot(next.length === 1 ? slot : null);
+
+      // Single slot
+      const nextActive = next.length === 1 ? slot : null;
+      setActiveSlot(nextActive);
+      if (nextActive) setNewSlotStatus(slot.status === "MAINTENANCE" ? "AVAILABLE" : "MAINTENANCE");
+
+      // Bulk default: nếu tất cả slot đã chọn đều là MAINTENANCE → AVAILABLE
+      if (next.length > 1) {
+        const nextSlots = next.map(id => id === slot.slot_id ? slot : mappedSlots.find(s => s.slot_id === id)).filter(Boolean);
+        const allMaint = nextSlots.every(s => s.status === "MAINTENANCE");
+        setBulkStatus(allMaint ? "AVAILABLE" : "MAINTENANCE");
+      }
     }
   };
 
@@ -496,34 +664,46 @@ export default function SlotGateManagementPage() {
   });
 
   // Khi không có filter → gộp tất cả zones thành 1 card tổng
-  const aggregatedZone = !hasHeaderFilter && zoneStats.length > 0 ? {
-    zoneId: "all",
-    zoneName: "All Zones",
-    floorNumber: null,
-    capacity: zoneStats.reduce((s, z) => s + (z.capacity ?? 0), 0),
-    availableCapacity: zoneStats.reduce((s, z) => s + (z.available_capacity ?? z.availableCapacity ?? 0), 0),
-    occupiedCount: zoneStats.reduce((s, z) => s + (z.occupied_count ?? z.occupiedCount ?? 0), 0),
-    bookedCount: zoneStats.reduce((s, z) => s + (z.booked_count ?? z.bookedCount ?? 0), 0),
-    maintenanceCount: zoneStats.reduce((s, z) => s + (z.maintenance_count ?? z.maintenanceCount ?? 0), 0),
-    vehicleTypeName: null,
-    isAggregate: true,
-  } : null;
+  const aggregatedZone = !hasHeaderFilter && zoneStats.length > 0 ? (() => {
+    const cap = zoneStats.reduce((s, z) => s + (z.capacity ?? 0), 0);
+    const occ = zoneStats.reduce((s, z) => s + (z.occupied_count ?? z.occupiedCount ?? 0), 0);
+    const bkd = zoneStats.reduce((s, z) => s + (z.booked_count ?? z.bookedCount ?? 0), 0);
+    const mnt = zoneStats.reduce((s, z) => s + (z.maintenance_count ?? z.maintenanceCount ?? 0), 0);
+    return {
+      zoneId: "all",
+      zoneName: "All Zones",
+      floorNumber: null,
+      capacity: cap,
+      availableCapacity: Math.max(0, cap - occ - bkd - mnt),
+      occupiedCount: occ,
+      bookedCount: bkd,
+      maintenanceCount: mnt,
+      vehicleTypeName: null,
+      isAggregate: true,
+    };
+  })() : null;
 
   // Khi có filter → chỉ hiển thị zone phù hợp; không filter → hiển thị 1 card tổng
   const displayZones = hasHeaderFilter ? filteredZoneStats : null;
 
   // ── Normalise keys (handle camelCase vs snake_case from API) ─────────────
-  const normalizeZone = (z) => ({
-    zoneId: z.zone_id ?? z.zoneId,
-    zoneName: z.zone_name ?? z.zoneName ?? "—",
-    floorNumber: z.floor_number ?? z.floorNumber ?? 0,
-    capacity: z.capacity ?? 0,
-    availableCapacity: z.available_capacity ?? z.availableCapacity ?? 0,
-    occupiedCount: z.occupied_count ?? z.occupiedCount ?? 0,
-    bookedCount: z.booked_count ?? z.bookedCount ?? 0,
-    maintenanceCount: z.maintenance_count ?? z.maintenanceCount ?? 0,
-    vehicleTypeName: z.vehicle_type_name ?? z.vehicleTypeName ?? "—",
-  });
+  const normalizeZone = (z) => {
+    const cap = z.capacity ?? 0;
+    const occ = z.occupied_count ?? z.occupiedCount ?? 0;
+    const bkd = z.booked_count ?? z.bookedCount ?? 0;
+    const mnt = z.maintenance_count ?? z.maintenanceCount ?? 0;
+    return {
+      zoneId: z.zone_id ?? z.zoneId,
+      zoneName: z.zone_name ?? z.zoneName ?? "—",
+      floorNumber: z.floor_number ?? z.floorNumber ?? 0,
+      capacity: cap,
+      availableCapacity: Math.max(0, cap - occ - bkd - mnt),
+      occupiedCount: occ,
+      bookedCount: bkd,
+      maintenanceCount: mnt,
+      vehicleTypeName: z.vehicle_type_name ?? z.vehicleTypeName ?? "—",
+    };
+  };
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
@@ -548,8 +728,8 @@ export default function SlotGateManagementPage() {
       </div>
 
       {/* ── SECTION 2: FILTER BAR ── */}
-      <div className="flex flex-wrap items-center gap-3 bg-white dark:bg-slate-900 p-4 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm">
-        <div className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-white mr-1">
+      <div className="flex flex-wrap items-center gap-2 bg-white dark:bg-slate-900 p-3 md:p-4 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm">
+        <div className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-white mr-1 shrink-0">
           <Sliders size={15} className="text-blue-500" />
           {t[language].filters}
         </div>
@@ -558,7 +738,7 @@ export default function SlotGateManagementPage() {
         <select
           value={selectedFloor}
           onChange={(e) => handleFilterChange("floor", e.target.value)}
-          className="px-3 py-2 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-semibold text-slate-900 dark:text-white rounded-lg outline-none cursor-pointer"
+          className="flex-1 sm:flex-none px-3 py-2 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-semibold text-slate-900 dark:text-white rounded-lg outline-none cursor-pointer"
         >
           <option value="">{t[language].allFloors}</option>
           <option value="1">{t[language].floorLabel} 1</option>
@@ -570,50 +750,52 @@ export default function SlotGateManagementPage() {
         <select
           value={selectedVehicleType}
           onChange={(e) => handleFilterChange("vehicleType", e.target.value)}
-          className="px-3 py-2 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-semibold text-slate-900 dark:text-white rounded-lg outline-none cursor-pointer"
+          className="flex-1 sm:flex-none px-3 py-2 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-semibold text-slate-900 dark:text-white rounded-lg outline-none cursor-pointer"
         >
           <option value="">{t[language].allVehicles}</option>
           <option value="1">{t[language].motorbike}</option>
           <option value="2">{t[language].car}</option>
         </select>
 
-        {/* Status – chỉ giữ AVAILABLE & MAINTENANCE */}
+        {/* Status */}
         <select
           value={selectedStatus}
           onChange={(e) => handleFilterChange("status", e.target.value)}
-          className="px-3 py-2 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-semibold text-slate-900 dark:text-white rounded-lg outline-none cursor-pointer"
+          className="flex-1 sm:flex-none px-3 py-2 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-semibold text-slate-900 dark:text-white rounded-lg outline-none cursor-pointer"
         >
           <option value="">{t[language].allStatuses}</option>
           <option value="AVAILABLE">{t[language].available}</option>
+          <option value="OCCUPIED">{t[language].occupied}</option>
+          <option value="RESERVED">{t[language].reserved}</option>
           <option value="MAINTENANCE">{t[language].maintenance}</option>
         </select>
 
         {/* Refresh button */}
         <button
           onClick={() => { fetchSlots(); fetchZoneStats(); }}
-          className="ml-auto flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-blue-600 dark:text-blue-400 hover:text-white border border-blue-200 dark:border-blue-900/50 hover:bg-blue-600 dark:hover:bg-blue-900 rounded-lg transition-all"
+          className="ml-auto flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-blue-600 dark:text-blue-400 hover:text-white border border-blue-200 dark:border-blue-900/50 hover:bg-blue-600 dark:hover:bg-blue-900 rounded-lg transition-all shrink-0"
           title="Refresh data"
         >
           <RefreshCw size={13} className={isFetchingSlots || isFetchingZones ? "animate-spin" : ""} />
-          {t[language].refresh}
+          <span className="hidden sm:inline">{t[language].refresh}</span>
         </button>
 
         {hasActiveFilters && (
           <button
             onClick={handleClearFilters}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-red-500 hover:text-white border border-red-200 hover:bg-red-600 dark:border-red-900/50 dark:hover:bg-red-900 rounded-lg transition-all"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-red-500 hover:text-white border border-red-200 hover:bg-red-600 dark:border-red-900/50 dark:hover:bg-red-900 rounded-lg transition-all shrink-0"
           >
             <Trash2 size={13} />
-            {t[language].clearFilters}
+            <span className="hidden sm:inline">{t[language].clearFilters}</span>
           </button>
         )}
       </div>
 
       {/* ── SECTION 3: MAIN WORKSPACE ── */}
-      <div className={`grid gap-5 items-stretch transition-all duration-300 ${(activeSlot || isBulkMode) ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1"}`}>
+      <div className={`flex flex-col gap-5 transition-all duration-300 ${(activeSlot || isBulkMode) ? "lg:grid lg:grid-cols-2" : ""}`}>
 
         {/* LEFT PANEL: SLOT GRID */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-5 shadow-sm flex flex-col min-h-[480px]">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-4 md:p-5 shadow-sm flex flex-col min-h-[320px] md:min-h-[480px]">
           {/* Panel header */}
           <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
             <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -637,6 +819,14 @@ export default function SlotGateManagementPage() {
             <span className="flex items-center gap-1.5">
               <span className="w-3 h-3 rounded bg-emerald-600 inline-block" />
               <span className="text-emerald-700 dark:text-emerald-400">{t[language].available}</span>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded bg-rose-600 inline-block" />
+              <span className="text-rose-700 dark:text-rose-400">{t[language].occupied}</span>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded bg-amber-500 inline-block" />
+              <span className="text-amber-700 dark:text-amber-400">{t[language].reserved}</span>
             </span>
             <span className="flex items-center gap-1.5">
               <span className="w-3 h-3 rounded bg-slate-500 inline-block" />
@@ -666,7 +856,7 @@ export default function SlotGateManagementPage() {
                   : "grid-cols-3 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7"
                   }`}
               >
-                {slotsData.map((slot) => (
+                {mappedSlots.map((slot) => (
                   <SlotCard
                     key={slot.slot_id}
                     slot={slot}
@@ -720,9 +910,19 @@ export default function SlotGateManagementPage() {
                 </div>
                 <span className={`text-xs font-bold px-2.5 py-1 rounded-lg border ${activeSlot.status === "AVAILABLE"
                   ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/50"
-                  : "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700"
+                  : activeSlot.status === "MAINTENANCE"
+                    ? "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700"
+                    : activeSlot.status === "OCCUPIED"
+                      ? "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/50"
+                      : "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/50"
                   }`}>
-                  {activeSlot.status === "AVAILABLE" ? t[language].available : t[language].maintenance}
+                  {activeSlot.status === "AVAILABLE"
+                    ? t[language].available
+                    : activeSlot.status === "MAINTENANCE"
+                      ? t[language].maintenance
+                      : activeSlot.status === "OCCUPIED"
+                        ? t[language].occupied
+                        : t[language].reserved}
                 </span>
               </div>
 
@@ -739,6 +939,25 @@ export default function SlotGateManagementPage() {
                     <option value="MAINTENANCE">{t[language].maintenanceOpt}</option>
                   </select>
                 </div>
+
+                {/* Capacity warning / blocker banner */}
+                {newSlotStatus === "MAINTENANCE" && activeSlot.status !== "MAINTENANCE" && (
+                  <div className="animate-in fade-in duration-200">
+                    {activeSlot.status === "OCCUPIED" || activeSlot.status === "RESERVED" ? (
+                      <div className="p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-lg text-xs font-semibold text-red-600 dark:text-red-400">
+                        {t[language].cannotMaintainCapacitySingle}
+                      </div>
+                    ) : !singleCheck.allowed ? (
+                      <div className="p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-lg text-xs font-semibold text-red-600 dark:text-red-400">
+                        {t[language].cannotMaintainCapacitySingle}
+                      </div>
+                    ) : singleCheck.warning ? (
+                      <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-lg text-xs font-semibold text-amber-600 dark:text-amber-400">
+                        {t[language].warningLowCapacitySingle.replace("{count}", singleCheck.remaining)}
+                      </div>
+                    ) : null}
+                  </div>
+                )}
 
                 {/* Duration (maintenance only) */}
                 {newSlotStatus === "MAINTENANCE" && (
@@ -780,8 +999,8 @@ export default function SlotGateManagementPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={isUpdatingSlot}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white py-2.5 rounded-lg font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-sm"
+                  disabled={isUpdatingSlot || (newSlotStatus === "MAINTENANCE" && activeSlot.status !== "MAINTENANCE" && (activeSlot.status === "OCCUPIED" || activeSlot.status === "RESERVED" || !singleCheck.allowed))}
+                  className="flex-1 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-300 dark:disabled:bg-slate-800 disabled:text-slate-400 dark:disabled:text-slate-600 text-white py-2.5 rounded-lg font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer disabled:cursor-not-allowed"
                 >
                   {isUpdatingSlot && <RefreshCw size={13} className="animate-spin" />}
                   {isUpdatingSlot ? t[language].saving : t[language].confirmUpdate}
@@ -807,7 +1026,7 @@ export default function SlotGateManagementPage() {
                 </span>
                 <div className="flex flex-wrap gap-1 max-h-20 overflow-y-auto mt-1">
                   {selectedSlotIds.map((id) => {
-                    const s = slotsData.find((x) => x.slot_id === id);
+                    const s = mappedSlots.find((x) => x.slot_id === id);
                     return (
                       <span key={id} className="text-[10px] font-bold px-1.5 py-0.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-slate-700 dark:text-slate-300">
                         {s?.slot_name || id}
@@ -830,6 +1049,34 @@ export default function SlotGateManagementPage() {
                     <option value="MAINTENANCE">{t[language].maintenanceOpt}</option>
                   </select>
                 </div>
+
+                {/* Capacity warning / blocker banner */}
+                {bulkStatus === "MAINTENANCE" && (
+                  <div className="animate-in fade-in duration-200">
+                    {selectedSlotIds.map(id => mappedSlots.find(s => s.slot_id === id)).some(s => s && (s.status === "OCCUPIED" || s.status === "RESERVED")) ? (
+                      <div className="p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-lg text-xs font-semibold text-red-600 dark:text-red-400">
+                        {t[language].cannotMaintainCapacityBulk}
+                      </div>
+                    ) : !bulkCheck.allowed ? (
+                      <div className="p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-lg text-xs font-semibold text-red-600 dark:text-red-400">
+                        {t[language].cannotMaintainCapacityBulk}
+                        {bulkCheck.violatedZones.map(vz => (
+                          <div key={vz.zone} className="mt-1 font-bold">
+                            • {vz.zone}: {t[language].available.toLowerCase()} {vz.available}, {t[language].slotsSelectedLabel.toLowerCase()} {vz.requested}
+                          </div>
+                        ))}
+                      </div>
+                    ) : bulkCheck.warning ? (
+                      <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-lg text-xs font-semibold text-amber-600 dark:text-amber-400">
+                        {t[language].warningLowCapacityBulk.replace("{count}",
+                          Object.keys(bulkCheck.remainingByZone)
+                            .map(z => `${z} (${bulkCheck.remainingByZone[z]} ${t[language].available.toLowerCase()})`)
+                            .join(", ")
+                        )}
+                      </div>
+                    ) : null}
+                  </div>
+                )}
 
                 {/* Duration */}
                 {bulkStatus === "MAINTENANCE" && (
@@ -871,8 +1118,11 @@ export default function SlotGateManagementPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={isBulkUpdating}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white py-2.5 rounded-lg font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-sm"
+                  disabled={isBulkUpdating || (bulkStatus === "MAINTENANCE" && (
+                    !bulkCheck.allowed ||
+                    selectedSlotIds.map(id => mappedSlots.find(s => s.slot_id === id)).some(s => s && (s.status === "OCCUPIED" || s.status === "RESERVED"))
+                  ))}
+                  className="flex-1 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-300 dark:disabled:bg-slate-800 disabled:text-slate-400 dark:disabled:text-slate-600 text-white py-2.5 rounded-lg font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer disabled:cursor-not-allowed"
                 >
                   {isBulkUpdating && <RefreshCw size={13} className="animate-spin" />}
                   {isBulkUpdating ? t[language].saving : `${t[language].confirmBulkUpdateBtn} (${selectedSlotIds.length} ${t[language].slotsSelectedLabel})`}

@@ -50,13 +50,25 @@ export default function SessionLookup() {
     } else {
       setGraceSeconds(null);
     }
-    if (session) setElapsedSeconds(0);
   }, [session]);
 
   // Tick every second for live duration display
   useEffect(() => {
     if (!session) return;
-    const ticker = setInterval(() => setElapsedSeconds(prev => prev + 1), 1000);
+
+    const calculateElapsed = () => {
+      if (!session.check_in_time) return 0;
+      const checkInDate = new Date(session.check_in_time);
+      const diffMs = Date.now() - checkInDate.getTime();
+      return Math.max(0, Math.floor(diffMs / 1000));
+    };
+
+    setElapsedSeconds(calculateElapsed());
+
+    const ticker = setInterval(() => {
+      setElapsedSeconds(calculateElapsed());
+    }, 1000);
+
     return () => clearInterval(ticker);
   }, [session]);
 
@@ -294,7 +306,7 @@ export default function SessionLookup() {
                   {language === "en" ? "Duration" : "Thời lượng"}
                 </p>
                 <p className="text-xl xl:text-2xl font-black text-slate-700 dark:text-white tracking-wider tabular-nums min-w-[7rem] text-right">
-                  {formatDuration(session.duration_minutes, elapsedSeconds)}
+                  {formatDuration(0, elapsedSeconds)}
                 </p>
               </div>
             </div>

@@ -22,7 +22,7 @@ namespace ParkingManagement.Services
         /// <summary>
         /// Tìm kiếm thông tin phiên gửi xe đang hoạt động (ACTIVE) bằng biển số xe.
         /// </summary>
-        Task<ActiveSessionResponseDto> GetActiveSessionByLicensePlateAsync(string licensePlate, string? ticketSuffix = null);
+        Task<ActiveSessionResponseDto> GetActiveSessionByLicensePlateAsync(string licensePlate, string? ticketSuffix = null, bool exactMatch = false);
 
         /// <summary>
         /// Tìm kiếm thông tin phiên gửi xe đang hoạt động (ACTIVE) bằng tên ô đỗ xe.

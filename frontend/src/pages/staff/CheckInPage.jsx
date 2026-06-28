@@ -422,7 +422,7 @@ export default function CheckInPage() {
         return () => window.removeEventListener("keydown", handleGlobalKeyDown);
     }, [scanResult, handleCaptureAndRecognize, manualInput, plateNumber, selectedVehicleType, language]);
     return (
-        <div className="w-full flex-1 text-slate-800 dark:text-slate-100 bg-slate-50 dark:bg-slate-950 flex flex-col font-sans box-border select-none p-4 transition-colors duration-200">
+        <div className="w-full flex-1 text-slate-800 dark:text-slate-100 flex flex-col font-sans box-border select-none transition-colors duration-200">
 
             {/* MAIN CONTENT AREA — CSS GRID ĐỒNG BỘ CHIỀU CAO TUYỆT ĐỐI */}
             <div className="flex-1 w-full gap-4 xl:gap-5 flex flex-col lg:grid lg:grid-cols-[1.5fr_1fr] xl:grid-cols-[1.62fr_1fr] items-stretch min-h-0">
@@ -438,10 +438,10 @@ export default function CheckInPage() {
                         <button
                             onClick={handleCaptureAndRecognize}
                             disabled={isLoading}
-                            className="bg-slate-900 dark:bg-slate-600 hover:bg-slate-600 dark:hover:bg-slate-500 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 dark:disabled:text-slate-600 text-white font-bold text-xs px-4 py-2.5 rounded-lg transition-all shadow-md shadow-slate-600/10 dark:shadow-lg dark:shadow-slate-950/50 active:scale-98 flex items-center gap-2 uppercase tracking-wide"
+                            className="bg-blue-600 dark:bg-blue-600 hover:bg-blue-500 dark:hover:bg-blue-500 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 dark:disabled:text-slate-600 text-white font-bold text-xs px-4 py-2.5 rounded-md transition-all shadow-md shadow-blue-500/10 dark:shadow-lg dark:shadow-slate-950/50 active:scale-98 flex items-center gap-2 uppercase tracking-wide"
                             title={t[language].scanPlateTitle}
                         >
-                            <Camera size={14} /> {t[language].btnScanPlate} <kbd className="bg-slate-600 dark:bg-slate-900 text-slate-100 dark:text-slate-200 px-1 rounded text-[9px] ml-1 font-mono font-normal">Enter</kbd>
+                            <Camera size={14} /> {t[language].btnScanPlate} <kbd className="text-white px-1 rounded text-[9px] ml-1 font-mono font-normal">[Enter]</kbd>
                         </button>
                     </div>
 
@@ -460,7 +460,7 @@ export default function CheckInPage() {
                         ) : (
                             <div className="flex flex-col items-center gap-2 text-slate-400 dark:text-slate-600">
                                 <VideoOff size={36} className="opacity-40" />
-                                <p className="text-xs font-semibold">{t[language].webcamUnavailable}</p>
+                                <p className="text-xs font-semibold text-center">{t[language].webcamUnavailable}</p>
                             </div>
                         )}
                     </div>
@@ -475,7 +475,7 @@ export default function CheckInPage() {
                                     placeholder={t[language].placeholderPlate}
                                     value={manualInput}
                                     onChange={(e) => setManualInput(e.target.value.toUpperCase())}
-                                    className="flex-1 w-full border border-slate-200 dark:border-slate-800 rounded-lg pl-9 pr-3 py-2 text-sm font-bold bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 tracking-wider focus:outline-none focus:border-slate-400 dark:focus:border-slate-700 focus:bg-white dark:focus:bg-slate-950 transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600 placeholder:font-sans placeholder:font-normal h-10"
+                                    className="flex-1 w-full border border-slate-200 dark:border-slate-800 rounded-md pl-9 pr-3 py-2 text-sm font-bold bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 tracking-wider focus:outline-none focus:border-slate-400 dark:focus:border-slate-700 focus:bg-white dark:focus:bg-slate-950 transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600 placeholder:font-sans placeholder:font-normal h-10"
                                 />
                                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                             </div>
@@ -485,7 +485,7 @@ export default function CheckInPage() {
                             <select
                                 value={selectedVehicleType}
                                 onChange={(e) => setSelectedVehicleType(Number(e.target.value))}
-                                className="w-full border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-1.5 text-xs font-bold bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-200 h-10 focus:outline-none focus:border-slate-400 dark:focus:border-slate-700 transition-all cursor-pointer"
+                                className="w-full border border-slate-200 dark:border-slate-800 rounded-md px-3 py-1.5 text-xs font-bold bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-200 h-10 focus:outline-none focus:border-slate-400 dark:focus:border-slate-700 transition-all cursor-pointer"
                             >
                                 {vehicleTypes.map((t) => (
                                     <option key={t.id} value={t.id} className="dark:bg-slate-900">{t.name}</option>
@@ -495,7 +495,7 @@ export default function CheckInPage() {
                         <button
                             onClick={() => handleQueryManualInbound(manualInput)}
                             disabled={isLoading || !manualInput}
-                            className=" bg-slate-800 dark:bg-slate-100 dark:hover:bg-slate-200 hover:bg-slate-700 dark:text-slate-700 text-slate-200 px-5 py-2 rounded-lg text-xs font-bold h-10 transition-all border dark:border-slate-200 border-slate-700/50 disabled:bg-slate-50 dark:disabled:bg-slate-900 disabled:text-slate-300 dark:disabled:text-slate-600 disabled:border-slate-100 dark:disabled:border-slate-800 tracking-wide flex items-center justify-center gap-1.5 shrink-0 active:scale-98"
+                            className="bg-blue-600 dark:bg-blue-600 dark:hover:bg-white hover:bg-blue-500 dark:text-white text-slate-200 px-5 py-2 rounded-md text-xs font-bold h-10 transition-all disabled:bg-slate-50 dark:disabled:bg-slate-900 disabled:text-slate-300 dark:disabled:text-slate-600 disabled:border-slate-100 dark:disabled:border-slate-800 tracking-wide flex items-center justify-center gap-1.5 shrink-0 active:scale-98"
                         >
                             <RefreshCw size={13} className={isLoading ? "animate-spin" : ""} /> {t[language].btnQuery}
                         </button>
@@ -515,7 +515,7 @@ export default function CheckInPage() {
                                     {/* ẢNH SNAPSHOT INBOUND */}
                                     <div
                                         onClick={() => setIsLightboxOpen(true)}
-                                        className="bg-slate-100 dark:bg-slate-950 h-[130px] xl:h-[160px] 2xl:h-[200px] shrink-0 border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm relative group cursor-zoom-in rounded-lg"
+                                        className="bg-slate-100 dark:bg-slate-950 h-[130px] xl:h-[160px] 2xl:h-[200px] shrink-0 border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm relative group cursor-zoom-in rounded-md"
                                     >
                                         <img
                                             src={capturedImage || "https://placehold.co/600x400/0f172a/64748b?text=Snapshot+Inbound"}
@@ -532,7 +532,7 @@ export default function CheckInPage() {
                                     <div className="space-y-4">
                                         <div className="grid grid-cols-2 gap-3">
                                             {/* Ô LICENSE PLATE */}
-                                            <div className={`border rounded-lg px-3 py-2 transition-all duration-300 ${scanResult.isBooking
+                                            <div className={`border border-slate-600 dark:border-slate-300 rounded-md px-3 py-2 transition-all duration-300 ${scanResult.isBooking
                                                 ? "bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800/60"
                                                 : "bg-slate-50 dark:bg-slate-950 border-slate-100 dark:border-slate-800"
                                                 }`}>
@@ -543,7 +543,7 @@ export default function CheckInPage() {
                                             </div>
 
                                             {/* Ô TYPE VEHICLE */}
-                                            <div className={`border rounded-lg px-3 py-2 transition-all duration-300 ${scanResult.isBooking
+                                            <div className={`border border-slate-600 dark:border-slate-300 rounded-md px-3 py-2 transition-all duration-300 ${scanResult.isBooking
                                                 ? "bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800/60"
                                                 : "bg-slate-50 dark:bg-slate-950 border-slate-100 dark:border-slate-800"
                                                 }`}>
@@ -557,21 +557,21 @@ export default function CheckInPage() {
                                         {/* HIỂN THỊ THÔNG TIN SLOT ĐỖ NẾU ĐÃ CONFIRMED */}
                                         {scanResult.type === "EntryConfirmed" && (
                                             <>
-                                                <div className="relative overflow-hidden rounded-lg bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-950 dark:to-slate-900 border border-slate-800 p-4 text-white shadow-md">
+                                                <div className="relative overflow-hidden rounded-md bg-slate-50 dark:bg-slate-950 border border-slate-600 dark:border-slate-300 p-4 ">
                                                     <div className="space-y-1 text-center">
-                                                        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-300 dark:text-slate-500">{t[language].assignedZone}</div>
-                                                        <div className="font-mono text-yellow-400 text-2xl xl:text-3xl font-black ">
+                                                        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">{t[language].assignedZone}</div>
+                                                        <div className=" text-slate-800 dark:text-slate-100 text-xl xl:text-2xl font-black ">
                                                             {scanResult.zone}
                                                         </div>
                                                     </div>
                                                     <div className="mt-4 grid grid-cols-2 gap-2 border-t border-slate-700/50 pt-3 text-xs">
-                                                        <div className="flex items-center gap-1.5 font-medium text-white">
-                                                            <MapPin size={13} className="text-white shrink-0" />
+                                                        <div className="flex items-center gap-1.5 font-medium text-slate-800 dark:text-slate-100">
+                                                            <MapPin size={13} className="text-slate-800 dark:text-slate-100 shrink-0" />
                                                             <span className="truncate">{scanResult.floor}</span>
                                                         </div>
                                                         <div className="text-right font-semibold text-slate-300 flex items-center justify-end gap-1.5">
-                                                            <Clock size={13} className="text-white shrink-0" />
-                                                            <span className="text-white px-1.5 py-0.5 rounded text-[11px]  ">
+                                                            <Clock size={13} className="text-slate-800 dark:text-slate-100 shrink-0" />
+                                                            <span className="text-slate-800 dark:text-slate-100 px-1.5 py-0.5 rounded text-[11px]  ">
                                                                 {scanResult.checkInTime}
                                                             </span>
                                                         </div>
@@ -580,7 +580,7 @@ export default function CheckInPage() {
 
                                                 {/* ĐIỀU KIỆN RẼ NHÁNH: BOOKING THÌ HIỂN THỊ BADGE BOOKING - XE THƯỜNG THÌ HIỂN THỊ Ô TICKET CODE */}
                                                 {scanResult.isBooking ? (
-                                                    <div className="relative overflow-hidden rounded-lg bg-blue-600 dark:bg-blue-700 border border-blue-700 dark:border-blue-800 p-4 text-white shadow-md text-center animate-fadeIn">
+                                                    <div className="relative overflow-hidden rounded-md bg-blue-600 dark:bg-blue-700 border border-blue-700 dark:border-blue-800 p-4 text-white shadow-md text-center animate-fadeIn">
                                                         <div className="flex items-center justify-center gap-2 font-black text-xs xl:text-sm uppercase tracking-wider">
                                                             <CheckCircle2 size={17} className="text-blue-100 animate-pulse" /> {t[language].bookedVehicle}
                                                         </div>
@@ -589,12 +589,12 @@ export default function CheckInPage() {
                                                         </p>
                                                     </div>
                                                 ) : (
-                                                    <div className="relative overflow-hidden rounded-lg bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-950 dark:to-slate-900 border border-slate-800 p-4 text-white shadow-md">
+                                                    <div className="relative overflow-hidden rounded-md bg-slate-50 dark:bg-slate-950 border border-slate-600 dark:border-slate-300 p-4 shadow-md">
                                                         <div className="flex items-center justify-between w-full">
-                                                            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-300 dark:text-slate-500">
+                                                            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                                                                 {t[language].ticketCodeLabel}
                                                             </div>
-                                                            <div className="font-mono text-yellow-400 text-md xl:text-md font-black tracking-wider">
+                                                            <div className="text-slate-800 dark:text-slate-100 text-md xl:text-md font-black tracking-wider">
                                                                 {scanResult.ticketCode}
                                                             </div>
                                                         </div>
@@ -605,7 +605,7 @@ export default function CheckInPage() {
                                     </div>
                                 </>
                             ) : (
-                                <div className="flex-1 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-lg flex flex-col items-center justify-center text-center p-5 text-slate-400 dark:text-slate-600 bg-slate-50/50 dark:bg-slate-950/40 my-auto">
+                                <div className="flex-1 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-md flex flex-col items-center justify-center text-center p-5 text-slate-400 dark:text-slate-600 bg-slate-50/50 dark:bg-slate-950/40 my-auto">
                                     <CarFront size={32} className="mb-2 opacity-40" />
                                     <p className="text-xs font-black uppercase tracking-widest text-slate-600 dark:text-slate-400">{t[language].readyToScan}</p>
                                     <p className="text-xs text-slate-400 mt-1.5 max-w-[200px]">
@@ -624,13 +624,13 @@ export default function CheckInPage() {
                                     <>
                                         <button
                                             onClick={handleManualCheckInSubmit}
-                                            className="w-full bg-blue-600 hover:bg-blue-400 text-white py-2.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all"
+                                            className="w-full bg-blue-600 hover:bg-blue-500 text-white py-2.5 rounded-md text-xs font-black uppercase tracking-widest transition-all"
                                         >
                                             {t[language].btnConfirm} <span className="font-mono font-normal opacity-70 text-[10px] ml-1">[Enter]</span>
                                         </button>
                                         <button
                                             onClick={resetTerminal}
-                                            className="w-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-500 py-2 rounded-lg text-xs font-bold uppercase tracking-wide transition-all"
+                                            className="w-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-500 py-2 rounded-md text-xs font-bold uppercase tracking-wide transition-all"
                                         >
                                             {t[language].btnCancel} <span className="font-mono font-normal opacity-70 text-[10px] ml-1">[Esc]</span>
                                         </button>
@@ -640,14 +640,14 @@ export default function CheckInPage() {
                                 {scanResult.type === "EntryConfirmed" && (
                                     <button
                                         onClick={resetTerminal}
-                                        className="w-full bg-slate-900 dark:bg-slate-600 hover:bg-slate-600 text-white py-2.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all"
+                                        className="w-full bg-blue-600 dark:bg-blue-600 hover:bg-blue-500 dark:hover:bg-blue-500 text-white py-2.5 rounded-md text-xs font-black uppercase tracking-wider transition-all"
                                     >
                                         {t[language].btnNextScan} <span className="font-mono font-normal opacity-80 text-[10px] ml-1">[Enter]</span>
                                     </button>
                                 )}
                             </>
                         ) : (
-                            <button disabled className="w-full bg-slate-50 dark:bg-slate-950 text-slate-400 py-2.5 rounded-lg text-xs font-bold uppercase tracking-widest border border-slate-200 dark:border-slate-800 cursor-not-allowed text-center">
+                            <button disabled className="w-full bg-slate-50 dark:bg-slate-950 text-slate-400 py-2.5 rounded-md text-xs font-bold uppercase tracking-widest border border-slate-200 dark:border-slate-800 cursor-not-allowed text-center">
                                 {t[language].systemReady}
                             </button>
                         )}
