@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, Mail, KeyRound, CheckCircle2, RefreshCcw, Eye, EyeOff, ShieldAlert, Zap } from "lucide-react";
 import { useLanguage } from "../hooks/useLanguage";
@@ -79,6 +79,8 @@ export default function ForgotPassword() {
   // State lưu trữ thông tin (Xóa bỏ hoàn toàn state 'method')
   const [inputValue, setInputValue] = useState(""); // Dùng chung cho cả Email/SĐT
   const [otpCode, setOtpCode] = useState("");
+  const [otpArray, setOtpArray] = useState(new Array(6).fill(""));
+  const otpRefs = useRef([]);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -115,9 +117,50 @@ export default function ForgotPassword() {
   // ============================================================
   // BƯỚC 2: TIẾP NHẬN MÃ OTP
   // ============================================================
+  const handleOtpChange = (val, idx) => {
+    const cleanVal = val.replace(/\D/g, "");
+    const newOtpArray = [...otpArray];
+    newOtpArray[idx] = cleanVal.slice(-1);
+    setOtpArray(newOtpArray);
+    setOtpCode(newOtpArray.join(""));
+
+    // Auto focus next input
+    if (cleanVal && idx < 5) {
+      otpRefs.current[idx + 1]?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (e, idx) => {
+    if (e.key === "Backspace") {
+      if (!otpArray[idx] && idx > 0) {
+        const newOtpArray = [...otpArray];
+        newOtpArray[idx - 1] = "";
+        setOtpArray(newOtpArray);
+        setOtpCode(newOtpArray.join(""));
+        otpRefs.current[idx - 1]?.focus();
+      }
+    }
+  };
+
+  const handleOtpPaste = (e) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+    if (pastedData) {
+      const newOtpArray = new Array(6).fill("");
+      for (let i = 0; i < pastedData.length; i++) {
+        newOtpArray[i] = pastedData[i];
+      }
+      setOtpArray(newOtpArray);
+      setOtpCode(newOtpArray.join(""));
+      
+      const targetIndex = Math.min(pastedData.length, 5);
+      otpRefs.current[targetIndex]?.focus();
+    }
+  };
+
   const handleVerifyOtp = (e) => {
     e.preventDefault();
-    if (otpCode.length < 4) {
+    if (otpCode.length < 6) {
       toast.error(t[language].invalidOtpToast);
       return;
     }
@@ -126,6 +169,7 @@ export default function ForgotPassword() {
 
   const handleRestartFlow = () => {
     setOtpCode("");
+    setOtpArray(new Array(6).fill(""));
     setNewPassword("");
     setConfirmPassword("");
     setStep("request");
@@ -249,23 +293,26 @@ export default function ForgotPassword() {
              ============================================================ */}
           {step === "otp" && (
             <form onSubmit={handleVerifyOtp} className="space-y-4">
-              <div className="text-center text-sm text-slate-655 mb-2 font-medium">
+              <div className="text-center text-gray-600 text-sm mb-2 font-medium">
                 {t[language].enterOtpCode} <br />
                 <span className="text-blue-600 font-mono font-semibold">{inputValue}</span>
               </div>
 
-              <div className="relative">
-                <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-450 w-5 h-5" />
-                <input
-                  type="text"
-                  maxLength={6}
-                  required
-                  value={otpCode}
-                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
-                  placeholder={t[language].otpPlaceholder}
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50/80 border border-slate-300 rounded-lg text-slate-900 text-center font-bold tracking-[0.3em] placeholder-slate-450 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-500 transition"
-                />
+              <div className="flex justify-between gap-2 my-5" onPaste={handleOtpPaste}>
+                {otpArray.map((digit, idx) => (
+                  <input
+                    key={idx}
+                    ref={(el) => (otpRefs.current[idx] = el)}
+                    type="text"
+                    maxLength={1}
+                    value={digit}
+                    onChange={(e) => handleOtpChange(e.target.value, idx)}
+                    onKeyDown={(e) => handleOtpKeyDown(e, idx)}
+                    className="w-12 h-14 text-center text-2xl font-bold text-slate-900 bg-slate-50/80 border border-slate-300 rounded-xl focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all duration-150"
+                  />
+                ))}
               </div>
+              
               <button
                 type="submit"
                 className="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 px-4 rounded-lg transition duration-200 flex items-center justify-center">
@@ -273,7 +320,7 @@ export default function ForgotPassword() {
               </button>
 
               <div className="text-center mt-2">
-                <button type="button" onClick={() => setStep("request")} className="text-xs text-blue-600 hover:text-blue-700 hover:underline font-semibold">
+                <button type="button" onClick={handleRestartFlow} className="text-xs text-blue-600 hover:text-blue-700 hover:underline font-semibold">
                   {t[language].changeContactLink}
                 </button>
               </div>
@@ -339,7 +386,7 @@ export default function ForgotPassword() {
               <div className="flex justify-center text-green-500">
                 <CheckCircle2 size={56} className="animate-bounce" />
               </div>
-              <p className="text-slate-750 font-semibold">{t[language].successMsg}</p>
+              <p className="text-slate-750 text-blue-600 font-semibold">{t[language].successMsg}</p>
               <button onClick={() => navigate("/login")} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 px-4 rounded-lg transition duration-200">
                 {t[language].returnLoginBtn}
               </button>
