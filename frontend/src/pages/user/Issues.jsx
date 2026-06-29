@@ -63,6 +63,9 @@ export default function Issues() {
     customerEmail: "",
   });
 
+  const VN_PHONE_REGEX = /^(0)(3[2-9]|5[6-9]|7[0|6-9]|8[0-9]|9[0-9])[0-9]{7}$/;
+  const [phoneError, setPhoneError] = useState("");
+
   const [tickets, setTickets] = useState([]);
   const [hoverRating, setHoverRating] = useState(0);
   const [status, setStatus] = useState("idle"); // 'idle' | 'submitting' | 'success'
@@ -121,6 +124,13 @@ export default function Issues() {
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+    if (e.target.name === "customerPhone") {
+      if (e.target.value && !VN_PHONE_REGEX.test(e.target.value)) {
+        setPhoneError(language === "en" ? "Invalid Vietnamese phone number (e.g. 0901234567)" : "Số điện thoại Việt Nam không hợp lệ (VD: 0901234567)");
+      } else {
+        setPhoneError("");
+      }
+    }
   };
 
   const parseDescription = (description) => {
@@ -233,6 +243,11 @@ export default function Issues() {
 
     if (!formData.customerPhone.trim() || !formData.customerEmail.trim()) {
       alert(language === "en" ? "Contact Phone and Contact Email are required." : "Số điện thoại và email liên hệ không được để trống.");
+      return;
+    }
+
+    if (!VN_PHONE_REGEX.test(formData.customerPhone.trim())) {
+      alert(language === "en" ? "Please enter a valid Vietnamese phone number (e.g. 0901234567)." : "Số điện thoại không hợp lệ. Vui lòng nhập đúng định dạng số điện thoại Việt Nam (VD: 0901234567).");
       return;
     }
 
@@ -465,8 +480,12 @@ export default function Issues() {
                 value={formData.customerPhone}
                 onChange={handleChange}
                 placeholder="09XXXXXXXX"
-                className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 focus:border-blue-500 rounded-2xl px-5 py-3 text-slate-800 dark:text-white focus:outline-none text-sm font-medium"
+                maxLength={10}
+                className={`w-full bg-slate-50 dark:bg-slate-800/50 border ${phoneError ? "border-red-400 dark:border-red-500" : "border-slate-200 dark:border-slate-700 focus:border-blue-500"} rounded-2xl px-5 py-3 text-slate-800 dark:text-white focus:outline-none text-sm font-medium`}
               />
+              {phoneError && (
+                <p className="text-xs text-red-500 mt-1.5 ml-1">{phoneError}</p>
+              )}
             </div>
             <div>
               <h3 className="text-sm font-bold text-slate-800 dark:text-white mb-2 flex items-center gap-1">
@@ -476,10 +495,10 @@ export default function Issues() {
                 type="email"
                 name="customerEmail"
                 required
+                readOnly
                 value={formData.customerEmail}
-                onChange={handleChange}
                 placeholder="user@example.com"
-                className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 focus:border-blue-500 rounded-2xl px-5 py-3 text-slate-800 dark:text-white focus:outline-none text-sm font-medium"
+                className="w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-5 py-3 text-slate-400 dark:text-slate-500 focus:outline-none text-sm font-medium cursor-not-allowed select-none"
               />
             </div>
           </div>

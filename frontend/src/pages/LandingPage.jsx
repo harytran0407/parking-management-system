@@ -16,6 +16,7 @@ import {
   Clock,
 } from "lucide-react";
 import api from "../utils/api";
+import { useAuth } from "../context/AuthContext";
 
 
 // ─── Static content ───────────────────────────────────────────────────────────
@@ -190,6 +191,8 @@ function CapacityPill({ icon: Icon, label, available, total, accentColor }) {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function LandingPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isLoggedIn = !!user;
   const [capacity, setCapacity] = useState(null);
   const [capacityLoading, setCapacityLoading] = useState(true);
 
@@ -355,13 +358,13 @@ export default function LandingPage() {
 
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <button
-            onClick={() => navigate("/login")}
+            onClick={() => navigate(isLoggedIn ? "/user" : "/login")}
             className="btn-nav-login"
           >
-            Log In
+            {isLoggedIn ? "Dashboard" : "Log In"}
           </button>
           <button
-            onClick={() => navigate("/user/book")}
+            onClick={() => navigate(isLoggedIn ? "/user/book" : "/login")}
             className="btn-nav-book"
           >
             Book a Spot
@@ -434,7 +437,7 @@ export default function LandingPage() {
 
             <div style={{ display: "flex", gap: 12, marginBottom: 36 }}>
               <button
-                onClick={() => navigate("/user/book")}
+                onClick={() => navigate(isLoggedIn ? "/user/book" : "/login")}
                 className="btn-hero-book"
               >
                 <CalendarCheck size={17} /> Book a Spot
@@ -592,13 +595,13 @@ export default function LandingPage() {
           </p>
           <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
             <button
-              onClick={() => navigate("/login")}
+              onClick={() => navigate(isLoggedIn ? "/user" : "/login")}
               className="btn-cta-login"
             >
-              Log In
+              {isLoggedIn ? "Dashboard" : "Log In"}
             </button>
             <button
-              onClick={() => navigate("/user/book")}
+              onClick={() => navigate(isLoggedIn ? "/user/book" : "/login")}
               className="btn-cta-book"
             >
               Book a Spot →

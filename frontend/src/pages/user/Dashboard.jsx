@@ -34,7 +34,7 @@ const STATIC_IMAGES = [
 ];
 
 const FALLBACK_MAP_URL =
-  "https://maps.google.com/maps?q=Saigon%20Hi-Tech%20Park,%20Ho%20Chi%20Minh&t=&z=15&ie=UTF8&iwloc=&output=embed";
+  "https://maps.google.com/maps?q=92+Nam+Ky+Khoi+Nghia,+Ho+Chi+Minh&t=&z=16&ie=UTF8&iwloc=&output=embed";
 
 const fmtVND = (val) => (val != null ? val.toLocaleString("vi-VN") : "0");
 
@@ -287,7 +287,7 @@ export default function UserDashboard() {
             <div className="flex items-center gap-1.5">
               <MapPin size={14} className="text-blue-400 shrink-0" />
               <span className="text-slate-300 text-xs leading-tight max-w-xs">
-                {buildingInfo.address || "Saigon Hi-Tech Park, Ho Chi Minh City"}
+                {buildingInfo.address || "92 - 94 Nam Kỳ Khởi Nghĩa, Sài Gòn, Hồ Chí Minh 70000, Việt Nam"}
               </span>
             </div>
           </div>
@@ -424,7 +424,7 @@ export default function UserDashboard() {
                   {language === "en" ? "Location & Surroundings" : "Vị trí & Xung quanh"}
                 </h3>
                 <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
-                  {language === "en" ? "Located in Saigon Hi-Tech Park" : "Nằm trong Khu Công nghệ cao Sài Gòn"}
+                  {language === "en" ? "92 - 94 Nam Ky Khoi Nghia, Ho Chi Minh" : "92 - 94 Nam Kỳ Khởi Nghĩa, Hồ Chí Minh"}
                 </p>
               </div>
               <MapPin size={14} className="text-blue-500" />
@@ -443,12 +443,14 @@ export default function UserDashboard() {
             <div className="grid grid-cols-2 border-t border-slate-100 dark:border-slate-800">
               <button
                 type="button"
+                onClick={() => window.open("https://www.google.com/maps/dir/?api=1&destination=92+Nam+Ky+Khoi+Nghia,+Ho+Chi+Minh", "_blank")}
                 className="flex items-center justify-center gap-2 py-3.5 text-xs font-bold text-slate-500 dark:text-slate-300 hover:text-blue-600 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800 transition border-r border-slate-100 dark:border-slate-800">
                 <Navigation size={13} className="text-blue-500 dark:text-blue-400" />
                 {language === "en" ? "Get Directions" : "Chỉ đường"}
               </button>
               <button
                 type="button"
+                onClick={() => window.open("https://www.google.com/maps/search/?api=1&query=92+Nam+Ky+Khoi+Nghia,+Ho+Chi+Minh", "_blank")}
                 className="flex items-center justify-center gap-2 py-3.5 text-xs font-bold text-slate-500 dark:text-slate-300 hover:text-blue-600 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800 transition">
                 <ExternalLink size={13} className="text-blue-500 dark:text-blue-400" />
                 {language === "en" ? "Open in Google Maps" : "Mở Google Maps"}
