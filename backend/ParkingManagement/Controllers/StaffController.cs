@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using ParkingManagement.Data;
 using ParkingManagement.DTOs;
 using ParkingManagement.Models;
+using ParkingManagement.Utils;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
@@ -88,6 +89,46 @@ namespace ParkingManagement.Controllers
                     success = false,
                     error_code = "VALIDATION_ERROR",
                     message = "All fields are required"
+                });
+            }
+
+            if (!ValidationUtils.IsValidUsername(request.Username))
+            {
+                return UnprocessableEntity(new
+                {
+                    success = false,
+                    error_code = "INVALID_USERNAME",
+                    message = "Username must be 4-20 characters and contain only letters, numbers, dots, hyphens, or underscores"
+                });
+            }
+
+            if (!ValidationUtils.IsValidEmail(request.Email))
+            {
+                return UnprocessableEntity(new
+                {
+                    success = false,
+                    error_code = "INVALID_EMAIL",
+                    message = "Invalid email format"
+                });
+            }
+
+            if (!ValidationUtils.IsValidPhoneNumber(request.PhoneNumber))
+            {
+                return UnprocessableEntity(new
+                {
+                    success = false,
+                    error_code = "INVALID_PHONE",
+                    message = "Invalid phone number (must start with 0 and contain 10 digits)"
+                });
+            }
+
+            if (!ValidationUtils.IsValidPassword(request.Password))
+            {
+                return UnprocessableEntity(new
+                {
+                    success = false,
+                    error_code = "WEAK_PASSWORD",
+                    message = "Password must be at least 8 characters long, containing letters, numbers, and at least one special character"
                 });
             }
 
@@ -196,6 +237,26 @@ namespace ParkingManagement.Controllers
                     success = false,
                     error_code = "VALIDATION_ERROR",
                     message = "All fields are required"
+                });
+            }
+
+            if (!ValidationUtils.IsValidEmail(request.Email))
+            {
+                return UnprocessableEntity(new
+                {
+                    success = false,
+                    error_code = "INVALID_EMAIL",
+                    message = "Invalid email format"
+                });
+            }
+
+            if (!ValidationUtils.IsValidPhoneNumber(request.Phone))
+            {
+                return UnprocessableEntity(new
+                {
+                    success = false,
+                    error_code = "INVALID_PHONE",
+                    message = "Invalid phone number (must start with 0 and contain 10 digits)"
                 });
             }
 

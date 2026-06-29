@@ -1,4 +1,4 @@
-﻿using ParkingManagement.DTOs.Building;
+using ParkingManagement.DTOs.Building;
 using ParkingManagement.Models;
 using ParkingManagement.Repositories;
 
@@ -96,11 +96,12 @@ public class FloorAllocationService : IFloorAllocationService
             ? $"Warning: {activeVehicles} active vehicle(s) in this zone. Changes take effect from save time."
             : null;
 
-        // Tự generate zone_name: "Zone X - {vehicle_type_name}"
-        string zoneLetter = zone.ZoneName.Length > 5
-    ?   zone.ZoneName[5].ToString()
-            : "?";
-        zone.ZoneName = $"Zone {zoneLetter} - {vehicleType.VehicleTypeName}";
+        // Dọn dẹp hậu tố " - {loại xe}" cũ nếu có để đưa tên phân khu về dạng thuần túy
+        int hyphenIndex = zone.ZoneName.IndexOf(" - ");
+        if (hyphenIndex >= 0)
+        {
+            zone.ZoneName = zone.ZoneName.Substring(0, hyphenIndex);
+        }
         zone.VehicleTypeId = request.VehicleTypeId;
 
         if (request.Capacity.HasValue && request.Capacity>=0)

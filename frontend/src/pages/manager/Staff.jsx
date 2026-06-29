@@ -34,6 +34,10 @@ export default function ManagerStaff() {
     phone: ''
   })
 
+  const [addErrors, setAddErrors] = useState({})
+  const [editErrors, setEditErrors] = useState({})
+  const [statusToChange, setStatusToChange] = useState('')
+
   const [formSubmitting, setFormSubmitting] = useState(false)
 
   // Fetch staff list
@@ -73,11 +77,38 @@ export default function ManagerStaff() {
   const handleAddSubmit = async (e) => {
     e.preventDefault()
     
-    // Quick validation
+    // Validation patterns
+    const nameRegex = /^[a-zA-ZÀ-ỹ\s]{2,100}$/;
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    const phoneRegex = /^0[3|5|7|8|9][0-9]{8}$/;
+    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+
+    const errors = {}
+    if (!nameRegex.test(addForm.fullName)) {
+      errors.fullName = language === 'en' ? 'Full name must be 2-100 characters and contain only letters.' : 'Họ và tên phải từ 2–100 ký tự và chỉ chứa chữ cái.'
+    }
+
+    if (!emailRegex.test(addForm.email)) {
+      errors.email = language === 'en' ? 'Invalid email address.' : 'Địa chỉ email không hợp lệ.'
+    }
+
+    if (!phoneRegex.test(addForm.phoneNumber)) {
+      errors.phoneNumber = language === 'en' ? 'Invalid phone number (must start with 0 and contain 10 digits).' : 'Số điện thoại không hợp lệ (Phải bắt đầu bằng số 0 và có 10 chữ số).'
+    }
+
+    if (!passwordRegex.test(addForm.password)) {
+      errors.password = language === 'en' ? 'Password must be at least 8 characters, containing letters, numbers, and at least one special character.' : 'Mật khẩu phải từ 8 ký tự trở lên, bao gồm chữ cái, số và ít nhất một ký tự đặc biệt.'
+    }
+
     if (addForm.password !== addForm.confirmPassword) {
-      toast.error(language === 'en' ? 'Passwords do not match' : 'Mật khẩu không khớp')
+      errors.confirmPassword = language === 'en' ? 'Passwords do not match.' : 'Mật khẩu không khớp.'
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setAddErrors(errors)
       return
     }
+    setAddErrors({})
 
     setFormSubmitting(true)
     try {
@@ -122,6 +153,7 @@ export default function ManagerStaff() {
       email: staff.email || '',
       phone: staff.phone || ''
     })
+    setEditErrors({})
     setIsEditModalOpen(true)
   }
 
@@ -130,10 +162,34 @@ export default function ManagerStaff() {
     e.preventDefault()
     if (!selectedStaff) return
 
+    // Validation patterns
+    const nameRegex = /^[a-zA-ZÀ-ỹ\s]{2,100}$/;
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    const phoneRegex = /^0[3|5|7|8|9][0-9]{8}$/;
+
+    const errors = {}
+    if (!nameRegex.test(editForm.fullName)) {
+      errors.fullName = language === 'en' ? 'Full name must be 2-100 characters and contain only letters.' : 'Họ và tên phải từ 2–100 ký tự và chỉ chứa chữ cái.'
+    }
+
+    if (!emailRegex.test(editForm.email)) {
+      errors.email = language === 'en' ? 'Invalid email address.' : 'Địa chỉ email không hợp lệ.'
+    }
+
+    if (!phoneRegex.test(editForm.phone)) {
+      errors.phone = language === 'en' ? 'Invalid phone number (must start with 0 and contain 10 digits).' : 'Số điện thoại không hợp lệ (Phải bắt đầu bằng số 0 và có 10 chữ số).'
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setEditErrors(errors)
+      return
+    }
+    setEditErrors({})
+
     setFormSubmitting(true)
     try {
       const response = await api.put(`/manager/staff/${selectedStaff.user_id}`, {
-        fullName: editForm.fullName,
+        full_name: editForm.fullName,
         email: editForm.email,
         phone: editForm.phone
       })
@@ -151,11 +207,16 @@ export default function ManagerStaff() {
     }
   }
 
-  // Handle Toggle Status (ACTIVE/BANNED)
-  const handleToggleStatus = async (staff) => {
-    const target = staff || staffToToggle;
+  // Open Status Update Modal
+  const openStatusModal = (staff) => {
+    setStaffToToggle(staff)
+    setStatusToChange(staff.status)
+    setIsConfirmModalOpen(true)
+  }
+
+  // Handle Change Status
+  const handleStatusChange = async (target, newStatus) => {
     if (!target) return;
-    const newStatus = target.status === 'ACTIVE' ? 'BANNED' : 'ACTIVE'
     
     setFormSubmitting(true)
     try {
@@ -167,7 +228,7 @@ export default function ManagerStaff() {
         toast.success(
           language === 'en' 
             ? `Staff status updated to ${newStatus} successfully` 
-            : `Cập nhật trạng thái nhân viên thành ${newStatus === 'ACTIVE' ? 'HOẠT ĐỘNG' : 'BỊ KHÓA'} thành công`
+            : `Cập nhật trạng thái nhân viên thành ${newStatus} thành công`
         )
         // Update local state directly to be fast and smooth
         setStaffList(prev => 
@@ -177,7 +238,7 @@ export default function ManagerStaff() {
         setStaffToToggle(null)
       }
     } catch (error) {
-      console.error('Toggle status error:', error)
+      console.error('Update status error:', error)
       toast.error(error.message || (language === 'en' ? 'Failed to update staff status' : 'Không thể cập nhật trạng thái nhân viên'))
     } finally {
       setFormSubmitting(false)
@@ -199,7 +260,10 @@ export default function ManagerStaff() {
           </p>
         </div>
         <button
-          onClick={() => setIsAddModalOpen(true)}
+          onClick={() => {
+            setAddErrors({})
+            setIsAddModalOpen(true)
+          }}
           className="btn-primary flex items-center gap-2 shadow-lg hover:shadow-blue-500/25 transition-all duration-300"
         >
           <UserPlus size={18} />
@@ -345,22 +409,11 @@ export default function ManagerStaff() {
                           <Edit size={16} />
                         </button>
                         <button
-                          onClick={() => {
-                            setStaffToToggle(staff);
-                            setIsConfirmModalOpen(true);
-                          }}
-                          className={`p-1.5 rounded-lg transition-all ${
-                            staff.status === 'ACTIVE'
-                              ? 'text-slate-500 hover:text-red-600 hover:bg-red-50 dark:text-slate-400 dark:hover:text-red-400 dark:hover:bg-slate-800'
-                              : 'text-red-600 bg-red-50 hover:bg-red-100 dark:text-red-400 dark:bg-red-950/20 dark:hover:bg-red-955/45'
-                          }`}
-                          title={
-                            staff.status === 'ACTIVE' 
-                              ? (language === 'en' ? 'Deactivate / Ban Staff' : 'Vô hiệu hóa / Khóa nhân viên') 
-                              : (language === 'en' ? 'Activate Staff' : 'Kích hoạt nhân viên')
-                          }
+                          onClick={() => openStatusModal(staff)}
+                          className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:text-slate-400 dark:hover:text-indigo-400 dark:hover:bg-slate-800 rounded-lg transition-all"
+                          title={language === 'en' ? 'Update Account Status' : 'Cập nhật trạng thái tài khoản'}
                         >
-                          {staff.status === 'ACTIVE' ? <Lock size={16} /> : <Unlock size={16} />}
+                          <Shield size={16} />
                         </button>
                       </div>
                     </td>
@@ -405,10 +458,14 @@ export default function ManagerStaff() {
                   type="text"
                   required
                   value={addForm.fullName}
-                  onChange={(e) => setAddForm(prev => ({ ...prev, fullName: e.target.value }))}
-                  className="input-field"
+                  onChange={(e) => {
+                    setAddForm(prev => ({ ...prev, fullName: e.target.value }));
+                    setAddErrors(prev => ({ ...prev, fullName: '' }));
+                  }}
+                  className={`input-field ${addErrors.fullName ? 'border-red-500 focus:border-red-500' : ''}`}
                   placeholder={language === 'en' ? 'e.g. John Doe' : 'vd: Nguyễn Văn A'}
                 />
+                {addErrors.fullName && <p className="text-red-500 text-xs mt-1 font-medium">{addErrors.fullName}</p>}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -418,10 +475,14 @@ export default function ManagerStaff() {
                     type="email"
                     required
                     value={addForm.email}
-                    onChange={(e) => setAddForm(prev => ({ ...prev, email: e.target.value.trim() }))}
-                    className="input-field"
+                    onChange={(e) => {
+                      setAddForm(prev => ({ ...prev, email: e.target.value.trim() }));
+                      setAddErrors(prev => ({ ...prev, email: '' }));
+                    }}
+                    className={`input-field ${addErrors.email ? 'border-red-500 focus:border-red-500' : ''}`}
                     placeholder={language === 'en' ? 'e.g. john@domain.com' : 'vd: name@email.com'}
                   />
+                  {addErrors.email && <p className="text-red-500 text-xs mt-1 font-medium">{addErrors.email}</p>}
                 </div>
                 <div>
                   <label className="label">{language === 'en' ? 'Phone Number *' : 'Số điện thoại *'}</label>
@@ -429,10 +490,14 @@ export default function ManagerStaff() {
                     type="tel"
                     required
                     value={addForm.phoneNumber}
-                    onChange={(e) => setAddForm(prev => ({ ...prev, phoneNumber: e.target.value.trim() }))}
-                    className="input-field"
+                    onChange={(e) => {
+                      setAddForm(prev => ({ ...prev, phoneNumber: e.target.value.trim() }));
+                      setAddErrors(prev => ({ ...prev, phoneNumber: '' }));
+                    }}
+                    className={`input-field ${addErrors.phoneNumber ? 'border-red-500 focus:border-red-500' : ''}`}
                     placeholder={language === 'en' ? 'e.g. 0912345678' : 'vd: 0912345678'}
                   />
+                  {addErrors.phoneNumber && <p className="text-red-500 text-xs mt-1 font-medium">{addErrors.phoneNumber}</p>}
                 </div>
               </div>
 
@@ -444,10 +509,14 @@ export default function ManagerStaff() {
                     required
                     minLength={6}
                     value={addForm.password}
-                    onChange={(e) => setAddForm(prev => ({ ...prev, password: e.target.value }))}
-                    className="input-field"
+                    onChange={(e) => {
+                      setAddForm(prev => ({ ...prev, password: e.target.value }));
+                      setAddErrors(prev => ({ ...prev, password: '' }));
+                    }}
+                    className={`input-field ${addErrors.password ? 'border-red-500 focus:border-red-500' : ''}`}
                     placeholder="••••••••"
                   />
+                  {addErrors.password && <p className="text-red-500 text-xs mt-1 font-medium">{addErrors.password}</p>}
                 </div>
                 <div>
                   <label className="label">{language === 'en' ? 'Confirm Password *' : 'Xác nhận mật khẩu *'}</label>
@@ -456,10 +525,14 @@ export default function ManagerStaff() {
                     required
                     minLength={6}
                     value={addForm.confirmPassword}
-                    onChange={(e) => setAddForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                    className="input-field"
+                    onChange={(e) => {
+                      setAddForm(prev => ({ ...prev, confirmPassword: e.target.value }));
+                      setAddErrors(prev => ({ ...prev, confirmPassword: '' }));
+                    }}
+                    className={`input-field ${addErrors.confirmPassword ? 'border-red-500 focus:border-red-500' : ''}`}
                     placeholder="••••••••"
                   />
+                  {addErrors.confirmPassword && <p className="text-red-500 text-xs mt-1 font-medium">{addErrors.confirmPassword}</p>}
                 </div>
               </div>
 
@@ -521,10 +594,14 @@ export default function ManagerStaff() {
                   type="text"
                   required
                   value={editForm.fullName}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, fullName: e.target.value }))}
-                  className="input-field"
+                  onChange={(e) => {
+                    setEditForm(prev => ({ ...prev, fullName: e.target.value }));
+                    setEditErrors(prev => ({ ...prev, fullName: '' }));
+                  }}
+                  className={`input-field ${editErrors.fullName ? 'border-red-500 focus:border-red-500' : ''}`}
                   placeholder={language === 'en' ? 'e.g. John Doe' : 'vd: Nguyễn Văn A'}
                 />
+                {editErrors.fullName && <p className="text-red-500 text-xs mt-1 font-medium">{editErrors.fullName}</p>}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -534,10 +611,14 @@ export default function ManagerStaff() {
                     type="email"
                     required
                     value={editForm.email}
-                    onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value.trim() }))}
-                    className="input-field"
+                    onChange={(e) => {
+                      setEditForm(prev => ({ ...prev, email: e.target.value.trim() }));
+                      setEditErrors(prev => ({ ...prev, email: '' }));
+                    }}
+                    className={`input-field ${editErrors.email ? 'border-red-500 focus:border-red-500' : ''}`}
                     placeholder={language === 'en' ? 'e.g. john@domain.com' : 'vd: name@email.com'}
                   />
+                  {editErrors.email && <p className="text-red-500 text-xs mt-1 font-medium">{editErrors.email}</p>}
                 </div>
                 <div>
                   <label className="label">{language === 'en' ? 'Phone Number *' : 'Số điện thoại *'}</label>
@@ -545,10 +626,14 @@ export default function ManagerStaff() {
                     type="tel"
                     required
                     value={editForm.phone}
-                    onChange={(e) => setEditForm(prev => ({ ...prev, phone: e.target.value.trim() }))}
-                    className="input-field"
+                    onChange={(e) => {
+                      setEditForm(prev => ({ ...prev, phone: e.target.value.trim() }));
+                      setEditErrors(prev => ({ ...prev, phone: '' }));
+                    }}
+                    className={`input-field ${editErrors.phone ? 'border-red-500 focus:border-red-500' : ''}`}
                     placeholder={language === 'en' ? 'e.g. 0912345678' : 'vd: 0912345678'}
                   />
+                  {editErrors.phone && <p className="text-red-500 text-xs mt-1 font-medium">{editErrors.phone}</p>}
                 </div>
               </div>
 
@@ -576,7 +661,7 @@ export default function ManagerStaff() {
       )}
 
       {/* ============================================================
-          CONFIRM STATUS CHANGE MODAL
+          CONFIRM STATUS CHANGE MODAL (Dropdown selector for ACTIVE, INACTIVE, BANNED)
          ============================================================ */}
       {isConfirmModalOpen && staffToToggle && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
@@ -591,24 +676,32 @@ export default function ManagerStaff() {
               <X size={18} />
             </button>
             <div className="flex items-start gap-4 mb-6">
-              <div className={`p-3 rounded-xl shrink-0 ${
-                staffToToggle.status === 'ACTIVE' 
-                  ? 'bg-red-100 text-red-650 dark:bg-red-950/40 dark:text-red-400' 
-                  : 'bg-emerald-100 text-emerald-650 dark:bg-emerald-950/40 dark:text-emerald-400'
-              }`}>
+              <div className="p-3 bg-blue-150 text-blue-600 dark:bg-blue-955/50 dark:text-blue-400 rounded-xl shrink-0">
                 <Shield size={24} />
               </div>
               <div className="min-w-0 flex-1">
                 <h3 className="text-base font-bold text-slate-800 dark:text-white mb-1">
-                  {language === 'en' ? 'Confirm Action' : 'Xác nhận hành động'}
+                  {language === 'en' ? 'Update Account Status' : 'Cập nhật trạng thái tài khoản'}
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
-                  {staffToToggle.status === 'ACTIVE' 
-                    ? (language === 'en' ? `Are you sure you want to deactivate @${staffToToggle.username}?` : `Bạn có chắc chắn muốn vô hiệu hóa tài khoản @${staffToToggle.username}?`)
-                    : (language === 'en' ? `Are you sure you want to activate @${staffToToggle.username}?` : `Bạn có chắc chắn muốn kích hoạt tài khoản @${staffToToggle.username}?`)
-                  }
+                  {language === 'en' 
+                    ? `Select the operational status for @${staffToToggle.username}` 
+                    : `Chọn trạng thái hoạt động cho tài khoản @${staffToToggle.username}`}
                 </p>
               </div>
+            </div>
+
+            <div className="mb-6">
+              <label className="label">{language === 'en' ? 'Account Status' : 'Trạng thái tài khoản'}</label>
+              <select
+                value={statusToChange}
+                onChange={(e) => setStatusToChange(e.target.value)}
+                className="input-field w-full font-bold"
+              >
+                <option value="ACTIVE">{language === 'en' ? 'Active (Hoạt động)' : 'Hoạt động'}</option>
+                <option value="INACTIVE">{language === 'en' ? 'Inactive (Nghỉ phép/Tạm ngưng)' : 'Không hoạt động / Tạm ngưng'}</option>
+                <option value="BANNED">{language === 'en' ? 'Banned (Bị khóa)' : 'Bị khóa'}</option>
+              </select>
             </div>
 
             <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
@@ -625,18 +718,12 @@ export default function ManagerStaff() {
               </button>
               <button
                 type="button"
-                onClick={() => handleToggleStatus()}
-                className={`px-4 py-2 text-white font-bold rounded-lg text-xs transition-all flex items-center gap-1.5 ${
-                  staffToToggle.status === 'ACTIVE'
-                    ? 'bg-red-600 hover:bg-red-750 shadow-md shadow-red-500/20'
-                    : 'bg-emerald-600 hover:bg-emerald-700 shadow-md shadow-emerald-500/20'
-                }`}
+                onClick={() => handleStatusChange(staffToToggle, statusToChange)}
+                className="btn-primary text-xs flex items-center gap-1.5 shadow-md shadow-blue-500/20"
                 disabled={formSubmitting}
               >
                 {formSubmitting && <RefreshCw size={12} className="animate-spin" />}
-                {staffToToggle.status === 'ACTIVE' 
-                  ? (language === 'en' ? 'Deactivate Account' : 'Khóa tài khoản') 
-                  : (language === 'en' ? 'Activate Account' : 'Kích hoạt tài khoản')}
+                {language === 'en' ? 'Save Status' : 'Lưu trạng thái'}
               </button>
             </div>
           </div>
