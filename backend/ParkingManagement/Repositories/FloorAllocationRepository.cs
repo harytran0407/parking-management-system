@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using ParkingManagement.Data;
 using ParkingManagement.Models;
 
@@ -41,12 +41,10 @@ public class FloorAllocationRepository : IFloorAllocationRepository
     public Task<VehicleType?> GetVehicleTypeAsync(int vehicleTypeId) =>
         _db.VehicleTypes.FirstOrDefaultAsync(v => v.VehicleTypeId == vehicleTypeId);
 
-    // Đếm xe đang ACTIVE trong zone này
+    // Đếm xe đang ACTIVE trong zone này (dựa trên cột ZoneId trực tiếp của ParkingSession trong cơ chế mới)
     public Task<int> CountActiveVehiclesAsync(int zoneId) =>
         _db.ParkingSessions
-           .Include(s => s.Slot)
-           .CountAsync(s => s.Slot != null &&
-                            s.Slot.ZoneId == zoneId &&
+           .CountAsync(s => s.ZoneId == zoneId &&
                             s.Status == "ACTIVE");
 
     public async Task UpdateAsync(FloorZone zone)
