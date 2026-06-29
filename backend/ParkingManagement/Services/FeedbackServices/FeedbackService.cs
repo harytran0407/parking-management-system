@@ -25,7 +25,8 @@ namespace ParkingManagement.Services.FeedbackServices
                     Title = request.Title,
                     Content = request.Content,
                     Status = "OPEN",
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = DateTime.UtcNow,
+                    StarRating = request.StarRating
                 };
                 _context.Feedbacks.Add(feedback);
                 await _context.SaveChangesAsync();
