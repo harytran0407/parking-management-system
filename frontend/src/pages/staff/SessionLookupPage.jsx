@@ -124,7 +124,20 @@ export default function SessionLookupPage() {
   // Live second ticker for duration display
   useEffect(() => {
     if (!session) return;
-    const ticker = setInterval(() => setElapsedSeconds((p) => p + 1), 1000);
+
+    const calculateElapsed = () => {
+      if (!session.check_in_time) return 0;
+      const checkInDate = new Date(session.check_in_time);
+      const diffMs = Date.now() - checkInDate.getTime();
+      return Math.max(0, Math.floor(diffMs / 1000));
+    };
+
+    setElapsedSeconds(calculateElapsed());
+
+    const ticker = setInterval(() => {
+      setElapsedSeconds(calculateElapsed());
+    }, 1000);
+
     return () => clearInterval(ticker);
   }, [session]);
 
@@ -140,7 +153,6 @@ export default function SessionLookupPage() {
       const res = await api.get(`/parking/sessions/active/${cleanPlate}`);
       if (res.data && res.data.success) {
         setSession(res.data.data);
-        if (!isSilent) setElapsedSeconds(0);
       } else {
         setSession(null);
         if (!isSilent) setError(t[language].errorNoSession);
@@ -209,7 +221,7 @@ export default function SessionLookupPage() {
             type="submit"
             id="staff-session-lookup-btn"
             disabled={loading || !licensePlate.trim()}
-            className="flex items-center justify-center gap-2 px-8 py-3.5 bg-blue-700 hover:bg-blue-600 active:bg-blue-800 text-white font-bold text-sm rounded-md shadow-lg shadow-blue-700/25 transition-all active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+            className="flex items-center justify-center gap-2 px-8 py-3.5 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-bold text-sm rounded-md shadow-lg shadow-blue-600/25 transition-all active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
           >
             {loading ? <RefreshCw size={15} className="animate-spin" /> : <Search size={15} />}
             {t[language].btnSearch}
@@ -263,7 +275,7 @@ export default function SessionLookupPage() {
                   {t[language].labelDuration}
                 </p>
                 <p className="text-xl xl:text-2xl font-bold text-slate-700 dark:text-white tracking-wider tabular-nums min-w-[7rem] text-right">
-                  {formatDuration(session.duration_minutes, elapsedSeconds)}
+                  {formatDuration(0, elapsedSeconds)}
                 </p>
               </div>
             </div>

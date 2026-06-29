@@ -89,7 +89,7 @@ namespace ParkingManagement.Services
 
             string sessionId = GenerateSessionId();
             string ticketCode = GenerateTicketCode();
-            DateTime checkInTime = DateTime.Now;
+            DateTime checkInTime = VnNow;
 
             string? savedImageUrl = await SaveBase64ImageAsync(dto.ImageUrlIn, "checkin", sessionId) ?? "/uploads/plates/manual_entry.jpg";
 
@@ -150,7 +150,7 @@ namespace ParkingManagement.Services
                      ?? throw new InvalidOperationException("NO_AVAILABLE_SLOT");
         
             string sessionId = GenerateSessionId();
-            DateTime checkInTime = DateTime.Now;
+            DateTime checkInTime = VnNow;
         
             string? savedImageUrl = await SaveBase64ImageAsync(dto.ImageUrlIn, "checkin", sessionId) ?? "/uploads/plates/manual_entry.jpg";
         
@@ -195,7 +195,7 @@ namespace ParkingManagement.Services
 
             if (session == null && !string.IsNullOrWhiteSpace(checkOutDto.LicensePlateOut))
             {
-                session = await _parkingRepository.GetActiveSessionByPlateAsync(checkOutDto.LicensePlateOut);
+                session = await _parkingRepository.GetActiveSessionByPlateAsync(checkOutDto.LicensePlateOut, exactMatch: true);
             }
 
             if (session == null && !string.IsNullOrEmpty(checkOutDto.TicketCode))
@@ -225,7 +225,7 @@ namespace ParkingManagement.Services
 
         public async Task<CheckOutResponseDto> ProcessWalkInCheckOutAsync(ParkingSession session, VehicleCheckOutDto checkOutDto, string staffId)
         {
-            var checkOutTime = DateTime.Now;
+            var checkOutTime = VnNow;
             int durationMinutes = ParkingCalculationHelper.CalculateDurationMinutes(session.CheckInTime, checkOutTime);
 
             var policy = await _parkingRepository.GetActivePricingPolicyByVehicleTypeAsync(session.VehicleTypeId)
@@ -245,7 +245,7 @@ namespace ParkingManagement.Services
 
                 if (latestPayment != null)
                 {
-                    var timeDiffMinutes = (checkOutTime - (latestPayment.PaymentTime ?? DateTime.Now)).TotalMinutes;
+                    var timeDiffMinutes = (checkOutTime - (latestPayment.PaymentTime ?? VnNow)).TotalMinutes;
                     if (timeDiffMinutes > 15)
                     {
                         // Tính phí thêm cho thời gian vượt grace period
@@ -264,7 +264,7 @@ namespace ParkingManagement.Services
             else
             {
                 var feeResult = ParkingCalculationHelper.CalculateParkingFee(
-                    session.CheckInTime ?? DateTime.Now,
+                    session.CheckInTime ?? VnNow,
                     checkOutTime,
                     policy,
                     operatingHours
@@ -340,7 +340,7 @@ namespace ParkingManagement.Services
 
                 if (latestPayment != null)
                 {
-                    var timeDiffMinutes = (checkOutTime - (latestPayment.PaymentTime ?? DateTime.Now)).TotalMinutes;
+                    var timeDiffMinutes = (checkOutTime - (latestPayment.PaymentTime ?? VnNow)).TotalMinutes;
                     if (timeDiffMinutes > 15)
                     {
                         var extraFeeResult = ParkingCalculationHelper.CalculateParkingFee(
@@ -449,7 +449,7 @@ namespace ParkingManagement.Services
                     else
                     {
                         var feeResult = ParkingCalculationHelper.CalculateParkingFee(
-                            session.CheckInTime ?? DateTime.Now,
+                            session.CheckInTime ?? VnNow,
                             currentTime,
                             policy,
                             operatingHours
@@ -461,9 +461,9 @@ namespace ParkingManagement.Services
             return currentFee;
         }
 
-        public async Task<ActiveSessionResponseDto> GetActiveSessionByLicensePlateAsync(string licensePlate, string? ticketSuffix = null)
+        public async Task<ActiveSessionResponseDto> GetActiveSessionByLicensePlateAsync(string licensePlate, string? ticketSuffix = null, bool exactMatch = false)
         {
-            var session = await _parkingRepository.GetActiveSessionByPlateAsync(licensePlate)
+            var session = await _parkingRepository.GetActiveSessionByPlateAsync(licensePlate, exactMatch)
                           ?? throw new InvalidOperationException("INVALID_TICKET");
 
             if (ticketSuffix != null)
@@ -483,7 +483,7 @@ namespace ParkingManagement.Services
                 }
             }
 
-            var currentTime = DateTime.Now;
+            var currentTime = VnNow;
             int durationMinutes = ParkingCalculationHelper.CalculateDurationMinutes(session.CheckInTime, currentTime);
             decimal currentFee = await CalculateCurrentFeeForSessionAsync(session, currentTime);
             var policy = await _parkingRepository.GetActivePricingPolicyByVehicleTypeAsync(session.VehicleTypeId);
@@ -496,7 +496,7 @@ namespace ParkingManagement.Services
             var session = await _parkingRepository.GetActiveSessionByTicketCodeAsync(ticketCode)
                           ?? throw new InvalidOperationException("INVALID_TICKET");
 
-            var currentTime = DateTime.Now;
+            var currentTime = VnNow;
             int durationMinutes = ParkingCalculationHelper.CalculateDurationMinutes(session.CheckInTime, currentTime);
             decimal currentFee = await CalculateCurrentFeeForSessionAsync(session, currentTime);
             var policy = await _parkingRepository.GetActivePricingPolicyByVehicleTypeAsync(session.VehicleTypeId);
@@ -509,7 +509,7 @@ namespace ParkingManagement.Services
             var session = await _parkingRepository.GetActiveSessionByIdAsync(sessionId);
             if (session == null) throw new InvalidOperationException("ACTIVE_SESSION_NOT_FOUND");
 
-            var currentTime = DateTime.Now;
+            var currentTime = VnNow;
             decimal currentFee = await CalculateCurrentFeeForSessionAsync(session, currentTime);
 
             await _parkingRepository.MarkSessionPaidAsync(session, currentFee);
@@ -532,7 +532,7 @@ namespace ParkingManagement.Services
             var session = await _parkingRepository.GetActiveSessionByIdAsync(sessionId)
                           ?? throw new InvalidOperationException("INVALID_TICKET");
 
-            var currentTime = DateTime.Now;
+            var currentTime = VnNow;
 
             var policy = await _parkingRepository.GetActivePricingPolicyByVehicleTypeAsync(session.VehicleTypeId)
                          ?? throw new InvalidOperationException("PRICING_POLICY_NOT_CONFIGURED");
@@ -564,7 +564,7 @@ namespace ParkingManagement.Services
             else
             {
                 var feeResult = ParkingCalculationHelper.CalculateParkingFee(
-                    session.CheckInTime ?? DateTime.Now,
+                    session.CheckInTime ?? VnNow,
                     currentTime,
                     policy,
                     operatingHours
@@ -655,7 +655,7 @@ namespace ParkingManagement.Services
                     SlotId = slot.SlotId,
                     SlotName = slot.SlotName ?? "Unknown",
                     Status = upperStatus,
-                    LastUpdated = DateTime.Now
+                    LastUpdated = VnNow
                 }
             };
         }
@@ -843,7 +843,7 @@ namespace ParkingManagement.Services
                 VehicleType = s.VehicleTypeId.ToString(),
                 SlotNumber = s.Slot?.SlotName ?? "N/A",
                 ZoneName = s.Zone?.ZoneName ?? s.Slot?.Zone?.ZoneName ?? "N/A",
-                CheckInTime = s.CheckInTime ?? DateTime.Now,
+                CheckInTime = s.CheckInTime ?? VnNow,
                 CheckOutTime = s.CheckOutTime,
                 TotalFee = s.TotalFee ?? 0,
                 PaymentStatus = s.Status == "ACTIVE" ? "PARKING" : (s.PaymentStatus ?? "COMPLETED"),
@@ -911,7 +911,7 @@ namespace ParkingManagement.Services
                         Directory.CreateDirectory(uploadFolder);
                     }
 
-                    var fileName = $"{prefix}_{id}_{DateTime.Now:yyyyMMddHHmmss}.jpg";
+                    var fileName = $"{prefix}_{id}_{VnNow:yyyyMMddHHmmss}.jpg";
                     var filePath = Path.Combine(uploadFolder, fileName);
                     await File.WriteAllBytesAsync(filePath, imageBytes);
 
@@ -958,7 +958,7 @@ namespace ParkingManagement.Services
             {
                 SessionId = session.SessionId,
                 LicensePlateIn = session.LicensePlateIn ?? string.Empty,
-                CheckInTime = session.CheckInTime ?? DateTime.Now,
+                CheckInTime = session.CheckInTime ?? VnNow,
                 CheckOutTime = checkOutTime,
                 DurationMinutes = duration,
                 Status = session.Status ?? "COMPLETED",
@@ -981,7 +981,7 @@ namespace ParkingManagement.Services
 
                 if (latestPayment != null)
                 {
-                    var elapsedSeconds = (DateTime.Now - (latestPayment.PaymentTime ?? DateTime.Now)).TotalSeconds;
+                    var elapsedSeconds = (VnNow - (latestPayment.PaymentTime ?? VnNow)).TotalSeconds;
                     if (elapsedSeconds <= 900)
                         gracePeriodRemainingSeconds = (int)(900 - elapsedSeconds);
                 }
@@ -1015,7 +1015,7 @@ namespace ParkingManagement.Services
                 {
                     SessionId = session.SessionId,
                     LicensePlateIn = session.LicensePlateIn ?? string.Empty,
-                    CheckInTime = session.CheckInTime ?? DateTime.Now,
+                    CheckInTime = session.CheckInTime ?? VnNow,
                     DurationMinutes = duration,
                     ZoneId = session.ZoneId ?? 0,
                     ZoneName = session.Zone?.ZoneName ?? session.Slot?.Zone?.ZoneName ?? "N/A",

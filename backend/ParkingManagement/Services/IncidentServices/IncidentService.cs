@@ -34,7 +34,7 @@ namespace ParkingManagement.Services
             }
 
             string currentSessionId = activeSession.SessionId;
-            DateTime checkOutTime = currentTime ?? DateTime.Now;
+            DateTime checkOutTime = currentTime ?? ParkingCalculationHelper.VnNow;
             int resolvedVehicleTypeId = dto.VehicleTypeId ?? activeSession.VehicleTypeId;
 
             var policy = await _parkingRepository.GetActivePricingPolicyByVehicleTypeAsync(resolvedVehicleTypeId)
@@ -44,7 +44,7 @@ namespace ParkingManagement.Services
             int durationMinutes = ParkingCalculationHelper.CalculateDurationMinutes(activeSession.CheckInTime, checkOutTime);
 
             var feeResult = ParkingCalculationHelper.CalculateParkingFee(
-                activeSession.CheckInTime ?? DateTime.Now,
+                activeSession.CheckInTime ?? ParkingCalculationHelper.VnNow,
                 checkOutTime,
                 policy,            
                 operatingHours     
@@ -121,7 +121,7 @@ namespace ParkingManagement.Services
             {
                 throw new KeyNotFoundException("SESSION_NOT_FOUND_FOR_THIS_PLATE");
             }
-            DateTime correctionTime = DateTime.Now;
+            DateTime correctionTime = ParkingCalculationHelper.VnNow;
             var conflictingSession = await _parkingRepository.GetActiveSessionByPlateAsync(dto.CorrectedLicensePlate.Trim().ToUpper());
             if (conflictingSession != null && conflictingSession.SessionId != currentSession.SessionId)
             {

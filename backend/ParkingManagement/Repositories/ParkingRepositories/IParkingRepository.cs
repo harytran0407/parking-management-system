@@ -64,7 +64,7 @@ namespace ParkingManagement.Repositories
         /// <summary>
         /// Tìm kiếm phiên gửi xe đang hoạt động (ACTIVE) trong bãi thông qua biển số xe lúc vào cổng.
         /// </summary>
-        Task<ParkingSession?> GetActiveSessionByPlateAsync(string licensePlate);
+        Task<ParkingSession?> GetActiveSessionByPlateAsync(string licensePlate, bool exactMatch = false);
 
         /// <summary>
         /// Tìm kiếm phiên gửi xe đang hoạt động (ACTIVE) trong bãi dựa trên mã vé xe/mã gửi xe (TicketCode).

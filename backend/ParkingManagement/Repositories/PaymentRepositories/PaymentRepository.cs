@@ -2,7 +2,8 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using ParkingManagement.Models;
-using ParkingManagement.Data; 
+using ParkingManagement.Data;
+using ParkingManagement.Services.Helpers; 
 
 using System.Linq;
 
@@ -50,7 +51,7 @@ namespace ParkingManagement.Repositories
                     {
                         payment.Status = "SUCCESS";
                         payment.TransactionId = transactionId;
-                        payment.PaymentTime = DateTime.Now;
+                        payment.PaymentTime = ParkingCalculationHelper.VnNow;
                         payment.AmountPaid = amountPaid;
 
                         if (!string.IsNullOrEmpty(payment.BookingId))
@@ -96,7 +97,7 @@ namespace ParkingManagement.Repositories
                             PaymentMethod = paymentMethod.ToUpper(),
                             Status = "SUCCESS",
                             UserId = userId,
-                            PaymentTime = DateTime.Now,
+                            PaymentTime = ParkingCalculationHelper.VnNow,
                             TransactionId = "MOCK_" + paymentMethod.ToUpper() + "_" + Guid.NewGuid().ToString("N").Substring(0, 8).ToUpper()
                         };
                         await _context.Payments.AddAsync(payment);
@@ -106,7 +107,7 @@ namespace ParkingManagement.Repositories
                         payment.Status = "SUCCESS";
                         payment.PaymentMethod = paymentMethod.ToUpper();
                         payment.AmountPaid = amount;
-                        payment.PaymentTime = DateTime.Now;
+                        payment.PaymentTime = ParkingCalculationHelper.VnNow;
                         payment.TransactionId = "MOCK_" + paymentMethod.ToUpper() + "_" + Guid.NewGuid().ToString("N").Substring(0, 8).ToUpper();
                         _context.Payments.Update(payment);
                     }
