@@ -652,7 +652,7 @@ public partial class AppDbContext : DbContext
                 .IsRequired()
                 .HasMaxLength(100);
 
-            entity.HasIndex(e => e.SettingKey).IsUnique(); 
+            entity.HasIndex(e => e.SettingKey).IsUnique();
 
             entity.Property(e => e.SettingValue)
                 .HasColumnName("SETTING_VALUE")
@@ -662,7 +662,7 @@ public partial class AppDbContext : DbContext
                 .HasMaxLength(255);
 
             entity.Property(e => e.UpdatedAt)
-                .HasColumnName("UPDATE_AT") 
+                .HasColumnName("UPDATE_AT")
                 .HasColumnType("datetime")
                 .HasDefaultValueSql("CURRENT_TIMESTAMP");
         });
@@ -686,7 +686,7 @@ public partial class AppDbContext : DbContext
                 .HasMaxLength(150);
 
             entity.Property(e => e.CreatedAt)
-                .HasColumnName("CREATE_AT") 
+                .HasColumnName("CREATE_AT")
                 .HasColumnType("datetime")
                 .HasDefaultValueSql("CURRENT_TIMESTAMP");
         });
@@ -743,6 +743,9 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.ResponseNote)
                 .HasColumnName("RESPONSE_NOTE")
                 .HasColumnType("text");
+
+            entity.Property(e => e.StarRating)
+                .HasColumnName("STAR_RATING");
         });
 
         var dateTimeConverter = new Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<DateTime, DateTime>(

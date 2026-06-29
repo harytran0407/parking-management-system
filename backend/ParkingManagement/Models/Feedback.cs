@@ -15,5 +15,6 @@ namespace ParkingManagement.Models
         public DateTime? ResolvedAt { get; set; }
         public string? ResolvedBy { get; set; }
         public string? ResponseNote { get; set; }
+        public int? StarRating { get; set; }
     }
 }
