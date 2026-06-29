@@ -17,7 +17,10 @@ namespace ParkingManagement.DTOs.Feedback
         public string Title { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Please enter the description")]
-        public string Content { get; set; } = string.Empty; 
+        public string Content { get; set; } = string.Empty;
+
+        [Range(1, 5, ErrorMessage = "Rating must between 1 to 5")]
+        public int? StarRating { get; set; }
     }
 
     public class FeedbackDto

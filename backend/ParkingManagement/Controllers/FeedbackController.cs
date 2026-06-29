@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ParkingManagement.DTOs.Feedback;
+using ParkingManagement.Models;
 using ParkingManagement.Services.FeedbackServices;
 using System.Security.Claims;
 
@@ -21,7 +22,7 @@ namespace ParkingManagement.Controllers
         // 1. CREATE: GỬI PHẢN HỒI (SUBMIT FEEDBACK)
         // ==========================================
         [HttpPost]
-        [Authorize]
+        [AllowAnonymous]
         public async Task<IActionResult> SubmitFeedback([FromBody] SubmitFeedbackRequestDto request)
         {
             // Lấy ID của người đang dùng phần mềm
