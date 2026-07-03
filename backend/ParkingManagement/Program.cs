@@ -9,6 +9,8 @@ using ParkingManagement.Services.EmailServices;
 using ParkingManagement.Services.FeedbackServices;
 using ParkingManagement.Dtos;
 using ParkingManagement.Models;
+using ParkingManagement.Services.SystemConfigServices;
+using ParkingManagement.Middlewares;
 
 // ── .ENV Reader ───────────────────────────────────────────────────────────────
 DotNetEnv.Env.Load();
@@ -90,6 +92,10 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 builder.Services.AddMemoryCache(); // Thêm bộ nhớ đệm (cache) dùng cho rate limiting.
+
+// Register IP filter service and rate limiting options
+builder.Services.AddSingleton<IIpFilterService, IpFilterService>();
+builder.Services.Configure<RateLimitingOptions>(builder.Configuration.GetSection("RateLimiting"));
 
 // ── Parking module ───────────────────────────────────────────────────────────────────────
 builder.Services.AddScoped<IParkingRepository, ParkingRepository>();
@@ -182,6 +188,10 @@ app.UseExceptionHandler(errApp => errApp.Run(async ctx =>
 app.UseHttpsRedirection();
 
 app.UseCors("AllowReactFrontend");
+
+// Security: IP filtering and rate limiting run before authentication/blacklist checks
+app.UseMiddleware<ParkingManagement.Middlewares.IpFilterMiddleware>(); //block/allow by IP
+app.UseMiddleware<ParkingManagement.Middlewares.RateLimitingMiddleware>(); //per-IP rate limiting
 
 // Security
 app.UseMiddleware<ParkingManagement.Middlewares.TokenBlacklistMiddleware>(); // Check blacklist
