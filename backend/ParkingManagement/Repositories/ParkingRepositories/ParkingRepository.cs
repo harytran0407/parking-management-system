@@ -45,6 +45,14 @@ namespace ParkingManagement.Repositories
             return await _context.FloorZones.FindAsync(zoneId);
         }
 
+        public async Task<FloorZone?> GetAnyActiveZoneByVehicleTypeAsync(int vehicleTypeId)
+        {
+            return await _context.FloorZones
+                .Where(z => z.VehicleTypeId == vehicleTypeId && z.Status == "ACTIVE")
+                .OrderBy(z => z.FloorNumber)
+                .FirstOrDefaultAsync();
+        }
+
         public async Task DecrementZoneCapacityAsync(int zoneId)
         {
             await _context.FloorZones
@@ -136,6 +144,8 @@ namespace ParkingManagement.Repositories
                     .Include(s => s.Zone)
                     .Include(s => s.Booking)
                         .ThenInclude(b => b.Payments)
+                    .Include(s => s.Booking)
+                        .ThenInclude(b => b.VehicleUser)
                     .Include(s => s.Payments)
                     .Include(s => s.VehicleType)
                     .FirstOrDefaultAsync(s => s.LicensePlateIn == upperPlate && s.Status == "ACTIVE");
@@ -147,6 +157,8 @@ namespace ParkingManagement.Repositories
                     .Include(s => s.Zone)
                     .Include(s => s.Booking)
                         .ThenInclude(b => b.Payments)
+                    .Include(s => s.Booking)
+                        .ThenInclude(b => b.VehicleUser)
                     .Include(s => s.Payments)
                     .Include(s => s.VehicleType)
                     .FirstOrDefaultAsync(s => s.LicensePlateIn.Replace("-", "").Replace(".", "").Replace(" ", "").ToUpper() == cleanPlate && s.Status == "ACTIVE");
@@ -161,6 +173,8 @@ namespace ParkingManagement.Repositories
                 .Include(s => s.Zone)
                 .Include(s => s.Booking)
                     .ThenInclude(b => b.Payments)
+                .Include(s => s.Booking)
+                    .ThenInclude(b => b.VehicleUser)
                 .Include(s => s.Payments)
                 .FirstOrDefaultAsync(s => s.TicketCode == ticketCode && s.Status == "ACTIVE");
         }
@@ -175,6 +189,8 @@ namespace ParkingManagement.Repositories
                 .Include(s => s.Zone)
                 .Include(s => s.Booking)
                     .ThenInclude(b => b.Payments)
+                .Include(s => s.Booking)
+                    .ThenInclude(b => b.VehicleUser)
                 .Include(s => s.Payments)
                 .Include(s => s.VehicleType)
                 .FirstOrDefaultAsync(s => s.SessionId == sessionId && s.Status == "ACTIVE");
@@ -394,11 +410,11 @@ namespace ParkingManagement.Repositories
         {
             if (string.IsNullOrWhiteSpace(licensePlate)) return null;
 
-            var cleanedPlate = licensePlate.Trim().ToUpper();
+            var cleanInputPlate = licensePlate.Replace("-", "").Replace(".", "").Replace(" ", "").ToUpper();
 
             // Auto-cancel expired bookings
             var expiredBookings = await _context.Bookings
-                .Where(b => b.LicensePlate == cleanedPlate
+                .Where(b => b.LicensePlate.Replace("-", "").Replace(".", "").Replace(" ", "").ToUpper() == cleanInputPlate
                             && (b.Status == "PENDING" || b.Status == "CONFIRMED")
                             && b.ExpectedArrival.AddMinutes(30) < currentTime)
                 .ToListAsync();
@@ -415,7 +431,7 @@ namespace ParkingManagement.Repositories
             return await _context.Bookings
                 .Include(b => b.Zone)
                 .Include(b => b.VehicleType)
-                .FirstOrDefaultAsync(b => b.LicensePlate == cleanedPlate
+                .FirstOrDefaultAsync(b => b.LicensePlate.Replace("-", "").Replace(".", "").Replace(" ", "").ToUpper() == cleanInputPlate
                     && b.Status == "CONFIRMED"
                     && b.ExpectedArrival.AddHours(-12) <= currentTime
                     && b.ExpectedArrival.AddMinutes(30) >= currentTime);
@@ -425,11 +441,11 @@ namespace ParkingManagement.Repositories
         {
             if (string.IsNullOrWhiteSpace(licensePlate)) return false;
 
-            var cleanedPlate = licensePlate.Trim().ToUpper();
+            var cleanInputPlate = licensePlate.Replace("-", "").Replace(".", "").Replace(" ", "").ToUpper();
 
             // Auto-cancel expired bookings
             var expiredBookings = await _context.Bookings
-                .Where(b => b.LicensePlate == cleanedPlate
+                .Where(b => b.LicensePlate.Replace("-", "").Replace(".", "").Replace(" ", "").ToUpper() == cleanInputPlate
                             && (b.Status == "PENDING" || b.Status == "CONFIRMED")
                             && b.ExpectedArrival.AddMinutes(30) < currentTime)
                 .ToListAsync();
@@ -444,7 +460,7 @@ namespace ParkingManagement.Repositories
             }
         
             return await _context.Bookings
-                .AnyAsync(b => b.LicensePlate == cleanedPlate
+                .AnyAsync(b => b.LicensePlate.Replace("-", "").Replace(".", "").Replace(" ", "").ToUpper() == cleanInputPlate
                           && b.Status == "CONFIRMED" 
                           && b.ExpectedArrival.AddHours(-12) <= currentTime
                           && b.ExpectedArrival.AddMinutes(30) >= currentTime);
@@ -473,6 +489,8 @@ namespace ParkingManagement.Repositories
                 .Include(s => s.Zone)
                 .Include(s => s.Booking)
                     .ThenInclude(b => b.Payments)
+                .Include(s => s.Booking)
+                    .ThenInclude(b => b.VehicleUser)
                 .Include(s => s.Payments)
                 .FirstOrDefaultAsync(s => s.BookingId == bookingId && s.Status == "ACTIVE");
         }

@@ -10,13 +10,14 @@ import {
   DollarSign,
   Calendar,
   RefreshCw,
-  LogOut,
+  LogIn,
   Info,
   Hash,
   CheckCircle,
   Bike,
   X,
   Maximize2,
+  User,
 } from "lucide-react";
 import { useLanguage } from "../../hooks/useLanguage";
 
@@ -83,17 +84,17 @@ const t = {
     bookingInfo: "Booking Information",
     overdue: "Overdue",
     onTime: "On Time",
-    expectedArrival: "Expected Arrival:",
-    expectedDeparture: "Expected Departure:",
+    expectedArrival: "Check-in Time:",
+    expectedDeparture: "Check-out Time:",
     bookingStatus: "Booking Status:",
     bookingActive: "Active",
     overdueDuration: "Overdue Duration:",
-    overdueFine: "Overdue Fine:",
-    overdueAlert: "Vehicle has parked past the expected departure. Please advise and check carefully at exit.",
+    overdueFine: "Overdue Fee:",
+    overdueAlert: "Vehicle has parked past the check-out time (booked). Please advise and check carefully at exit.",
     onTimeAlert: "Vehicle parked within the registered time",
     ticketTypeLabel: "Ticket Type:",
     ticketWalkIn: "Walk-in Ticket",
-    ticketPreBooked: "Pre-booked",
+    ticketPreBooked: "Booking",
     estimatedFee: "Estimated Fee",
     feeNotice: "This fee is updated in real time and may change upon exit.",
     statusLabel: "Status",
@@ -283,7 +284,7 @@ export default function SessionLookupPage() {
             {/* Info grid */}
             <div className="px-6 xl:px-7 py-5 grid grid-cols-2 xl:grid-cols-4 gap-5 border-b border-slate-100 dark:border-slate-800">
               <div>
-                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                <p className="text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1.5">
                   <Calendar size={11} />
                   {t[language].labelCheckInDate}
                 </p>
@@ -292,8 +293,8 @@ export default function SessionLookupPage() {
                 </p>
               </div>
               <div>
-                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1.5">
-                  <LogOut size={11} className="rotate-180" />
+                <p className="text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                  <LogIn size={11} className="rotate-180" />
                   {t[language].labelCheckInTime}
                 </p>
                 <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
@@ -301,7 +302,7 @@ export default function SessionLookupPage() {
                 </p>
               </div>
               <div>
-                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                <p className="text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1.5">
                   <Layers size={13} />
                   {t[language].labelFloor}
                 </p>
@@ -310,7 +311,7 @@ export default function SessionLookupPage() {
                 </p>
               </div>
               <div>
-                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                <p className="text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1.5">
                   <MapPin size={11} />
                   {t[language].labelZone}
                 </p>
@@ -322,23 +323,15 @@ export default function SessionLookupPage() {
 
             {/* Booking & Overdue Info */}
             {!isWalkIn && (
-              <div className={`px-6 xl:px-7 py-5 border-b ${session.is_overdue
-                ? "bg-rose-50/40 dark:bg-rose-950/10 border-rose-100 dark:border-rose-900/40"
-                : "bg-blue-50/20 dark:bg-blue-950/5 border-slate-100 dark:border-slate-800"
-                }`}>
+              <div className="px-6 xl:px-7 py-5 border-b bg-blue-50/20 dark:bg-blue-950/5 border-slate-100 dark:border-slate-800">
                 <div className="flex items-center justify-between mb-4">
-                  <h4 className={`text-xs font-black uppercase tracking-wider flex items-center gap-1.5 ${session.is_overdue ? "text-rose-700 dark:text-rose-400" : "text-blue-700 dark:text-blue-400"
-                    }`}>
+                  <h4 className="text-xs font-black uppercase tracking-wider flex items-center gap-1.5 text-blue-700 dark:text-blue-400">
                     <Calendar size={13} />
                     {t[language].bookingInfo}
                   </h4>
-                  {session.is_overdue ? (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wide bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900 animate-pulse">
+                  {session.is_overdue && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wide bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900 ">
                       {t[language].overdue}
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wide bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900">
-                      {t[language].onTime}
                     </span>
                   )}
                 </div>
@@ -357,42 +350,63 @@ export default function SessionLookupPage() {
                         {formatTime(session.expired_at)} {formatDate(session.expired_at)}
                       </span>
                     </div>
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-slate-400 dark:text-slate-500 font-medium">{t[language].bookingStatus}</span>
-                      <span className="font-bold text-slate-700 dark:text-slate-200 capitalize">
-                        {session.booking_status === "ACTIVE" ? t[language].bookingActive : (session.booking_status || "—")}
-                      </span>
-                    </div>
+
                   </div>
 
                   <div className="space-y-2 border-t md:border-t-0 md:border-l border-slate-100 dark:border-slate-800 md:pl-5">
-                    {session.is_overdue ? (
-                      <div className="flex flex-col gap-2">
-                        <div className="flex justify-between items-center text-xs">
-                          <span className="text-rose-600 dark:text-rose-400 font-bold">{t[language].overdueDuration}</span>
-                          <span className="font-black text-rose-700 dark:text-rose-400 tabular-nums">
-                            {formatDuration(session.overdue_minutes)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center text-xs">
-                          <span className="text-rose-600 dark:text-rose-400 font-bold font-sans">{t[language].overdueFine}</span>
-                          <span className="font-black text-rose-700 dark:text-rose-400 tracking-wider">
-                            {fmtVND(session.overdue_fee)} VNĐ
-                          </span>
-                        </div>
-                        <div className="text-[10px] text-rose-600/90 dark:text-rose-400/90 bg-rose-50 dark:bg-rose-950/20 rounded p-2 border border-rose-100 dark:border-rose-900/30 font-medium leading-relaxed mt-1 flex items-start gap-1">
-                          <AlertCircle size={12} className="shrink-0 mt-0.5" />
-                          <span>{t[language].overdueAlert}</span>
-                        </div>
+                    <div className="flex flex-col gap-2">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-slate-400 dark:text-slate-500 font-medium">{t[language].overdueDuration}</span>
+                        <span className={`font-black tabular-nums ${session.is_overdue ? "text-rose-600 dark:text-rose-400" : "text-slate-400 dark:text-slate-500"}`}>
+                          {session.is_overdue ? `${Math.floor(session.overdue_minutes / 60)}h${Math.floor(session.overdue_minutes % 60)}m` : "—"}
+                        </span>
                       </div>
-                    ) : (
-                      <div className="h-full flex flex-col justify-center items-center text-xs text-slate-400 dark:text-slate-500 italic py-2 text-center">
-                        <CheckCircle size={18} className="text-emerald-500 mb-1.5" />
-                        {t[language].onTimeAlert}
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-slate-400 dark:text-slate-500 font-medium font-sans">{t[language].overdueFine}</span>
+                        <span className={`font-black tracking-wider ${session.is_overdue ? "text-rose-600 dark:text-rose-400" : "text-slate-400 dark:text-slate-500"}`}>
+                          {session.is_overdue ? `${fmtVND(session.overdue_fee)} VNĐ` : "—"}
+                        </span>
                       </div>
-                    )}
+                    </div>
                   </div>
                 </div>
+
+                {/* Customer Details */}
+                {(session.customer_name || session.customer_phone || session.customer_email) && (
+                  <div className="border-t border-slate-100 dark:border-slate-800 pt-3 mt-3">
+                    <h4 className={`text-xs font-black uppercase tracking-wider flex items-center gap-1.5 mb-2 text-blue-700 dark:text-blue-400"
+                      }`}>
+                      <User size={13} />
+                      {language === "vi" ? "Thông tin người đặt" : "Booking Customer"}
+                    </h4>
+                    <div className="flex flex-col sm:flex-row gap-x-12 gap-y-2">
+                      <div>
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
+                          {language === "vi" ? "Họ và tên" : "Full Name"}
+                        </p>
+                        <p className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                          {session.customer_name || "—"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
+                          {language === "vi" ? "Số điện thoại" : "Phone Number"}
+                        </p>
+                        <p className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                          {session.customer_phone || "—"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
+                          {language === "vi" ? "Email" : "Email Address"}
+                        </p>
+                        <p className="text-xs font-bold text-slate-700 dark:text-slate-200 break-all">
+                          {session.customer_email || "—"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -453,13 +467,14 @@ export default function SessionLookupPage() {
                     setLightboxImage(`${getBackendRootUrl()}${session.image_url_in}`);
                   }
                 }}
-                className="bg-slate-100 dark:bg-slate-950 h-[150px] xl:h-[180px] rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 relative group cursor-zoom-in transition-colors duration-200"
+                className="bg-slate-100 dark:bg-slate-950 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 relative group cursor-zoom-in transition-colors duration-200 h-auto flex items-center justify-center"
                 title="Click to zoom check-in snapshot"
               >
                 <img
                   src={session.image_url_in ? `${getBackendRootUrl()}${session.image_url_in}` : "https://placehold.co/600x400/0f172a/64748b?text=No+Checkin+Image"}
                   alt="Vehicle Check-in snapshot"
-                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 opacity-90 dark:opacity-80"
+                  className="w-full h-auto max-h-[140px] object-contain transition-transform duration-300 group-hover:scale-105 opacity-90 dark:opacity-80"
+                  style={{ imageRendering: 'pixelated' }}
                   onError={(e) => {
                     e.target.onerror = null;
                     e.target.src = "https://placehold.co/600x400/0f172a/64748b?text=No+Checkin+Image";
@@ -470,6 +485,40 @@ export default function SessionLookupPage() {
                 </div>
               </div>
             </div>
+
+            {/* Vehicle Exit Snapshot */}
+            {session && (session.image_url_out || session.imageUrlOut) && (
+              <div className="bg-white dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-800 shadow-lg shadow-slate-200/60 dark:shadow-slate-950/60 px-6 xl:px-7 py-5 flex flex-col gap-3">
+                <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+                  <Car size={13} />
+                  {language === "vi" ? "Ảnh check-out" : "Check-out Image"}
+                </p>
+                <div
+                  onClick={() => {
+                    const imgUrl = session.image_url_out || session.imageUrlOut;
+                    if (imgUrl) {
+                      setLightboxImage(`${getBackendRootUrl()}${imgUrl}`);
+                    }
+                  }}
+                  className="bg-slate-100 dark:bg-slate-950 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 relative group cursor-zoom-in transition-colors duration-200 h-auto flex items-center justify-center"
+                  title="Click to zoom check-out snapshot"
+                >
+                  <img
+                    src={`${getBackendRootUrl()}${session.image_url_out || session.imageUrlOut}`}
+                    alt="Vehicle Check-out snapshot"
+                    className="w-full h-auto max-h-[140px] object-contain transition-transform duration-300 group-hover:scale-105 opacity-90 dark:opacity-80"
+                    style={{ imageRendering: 'pixelated' }}
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = "https://placehold.co/600x400/0f172a/64748b?text=No+Checkout+Image";
+                    }}
+                  />
+                  <div className="absolute bottom-2.5 right-2.5 bg-white/90 dark:bg-slate-900/90 rounded p-1 text-slate-700 dark:text-slate-200 opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm border border-slate-200 dark:border-slate-700">
+                    <Maximize2 size={12} />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -487,14 +536,14 @@ export default function SessionLookupPage() {
       {/* LIGHTBOX MODAL OVERLAY */}
       {lightboxImage && (
         <div
-          className="fixed inset-0 bg-slate-950/80 dark:bg-slate-950/90 backdrop-blur-md z-50 flex flex-col items-center justify-center p-4 cursor-zoom-out"
+          className="fixed inset-0 bg-slate-950/90 dark:bg-slate-950/95 backdrop-blur-md z-50 flex flex-col items-center justify-center p-4 cursor-zoom-out"
           onClick={() => setLightboxImage(null)}
         >
           <div className="absolute top-5 right-5 text-slate-500 hover:text-slate-200 dark:text-slate-400 dark:hover:text-white bg-white/10 dark:bg-slate-900/60 p-2 rounded-full border border-slate-300 dark:border-slate-800 transition-colors">
             <X size={20} />
           </div>
-          <div className="relative max-w-4xl max-h-[85vh] rounded-md overflow-hidden border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <img src={lightboxImage} alt="High Resolution Audit" className="w-full h-auto max-h-[85vh] object-contain" />
+          <div className="relative w-full max-w-[95vw] md:max-w-6xl max-h-[92vh] rounded-md overflow-hidden border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <img src={lightboxImage} alt="High Resolution Audit" className="w-full h-auto max-h-[85vh] md:max-h-[88vh] object-contain" />
             <div className="absolute bottom-0 inset-x-0 bg-slate-900/90 dark:bg-slate-950/80 p-3 text-center border-t border-slate-200 dark:border-slate-800 backdrop-blur-sm">
               <p className="font-mono font-bold tracking-widest text-sm text-yellow-500 dark:text-yellow-400">{licensePlate || "No Plate Info"}</p>
             </div>

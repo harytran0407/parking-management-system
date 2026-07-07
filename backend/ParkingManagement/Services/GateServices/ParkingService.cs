@@ -24,6 +24,10 @@ namespace ParkingManagement.Services
             {
                 return TimeZoneInfo.ConvertTimeFromUtc(dt, _vnTz);
             }
+            if (dt.Kind == DateTimeKind.Local)
+            {
+                return TimeZoneInfo.ConvertTime(dt, _vnTz);
+            }
             return DateTime.SpecifyKind(dt, DateTimeKind.Unspecified);
         }
 
@@ -135,19 +139,35 @@ namespace ParkingManagement.Services
             {
                 throw new InvalidOperationException($"EARLY_CHECKIN_WARNING:{Math.Round(earlyMinutes)}");
             }
-
-            // Ưu tiên zone trong booking; nếu không có hoặc đã đầy thì tìm zone tốt nhất
+        
             FloorZone? zone = null;
+            bool usingBookedZone = false;
             if (booking.ZoneId.HasValue)
             {
                 var bookingZone = await _parkingRepository.GetZoneByIdAsync(booking.ZoneId.Value);
-                if (bookingZone != null && bookingZone.VehicleTypeId == booking.VehicleTypeId && bookingZone.AvailableCapacity > 0 && bookingZone.Status == "ACTIVE")
+                if (bookingZone != null && bookingZone.VehicleTypeId == booking.VehicleTypeId && bookingZone.Status == "ACTIVE")
                 {
+                    // Allow check-in even if AvailableCapacity is 0 because the booking already reserved/decremented it
                     zone = bookingZone;
+                    usingBookedZone = true;
                 }
             }
-            zone ??= await _parkingRepository.FindBestAvailableZoneAsync(booking.VehicleTypeId)
-                     ?? throw new InvalidOperationException("NO_AVAILABLE_SLOT");
+            
+            if (zone == null)
+            {
+                // Fallback for older bookings created before the ZoneId fix (where booking.ZoneId was null)
+                // Retrieve the first active zone for this vehicle type without checking available capacity
+                zone = await _parkingRepository.GetAnyActiveZoneByVehicleTypeAsync(booking.VehicleTypeId);
+                if (zone != null)
+                {
+                    usingBookedZone = true; // Mark as using booked zone so we do NOT double-decrement capacity!
+                }
+            }
+            
+            if (zone == null)
+            {
+                throw new InvalidOperationException("NO_AVAILABLE_SLOT");
+            }
         
             string sessionId = GenerateSessionId();
             DateTime checkInTime = VnNow;
@@ -156,8 +176,20 @@ namespace ParkingManagement.Services
         
             await _parkingRepository.SaveChangesWithTransactionAsync(async () =>
             {
-                await _parkingRepository.DecrementZoneCapacityAsync(zone.ZoneId);
- 
+                if (!usingBookedZone)
+                {
+                    // If they check into a different zone:
+                    // 1. Decrement new zone capacity
+                    await _parkingRepository.DecrementZoneCapacityAsync(zone.ZoneId);
+                    
+                    // 2. Increment old booked zone capacity to release reservation
+                    if (booking.ZoneId.HasValue)
+                    {
+                        await _parkingRepository.IncrementZoneCapacityAsync(booking.ZoneId.Value);
+                    }
+                }
+                // If usingBookedZone is true, we DO NOT decrement capacity again to avoid double-decrement!
+        
                 var session = new ParkingSession
                 {
                     SessionId = sessionId,
@@ -179,7 +211,7 @@ namespace ParkingManagement.Services
                 await _parkingRepository.CreateSessionAsync(session);
                 await _parkingRepository.UpdateBookingStatusAsync(booking.BookingId, "COMPLETED", zone.ZoneId);
             });
-
+        
             return MapToCheckInResponseDto(sessionId, null, checkInTime, dto.LicensePlateIn, zone, booking.BookingId);
         }
 
@@ -237,29 +269,33 @@ namespace ParkingManagement.Services
 
             if (session.PaymentStatus == "PAID")
             {
-                // Session đã thanh toán qua QuickPay — kiểm tra grace period
+                // Session đã thanh toán qua QuickPay — kiểm tra thời gian còn lại của giờ đã thanh toán
                 var latestPayment = session.Payments
                     .Where(p => p.PaymentType == "SESSION" && p.Status == "SUCCESS")
                     .OrderByDescending(p => p.PaymentTime)
                     .FirstOrDefault();
 
-                if (latestPayment != null)
+                if (latestPayment != null && latestPayment.PaymentTime.HasValue)
                 {
-                    var timeDiffMinutes = (checkOutTime - (latestPayment.PaymentTime ?? VnNow)).TotalMinutes;
-                    if (timeDiffMinutes > 15)
+                    var paidDurationMinutes = (latestPayment.PaymentTime.Value - (session.CheckInTime ?? latestPayment.PaymentTime.Value)).TotalMinutes;
+                    if (paidDurationMinutes < 0) paidDurationMinutes = 0;
+                    int billedHoursAtPayment = (int)Math.Ceiling(paidDurationMinutes / 60.0);
+                    if (billedHoursAtPayment == 0) billedHoursAtPayment = 1;
+                    var paidUntilTime = (session.CheckInTime ?? latestPayment.PaymentTime.Value).AddMinutes(billedHoursAtPayment * 60);
+
+                    if (checkOutTime > paidUntilTime)
                     {
-                        // Tính phí thêm cho thời gian vượt grace period
+                        // Tính phí thêm cho thời gian vượt quá block giờ đã thanh toán
                         var extraFeeResult = ParkingCalculationHelper.CalculateParkingFee(
-                            latestPayment.PaymentTime ?? checkOutTime,
+                            paidUntilTime,
                             checkOutTime,
                             policy,
                             operatingHours
                         );
                         finalFee = extraFeeResult.CurrentFee;
                     }
-                    // else: trong grace period → finalFee = 0
+                    // else: nằm trong block giờ đã thanh toán → finalFee = 0
                 }
-                // else: không tìm thấy payment record → finalFee = 0 (đã PAID)
             }
             else
             {
@@ -332,19 +368,24 @@ namespace ParkingManagement.Services
 
             if (session.PaymentStatus == "PAID")
             {
-                // Session đã thanh toán qua QuickPay — kiểm tra grace period
+                // Session đã thanh toán qua QuickPay — kiểm tra thời gian còn lại của giờ đã thanh toán
                 var latestPayment = session.Payments
                     .Where(p => p.PaymentType == "SESSION" && p.Status == "SUCCESS")
                     .OrderByDescending(p => p.PaymentTime)
                     .FirstOrDefault();
 
-                if (latestPayment != null)
+                if (latestPayment != null && latestPayment.PaymentTime.HasValue)
                 {
-                    var timeDiffMinutes = (checkOutTime - (latestPayment.PaymentTime ?? VnNow)).TotalMinutes;
-                    if (timeDiffMinutes > 15)
+                    var paidDurationMinutes = (latestPayment.PaymentTime.Value - (session.CheckInTime ?? latestPayment.PaymentTime.Value)).TotalMinutes;
+                    if (paidDurationMinutes < 0) paidDurationMinutes = 0;
+                    int billedHoursAtPayment = (int)Math.Ceiling(paidDurationMinutes / 60.0);
+                    if (billedHoursAtPayment == 0) billedHoursAtPayment = 1;
+                    var paidUntilTime = (session.CheckInTime ?? latestPayment.PaymentTime.Value).AddMinutes(billedHoursAtPayment * 60);
+
+                    if (checkOutTime > paidUntilTime)
                     {
                         var extraFeeResult = ParkingCalculationHelper.CalculateParkingFee(
-                            latestPayment.PaymentTime ?? checkOutTime,
+                            paidUntilTime,
                             checkOutTime,
                             policy,
                             operatingHours
@@ -405,17 +446,22 @@ namespace ParkingManagement.Services
                     .OrderByDescending(p => p.PaymentTime)
                     .FirstOrDefault();
 
-                if (latestPayment != null)
+                if (latestPayment != null && latestPayment.PaymentTime.HasValue)
                 {
-                    var timeDiffMinutes = (currentTime - (latestPayment.PaymentTime ?? currentTime)).TotalMinutes;
-                    if (timeDiffMinutes > 15)
+                    var paidDurationMinutes = (latestPayment.PaymentTime.Value - (session.CheckInTime ?? latestPayment.PaymentTime.Value)).TotalMinutes;
+                    if (paidDurationMinutes < 0) paidDurationMinutes = 0;
+                    int billedHoursAtPayment = (int)Math.Ceiling(paidDurationMinutes / 60.0);
+                    if (billedHoursAtPayment == 0) billedHoursAtPayment = 1;
+                    var paidUntilTime = (session.CheckInTime ?? latestPayment.PaymentTime.Value).AddMinutes(billedHoursAtPayment * 60);
+
+                    if (currentTime > paidUntilTime)
                     {
                         var policy = await _parkingRepository.GetActivePricingPolicyByVehicleTypeAsync(session.VehicleTypeId);
                         if (policy != null)
                         {
                             string operatingHours = await _parkingRepository.GetOperatingHoursForDayAsync(currentTime);
                             var extraFeeResult = ParkingCalculationHelper.CalculateParkingFee(
-                                latestPayment.PaymentTime ?? currentTime,
+                                paidUntilTime,
                                 currentTime,
                                 policy,
                                 operatingHours
@@ -423,9 +469,7 @@ namespace ParkingManagement.Services
                             currentFee = extraFeeResult.CurrentFee;
                         }
                     }
-                    // else: trong grace period → currentFee = 0
                 }
-                // else: PAID nhưng không có SESSION payment record → currentFee = 0
             }
             else
             {
@@ -544,7 +588,44 @@ namespace ParkingManagement.Services
             decimal overnightFee = 0;
             int graceSeconds = 0;
 
-            if (!string.IsNullOrEmpty(session.BookingId) && session.Booking != null)
+            if (session.PaymentStatus == "PAID")
+            {
+                var latestPayment = session.Payments
+                    .Where(p => p.PaymentType == "SESSION" && p.Status == "SUCCESS")
+                    .OrderByDescending(p => p.PaymentTime)
+                    .FirstOrDefault();
+
+                if (latestPayment != null && latestPayment.PaymentTime.HasValue)
+                {
+                    var paidDurationMinutes = (latestPayment.PaymentTime.Value - (session.CheckInTime ?? latestPayment.PaymentTime.Value)).TotalMinutes;
+                    if (paidDurationMinutes < 0) paidDurationMinutes = 0;
+                    int billedHoursAtPayment = (int)Math.Ceiling(paidDurationMinutes / 60.0);
+                    if (billedHoursAtPayment == 0) billedHoursAtPayment = 1;
+                    var paidUntilTime = (session.CheckInTime ?? latestPayment.PaymentTime.Value).AddMinutes(billedHoursAtPayment * 60);
+
+                    if (currentTime > paidUntilTime)
+                    {
+                        var extraFeeResult = ParkingCalculationHelper.CalculateParkingFee(
+                            paidUntilTime,
+                            currentTime,
+                            policy,
+                            operatingHours
+                        );
+                        totalFee = extraFeeResult.CurrentFee;
+                        hours = extraFeeResult.Hours;
+                        overnightFee = extraFeeResult.OvernightFee;
+                        graceSeconds = 0;
+                    }
+                    else
+                    {
+                        totalFee = 0;
+                        hours = 0;
+                        overnightFee = 0;
+                        graceSeconds = (int)(paidUntilTime - currentTime).TotalSeconds;
+                    }
+                }
+            }
+            else if (!string.IsNullOrEmpty(session.BookingId) && session.Booking != null)
             {
                 var currentVnTime = ConvertToVnTime(currentTime);
                 var calculationTime = GetCalculationTimeForBooking(session.Booking, currentVnTime);
@@ -979,11 +1060,23 @@ namespace ParkingManagement.Services
                     .OrderByDescending(p => p.PaymentTime)
                     .FirstOrDefault();
 
-                if (latestPayment != null)
+                if (latestPayment != null && latestPayment.PaymentTime.HasValue)
                 {
-                    var elapsedSeconds = (VnNow - (latestPayment.PaymentTime ?? VnNow)).TotalSeconds;
-                    if (elapsedSeconds <= 900)
-                        gracePeriodRemainingSeconds = (int)(900 - elapsedSeconds);
+                    var paidDurationMinutes = (latestPayment.PaymentTime.Value - (session.CheckInTime ?? latestPayment.PaymentTime.Value)).TotalMinutes;
+                    if (paidDurationMinutes < 0) paidDurationMinutes = 0;
+                    int billedHoursAtPayment = (int)Math.Ceiling(paidDurationMinutes / 60.0);
+                    if (billedHoursAtPayment == 0) billedHoursAtPayment = 1;
+                    var paidUntilTime = (session.CheckInTime ?? latestPayment.PaymentTime.Value).AddMinutes(billedHoursAtPayment * 60);
+
+                    var remainingSeconds = (paidUntilTime - VnNow).TotalSeconds;
+                    if (remainingSeconds > 0)
+                    {
+                        gracePeriodRemainingSeconds = (int)remainingSeconds;
+                    }
+                    else
+                    {
+                        gracePeriodRemainingSeconds = 0;
+                    }
                 }
             }
 
@@ -994,11 +1087,22 @@ namespace ParkingManagement.Services
             int overdueMinutes = 0;
             decimal overdueFee = 0;
 
+            string? customerName = null;
+            string? customerEmail = null;
+            string? customerPhone = null;
+
             if (session.Booking != null)
             {
                 expectedArrival = session.Booking.ExpectedArrival;
                 expiredAt = session.Booking.ExpiredAt;
                 bookingStatus = session.Booking.Status;
+
+                if (session.Booking.VehicleUser != null)
+                {
+                    customerName = session.Booking.VehicleUser.FullName;
+                    customerEmail = session.Booking.VehicleUser.Email;
+                    customerPhone = session.Booking.VehicleUser.Phone;
+                }
 
                 if (expiredAt.HasValue && VnNow > expiredAt.Value)
                 {
@@ -1034,7 +1138,10 @@ namespace ParkingManagement.Services
                     OverdueMinutes = overdueMinutes,
                     OverdueFee = overdueFee,
                     ImageUrlIn = session.ImageUrlIn,
-                    ImageUrlOut = session.ImageUrlOut
+                    ImageUrlOut = session.ImageUrlOut,
+                    CustomerName = customerName,
+                    CustomerEmail = customerEmail,
+                    CustomerPhone = customerPhone
                 }
             };
         }

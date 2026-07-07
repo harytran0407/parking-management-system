@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "sonner";
-import Webcam from "react-webcam";
 import api from "../../utils/api";
 import axios from "axios";
 import {
     Camera, CarFront, MapPin, CheckCircle2, RefreshCw,
     VideoOff, Ban, ParkingSquare, Hash, ArrowDownCircle,
-    Video, X, Maximize2, Search, AlertTriangle, Clock
+    Video, X, Maximize2, Search, AlertTriangle, Clock, Upload
 } from "lucide-react";
 import { useLanguage } from "../../hooks/useLanguage";
 
@@ -23,16 +22,16 @@ const formatDateTime = (dateVal, language = "vi") => {
 const t = {
     vi: {
         cameraHeader: "Check-In Camera",
-        btnScanPlate: "Quét biển số",
-        scanPlateTitle: "Nhấn Enter để chụp ảnh",
-        webcamUnavailable: "Không tìm thấy Webcam — kiểm tra quyền thiết bị",
+        btnScanPlate: "Xử lý ảnh",
+        scanPlateTitle: "Nhấn Enter để xử lý ảnh đã chọn",
+        webcamUnavailable: "Không khả dụng",
         manualEntryLabel: "Nhập thủ công",
         placeholderPlate: "Nhập biển số xe...",
         vehicleTypeLabel: "Loại xe",
         btnQuery: "Tra cứu",
         entrySessionHeader: "Thông tin phiên vào",
         readyToScan: "Sẵn sàng quét",
-        pressEnterToStart: "Nhấn [Enter] để bắt đầu.",
+        pressEnterToStart: "Kéo thả ảnh hoặc click để chọn ảnh xe.",
         licensePlate: "Biển kiểm soát",
         type: "Loại xe",
         assignedZone: "Phân khu chỉ định",
@@ -66,16 +65,16 @@ const t = {
     },
     en: {
         cameraHeader: "Check-In Camera",
-        btnScanPlate: "Scan Plate",
-        scanPlateTitle: "Press Enter to trigger snapshot",
-        webcamUnavailable: "Webcam unavailable — check device permissions",
+        btnScanPlate: "Process Image",
+        scanPlateTitle: "Press Enter to process selected image",
+        webcamUnavailable: "Unavailable",
         manualEntryLabel: "Manual Entry",
         placeholderPlate: "Enter license plate...",
         vehicleTypeLabel: "Vehicle Type",
         btnQuery: "Query",
         entrySessionHeader: "Entry Session Info",
         readyToScan: "Ready to Scan",
-        pressEnterToStart: "Press [Enter] to start.",
+        pressEnterToStart: "Drag & drop or click to select vehicle image.",
         licensePlate: "License Plate",
         type: "Type",
         assignedZone: "Assigned Zone",
@@ -111,15 +110,16 @@ const t = {
 
 export default function CheckInPage() {
     const { language } = useLanguage();
-    const webcamRef = useRef(null);
+    const fileInputRef = useRef(null);
     const [capturedImage, setCapturedImage] = useState(null);
+    const [croppedImage, setCroppedImage] = useState(null);
     const [plateNumber, setPlateNumber] = useState("");
     const [manualInput, setManualInput] = useState("");
     const [selectedVehicleType, setSelectedVehicleType] = useState(1);
     const [scanResult, setScanResult] = useState(null);
 
     const [isLoading, setIsLoading] = useState(false);
-    const [isStreamConnected, setIsStreamConnected] = useState(true);
+    const [isDragOver, setIsDragOver] = useState(false);
 
     const [isLightboxOpen, setIsLightboxOpen] = useState(false);
     const [earlyCheckInWarning, setEarlyCheckInWarning] = useState(null);
@@ -128,12 +128,6 @@ export default function CheckInPage() {
         { id: 1, name: t[language].motorbike },
         { id: 2, name: t[language].car }
     ];
-
-    const videoConstraints = {
-        width: 1280,
-        height: 720,
-        facingMode: "environment"
-    };
 
     const getOpConfig = () => ({
         camIn: localStorage.getItem("camera_in_id") || "cam_in_01",
@@ -190,19 +184,16 @@ export default function CheckInPage() {
     };
 
 
-    const handleCaptureAndRecognize = useCallback(async () => {
-        if (!webcamRef.current || isLoading) return;
+    const handleCaptureAndRecognize = useCallback(async (base64Image = null) => {
+        const imageSrc = base64Image || capturedImage;
+        if (!imageSrc) {
+            toast.error(language === "vi" ? "Vui lòng chọn hoặc kéo thả ảnh xe trước!" : "Please select or drag & drop a vehicle image first!");
+            return;
+        }
 
         setIsLoading(true);
         toast.dismiss();
         setScanResult(null);
-
-        const imageSrc = webcamRef.current.getScreenshot();
-        if (!imageSrc) {
-            toast.error(t[language].toastWebcamError);
-            setIsLoading(false);
-            return;
-        }
         setCapturedImage(imageSrc);
 
         try {
@@ -216,7 +207,10 @@ export default function CheckInPage() {
 
             const aiPlate = aiResponse.data.plate.toUpperCase().trim();
             const aiVehicleType = aiResponse.data.vehicle_type_id || selectedVehicleType;
+            const croppedImg = aiResponse.data.cropped_image || imageSrc;
 
+            setCapturedImage(imageSrc);
+            setCroppedImage(croppedImg);
             setPlateNumber(aiPlate);
 
             const isDuplicate = await checkIsPlateDuplicate(aiPlate);
@@ -233,7 +227,7 @@ export default function CheckInPage() {
                 vehicle_type_id: parseInt(aiVehicleType, 10),
                 camera_in: camIn,
                 gate_in: gateIn,
-                image_url_in: imageSrc,
+                image_url_in: croppedImg,
             };
 
             try {
@@ -280,7 +274,31 @@ export default function CheckInPage() {
         } finally {
             setIsLoading(false);
         }
-    }, [selectedVehicleType, isLoading, language]);
+    }, [selectedVehicleType, capturedImage, language]);
+
+    const handleImageUpload = (file) => {
+        if (!file) return;
+        if (!file.type.startsWith("image/")) {
+            toast.error(language === "vi" ? "Vui lòng chọn tệp hình ảnh hợp lệ!" : "Please select a valid image file!");
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const base64 = e.target.result;
+            setCapturedImage(base64);
+            setCroppedImage(null);
+            handleCaptureAndRecognize(base64);
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const triggerScanOrUpload = () => {
+        if (capturedImage) {
+            handleCaptureAndRecognize(capturedImage);
+        } else {
+            fileInputRef.current?.click();
+        }
+    };
 
 
     const handleManualCheckInSubmit = async () => {
@@ -389,6 +407,7 @@ export default function CheckInPage() {
         setScanResult(null);
         setPlateNumber("");
         setCapturedImage(null);
+        setCroppedImage(null);
         toast.dismiss();
     };
 
@@ -396,7 +415,7 @@ export default function CheckInPage() {
     useEffect(() => {
         const handleGlobalKeyDown = (event) => {
             if (event.key === "Enter") {
-                if (document.activeElement.tagName === "INPUT" && document.activeElement !== webcamRef.current) {
+                if (document.activeElement.tagName === "INPUT") {
                     if (document.activeElement.placeholder === t[language].placeholderPlate && manualInput) {
                         event.preventDefault();
                         handleQueryManualInbound(manualInput);
@@ -407,7 +426,7 @@ export default function CheckInPage() {
                 event.preventDefault();
 
                 if (!scanResult) {
-                    handleCaptureAndRecognize();
+                    triggerScanOrUpload();
                 } else {
                     if (scanResult.type === "ManualEntryPending") {
                         handleManualCheckInSubmit();
@@ -420,7 +439,7 @@ export default function CheckInPage() {
 
         window.addEventListener("keydown", handleGlobalKeyDown);
         return () => window.removeEventListener("keydown", handleGlobalKeyDown);
-    }, [scanResult, handleCaptureAndRecognize, manualInput, plateNumber, selectedVehicleType, language]);
+    }, [scanResult, triggerScanOrUpload, manualInput, plateNumber, selectedVehicleType, language]);
     return (
         <div className="w-full flex-1 text-slate-800 dark:text-slate-100 flex flex-col font-sans box-border select-none transition-colors duration-200">
 
@@ -436,31 +455,95 @@ export default function CheckInPage() {
                             <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-400">{t[language].cameraHeader}</h3>
                         </div>
                         <button
-                            onClick={handleCaptureAndRecognize}
+                            onClick={triggerScanOrUpload}
                             disabled={isLoading}
                             className="bg-blue-600 dark:bg-blue-600 hover:bg-blue-500 dark:hover:bg-blue-500 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 dark:disabled:text-slate-600 text-white font-bold text-xs px-4 py-2.5 rounded-md transition-all shadow-md shadow-blue-500/10 dark:shadow-lg dark:shadow-slate-950/50 active:scale-98 flex items-center gap-2 uppercase tracking-wide"
                             title={t[language].scanPlateTitle}
                         >
-                            <Camera size={14} /> {t[language].btnScanPlate} <kbd className="text-white px-1 rounded text-[9px] ml-1 font-mono font-normal">[Enter]</kbd>
+                            <Camera size={14} /> {t[language].btnScanPlate} <kbd className="text-white px-1 rounded text-[9px] ml-1 font-sans font-normal">[Enter]</kbd>
                         </button>
                     </div>
 
-                    {/* LIVE CAMERA CONTAINER */}
-                    <div className="relative bg-slate-950 border border-slate-200 dark:border-slate-800 flex-1 min-h-[220px] sm:min-h-[300px] lg:min-h-0 flex items-center justify-center overflow-hidden transition-colors duration-200">
-                        {isStreamConnected ? (
-                            <Webcam
-                                audio={false}
-                                ref={webcamRef}
-                                screenshotFormat="image/jpeg"
-                                videoConstraints={videoConstraints}
-                                className="w-full h-full object-cover"
-                                onUserMedia={() => setIsStreamConnected(true)}
-                                onUserMediaError={() => setIsStreamConnected(false)}
-                            />
+                    {/* DROPZONE IMAGE UPLOADER */}
+                    <div
+                        onDragOver={(e) => {
+                            e.preventDefault();
+                            setIsDragOver(true);
+                        }}
+                        onDragLeave={() => setIsDragOver(false)}
+                        onDrop={(e) => {
+                            e.preventDefault();
+                            setIsDragOver(false);
+                            if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                                handleImageUpload(e.dataTransfer.files[0]);
+                            }
+                        }}
+                        onClick={() => fileInputRef.current?.click()}
+                        className={`relative border-2 border-dashed flex-1 min-h-[220px] sm:min-h-[300px] lg:min-h-0 flex flex-col items-center justify-center overflow-hidden cursor-pointer transition-all duration-200 rounded-md ${isDragOver
+                            ? "border-blue-500 bg-blue-50/20 dark:bg-blue-950/20"
+                            : "border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-900"
+                            }`}
+                    >
+                        <input
+                            type="file"
+                            ref={fileInputRef}
+                            onChange={(e) => {
+                                if (e.target.files && e.target.files[0]) {
+                                    handleImageUpload(e.target.files[0]);
+                                }
+                            }}
+                            accept="image/*"
+                            className="hidden"
+                        />
+
+                        {capturedImage ? (
+                            <div className="relative w-full h-full group flex items-center justify-center bg-slate-950">
+                                <img
+                                    src={capturedImage}
+                                    alt="Uploaded Vehicle"
+                                    className="max-w-full max-h-full object-contain"
+                                />
+                                <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            fileInputRef.current?.click();
+                                        }}
+                                        className="bg-white/90 hover:bg-white text-slate-800 font-bold text-xs px-3 py-1.5 rounded shadow flex items-center gap-1"
+                                    >
+                                        <Camera size={13} />
+                                        {language === "vi" ? "Chọn ảnh khác" : "Change Image"}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setCapturedImage(null);
+                                            setCroppedImage(null);
+                                            setScanResult(null);
+                                            setPlateNumber("");
+                                        }}
+                                        className="bg-red-600 hover:bg-red-500 text-white font-bold text-xs px-3 py-1.5 rounded shadow flex items-center gap-1"
+                                    >
+                                        <X size={13} />
+                                        {language === "vi" ? "Xóa" : "Clear"}
+                                    </button>
+                                </div>
+                            </div>
                         ) : (
-                            <div className="flex flex-col items-center gap-2 text-slate-400 dark:text-slate-600">
-                                <VideoOff size={36} className="opacity-40" />
-                                <p className="text-xs font-semibold text-center">{t[language].webcamUnavailable}</p>
+                            <div className="p-6 text-center flex flex-col items-center gap-3">
+                                <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-950/50 flex items-center justify-center text-blue-600 dark:text-blue-400">
+                                    <Upload size={24} />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                                        {language === "vi" ? "Kéo thả ảnh check-in vào đây" : "Drag & drop check-in image here"}
+                                    </p>
+                                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+                                        {language === "vi" ? "hoặc click để chọn tệp tin" : "or click to browse file"}
+                                    </p>
+                                </div>
                             </div>
                         )}
                     </div>
@@ -518,7 +601,7 @@ export default function CheckInPage() {
                                         className="bg-slate-100 dark:bg-slate-950 h-[130px] xl:h-[160px] 2xl:h-[200px] shrink-0 border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm relative group cursor-zoom-in rounded-md"
                                     >
                                         <img
-                                            src={capturedImage || "https://placehold.co/600x400/0f172a/64748b?text=Snapshot+Inbound"}
+                                            src={croppedImage || capturedImage || "https://placehold.co/600x400/0f172a/64748b?text=Snapshot+Inbound"}
                                             alt="Captured Gate Target Area"
                                             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 opacity-90 dark:opacity-80"
                                         />
@@ -538,7 +621,7 @@ export default function CheckInPage() {
                                                 }`}>
                                                 <span className={`text-[10px] font-bold uppercase block tracking-wider mb-0.5 ${scanResult.isBooking ? "text-blue-500 dark:text-blue-400" : "text-slate-400 dark:text-slate-500"
                                                     }`}>{t[language].licensePlate}</span>
-                                                <span className={`text-base xl:text-lg font-bold font-mono ${scanResult.isBooking ? "text-blue-700 dark:text-blue-300" : "text-slate-800 dark:text-slate-100"
+                                                <span className={`text-base xl:text-lg font-bold font-sans ${scanResult.isBooking ? "text-blue-700 dark:text-blue-300" : "text-slate-800 dark:text-slate-100"
                                                     }`}>{scanResult.plate}</span>
                                             </div>
 
@@ -549,7 +632,7 @@ export default function CheckInPage() {
                                                 }`}>
                                                 <span className={`text-[10px] font-bold uppercase block tracking-wider mb-0.5 ${scanResult.isBooking ? "text-blue-500 dark:text-blue-400" : "text-slate-400 dark:text-slate-500"
                                                     }`}>{t[language].type}</span>
-                                                <span className={`text-base xl:text-lg font-bold font-mono truncate block ${scanResult.isBooking ? "text-blue-700 dark:text-blue-300" : "text-slate-800 dark:text-slate-100"
+                                                <span className={`text-base xl:text-lg font-bold font-sans truncate block ${scanResult.isBooking ? "text-blue-700 dark:text-blue-300" : "text-slate-800 dark:text-slate-100"
                                                     }`}>{scanResult.vehicleModel}</span>
                                             </div>
                                         </div>
@@ -609,7 +692,7 @@ export default function CheckInPage() {
                                     <CarFront size={32} className="mb-2 opacity-40" />
                                     <p className="text-xs font-black uppercase tracking-widest text-slate-600 dark:text-slate-400">{t[language].readyToScan}</p>
                                     <p className="text-xs text-slate-400 mt-1.5 max-w-[200px]">
-                                        {t[language].pressEnterToStart.replace("[Enter]", "")} <kbd className="bg-white border text-slate-700 px-1 py-0.5 rounded text-[10px] font-mono font-bold shadow-sm">[Enter]</kbd>
+                                        {t[language].pressEnterToStart.replace("[Enter]", "")} <kbd className="bg-white border text-slate-700 px-1 py-0.5 rounded text-[10px] font-sans font-bold shadow-sm">[Enter]</kbd>
                                     </p>
                                 </div>
                             )}
@@ -626,13 +709,13 @@ export default function CheckInPage() {
                                             onClick={handleManualCheckInSubmit}
                                             className="w-full bg-blue-600 hover:bg-blue-500 text-white py-2.5 rounded-md text-xs font-black uppercase tracking-widest transition-all"
                                         >
-                                            {t[language].btnConfirm} <span className="font-mono font-normal opacity-70 text-[10px] ml-1">[Enter]</span>
+                                            {t[language].btnConfirm} <span className="font-sans font-normal opacity-70 text-[10px] ml-1">[Enter]</span>
                                         </button>
                                         <button
                                             onClick={resetTerminal}
                                             className="w-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-500 py-2 rounded-md text-xs font-bold uppercase tracking-wide transition-all"
                                         >
-                                            {t[language].btnCancel} <span className="font-mono font-normal opacity-70 text-[10px] ml-1">[Esc]</span>
+                                            {t[language].btnCancel} <span className="font-sans font-normal opacity-70 text-[10px] ml-1">[Esc]</span>
                                         </button>
                                     </>
                                 )}
@@ -642,7 +725,7 @@ export default function CheckInPage() {
                                         onClick={resetTerminal}
                                         className="w-full bg-blue-600 dark:bg-blue-600 hover:bg-blue-500 dark:hover:bg-blue-500 text-white py-2.5 rounded-md text-xs font-black uppercase tracking-wider transition-all"
                                     >
-                                        {t[language].btnNextScan} <span className="font-mono font-normal opacity-80 text-[10px] ml-1">[Enter]</span>
+                                        {t[language].btnNextScan} <span className="font-sans font-normal opacity-80 text-[10px] ml-1">[Enter]</span>
                                     </button>
                                 )}
                             </>
@@ -657,7 +740,7 @@ export default function CheckInPage() {
             </div>
 
             {/* LIGHTBOX MODAL OVERLAY */}
-            {isLightboxOpen && capturedImage && (
+            {isLightboxOpen && (croppedImage || capturedImage) && (
                 <div
                     className="fixed inset-0 bg-slate-950/80 dark:bg-slate-950/90 backdrop-blur-md z-50 flex flex-col items-center justify-center p-4 cursor-zoom-out animate-fadeIn"
                     onClick={() => setIsLightboxOpen(false)}
@@ -665,10 +748,10 @@ export default function CheckInPage() {
                     <div className="absolute top-5 right-5 text-slate-500 hover:text-slate-200 dark:text-slate-400 dark:hover:text-white bg-white/10 dark:bg-slate-900/60 p-2 rounded-full border border-slate-300 dark:border-slate-800 transition-colors">
                         <X size={20} />
                     </div>
-                    <div className="relative max-w-4xl max-h-[85vh] rounded-md overflow-hidden border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl scaleUp" onClick={(e) => e.stopPropagation()}>
-                        <img src={capturedImage} alt="High Resolution Audit" className="w-full h-auto max-h-[85vh] object-contain" />
+                    <div className="relative w-full max-w-[95vw] md:max-w-6xl max-h-[92vh] rounded-md overflow-hidden border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl scaleUp" onClick={(e) => e.stopPropagation()}>
+                        <img src={croppedImage || capturedImage} alt="High Resolution Audit" className="w-full h-auto max-h-[85vh] md:max-h-[88vh] object-contain" />
                         <div className="absolute bottom-0 inset-x-0 bg-slate-900/90 dark:bg-slate-950/80 p-3 text-center border-t border-slate-200 dark:border-slate-800 backdrop-blur-sm">
-                            <p className="font-mono font-bold tracking-widest text-sm text-yellow-500 dark:text-yellow-400">{plateNumber || t[language].noPlateDetected}</p>
+                            <p className="font-sans font-bold tracking-widest text-sm text-yellow-500 dark:text-yellow-400">{plateNumber || t[language].noPlateDetected}</p>
                         </div>
                     </div>
                 </div>

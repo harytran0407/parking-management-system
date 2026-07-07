@@ -23,9 +23,20 @@ public class BookingService : IBookingService
             return localVnTime;
 
         if (localVnTime.Kind == DateTimeKind.Local)
-            localVnTime = DateTime.SpecifyKind(localVnTime, DateTimeKind.Unspecified);
+            return localVnTime.ToUniversalTime();
 
         return TimeZoneInfo.ConvertTimeToUtc(localVnTime, _vnTz);
+    }
+
+    private static DateTime ToVnTime(DateTime dt)
+    {
+        if (dt.Kind == DateTimeKind.Utc)
+            return TimeZoneInfo.ConvertTimeFromUtc(dt, _vnTz);
+
+        if (dt.Kind == DateTimeKind.Local)
+            return TimeZoneInfo.ConvertTime(dt, _vnTz);
+
+        return DateTime.SpecifyKind(dt, DateTimeKind.Unspecified);
     }
 
     private readonly AppDbContext _context;
@@ -71,8 +82,8 @@ public class BookingService : IBookingService
             SlotId = "",
             SlotName = "Assigned at Check-in",
             VehicleTypeName = vehicleTypeName,
-            ExpectedArrival = request.ExpectedArrival,
-            ExpiredAt = expiredAt,
+            ExpectedArrival = ToVnTime(request.ExpectedArrival),
+            ExpiredAt = ToVnTime(expiredAt),
             BasePrice = basePrice,
             HourlyRate = hourlyRate,
             EstimatedFee = estimatedFee,
@@ -144,10 +155,13 @@ public class BookingService : IBookingService
         // Validate license plate format and check for duplicate bookings
         var cleanPlate = request.LicensePlate.Replace("-", "").Replace(".", "").Replace(" ", "").ToUpper();
 
+        var vnExpectedArrival = ToVnTime(request.ExpectedArrival);
+        var vnExpiredAt = ToVnTime(expiredAt);
+
         var isOverlappingBookingExists = await _context.Bookings
             .AnyAsync(b => (b.Status == "PENDING" || b.Status == "CONFIRMED")
-                        && b.ExpectedArrival < expiredAt
-                        && request.ExpectedArrival < b.ExpiredAt
+                        && b.ExpectedArrival < vnExpiredAt
+                        && vnExpectedArrival < b.ExpiredAt
                         && b.LicensePlate.Replace("-", "").Replace(".", "").Replace(" ", "").ToUpper() == cleanPlate);
 
         if (isOverlappingBookingExists)
@@ -195,9 +209,9 @@ public class BookingService : IBookingService
                 VehicleUserId = userId,
                 LicensePlate = request.LicensePlate.Trim().ToUpper(),
                 VehicleTypeId = request.VehicleTypeId,
-                ZoneId = null, // Assigned at check-in
-                ExpectedArrival = request.ExpectedArrival,
-                ExpiredAt = expiredAt,
+                ZoneId = availableZone.ZoneId, // Store the reserved zone
+                ExpectedArrival = vnExpectedArrival,
+                ExpiredAt = vnExpiredAt,
                 BookingTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, _vnTz),
                 Status = "PENDING",
                 Notes = request.Notes
@@ -464,7 +478,7 @@ public class BookingService : IBookingService
 
         if (!isParkedActive)
         {
-            booking.Status = "COMPLETED";
+            booking.Status = "CONFIRMED";
         }
         await _context.SaveChangesAsync();
 

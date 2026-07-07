@@ -29,5 +29,8 @@ namespace ParkingManagement.DTOs
         public decimal OverdueFee { get; set; }
         public string? ImageUrlIn { get; set; }
         public string? ImageUrlOut { get; set; }
+        public string? CustomerName { get; set; }
+        public string? CustomerEmail { get; set; }
+        public string? CustomerPhone { get; set; }
     }
 }

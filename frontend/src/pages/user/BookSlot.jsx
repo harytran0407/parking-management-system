@@ -38,6 +38,7 @@ export default function BookSlot() {
   // 4-Step Wizard Phase: 1 = Info Form, 2 = Regulations, 3 = Payment, 4 = Success Ticket
   const [currentStep, setCurrentStep] = useState(1);
   const [createdBooking, setCreatedBooking] = useState(null);
+  const [bookingError, setBookingError] = useState("");
   const [processingPayment, setProcessingPayment] = useState(false);
   const [showSuccessDelay, setShowSuccessDelay] = useState(false);
 
@@ -60,7 +61,7 @@ export default function BookSlot() {
   // Step 2: Regulations State
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [loadingPayment, setLoadingPayment] = useState(false);
-  const [skipRegulations, setSkipRegulations] = useState(false);
+  const skipRegulations = false;
   const [submitAttempted, setSubmitAttempted] = useState(false);
 
   // Vehicle type consistency conflict states
@@ -147,10 +148,8 @@ export default function BookSlot() {
 
   const handleSelectVehicle = (type) => {
     setVehicleType(type);
-    const agreedKey = userId ? `pms_agreed_to_terms_${userId}` : "pms_agreed_to_terms";
-    const agreed = localStorage.getItem(agreedKey) === "true";
-    setSkipRegulations(agreed);
-    setAgreedToTerms(agreed);
+    setAgreedToTerms(false);
+    setBookingError("");
     setCurrentStep(1);
   };
 
@@ -547,6 +546,7 @@ export default function BookSlot() {
   // Handle Create Booking
   const handleCreateBookingAndGoToPayment = async () => {
     setLoadingPayment(true);
+    setBookingError("");
     try {
       const plate = licensePlate.trim().toUpperCase();
 
@@ -566,7 +566,16 @@ export default function BookSlot() {
       }
     } catch (error) {
       console.error("Lỗi tạo booking:", error);
-      const msg = error.response?.data?.message || error.message || (language === "en" ? "Failed to create booking." : "Tạo đặt chỗ thất bại.");
+      let msg = "";
+      if (error.response?.data?.errors) {
+        const errObj = error.response.data.errors;
+        msg = Object.values(errObj).flat().join("; ");
+      }
+      if (!msg) {
+        msg = error.response?.data?.message || error.message || (language === "en" ? "Failed to create booking." : "Tạo đặt chỗ thất bại.");
+      }
+      setBookingError(msg);
+
       if (msg.includes("đã được đăng ký cho loại phương tiện") || msg.includes("đã có lịch đặt chỗ trùng lặp")) {
         if (msg.includes("trùng lặp")) {
           setConflictType("duplicate");
@@ -652,6 +661,7 @@ export default function BookSlot() {
     setSubmitAttempted(false);
     setConflictType(null);
     setBookingRestriction(null);
+    setBookingError("");
     checkRestrictions();
   };
 
@@ -666,6 +676,7 @@ export default function BookSlot() {
       isPaidRef.current = false;
     }
 
+    setBookingError("");
     if (currentStep === 1) {
       setVehicleType(null);
     } else {
@@ -924,6 +935,7 @@ export default function BookSlot() {
                     setLicensePlate(e.target.value.toUpperCase());
                     setSubmitAttempted(false);
                     setConflictType(null);
+                    setBookingError("");
                   }
                 }}
                 placeholder={language === "en" ? "e.g. 51F-12345" : "VD: 51F-12345"}
@@ -953,7 +965,12 @@ export default function BookSlot() {
                 </label>
                 <select
                   value={selectedDate}
-                  onChange={(e) => !isFormLocked && setSelectedDate(e.target.value)}
+                  onChange={(e) => {
+                    if (!isFormLocked) {
+                      setSelectedDate(e.target.value);
+                      setBookingError("");
+                    }
+                  }}
                   disabled={isFormLocked}
                   className={"w-full rounded-lg px-4 py-2.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/40 border " + (isFormLocked ? "bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed" : "bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700/60 text-slate-800 dark:text-white cursor-pointer")}
                   required
@@ -973,7 +990,12 @@ export default function BookSlot() {
                 </label>
                 <select
                   value={selectedArrival}
-                  onChange={(e) => !isFormLocked && setSelectedArrival(e.target.value)}
+                  onChange={(e) => {
+                    if (!isFormLocked) {
+                      setSelectedArrival(e.target.value);
+                      setBookingError("");
+                    }
+                  }}
                   disabled={isFormLocked || arrivalTimes.length === 0}
                   className={"w-full rounded-lg px-4 py-2.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/40 border " + (isFormLocked ? "bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed" : "bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700/60 text-slate-800 dark:text-white cursor-pointer")}
                   required
@@ -997,7 +1019,12 @@ export default function BookSlot() {
                 </label>
                 <select
                   value={selectedEndDate}
-                  onChange={(e) => !isFormLocked && setSelectedEndDate(e.target.value)}
+                  onChange={(e) => {
+                    if (!isFormLocked) {
+                      setSelectedEndDate(e.target.value);
+                      setBookingError("");
+                    }
+                  }}
                   disabled={isFormLocked}
                   className={"w-full rounded-lg px-4 py-2.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/40 border " + (isFormLocked ? "bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed" : "bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700/60 text-slate-800 dark:text-white cursor-pointer")}
                   required
@@ -1017,7 +1044,12 @@ export default function BookSlot() {
                 </label>
                 <select
                   value={selectedDepartureTime}
-                  onChange={(e) => !isFormLocked && setSelectedDepartureTime(e.target.value)}
+                  onChange={(e) => {
+                    if (!isFormLocked) {
+                      setSelectedDepartureTime(e.target.value);
+                      setBookingError("");
+                    }
+                  }}
                   disabled={isFormLocked}
                   className={"w-full rounded-lg px-4 py-2.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/40 border " + (isFormLocked ? "bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed" : "bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700/60 text-slate-800 dark:text-white cursor-pointer")}
                   required
@@ -1080,6 +1112,14 @@ export default function BookSlot() {
                     ? "Warning: Parking building is currently reported as full. Bookings may be rejected at entry check-in."
                     : "Cảnh báo: Bãi đỗ xe hiện tại đã hết chỗ trống. Yêu cầu đặt chỗ có thể bị từ chối ở cổng."}
                 </p>
+              </div>
+            )}
+
+            {/* Booking creation error alert */}
+            {bookingError && (
+              <div className="bg-rose-50 dark:bg-rose-955/20 border border-rose-200 dark:border-rose-900/40 rounded-lg p-4 flex gap-2.5 items-start text-xs text-rose-700 dark:text-rose-400 font-semibold">
+                <AlertTriangle className="text-rose-500 shrink-0 mt-0.5" size={16} />
+                <p>{bookingError}</p>
               </div>
             )}
 
@@ -1217,8 +1257,6 @@ export default function BookSlot() {
                 type="button"
                 onClick={() => {
                   if (agreedToTerms) {
-                    const agreedKey = userId ? `pms_agreed_to_terms_${userId}` : "pms_agreed_to_terms";
-                    localStorage.setItem(agreedKey, "true");
                     setCurrentStep(2);
                   }
                 }}

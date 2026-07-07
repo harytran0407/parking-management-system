@@ -575,6 +575,16 @@ def recognize_uploaded_image():
             detected_plate = None
             ocr_score = 0.0
 
+        # Encode lp_crop to base64
+        cropped_image_data = None
+        if lp_crop is not None and lp_crop.size > 0:
+            try:
+                _, buffer = cv2.imencode('.jpg', lp_crop)
+                lp_base64 = base64.b64encode(buffer).decode('utf-8')
+                cropped_image_data = f"data:image/jpeg;base64,{lp_base64}"
+            except Exception as enc_err:
+                print(f"[AI WARN] Failed to encode cropped plate: {str(enc_err)}")
+
         # ── Bước 6: Phản hồi JSON đạt chuẩn cấu trúc cho Client ──
         if detected_plate and len(detected_plate) >= 4:  # Biển số hợp lệ tối thiểu phải từ 4 ký tự trở lên
             print(f"[AI OPTIMIZED SUCCESS] Plate: {detected_plate} | Type: {vehicle_type_name} | Score: {ocr_score}")
@@ -584,6 +594,7 @@ def recognize_uploaded_image():
                 "vehicle_type_id": vehicle_type_id,
                 "vehicle_type_name": vehicle_type_name,
                 "confidence": float(ocr_score) if ocr_score else float(best_lp_score),
+                "cropped_image": cropped_image_data,
                 "message": "AI phân tích ảnh đơn lẻ tối ưu thành công!"
             }), 200
         else:
