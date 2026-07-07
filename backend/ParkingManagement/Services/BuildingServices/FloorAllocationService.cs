@@ -30,10 +30,17 @@ public class FloorAllocationService : IFloorAllocationService
 
         foreach (var z in zones)
         {
+            var zoneName = z.ZoneName;
+            int hyphenIndex = zoneName.IndexOf(" - ");
+            if (hyphenIndex >= 0)
+            {
+                zoneName = zoneName.Substring(0, hyphenIndex);
+            }
+
             result.Add(new FloorZoneResponse
             {
                 ZoneId = z.ZoneId,
-                ZoneName = z.ZoneName,
+                ZoneName = zoneName,
                 FloorNumber = z.FloorNumber,
                 Capacity = z.Capacity,
                 Status = z.Status,
@@ -104,8 +111,15 @@ public class FloorAllocationService : IFloorAllocationService
         }
         zone.VehicleTypeId = request.VehicleTypeId;
 
-        if (request.Capacity.HasValue && request.Capacity>=0)
+        if (request.Capacity.HasValue)
+        {
+            if (request.Capacity.Value < activeVehicles)
+            {
+                throw new InvalidOperationException(
+                    $"Cannot set capacity to {request.Capacity.Value} because there are {activeVehicles} active vehicle(s) currently parked in this zone.");
+            }
             zone.Capacity = request.Capacity.Value;
+        }
 
         if (!string.IsNullOrEmpty(request.Status))
             zone.Status = request.Status;

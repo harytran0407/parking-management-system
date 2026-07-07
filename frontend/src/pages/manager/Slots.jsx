@@ -10,6 +10,15 @@ import { useLanguage } from '../../hooks/useLanguage'
 
 export default function ManagerSlots() {
   const { language } = useLanguage()
+  const getVehicleTypeName = (zone) => {
+    if (!zone) return ''
+    const typeName = (zone.vehicle_type_name || '').toLowerCase()
+    if (typeName === 'car' || zone.vehicle_type_id === 2) {
+      return language === 'en' ? 'Car' : 'Ô tô'
+    }
+    return language === 'en' ? 'Motorbike' : 'Xe máy'
+  }
+
   const [zonesData, setZonesData] = useState([])
   const [loading, setLoading] = useState(true)
   const [formSubmitting, setFormSubmitting] = useState(false)
@@ -33,6 +42,8 @@ export default function ManagerSlots() {
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const [zoneToDelete, setZoneToDelete] = useState(null)
+  const [slotToDelete, setSlotToDelete] = useState(null)
+  const [isDeleteSlotOpen, setIsDeleteSlotOpen] = useState(false)
 
   // Forms
   const [createForm, setCreateForm] = useState({
@@ -121,6 +132,13 @@ export default function ManagerSlots() {
 
   // ── Virtual Slot Mapping ──
   const mappedSlots = useMemo(() => {
+    if (selectedZoneForSlots?.status === 'MAINTENANCE') {
+      return slotsData.map(slot => ({
+        ...slot,
+        status: slot.status === 'OCCUPIED' ? 'OCCUPIED' : 'MAINTENANCE'
+      }))
+    }
+
     const slotsByZone = {}
     slotsData.forEach(slot => {
       const zName = slot.zone || "N/A"
@@ -167,7 +185,24 @@ export default function ManagerSlots() {
 
   const currentZoneStats = useMemo(() => {
     if (!selectedZoneForSlots) return null
-    const found = zoneStats.find(z => (z.zone_name ?? z.zoneName) === selectedZoneForSlots.zone_name)
+
+    if (selectedZoneForSlots.status === 'MAINTENANCE') {
+      const occupied = selectedZoneForSlots.active_vehicles_count ?? 0
+      return {
+        capacity: selectedZoneForSlots.capacity,
+        occupiedCount: occupied,
+        bookedCount: 0,
+        maintenanceCount: Math.max(0, selectedZoneForSlots.capacity - occupied)
+      }
+    }
+
+    const cleanName = (name) => {
+      if (!name) return ''
+      const idx = name.indexOf(' - ')
+      return idx >= 0 ? name.substring(0, idx) : name
+    }
+    const targetName = cleanName(selectedZoneForSlots.zone_name)
+    const found = zoneStats.find(z => cleanName(z.zone_name ?? z.zoneName) === targetName)
     if (!found) {
       return {
         capacity: selectedZoneForSlots.capacity,
@@ -193,81 +228,6 @@ export default function ManagerSlots() {
   const getPercentage = (val) => {
     if (!currentZoneStats || currentZoneStats.capacity === 0) return 0
     return ((val / currentZoneStats.capacity) * 100).toFixed(1)
-  }
-
-  const renderSlotCard = (slot) => {
-    const isAvailable = slot.status === "AVAILABLE"
-    const isMaintenance = slot.status === "MAINTENANCE"
-    const isOccupied = slot.status === "OCCUPIED"
-    const isReserved = slot.status === "RESERVED"
-
-    let cardClasses = ""
-    if (isAvailable) {
-      cardClasses = "bg-emerald-600 dark:bg-emerald-700 border-transparent text-white"
-    } else if (isMaintenance) {
-      cardClasses = "bg-slate-500 dark:bg-slate-600 border-transparent text-white"
-    } else if (isOccupied) {
-      cardClasses = "bg-rose-650 dark:bg-rose-750 border-transparent text-white"
-    } else if (isReserved) {
-      cardClasses = "bg-amber-500 dark:bg-amber-600 border-transparent text-white"
-    } else {
-      cardClasses = "bg-slate-200 dark:bg-slate-700 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200"
-    }
-
-    return (
-      <div
-        key={slot.slot_id}
-        className={`relative p-3 border rounded-lg select-none transition-all duration-150 ${cardClasses}`}
-      >
-        <div className="flex justify-between items-start">
-          <span className="text-sm font-bold truncate">{slot.slot_name}</span>
-          <div className="flex items-center gap-0.5 ml-1 shrink-0">
-            {slot.is_electric_charging && (
-              <BatteryCharging size={11} className={isAvailable ? "text-teal-200" : isOccupied ? "text-rose-200" : "text-amber-200"} title="EV Charging" />
-            )}
-            {slot.is_handicap && (
-              <Accessibility size={11} className={isAvailable ? "text-indigo-200" : isOccupied ? "text-rose-200" : "text-amber-200"} title="Accessible" />
-            )}
-          </div>
-        </div>
-
-        {isMaintenance && (
-          <div className="mt-1.5 flex items-center gap-1">
-            <Wrench size={10} className="text-slate-300" />
-            <span className="text-[10px] font-semibold text-slate-200">
-              {language === 'en' ? 'Maintenance' : 'Bảo trì'}
-            </span>
-          </div>
-        )}
-
-        {isAvailable && (
-          <div className="mt-1.5 flex items-center gap-1">
-            <CheckCircle2 size={10} className="text-emerald-200" />
-            <span className="text-[10px] font-semibold text-emerald-100">
-              {language === 'en' ? 'Available' : 'Còn trống'}
-            </span>
-          </div>
-        )}
-
-        {isOccupied && (
-          <div className="mt-1.5 flex items-center gap-1">
-            <Car size={10} className="text-rose-200" />
-            <span className="text-[10px] font-semibold text-rose-100">
-              {language === 'en' ? 'Occupied' : 'Có xe'}
-            </span>
-          </div>
-        )}
-
-        {isReserved && (
-          <div className="mt-1.5 flex items-center gap-1">
-            <Calendar size={10} className="text-amber-200" />
-            <span className="text-[10px] font-semibold text-amber-100">
-              {language === 'en' ? 'Reserved' : 'Đã đặt'}
-            </span>
-          </div>
-        )}
-      </div>
-    )
   }
 
   // Create Submit
@@ -322,6 +282,19 @@ export default function ManagerSlots() {
   // Edit Submit
   const handleEditSubmit = async (e) => {
     e.preventDefault()
+    
+    // Validate capacity vs current occupied count
+    const currentZone = zonesData.find(z => z.zone_id === editForm.zoneId)
+    const occupied = currentZone ? currentZone.active_vehicles_count : 0
+    if (parseInt(editForm.capacity) < occupied) {
+      toast.error(
+        language === 'en' 
+          ? `Cannot set capacity less than current active vehicles (${occupied} active)` 
+          : `Không thể đặt sức chứa nhỏ hơn số xe đang gửi thực tế (${occupied} xe đang đỗ)`
+      )
+      return
+    }
+
     setFormSubmitting(true)
     try {
       const response = await api.put(`/parking/floors/${editForm.zoneId}`, {
@@ -371,6 +344,32 @@ export default function ManagerSlots() {
     }
   }
 
+  // Delete Slot Handlers
+  const handleDeleteSlotClick = (slot) => {
+    setSlotToDelete(slot)
+    setIsDeleteSlotOpen(true)
+  }
+
+  const handleDeleteSlotSubmit = async () => {
+    if (!slotToDelete) return
+    setFormSubmitting(true)
+    try {
+      await api.delete(`/parking/slots/${slotToDelete.slot_id}`)
+      toast.success(language === 'en' ? 'Slot deleted successfully' : 'Xóa ô đỗ thành công')
+      setIsDeleteSlotOpen(false)
+      setSlotToDelete(null)
+      // Refresh slots data
+      await fetchSlotsForZone(selectedZoneForSlots.zone_name, selectedZoneForSlots.floor_number, selectedZoneForSlots.vehicle_type_id, slotsCurrentPage)
+      await fetchZoneStats()
+      fetchAllocations()
+    } catch (error) {
+      console.error('Delete slot error:', error)
+      toast.error(error.response?.data?.message || error.message || (language === 'en' ? 'Failed to delete slot' : 'Không thể xóa ô đỗ'))
+    } finally {
+      setFormSubmitting(false)
+    }
+  }
+
 
   // Filter & Compute Stats
   const filteredZones = zonesData.filter(zone => {
@@ -383,7 +382,10 @@ export default function ManagerSlots() {
   const totalZones = zonesData.length
   const totalCapacity = zonesData.reduce((sum, zone) => sum + zone.capacity, 0)
   const totalActive = zonesData.reduce((sum, zone) => sum + zone.active_vehicles_count, 0)
-  const totalAvailable = Math.max(0, totalCapacity - totalActive)
+  const totalMaintenance = zonesData
+    .filter(z => z.status === 'MAINTENANCE')
+    .reduce((sum, zone) => sum + zone.capacity, 0)
+  const totalAvailable = Math.max(0, totalCapacity - totalActive - totalMaintenance)
   const averageOccupancy = totalCapacity > 0 ? Math.round((totalActive / totalCapacity) * 100) : 0
 
   // Unique floors for filter dropdown
@@ -391,7 +393,8 @@ export default function ManagerSlots() {
 
   if (selectedZoneForSlots) {
     return (
-      <div className="animate-slide-in flex flex-col h-full space-y-6">
+      <>
+        <div className="animate-slide-in flex flex-col h-full space-y-6">
         {/* HEADER SECTION */}
         <div className="flex justify-between items-center pb-4 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-3">
@@ -404,12 +407,12 @@ export default function ManagerSlots() {
             </button>
             <div>
               <h2 className="text-xl font-bold text-slate-850 dark:text-white">
-                {language === 'en' ? 'Slot Map Overview' : 'Sơ đồ Ô đỗ Chi tiết'}
+                {language === 'en' ? 'Slot Map Overview' : 'Sơ đồ đỗ xe chi tiết'}
               </h2>
               <p className="text-xs text-slate-500">
                 {language === 'en' 
-                  ? `Floor ${selectedZoneForSlots.floor_number} • Zone ${selectedZoneForSlots.zone_name} (${selectedZoneForSlots.vehicle_type_id === 2 ? 'Car' : 'Motorbike'})` 
-                  : `Tầng ${selectedZoneForSlots.floor_number} • Phân khu ${selectedZoneForSlots.zone_name} (${selectedZoneForSlots.vehicle_type_id === 2 ? 'Ô tô' : 'Xe máy'})`}
+                  ? `Floor ${selectedZoneForSlots.floor_number} • ${selectedZoneForSlots.zone_name} (${getVehicleTypeName(selectedZoneForSlots)})` 
+                  : `Tầng ${selectedZoneForSlots.floor_number} • ${selectedZoneForSlots.zone_name} (${getVehicleTypeName(selectedZoneForSlots)})`}
               </p>
             </div>
           </div>
@@ -419,7 +422,7 @@ export default function ManagerSlots() {
         {currentZoneStats && (
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm space-y-4">
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4 animate-fade-in">
-              <div className="p-3 bg-slate-50 dark:bg-slate-850 border border-slate-100 dark:border-slate-800 rounded-lg text-center">
+              <div className="p-3 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-800 rounded-lg text-center">
                 <span className="text-xs font-bold text-slate-400 uppercase block mb-1">
                   {language === 'en' ? 'Total Slots' : 'Tổng số ô'}
                 </span>
@@ -437,7 +440,7 @@ export default function ManagerSlots() {
               </div>
               <div className="p-3 bg-rose-50/40 dark:bg-rose-950/15 border border-rose-100/50 dark:border-rose-900/20 rounded-lg text-center">
                 <span className="text-xs font-bold text-red-500 uppercase block mb-1">
-                  {language === 'en' ? 'Occupied' : 'Có xe'} ({getPercentage(currentZoneStats.occupiedCount)}%)
+                  {language === 'en' ? 'Occupied' : 'Xe đang đỗ'} ({getPercentage(currentZoneStats.occupiedCount)}%)
                 </span>
                 <span className="text-2xl font-bold text-red-600 dark:text-red-400 font-mono">
                   {currentZoneStats.occupiedCount}
@@ -510,7 +513,7 @@ export default function ManagerSlots() {
               >
                 <option value="">{language === 'en' ? 'All Statuses' : 'Tất cả trạng thái'}</option>
                 <option value="AVAILABLE">{language === 'en' ? 'Available' : 'Còn trống'}</option>
-                <option value="OCCUPIED">{language === 'en' ? 'Occupied' : 'Có xe'}</option>
+                <option value="OCCUPIED">{language === 'en' ? 'Occupied' : 'Xe đang đỗ'}</option>
                 <option value="RESERVED">{language === 'en' ? 'Reserved' : 'Đã đặt'}</option>
                 <option value="MAINTENANCE">{language === 'en' ? 'Maintenance' : 'Bảo trì'}</option>
               </select>
@@ -518,10 +521,10 @@ export default function ManagerSlots() {
 
             <button
               onClick={() => {
-                fetchSlotsForZone(selectedZoneForSlots.zone_name, selectedZoneForSlots.floor_number, selectedZoneForSlots.vehicle_type_id, slotsCurrentPage)
+                 fetchSlotsForZone(selectedZoneForSlots.zone_name, selectedZoneForSlots.floor_number, selectedZoneForSlots.vehicle_type_id, slotsCurrentPage)
                 fetchZoneStats()
               }}
-              className="p-1.5 bg-slate-50 hover:bg-slate-100 dark:bg-slate-850 hover:dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-350 rounded-lg transition-colors flex items-center gap-1.5 text-xs font-semibold"
+              className="p-1.5 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 hover:dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-350 rounded-lg transition-colors flex items-center gap-1.5 text-xs font-semibold"
               title={language === 'en' ? 'Refresh' : 'Làm mới'}
             >
               <RefreshCw size={14} className={loadingSlots ? 'animate-spin' : ''} />
@@ -549,7 +552,14 @@ export default function ManagerSlots() {
           ) : (
             <div className="flex-1 overflow-y-auto pr-2">
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 pb-6">
-                {filteredMappedSlots.map(slot => renderSlotCard(slot))}
+                {filteredMappedSlots.map(slot => (
+                  <SlotCard
+                    key={slot.slot_id}
+                    slot={slot}
+                    language={language}
+                    onDelete={handleDeleteSlotClick}
+                  />
+                ))}
               </div>
             </div>
           )}
@@ -578,11 +588,70 @@ export default function ManagerSlots() {
           )}
         </div>
       </div>
+
+        {/* ============================================================
+            DELETE SLOT CONFIRMATION MODAL
+           ============================================================ */}
+        {isDeleteSlotOpen && slotToDelete && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+            <div className="card w-full max-w-md shadow-2xl relative animate-slide-in bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6">
+              <button
+                onClick={() => {
+                  setIsDeleteSlotOpen(false)
+                  setSlotToDelete(null)
+                }}
+                className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg transition-all"
+              >
+                <X size={18} />
+              </button>
+              <div className="flex items-start gap-4 mb-6">
+                <div className="p-3 bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 rounded-xl shrink-0">
+                  <Trash2 size={24} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-base font-bold text-slate-800 dark:text-white mb-1">
+                    {language === 'en' ? 'Delete Slot Confirmation' : 'Xác nhận xóa ô đỗ'}
+                  </h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
+                    {language === 'en' 
+                      ? `Are you sure you want to permanently delete slot ${slotToDelete.slot_name}?` 
+                      : `Bạn có chắc chắn muốn xóa vĩnh viễn ô đỗ ${slotToDelete.slot_name} không?`}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsDeleteSlotOpen(false)
+                    setSlotToDelete(null)
+                  }}
+                  className="btn-secondary text-xs"
+                  disabled={formSubmitting}
+                >
+                  {language === 'en' ? 'Cancel' : 'Hủy'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteSlotSubmit}
+                  className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-4 py-2 rounded-lg shadow-md shadow-red-500/20 transition-all flex items-center gap-1.5"
+                  disabled={formSubmitting}
+                >
+                  {formSubmitting && <RefreshCw size={12} className="animate-spin" />}
+                  {language === 'en' ? 'Delete' : 'Xóa'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </>
     )
   }
 
   return (
-    <div className="animate-slide-in flex flex-col h-full">
+    <>
+      <div className="animate-slide-in flex flex-col h-full">
       {/* HEADER SECTION */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
@@ -740,9 +809,7 @@ export default function ManagerSlots() {
                         <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
                           {zone.vehicle_type_id === 2 ? <Car size={16} className="text-blue-500" /> : <Bike size={16} className="text-blue-500" />}
                           <span className="font-semibold">
-                            {zone.vehicle_type_id === 2 
-                              ? (language === 'en' ? 'Automobile (Car)' : 'Ô tô') 
-                              : (language === 'en' ? 'Motorbike' : 'Xe máy')}
+                            {getVehicleTypeName(zone)}
                           </span>
                         </div>
 
@@ -759,7 +826,7 @@ export default function ManagerSlots() {
                                   ? 'bg-red-500' 
                                   : occupancyPercentage >= 75 
                                   ? 'bg-amber-500' 
-                                  : 'bg-blue-500'
+                                  : 'bg-emerald-500'
                               }`} 
                               style={{ width: `${Math.min(100, occupancyPercentage)}%` }}
                             />
@@ -802,6 +869,7 @@ export default function ManagerSlots() {
           </div>
         )}
       </div>
+    </div>
 
       {/* ============================================================
           CREATE ZONE MODAL
@@ -1081,6 +1149,93 @@ export default function ManagerSlots() {
             </div>
           </div>
         </div>
+      )}
+    </>
+  )
+}
+
+function SlotCard({ slot, language, onDelete }) {
+  const isAvailable = slot.status === "AVAILABLE"
+  const isMaintenance = slot.status === "MAINTENANCE"
+  const isOccupied = slot.status === "OCCUPIED"
+  const isReserved = slot.status === "RESERVED"
+
+  let cardClasses = ""
+  if (isAvailable) {
+    cardClasses = "bg-emerald-600 dark:bg-emerald-700 border-transparent text-white"
+  } else if (isMaintenance) {
+    cardClasses = "bg-slate-500 dark:bg-slate-600 border-transparent text-white"
+  } else if (isOccupied) {
+    cardClasses = "bg-rose-650 dark:bg-rose-750 border-transparent text-white"
+  } else if (isReserved) {
+    cardClasses = "bg-amber-500 dark:bg-amber-600 border-transparent text-white"
+  } else {
+    cardClasses = "bg-slate-200 dark:bg-slate-700 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200"
+  }
+
+  return (
+    <div
+      className={`relative p-3 border rounded-lg select-none transition-all duration-150 ${cardClasses}`}
+    >
+      <div className="flex justify-between items-start">
+        <span className="text-sm font-bold truncate">{slot.slot_name}</span>
+        <div className="flex items-center gap-0.5 ml-1 shrink-0">
+          {slot.is_electric_charging && (
+            <BatteryCharging size={11} className={isAvailable ? "text-teal-200" : isOccupied ? "text-rose-200" : "text-amber-200"} title="EV Charging" />
+          )}
+          {slot.is_handicap && (
+            <Accessibility size={11} className={isAvailable ? "text-indigo-200" : isOccupied ? "text-rose-200" : "text-amber-200"} title="Accessible" />
+          )}
+        </div>
+      </div>
+
+      {isMaintenance && (
+        <div className="mt-1.5 flex items-center gap-1">
+          <Wrench size={10} className="text-slate-300" />
+          <span className="text-[10px] font-semibold text-slate-200">
+            {language === 'en' ? 'Maintenance' : 'Bảo trì'}
+          </span>
+        </div>
+      )}
+
+      {isAvailable && (
+        <div className="mt-1.5 flex items-center gap-1">
+          <CheckCircle2 size={10} className="text-emerald-200" />
+          <span className="text-[10px] font-semibold text-emerald-100">
+            {language === 'en' ? 'Available' : 'Còn trống'}
+          </span>
+        </div>
+      )}
+
+      {isOccupied && (
+        <div className="mt-1.5 flex items-center gap-1">
+          <Car size={10} className="text-rose-200" />
+          <span className="text-[10px] font-semibold text-rose-100">
+            {language === 'en' ? 'Occupied' : 'Có xe'}
+          </span>
+        </div>
+      )}
+
+      {isReserved && (
+        <div className="mt-1.5 flex items-center gap-1">
+          <Calendar size={10} className="text-amber-200" />
+          <span className="text-[10px] font-semibold text-amber-100">
+            {language === 'en' ? 'Reserved' : 'Đã đặt'}
+          </span>
+        </div>
+      )}
+
+      {isAvailable && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            onDelete(slot)
+          }}
+          className="absolute bottom-1.5 right-1.5 p-1 text-emerald-250 hover:text-white hover:bg-emerald-700/40 rounded-md transition-all"
+          title={language === 'en' ? 'Delete Slot' : 'Xóa ô đỗ'}
+        >
+          <Trash2 size={12} />
+        </button>
       )}
     </div>
   )

@@ -13,6 +13,10 @@ const api = axios.create({
 api.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('accessToken');
+        const lang = localStorage.getItem('language') || 'en';
+
+        // Gửi ngôn ngữ hiện tại của app lên backend qua header tiêu chuẩn
+        config.headers['Accept-Language'] = lang;
 
         // CHỈ TOKEN nếu trong localStorage có VÀ request đó chưa được chỉ định token thủ công
         if (token && !config.headers.Authorization) {

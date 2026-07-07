@@ -1,4 +1,4 @@
-﻿using ParkingManagement.DTOs;
+using ParkingManagement.DTOs;
 using ParkingManagement.Models;
 using ParkingManagement.Repositories;
 
@@ -67,6 +67,9 @@ public class SlotManagementService : ISlotManagementService
             newSlots.Add(slot);
             createdItems.Add(new SlotCreatedItem { SlotId = slotId, SlotName = slotName });
         }
+
+        zone.Capacity += request.Count;
+        zone.AvailableCapacity += request.Count;
 
         await _repo.AddSlotsAsync(newSlots);
 

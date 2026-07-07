@@ -68,6 +68,11 @@ public class SlotManagementRepository : ISlotManagementRepository
 
     public async Task DeleteSlotAsync(ParkingSlot slot)
     {
+        var zone = slot.Zone;
+        if(zone!=null && zone.Capacity>0){
+            zone.Capacity--;
+            zone.AvailableCapacity--;
+        }
         _db.ParkingSlots.Remove(slot);
         await _db.SaveChangesAsync();
     }
