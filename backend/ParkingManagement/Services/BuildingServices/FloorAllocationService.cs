@@ -58,20 +58,22 @@ public class FloorAllocationService : IFloorAllocationService
         var vehicleType = await _repo.GetVehicleTypeAsync(request.VehicleTypeId)
             ?? throw new KeyNotFoundException($"Vehicle type {request.VehicleTypeId} not found");
 
-        if (await _repo.FloorNumberExistsAsync(buildingId, request.FloorNumber))
-            throw new InvalidOperationException($"Floor {request.FloorNumber} already exists in this building");
+        if (await _repo.FloorNumberExistsAsync(buildingId, request.FloorNumber, request.ZoneName))
+            throw new InvalidOperationException($"Floor {request.FloorNumber} with zone name '{request.ZoneName}' already exists in this building");
 
         var zone = new FloorZone
         {
             ZoneName = request.ZoneName,
             FloorNumber = request.FloorNumber,
             Capacity = request.Capacity,
+            AvailableCapacity = request.Capacity,
             Status = "ACTIVE",
             VehicleTypeId = request.VehicleTypeId,
             BuildingId = buildingId
         };
 
         var created = await _repo.CreateAsync(zone);
+        await _repo.SyncZoneSlotsAsync(created.ZoneId, created.Capacity);
 
         return new FloorZoneResponse
         {
@@ -118,7 +120,10 @@ public class FloorAllocationService : IFloorAllocationService
                 throw new InvalidOperationException(
                     $"Cannot set capacity to {request.Capacity.Value} because there are {activeVehicles} active vehicle(s) currently parked in this zone.");
             }
+            int capacityDelta = request.Capacity.Value - zone.Capacity;
+            zone.AvailableCapacity = Math.Max(0, zone.AvailableCapacity + capacityDelta);
             zone.Capacity = request.Capacity.Value;
+            await _repo.SyncZoneSlotsAsync(zone.ZoneId, zone.Capacity);
         }
 
         if (!string.IsNullOrEmpty(request.Status))
@@ -146,6 +151,11 @@ public class FloorAllocationService : IFloorAllocationService
         if (activeVehicles > 0)
             throw new InvalidOperationException(
                 $"Cannot delete: {activeVehicles} active parking session(s) using this vehicle type");
+        
+        if (await _repo.HasActiveBookingsAsync(zoneId))
+            throw new InvalidOperationException(
+                "Cannot delete: there are pending or confirmed bookings associated with this zone.");
+
         await _repo.DeleteZoneAsync(eneity);
 
     }

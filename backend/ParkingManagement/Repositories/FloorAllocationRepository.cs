@@ -10,10 +10,12 @@ public interface IFloorAllocationRepository
     Task<FloorZone?> GetByIdAsync(int zoneId);
     Task<VehicleType?> GetVehicleTypeAsync(int vehicleTypeId);
     Task<int> CountActiveVehiclesAsync(int zoneId);
+    Task<bool> HasActiveBookingsAsync(int zoneId);
     Task UpdateAsync(FloorZone zone);
     Task<FloorZone> CreateAsync(FloorZone zone);
-    Task<bool> FloorNumberExistsAsync(string buildingId, int floorNumber);
+    Task<bool> FloorNumberExistsAsync(string buildingId, int floorNumber, string zoneName);
     Task DeleteZoneAsync(FloorZone zoneId);
+    Task SyncZoneSlotsAsync(int zoneId, int targetCapacity);
 }
 
 public class FloorAllocationRepository : IFloorAllocationRepository
@@ -47,6 +49,11 @@ public class FloorAllocationRepository : IFloorAllocationRepository
            .CountAsync(s => s.ZoneId == zoneId &&
                             s.Status == "ACTIVE");
 
+    public Task<bool> HasActiveBookingsAsync(int zoneId) =>
+        _db.Bookings
+           .AnyAsync(b => b.ZoneId == zoneId &&
+                            (b.Status == "CONFIRMED" || b.Status == "PENDING"));
+
     public async Task UpdateAsync(FloorZone zone)
     {
         _db.FloorZones.Update(zone);
@@ -59,12 +66,78 @@ public class FloorAllocationRepository : IFloorAllocationRepository
         await _db.SaveChangesAsync();
         return zone;
     }
-    public Task<bool> FloorNumberExistsAsync(string buildingId, int floorNumber) =>
-    _db.FloorZones.AnyAsync(z => z.BuildingId == buildingId && z.FloorNumber == floorNumber);
+    public Task<bool> FloorNumberExistsAsync(string buildingId, int floorNumber, string zoneName) =>
+        _db.FloorZones.AnyAsync(z => z.BuildingId == buildingId && z.FloorNumber == floorNumber && z.ZoneName == zoneName);
 
     public async Task DeleteZoneAsync(FloorZone zoneId)
     {
         _db.FloorZones.Remove(zoneId);
+        await _db.SaveChangesAsync();
+    }
+
+    public async Task SyncZoneSlotsAsync(int zoneId, int targetCapacity)
+    {
+        var zone = await _db.FloorZones
+            .Include(z => z.ParkingSlots)
+            .Include(z => z.VehicleType)
+            .FirstOrDefaultAsync(z => z.ZoneId == zoneId);
+
+        if (zone == null) return;
+
+        int currentSlotsCount = zone.ParkingSlots.Count;
+        if (targetCapacity == currentSlotsCount) return;
+
+        if (targetCapacity > currentSlotsCount)
+        {
+            var newSlots = new List<ParkingSlot>();
+            int countToCreate = targetCapacity - currentSlotsCount;
+
+            for (int i = 1; i <= countToCreate; i++)
+            {
+                int slotNumber = currentSlotsCount + i;
+                string zoneLetter = zone.ZoneName.Length > 5 ? zone.ZoneName[5].ToString() : "X";
+                string slotId = $"{zoneLetter}{zone.FloorNumber}{slotNumber:D2}";
+
+                int suffix = 0;
+                string candidateId = slotId;
+                while (await _db.ParkingSlots.AnyAsync(s => s.SlotId == candidateId))
+                {
+                    suffix++;
+                    candidateId = $"{slotId}_{suffix}";
+                }
+                slotId = candidateId;
+
+                var slot = new ParkingSlot
+                {
+                    SlotId = slotId,
+                    SlotName = slotId,
+                    Status = "AVAILABLE",
+                    IsHandicap = false,
+                    IsElectricCharging = false,
+                    ZoneId = zoneId,
+                    LastUpdated = DateTime.UtcNow
+                };
+                newSlots.Add(slot);
+            }
+            _db.ParkingSlots.AddRange(newSlots);
+        }
+        else
+        {
+            int countToDelete = currentSlotsCount - targetCapacity;
+            var availableSlots = zone.ParkingSlots
+                .Where(s => s.Status == "AVAILABLE")
+                .OrderByDescending(s => s.SlotId)
+                .Take(countToDelete)
+                .ToList();
+
+            if (availableSlots.Count < countToDelete)
+            {
+                throw new InvalidOperationException($"Cannot reduce capacity: not enough AVAILABLE slots to delete. Need to delete {countToDelete} slot(s), but only found {availableSlots.Count} AVAILABLE slot(s).");
+            }
+
+            _db.ParkingSlots.RemoveRange(availableSlots);
+        }
+
         await _db.SaveChangesAsync();
     }
 }
