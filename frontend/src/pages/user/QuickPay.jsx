@@ -367,16 +367,16 @@ export default function SessionLookup() {
                   <p className="text-xs text-emerald-100 leading-relaxed mb-4">
                     {language === "en"
                       ? "Your parking fee is fully paid. Please exit the gate before the timer expires."
-                      : "Phí đỗ xe đã thanh toán. Vui lòng di chuyển ra khỏi bãi trước khi hết thời gian ân hạn."}
+                      : "Phí đỗ xe đã thanh toán. Vui lòng di chuyển ra khỏi bãi trong thời gian còn lại."}
                   </p>
                 </div>
                 {graceSeconds !== null && (
                   <div className="mt-auto bg-emerald-700/50 rounded-2xl p-4 border border-emerald-500/30 text-center animate-pulse">
                     <p className="text-[10px] text-emerald-200 uppercase tracking-widest font-black mb-1">
-                      {language === "en" ? "Remaining Exit Grace Time" : "Thời gian ân hạn ra xe còn lại"}
+                      {language === "en" ? "Remaining Exit Time" : "Thời gian còn lại để ra xe"}
                     </p>
                     <p className="text-3xl font-black font-mono tracking-wider text-white">
-                      {Math.floor(graceSeconds / 60)}m {String(graceSeconds % 60).padStart(2, "0")}s
+                      {Math.floor(graceSeconds / 3600) > 0 ? `${Math.floor(graceSeconds / 3600)}h ` : ""}{Math.floor((graceSeconds % 3600) / 60)}m {String(graceSeconds % 60).padStart(2, "0")}s
                     </p>
                   </div>
                 )}
@@ -420,13 +420,21 @@ export default function SessionLookup() {
               </div>
               <div>
                 <p className="text-xs font-black text-amber-700 dark:text-amber-400 mb-1">
-                  {language === "en" ? "Grace Period Notice" : "Thông báo thời gian ân hạn"}
+                  {language === "en" ? "Exit Window Notice" : "Thông báo thời gian ra xe"}
                 </p>
                 <p className="text-xs text-amber-600/80 dark:text-amber-400/70 leading-relaxed">
-                  {language === "en" ? (
-                    <>You have a <strong>15-minute grace period</strong> to exit after payment. Overstaying will incur additional charges.</>
+                  {session?.payment_status?.toUpperCase() === "PAID" && graceSeconds !== null ? (
+                    language === "en" ? (
+                      <>You have <strong>{Math.floor(graceSeconds / 3600) > 0 ? `${Math.floor(graceSeconds / 3600)}h ` : ""}{Math.floor((graceSeconds % 3600) / 60)}m {graceSeconds % 60}s</strong> remaining to exit after payment without extra fees.</>
+                    ) : (
+                      <>Bạn còn <strong>{Math.floor(graceSeconds / 3600) > 0 ? `${Math.floor(graceSeconds / 3600)} giờ ` : ""}{Math.floor((graceSeconds % 3600) / 60)} phút {graceSeconds % 60} giây</strong> để ra khỏi bãi xe mà không bị tính thêm phí.</>
+                    )
                   ) : (
-                    <>Bạn có <strong>15 phút ân hạn</strong> để ra khỏi bãi sau thanh toán. Quá thời gian sẽ tính phí thêm.</>
+                    language === "en" ? (
+                      <>You can exit the parking lot for free during the <strong>remaining time</strong> of the paid hour block. Overstaying will incur additional charges.</>
+                    ) : (
+                      <>Bạn có thể ra khỏi bãi miễn phí trong <strong>khoảng thời gian còn lại</strong> của block giờ đã trả. Quá thời gian sẽ tính phí thêm.</>
+                    )
                   )}
                 </p>
               </div>

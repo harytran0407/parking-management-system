@@ -27,6 +27,11 @@ namespace ParkingManagement.Repositories
         Task<FloorZone?> GetZoneByIdAsync(int zoneId);
 
         /// <summary>
+        /// Lấy bất kỳ Zone hoạt động nào theo loại xe (dành cho fallback booking cũ).
+        /// </summary>
+        Task<FloorZone?> GetAnyActiveZoneByVehicleTypeAsync(int vehicleTypeId);
+
+        /// <summary>
         /// Giảm AVAILABLE_CAPACITY của Zone đi 1 khi xe check-in.
         /// </summary>
         Task DecrementZoneCapacityAsync(int zoneId);

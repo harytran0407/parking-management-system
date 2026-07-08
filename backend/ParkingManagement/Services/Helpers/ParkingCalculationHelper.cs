@@ -37,6 +37,10 @@ namespace ParkingManagement.Services.Helpers
             {
                 return TimeZoneInfo.ConvertTimeFromUtc(dt, _vnTz);
             }
+            if (dt.Kind == DateTimeKind.Local)
+            {
+                return TimeZoneInfo.ConvertTime(dt, _vnTz);
+            }
             return DateTime.SpecifyKind(dt, DateTimeKind.Unspecified);
         }
 
@@ -215,8 +219,8 @@ namespace ParkingManagement.Services.Helpers
             
             decimal basePrice = policy?.BasePrice ?? (vehicleTypeId == 1 ? 5000m : 15000m);
             decimal hourlyRate = policy?.HourlyRate ?? 2000m;
-            var expectedArrival = booking.ExpectedArrival;
-            var expiredAt = booking.ExpiredAt ?? expectedArrival.AddHours(2);
+            var expectedArrival = ConvertToVnTime(booking.ExpectedArrival);
+            var expiredAt = ConvertToVnTime(booking.ExpiredAt ?? expectedArrival.AddHours(2));
             var origDuration = expiredAt - expectedArrival;
             var origBilledHours = (int)Math.Ceiling(origDuration.TotalMinutes / 60.0);
             decimal originalEstimatedFee = basePrice + (origBilledHours > 1 ? (origBilledHours - 1) * hourlyRate : 0m);
@@ -235,8 +239,8 @@ namespace ParkingManagement.Services.Helpers
             var result = new BookingFeeResult();
             if (booking == null) return result;
 
-            var expectedArrival = booking.ExpectedArrival;
-            var expiredAt = booking.ExpiredAt ?? expectedArrival.AddHours(2);
+            var expectedArrival = ConvertToVnTime(booking.ExpectedArrival);
+            var expiredAt = ConvertToVnTime(booking.ExpiredAt ?? expectedArrival.AddHours(2));
 
             if (checkInTime.HasValue)
             {

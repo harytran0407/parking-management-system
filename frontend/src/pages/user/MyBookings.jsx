@@ -546,7 +546,7 @@ export default function MyBookings() {
                           </span>
                         ) : (
                           <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold tracking-wide bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-455 border border-blue-100 dark:border-blue-900/30">
-                            <Clock size={10} /> {language === "en" ? "CONFIRMED" : "ĐÃ XÁC NHẬN"}
+                            <Clock size={10} /> {language === "en" ? "BOOKED" : "ĐÃ ĐẶT"}
                           </span>
                         )}
 
