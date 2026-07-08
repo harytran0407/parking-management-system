@@ -71,6 +71,9 @@ public class FloorAllocationRepository : IFloorAllocationRepository
 
     public async Task DeleteZoneAsync(FloorZone zoneId)
     {
+        var slots = await _db.ParkingSlots.Where(s => s.ZoneId == zoneId.ZoneId).ToListAsync();
+        _db.ParkingSlots.RemoveRange(slots);
+
         _db.FloorZones.Remove(zoneId);
         await _db.SaveChangesAsync();
     }
@@ -92,9 +95,27 @@ public class FloorAllocationRepository : IFloorAllocationRepository
             var newSlots = new List<ParkingSlot>();
             int countToCreate = targetCapacity - currentSlotsCount;
 
+            // Calculate the maximum slot number (STT) currently existing in this zone to prevent collisions
+            int maxSlotNumber = 0;
+            foreach (var s in zone.ParkingSlots)
+            {
+                if (!string.IsNullOrEmpty(s.SlotId))
+                {
+                    string cleanId = s.SlotId.Contains("_") ? s.SlotId.Split('_')[0] : s.SlotId;
+                    if (cleanId.Length >= 2)
+                    {
+                        string lastTwo = cleanId.Substring(cleanId.Length - 2);
+                        if (int.TryParse(lastTwo, out int num))
+                        {
+                            if (num > maxSlotNumber) maxSlotNumber = num;
+                        }
+                    }
+                }
+            }
+
             for (int i = 1; i <= countToCreate; i++)
             {
-                int slotNumber = currentSlotsCount + i;
+                int slotNumber = maxSlotNumber + i;
                 string zoneLetter = zone.ZoneName.Length > 5 ? zone.ZoneName[5].ToString() : "X";
                 string slotId = $"{zoneLetter}{zone.FloorNumber}{slotNumber:D2}";
 
