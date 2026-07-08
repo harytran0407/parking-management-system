@@ -1,6 +1,7 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using ParkingManagement.DTOs.Building;
 using ParkingManagement.Services.BuildingServices;
+using Microsoft.AspNetCore.Authorization;
 
 namespace ParkingManagement.Controllers;
 
@@ -19,7 +20,7 @@ public class DashboardController : ControllerBase
     // AC1: charts data — vehicle count, revenue, occupancy
     // AC2: filter by day/week/month/custom
     // AC3: breakdown by vehicle type
-    // [Authorize(Roles = "ParkingManager")]
+    [Authorize(Roles = "ParkingManager")]
     [HttpGet]
     [ProducesResponseType(typeof(DashboardReportResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -31,7 +32,7 @@ public class DashboardController : ControllerBase
 
     // GET /api/v1/admin/dashboard/export?period=month&format=csv
     // AC4: Export CSV or PDF
-    // [Authorize(Roles = "ParkingManager")]
+    [Authorize(Roles = "ParkingManager")]
     [HttpGet("export")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

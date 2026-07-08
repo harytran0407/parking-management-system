@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using ParkingManagement.DTOs.Building;
 using ParkingManagement.Services.BuildingServices;
+using Microsoft.AspNetCore.Authorization;
 
 namespace ParkingManagement.Controllers;
 
@@ -30,7 +31,7 @@ public class FloorAllocationController : ControllerBase
     // AC1: Assign vehicle type to floor/zone
     // AC2: Warning if active vehicles exist
     // AC3: Changes take effect from save time
-    // [Authorize(Roles = "ParkingManager")]
+    [Authorize(Roles = "ParkingManager")]
     [HttpPut("{zoneId:int}")]
     [ProducesResponseType(typeof(ApiResponse<UpdateFloorAllocationResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
@@ -49,7 +50,7 @@ public class FloorAllocationController : ControllerBase
         return Ok(ApiResponse<UpdateFloorAllocationResponse>.Ok(data, "Floor allocation updated successfully."));
     }
     // POST /api/v1/parking/floors
-    // [Authorize(Roles = "ParkingManager")]
+    [Authorize(Roles = "ParkingManager")]
     [HttpPost]
     [ProducesResponseType(typeof(ApiResponse<FloorZoneResponse>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
@@ -67,7 +68,7 @@ public class FloorAllocationController : ControllerBase
         return StatusCode(201, ApiResponse<FloorZoneResponse>.Ok(data, "Floor zone created successfully."));
     }
     // DELETE /api/v1/parking/floors/{zoneId}
-    // [Authorize(Roles = "ParkingManager")]
+    [Authorize(Roles = "ParkingManager")]
     [HttpDelete("{zoneId:int}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]

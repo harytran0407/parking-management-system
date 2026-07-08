@@ -1,4 +1,4 @@
-﻿using ParkingManagement.DTOs.Building;
+using ParkingManagement.DTOs.Building;
 using ParkingManagement.Models;
 using ParkingManagement.Repositories;
 
@@ -30,10 +30,17 @@ public class FloorAllocationService : IFloorAllocationService
 
         foreach (var z in zones)
         {
+            var zoneName = z.ZoneName;
+            int hyphenIndex = zoneName.IndexOf(" - ");
+            if (hyphenIndex >= 0)
+            {
+                zoneName = zoneName.Substring(0, hyphenIndex);
+            }
+
             result.Add(new FloorZoneResponse
             {
                 ZoneId = z.ZoneId,
-                ZoneName = z.ZoneName,
+                ZoneName = zoneName,
                 FloorNumber = z.FloorNumber,
                 Capacity = z.Capacity,
                 Status = z.Status,
@@ -51,20 +58,22 @@ public class FloorAllocationService : IFloorAllocationService
         var vehicleType = await _repo.GetVehicleTypeAsync(request.VehicleTypeId)
             ?? throw new KeyNotFoundException($"Vehicle type {request.VehicleTypeId} not found");
 
-        if (await _repo.FloorNumberExistsAsync(buildingId, request.FloorNumber))
-            throw new InvalidOperationException($"Floor {request.FloorNumber} already exists in this building");
+        if (await _repo.FloorNumberExistsAsync(buildingId, request.FloorNumber, request.ZoneName))
+            throw new InvalidOperationException($"Floor {request.FloorNumber} with zone name '{request.ZoneName}' already exists in this building");
 
         var zone = new FloorZone
         {
             ZoneName = request.ZoneName,
             FloorNumber = request.FloorNumber,
             Capacity = request.Capacity,
+            AvailableCapacity = request.Capacity,
             Status = "ACTIVE",
             VehicleTypeId = request.VehicleTypeId,
             BuildingId = buildingId
         };
 
         var created = await _repo.CreateAsync(zone);
+        await _repo.SyncZoneSlotsAsync(created.ZoneId, created.Capacity);
 
         return new FloorZoneResponse
         {
@@ -96,15 +105,26 @@ public class FloorAllocationService : IFloorAllocationService
             ? $"Warning: {activeVehicles} active vehicle(s) in this zone. Changes take effect from save time."
             : null;
 
-        // Tự generate zone_name: "Zone X - {vehicle_type_name}"
-        string zoneLetter = zone.ZoneName.Length > 5
-    ?   zone.ZoneName[5].ToString()
-            : "?";
-        zone.ZoneName = $"Zone {zoneLetter} - {vehicleType.VehicleTypeName}";
+        // Dọn dẹp hậu tố " - {loại xe}" cũ nếu có để đưa tên phân khu về dạng thuần túy
+        int hyphenIndex = zone.ZoneName.IndexOf(" - ");
+        if (hyphenIndex >= 0)
+        {
+            zone.ZoneName = zone.ZoneName.Substring(0, hyphenIndex);
+        }
         zone.VehicleTypeId = request.VehicleTypeId;
 
-        if (request.Capacity.HasValue && request.Capacity>=0)
+        if (request.Capacity.HasValue)
+        {
+            if (request.Capacity.Value < activeVehicles)
+            {
+                throw new InvalidOperationException(
+                    $"Cannot set capacity to {request.Capacity.Value} because there are {activeVehicles} active vehicle(s) currently parked in this zone.");
+            }
+            int capacityDelta = request.Capacity.Value - zone.Capacity;
+            zone.AvailableCapacity = Math.Max(0, zone.AvailableCapacity + capacityDelta);
             zone.Capacity = request.Capacity.Value;
+            await _repo.SyncZoneSlotsAsync(zone.ZoneId, zone.Capacity);
+        }
 
         if (!string.IsNullOrEmpty(request.Status))
             zone.Status = request.Status;
@@ -131,6 +151,11 @@ public class FloorAllocationService : IFloorAllocationService
         if (activeVehicles > 0)
             throw new InvalidOperationException(
                 $"Cannot delete: {activeVehicles} active parking session(s) using this vehicle type");
+        
+        if (await _repo.HasActiveBookingsAsync(zoneId))
+            throw new InvalidOperationException(
+                "Cannot delete: there are pending or confirmed bookings associated with this zone.");
+
         await _repo.DeleteZoneAsync(eneity);
 
     }

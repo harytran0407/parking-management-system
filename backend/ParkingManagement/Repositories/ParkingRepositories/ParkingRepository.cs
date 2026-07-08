@@ -238,7 +238,8 @@ namespace ParkingManagement.Repositories
 
             if (!string.IsNullOrWhiteSpace(filter.Zone))
             {
-                query = query.Where(s => s.Zone.ZoneName == filter.Zone.Trim());
+                var zoneFilter = filter.Zone.Trim();
+                query = query.Where(s => s.Zone.ZoneName == zoneFilter || s.Zone.ZoneName.StartsWith(zoneFilter + " - "));
             }
 
             if (filter.VehicleTypeId.HasValue)
@@ -258,7 +259,8 @@ namespace ParkingManagement.Repositories
             }
             if (!string.IsNullOrWhiteSpace(filter.Zone))
             {
-                zoneQuery = zoneQuery.Where(z => z.ZoneName == filter.Zone.Trim());
+                var zoneFilter = filter.Zone.Trim();
+                zoneQuery = zoneQuery.Where(z => z.ZoneName == zoneFilter || z.ZoneName.StartsWith(zoneFilter + " - "));
             }
             if (filter.VehicleTypeId.HasValue)
             {
@@ -282,7 +284,11 @@ namespace ParkingManagement.Repositories
 
             var maintQuery = _context.ParkingSlots.AsQueryable();
             if (filter.Floor.HasValue) maintQuery = maintQuery.Where(s => s.Zone.FloorNumber == filter.Floor.Value);
-            if (!string.IsNullOrWhiteSpace(filter.Zone)) maintQuery = maintQuery.Where(s => s.Zone.ZoneName == filter.Zone.Trim());
+            if (!string.IsNullOrWhiteSpace(filter.Zone))
+            {
+                var zoneFilter = filter.Zone.Trim();
+                maintQuery = maintQuery.Where(s => s.Zone.ZoneName == zoneFilter || s.Zone.ZoneName.StartsWith(zoneFilter + " - "));
+            }
             if (filter.VehicleTypeId.HasValue) maintQuery = maintQuery.Where(s => s.Zone.VehicleTypeId == filter.VehicleTypeId.Value);
             int maintenanceCount = await maintQuery.CountAsync(s => s.Status == "MAINTENANCE");
 
@@ -530,8 +536,8 @@ namespace ParkingManagement.Repositories
                 ZoneId = z.ZoneId,
                 ZoneName = z.ZoneName,
                 FloorNumber = z.FloorNumber,
-                Capacity = z.Capacity,
-                AvailableCapacity = z.AvailableCapacity,
+                Capacity = z.ParkingSlots.Count,
+                AvailableCapacity = z.ParkingSlots.Count(s => s.Status == "AVAILABLE"),
                 OccupiedCount = occupiedByZone.GetValueOrDefault(z.ZoneId, 0),
                 BookedCount = bookedByVehicleType.GetValueOrDefault(z.VehicleTypeId, 0),
                 MaintenanceCount = z.ParkingSlots.Count(s => s.Status == "MAINTENANCE"),

@@ -95,10 +95,13 @@ public class DashboardRepository : IDashboardRepository
     {
         var result = await _db.Payments
             .Include(p => p.Session)
+            .Include(p => p.Booking)
             .Where(p => p.PaymentTime >= from && p.PaymentTime <= to
                      && p.Status == "SUCCESS"
-                     && p.Session != null
-                     && p.Session.VehicleTypeId == vehicleTypeId)
+                     && (
+                         (p.Session != null && p.Session.VehicleTypeId == vehicleTypeId) ||
+                         (p.Session == null && p.Booking != null && p.Booking.VehicleTypeId == vehicleTypeId)
+                     ))
             .SumAsync(p => (decimal?)p.AmountPaid);
         return result ?? 0;
     }

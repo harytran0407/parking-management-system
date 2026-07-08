@@ -1,6 +1,7 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using ParkingManagement.DTOs.Building;
 using ParkingManagement.Services.BuildingServices;
+using Microsoft.AspNetCore.Authorization;
 
 namespace ParkingManagement.Controllers;
 
@@ -47,7 +48,7 @@ public class PricingPolicyController : ControllerBase
     // POST /api/v1/admin/pricing
     // AC1: configure price by vehicle type x time slot x duration
     // AC2: price effective from specified date
-    // [Authorize(Roles = "ParkingManager")]
+    [Authorize(Roles = "ParkingManager")]
     [HttpPost]
     [ProducesResponseType(typeof(PricingPolicyResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -67,7 +68,7 @@ public class PricingPolicyController : ControllerBase
     }
 
     // PUT /api/v1/admin/pricing/{policyId}
-    // [Authorize(Roles = "ParkingManager")]
+    [Authorize(Roles = "ParkingManager")]
     [HttpPut("{policyId:int}")]
     [ProducesResponseType(typeof(PricingPolicyResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -87,7 +88,7 @@ public class PricingPolicyController : ControllerBase
     }
 
     // DELETE /api/v1/admin/pricing/{policyId}
-    // [Authorize(Roles = "ParkingManager")]
+    [Authorize(Roles = "ParkingManager")]
     [HttpDelete("{policyId:int}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

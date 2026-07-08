@@ -122,7 +122,7 @@ export default function ManagerBuilding() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="p-4 bg-slate-50 dark:bg-slate-80/40 border border-slate-100 dark:border-slate-800 rounded-xl flex items-center gap-3">
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 rounded-xl flex items-center gap-3">
               <Layers className="text-blue-500 shrink-0" size={20} />
               <div>
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
@@ -134,7 +134,7 @@ export default function ManagerBuilding() {
               </div>
             </div>
 
-            <div className="p-4 bg-slate-50 dark:bg-slate-80/40 border border-slate-100 dark:border-slate-800 rounded-xl flex items-center gap-3">
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 rounded-xl flex items-center gap-3">
               <LayoutGrid className="text-blue-500 shrink-0" size={20} />
               <div>
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
@@ -259,7 +259,7 @@ export default function ManagerBuilding() {
             </div>
 
             {/* 24/7 Operating Mode Toggle */}
-            <div className="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-80/40 border border-slate-100 dark:border-slate-800 rounded-2xl mb-4 select-none">
+            <div className="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 rounded-2xl mb-4 select-none">
               <div>
                 <span className="text-xs font-bold text-slate-800 dark:text-white block">
                   {language === 'en' ? '24/7 Operating Mode' : 'Chế độ hoạt động 24/7'}

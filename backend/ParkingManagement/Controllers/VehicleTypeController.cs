@@ -1,6 +1,7 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using ParkingManagement.DTOs.Building;
 using ParkingManagement.Services.BuildingServices;
+using Microsoft.AspNetCore.Authorization;
 namespace ParkingManagement.Controllers;
 
 [ApiController]
@@ -34,7 +35,7 @@ public class VehicleTypeController : ControllerBase
     }
 
     // POST /api/v1/admin/vehicle-types
-    // [Authorize(Roles = "ParkingManager")]
+    [Authorize(Roles = "ParkingManager")]
     [HttpPost]
     [ProducesResponseType(typeof(ApiResponse<VehicleTypeResponse>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
@@ -54,7 +55,7 @@ public class VehicleTypeController : ControllerBase
     }
 
     // PUT /api/v1/admin/vehicle-types/{id}
-    // [Authorize(Roles = "ParkingManager")]
+    [Authorize(Roles = "ParkingManager")]
     [HttpPut("{id:int}")]
     [ProducesResponseType(typeof(ApiResponse<VehicleTypeResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
@@ -76,7 +77,7 @@ public class VehicleTypeController : ControllerBase
 
     // GET /api/v1/admin/vehicle-types/{id}/delete-preview
     // AC3: Show related slots count before deleting
-    // [Authorize(Roles = "ParkingManager")]
+    [Authorize(Roles = "ParkingManager")]
     [HttpGet("{id:int}/delete-preview")]
     [ProducesResponseType(typeof(ApiResponse<DeleteVehicleTypePreview>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
@@ -88,7 +89,7 @@ public class VehicleTypeController : ControllerBase
 
     // DELETE /api/v1/admin/vehicle-types/{id}
     // AC2: Block delete if has active slots or sessions
-    // [Authorize(Roles = "ParkingManager")]
+    [Authorize(Roles = "ParkingManager")]
     [HttpDelete("{id:int}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]

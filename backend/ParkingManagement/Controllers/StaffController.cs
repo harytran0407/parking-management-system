@@ -4,6 +4,8 @@ using Microsoft.EntityFrameworkCore;
 using ParkingManagement.Data;
 using ParkingManagement.DTOs;
 using ParkingManagement.Models;
+using ParkingManagement.Utils;
+using ParkingManagement.Services.EmailServices;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
@@ -16,10 +18,12 @@ namespace ParkingManagement.Controllers
     public class StaffController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly IEmailService _emailService;
 
-        public StaffController(AppDbContext context)
+        public StaffController(AppDbContext context, IEmailService emailService)
         {
             _context = context;
+            _emailService = emailService;
         }
 
         // GET: api/v1/manager/staff
@@ -91,6 +95,46 @@ namespace ParkingManagement.Controllers
                 });
             }
 
+            if (!ValidationUtils.IsValidUsername(request.Username))
+            {
+                return UnprocessableEntity(new
+                {
+                    success = false,
+                    error_code = "INVALID_USERNAME",
+                    message = "Username must be 4-20 characters and contain only letters, numbers, dots, hyphens, or underscores"
+                });
+            }
+
+            if (!ValidationUtils.IsValidEmail(request.Email))
+            {
+                return UnprocessableEntity(new
+                {
+                    success = false,
+                    error_code = "INVALID_EMAIL",
+                    message = "Invalid email format"
+                });
+            }
+
+            if (!ValidationUtils.IsValidPhoneNumber(request.PhoneNumber))
+            {
+                return UnprocessableEntity(new
+                {
+                    success = false,
+                    error_code = "INVALID_PHONE",
+                    message = "Invalid phone number (must start with 0 and contain 10 digits)"
+                });
+            }
+
+            if (!ValidationUtils.IsValidPassword(request.Password))
+            {
+                return UnprocessableEntity(new
+                {
+                    success = false,
+                    error_code = "WEAK_PASSWORD",
+                    message = "Password must be at least 8 characters long, containing letters, numbers, and at least one special character"
+                });
+            }
+
             if (request.Password != request.ConfirmPassword)
             {
                 return UnprocessableEntity(new
@@ -154,6 +198,56 @@ namespace ParkingManagement.Controllers
             _context.Users.Add(newStaff);
             await _context.SaveChangesAsync();
 
+            // Đọc ngôn ngữ hiện tại từ Header Accept-Language (mặc định là tiếng Việt nếu không chỉ định)
+            string acceptLanguage = Request.Headers["Accept-Language"].ToString().ToLower();
+            bool isEnglish = acceptLanguage.Contains("en");
+
+            // Cấu hình Subject và Body động theo ngôn ngữ
+            string emailSubject = isEnglish 
+                ? "eParking - Your New Staff Account Credentials" 
+                : "eParking - Thông tin đăng nhập tài khoản nhân viên";
+
+            string emailBody = isEnglish 
+                ? $@"
+                <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px;'>
+                    <h2 style='color: #1e3a8a; text-align: center;'>Welcome to eParking!</h2>
+                    <p>Hello <strong>{newStaff.FullName}</strong>,</p>
+                    <p>Your parking staff account has been successfully created by the Manager. Below are your login credentials:</p>
+                    <div style='background-color: #f3f4f6; padding: 15px; border-radius: 6px; margin: 20px 0;'>
+                        <p style='margin: 5px 0;'><strong>Username:</strong> <code style='font-size: 15px; color: #b45309; font-weight: bold;'>{newStaff.Username}</code></p>
+                        <p style='margin: 5px 0;'><strong>Login Email:</strong> <code style='font-size: 15px; color: #b45309; font-weight: bold;'>{newStaff.Email}</code></p>
+                        <p style='margin: 5px 0;'><strong>Password:</strong> <code style='font-size: 15px; color: #b45309; font-weight: bold;'>{request.Password}</code></p>
+                    </div>
+                    <p style='color: #ef4444; font-weight: bold;'>Security Notice:</p>
+                    <ul style='color: #4b5563; padding-left: 20px;'>
+                        <li>Please change your password upon your first login to secure your account.</li>
+                        <li>Do not share these credentials with anyone.</li>
+                    </ul>
+                    <hr style='border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;' />
+                    <p style='text-align: center; color: #9ca3af; font-size: 12px;'>This is an automated email from the eParking system. Please do not reply to this email.</p>
+                </div>"
+                : $@"
+                <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px;'>
+                    <h2 style='color: #1e3a8a; text-align: center;'>Chào mừng đến với hệ thống eParking!</h2>
+                    <p>Xin chào <strong>{newStaff.FullName}</strong>,</p>
+                    <p>Tài khoản nhân viên bãi xe của bạn đã được tạo thành công bởi Quản lý. Dưới đây là thông tin đăng nhập của bạn:</p>
+                    <div style='background-color: #f3f4f6; padding: 15px; border-radius: 6px; margin: 20px 0;'>
+                        <p style='margin: 5px 0;'><strong>Tên đăng nhập (Username):</strong> <code style='font-size: 15px; color: #b45309; font-weight: bold;'>{newStaff.Username}</code></p>
+                        <p style='margin: 5px 0;'><strong>Email đăng nhập:</strong> <code style='font-size: 15px; color: #b45309; font-weight: bold;'>{newStaff.Email}</code></p>
+                        <p style='margin: 5px 0;'><strong>Mật khẩu đăng nhập:</strong> <code style='font-size: 15px; color: #b45309; font-weight: bold;'>{request.Password}</code></p>
+                    </div>
+                    <p style='color: #ef4444; font-weight: bold;'>Lưu ý bảo mật:</p>
+                    <ul style='color: #4b5563; padding-left: 20px;'>
+                        <li>Vui lòng đổi mật khẩu sau khi đăng nhập lần đầu tiên để bảo vệ tài khoản.</li>
+                        <li>Không chia sẻ thông tin đăng nhập này với bất kỳ ai.</li>
+                    </ul>
+                    <hr style='border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;' />
+                    <p style='text-align: center; color: #9ca3af; font-size: 12px;'>Đây là email tự động từ hệ thống eParking. Vui lòng không trả lời email này.</p>
+                </div>";
+
+            // Gửi email bất đồng bộ (fire-and-forget) để không làm chậm API phản hồi cho Manager
+            _ = _emailService.SendEmailAsync(newStaff.Email, emailSubject, emailBody);
+
             return StatusCode(201, new
             {
                 success = true,
@@ -196,6 +290,26 @@ namespace ParkingManagement.Controllers
                     success = false,
                     error_code = "VALIDATION_ERROR",
                     message = "All fields are required"
+                });
+            }
+
+            if (!ValidationUtils.IsValidEmail(request.Email))
+            {
+                return UnprocessableEntity(new
+                {
+                    success = false,
+                    error_code = "INVALID_EMAIL",
+                    message = "Invalid email format"
+                });
+            }
+
+            if (!ValidationUtils.IsValidPhoneNumber(request.Phone))
+            {
+                return UnprocessableEntity(new
+                {
+                    success = false,
+                    error_code = "INVALID_PHONE",
+                    message = "Invalid phone number (must start with 0 and contain 10 digits)"
                 });
             }
 

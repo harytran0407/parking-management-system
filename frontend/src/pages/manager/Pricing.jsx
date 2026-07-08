@@ -126,6 +126,7 @@ export default function ManagerPricing() {
   const openEditModal = (policy) => {
     setEditForm({
       policyId: policy.policy_id,
+      vehicleTypeId: policy.vehicle_type_id,
       basePrice: policy.base_price,
       hourlyRate: policy.hourly_rate,
       overnightFee: policy.overnight_fee,
@@ -137,6 +138,23 @@ export default function ManagerPricing() {
 
   const handleEditSubmit = async (e) => {
     e.preventDefault()
+
+    // Validate duplicate date for the same vehicle type
+    const isDuplicate = policies.some(p => 
+      p.policy_id !== editForm.policyId && 
+      p.vehicle_type_id === editForm.vehicleTypeId && 
+      p.effective_date === editForm.effectiveDate
+    );
+
+    if (isDuplicate) {
+      toast.error(
+        language === 'en' 
+          ? 'A pricing policy for this vehicle type already exists on this date.' 
+          : 'Chính sách giá cho loại xe này vào ngày này đã tồn tại.'
+      )
+      return
+    }
+
     setFormSubmitting(true)
     try {
       const response = await api.put(`/admin/pricing/${editForm.policyId}`, {

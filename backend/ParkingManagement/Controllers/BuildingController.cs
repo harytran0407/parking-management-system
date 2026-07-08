@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using ParkingManagement.DTOs.Building;
 using ParkingManagement.Services.BuildingServices;
 using ParkingManagement.Repositories;
+using Microsoft.AspNetCore.Authorization;
 
 namespace ParkingManagement.Controllers;
 
@@ -32,7 +33,7 @@ public class BuildingController : ControllerBase
 
     // PUT /api/v1/parking/buildings/info — ParkingManager
     [HttpPut("info")]
-    // [Authorize(Roles = "ParkingManager")]   // uncomment khi có JWT
+    [Authorize(Roles = "ParkingManager")]
     [ProducesResponseType(typeof(ApiResponse<UpdateBuildingResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> UpdateInfo([FromBody] UpdateBuildingRequest request)
