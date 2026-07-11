@@ -45,8 +45,8 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowReactFrontend", policy =>
     {
         policy.WithOrigins(
-                "http://localhost:5173",          // Vite mặc định (HTTP)
-                "https://localhost:5173",         // Vite bảo mật (HTTPS)
+                "http://localhost:5173",            // Vite mặc định (HTTP)
+                "https://localhost:5173",          // Vite bảo mật (HTTPS)
                 "http://localhost:3000",          // Cổng phụ/NextJS nếu có
                 "https://eparking-v1.vercel.app" // Vercel Production (Lưu ý: KHÔNG có dấu gạch chéo cuối /)
               )
@@ -185,7 +185,7 @@ app.UseExceptionHandler(errApp => errApp.Run(async ctx =>
     await ctx.Response.WriteAsync(body);
 }));
 
-app.UseHttpsRedirection();
+//app.UseHttpsRedirection();
 
 app.UseCors("AllowReactFrontend");
 

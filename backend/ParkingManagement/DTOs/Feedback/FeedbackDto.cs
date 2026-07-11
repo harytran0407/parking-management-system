@@ -21,6 +21,8 @@ namespace ParkingManagement.DTOs.Feedback
 
         [Range(1, 5, ErrorMessage = "Rating must between 1 to 5")]
         public int? StarRating { get; set; }
+        public string? CustomerPhone { get; set; }
+        public string? CustomerEmail { get; set; }
     }
 
     public class FeedbackDto
@@ -36,6 +38,8 @@ namespace ParkingManagement.DTOs.Feedback
         public DateTime? ResolvedAt { get; set; }
         public string? ResolvedBy { get; set; }
         public string? ResponseNote { get; set; }
+        public string? CustomerPhone { get; set; }
+        public string? CustomerEmail { get; set; }
     }
 
     public class ProcessFeedbackRequestDto

@@ -26,23 +26,32 @@ namespace ParkingManagement.Services.FeedbackServices
                     Content = request.Content,
                     Status = "OPEN",
                     CreatedAt = DateTime.UtcNow,
-                    StarRating = request.StarRating
+                    StarRating = request.StarRating,
+                    CustomerPhone = request.CustomerPhone,
+                    CustomerEmail = request.CustomerEmail
                 };
                 _context.Feedbacks.Add(feedback);
                 await _context.SaveChangesAsync();
                 return true;
-            } catch
+            }
+            catch
             {
                 return false;
             }
         }
 
-        public async Task<(List<FeedbackDto> Items, int TotalItems, int TotalPages)> GetAllFeedbacksAsync(string? status, int page, int pageSize)
+        public async Task<(List<FeedbackDto> Items, int TotalItems, int TotalPages)> GetAllFeedbacksAsync(string? status, bool isManager, int page, int pageSize)
         {
             var query = _context.Feedbacks.AsQueryable();
 
-            // Lọc theo trạng thái nếu Manager yêu cầu (VD: Chỉ xem các đơn OPEN)
-            if (!string.IsNullOrEmpty(status))
+            // Manager chỉ được xem các trạng thái khác OPEN
+            if (isManager)
+            {
+                query = query.Where(f => f.Status != "OPEN");
+            }
+
+            // Bộ lọc (Filter): Áp dụng cho tất cả các role
+            if (!string.IsNullOrWhiteSpace(status))
             {
                 query = query.Where(f => f.Status.ToUpper() == status.ToUpper());
             }
@@ -66,7 +75,9 @@ namespace ParkingManagement.Services.FeedbackServices
                     CreatedAt = f.CreatedAt,
                     ResolvedAt = f.ResolvedAt,
                     ResolvedBy = f.ResolvedBy,
-                    ResponseNote = f.ResponseNote
+                    ResponseNote = f.ResponseNote,
+                    CustomerPhone = f.CustomerPhone,
+                    CustomerEmail = f.CustomerEmail
                 })
                 .ToListAsync();
             return (feedbacks, totalItems, totalPages);
@@ -96,6 +107,30 @@ namespace ParkingManagement.Services.FeedbackServices
 
             await _context.SaveChangesAsync();
             return true;
+        }
+
+        public async Task<List<FeedbackDto>> GetMyFeedbacksAsync(string userId)
+        {
+            var oldFeedbacks = await _context.Feedbacks
+                .Where(f => f.UserId == userId)
+                .OrderByDescending(f => f.CreatedAt)
+                .Select(f => new FeedbackDto
+                {
+                    FeedbackId = f.FeedbackId,
+                    UserId = f.UserId,
+                    FullName = f.FullName,
+                    IdCardNumber = f.IdCardNumber,
+                    Title = f.Title,
+                    Content = f.Content,
+                    Status = f.Status,
+                    CreatedAt = f.CreatedAt,
+                    ResolvedAt = f.ResolvedAt,
+                    ResolvedBy = f.ResolvedBy,
+                    ResponseNote = f.ResponseNote,
+                    CustomerEmail = f.CustomerEmail,
+                    CustomerPhone = f.CustomerPhone
+                }).ToListAsync();
+            return oldFeedbacks;
         }
     }
 }

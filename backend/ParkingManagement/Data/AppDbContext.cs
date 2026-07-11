@@ -746,6 +746,14 @@ public partial class AppDbContext : DbContext
 
             entity.Property(e => e.StarRating)
                 .HasColumnName("STAR_RATING");
+
+            entity.Property(e => e.CustomerPhone)
+                .HasColumnName("CUSTOMER_PHONE")
+                .HasMaxLength(20);
+
+            entity.Property(e => e.CustomerEmail)
+                .HasColumnName("CUSTOMER_EMAIL")
+                .HasMaxLength(100);
         });
 
         var dateTimeConverter = new Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<DateTime, DateTime>(

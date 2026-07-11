@@ -16,5 +16,7 @@ namespace ParkingManagement.Models
         public string? ResolvedBy { get; set; }
         public string? ResponseNote { get; set; }
         public int? StarRating { get; set; }
+        public string? CustomerPhone { get; set; }
+        public string? CustomerEmail { get; set; }
     }
 }
