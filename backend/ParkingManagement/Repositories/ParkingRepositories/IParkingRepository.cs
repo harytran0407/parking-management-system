@@ -147,6 +147,8 @@ namespace ParkingManagement.Repositories
         /// </summary>
         Task MarkSessionPaidAsync(ParkingSession session, decimal fee);
 
+        Task CreatePaymentAsync(Payment payment);
+
         /// <summary>
         /// Lấy thống kê số lượng xe đang giữ chỗ (Booked) và sức chứa thực tế theo thời gian thực của các Zone đang hoạt động.
         /// </summary>

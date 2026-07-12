@@ -71,11 +71,17 @@ public class BookingService : IBookingService
 
         var policy = await _parkingRepo.GetActivePricingPolicyByVehicleTypeAsync(request.VehicleTypeId);
         decimal estimatedFee = ParkingCalculationHelper.CalculateBookingEstimatedFee(request.ExpectedArrival, expiredAt, policy);
-        decimal basePrice = policy?.BasePrice ?? 15000m;
-        decimal hourlyRate = policy?.HourlyRate ?? 2000m;
+        decimal basePrice = policy?.BasePrice ?? (request.VehicleTypeId == 1 ? 5000m : 15000m);
+        int baseHours = policy?.BaseHours ?? 4;
+        decimal subsequentRate = policy?.SubsequentRate ?? 2000m;
+        int subsequentHours = policy?.SubsequentHours ?? 1;
+        decimal dailyMaxPrice = policy?.DailyMaxPrice ?? 50000m;
+        decimal handlingFee = policy?.HandlingFee ?? 2000m;
 
         var vehicleType = await _context.VehicleTypes.FindAsync(request.VehicleTypeId);
         string vehicleTypeName = vehicleType?.VehicleTypeName ?? "Unknown";
+
+        string feeNote = $"Base Price: {basePrice:N0} VND for first {baseHours} hours, then {subsequentRate:N0} VND per {subsequentHours} hour(s). Max daily: {dailyMaxPrice:N0} VND.";
 
         return new BookingPriceResponse
         {
@@ -85,9 +91,14 @@ public class BookingService : IBookingService
             ExpectedArrival = ToVnTime(request.ExpectedArrival),
             ExpiredAt = ToVnTime(expiredAt),
             BasePrice = basePrice,
-            HourlyRate = hourlyRate,
+            HourlyRate = subsequentRate,
+            BaseHours = baseHours,
+            SubsequentRate = subsequentRate,
+            SubsequentHours = subsequentHours,
+            DailyMaxPrice = dailyMaxPrice,
+            HandlingFee = handlingFee,
             EstimatedFee = estimatedFee,
-            FeeNote = $"Base Price: {basePrice:N0} VND for 1st hour, then {hourlyRate:N0} VND/hour."
+            FeeNote = feeNote
         };
     }
 
@@ -563,14 +574,9 @@ public class BookingService : IBookingService
         {
             foreach (var b in expiredBookings)
             {
-                if (b.Status == "PENDING")
-                {
-                    _context.Bookings.Remove(b);
-                }
-                else
-                {
-                    b.Status = "CANCELLED";
-                }
+                // Mark all expired bookings as CANCELLED instead of deleting,
+                // to avoid FK constraint violation when payments are linked to the booking.
+                b.Status = "CANCELLED";
 
                 // Hoàn lại slot vào AvailableCapacity
                 var zoneToRestore = b.ZoneId.HasValue

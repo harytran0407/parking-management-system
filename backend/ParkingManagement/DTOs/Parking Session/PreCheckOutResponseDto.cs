@@ -17,9 +17,14 @@ namespace ParkingManagement.DTOs
     public class FeeBreakdownDto
     {
         public decimal BasePrice { get; set; }
-        public decimal HourlyRate { get; set; }
+        public decimal HourlyRate { get; set; } // Compatibility (SubsequentRate)
         public int Hours { get; set; }
-        public decimal OvernightFee { get; set; }
+        public decimal OvernightFee { get; set; } // Compatibility (DailyMaxPrice)
         public decimal Total { get; set; }
+
+        public int BaseHours { get; set; }
+        public decimal SubsequentRate { get; set; }
+        public int SubsequentHours { get; set; }
+        public decimal DailyMaxPrice { get; set; }
     }
 }

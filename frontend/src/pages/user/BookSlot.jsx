@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   History,
   CalendarDays,
+  QrCode,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import api from "../../utils/api";
@@ -63,6 +64,7 @@ export default function BookSlot() {
   const [loadingPayment, setLoadingPayment] = useState(false);
   const skipRegulations = false;
   const [submitAttempted, setSubmitAttempted] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState("PAYOS");
 
   // Vehicle type consistency conflict states
   const [conflictType, setConflictType] = useState(null); // 'duplicate', 'type_motorbike', 'type_car', 'type_other', or null
@@ -632,6 +634,32 @@ export default function BookSlot() {
       }
     } catch (err) {
       console.error("Mock payment error:", err);
+      alert(err.response?.data?.message || (language === "en" ? "Payment failed. Please try again." : "Thanh toán thất bại. Vui lòng thử lại."));
+      setProcessingPayment(false);
+    }
+  };
+
+  const handlePayOsPayment = async () => {
+    if (!createdBooking) return;
+
+    setProcessingPayment(true);
+    try {
+      const payload = {
+        booking_id: createdBooking.booking_id,
+        payment_method: "PAYOS",
+        return_url: window.location.origin + "/user/bookings?status=success",
+        cancel_url: window.location.origin + "/user/bookings?status=cancelled"
+      };
+
+      const res = await api.post("/payments/create", payload);
+      if (res.data && res.data.success && res.data.data?.payment_url) {
+        window.location.href = res.data.data.payment_url;
+      } else {
+        alert(language === "en" ? "Failed to create PayOS payment link." : "Khởi tạo thanh toán PayOS thất bại.");
+        setProcessingPayment(false);
+      }
+    } catch (err) {
+      console.error("PayOS payment error:", err);
       alert(err.response?.data?.message || (language === "en" ? "Payment failed. Please try again." : "Thanh toán thất bại. Vui lòng thử lại."));
       setProcessingPayment(false);
     }
@@ -1314,17 +1342,63 @@ export default function BookSlot() {
               <h3 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">
                 {language === "en" ? "Payment Method" : "Phương thức thanh toán"}
               </h3>
-              <div className="p-4 rounded-lg border border-blue-500 bg-blue-50/20 dark:bg-blue-950/20 shadow-lg shadow-blue-500/10 flex items-center gap-4">
-                <div className="bg-blue-500/10 p-3 rounded-xl text-blue-500">
-                  <CreditCard size={24} />
+              <div className="space-y-2">
+                {/* PayOS VietQR Option */}
+                <div
+                  onClick={() => setPaymentMethod("PAYOS")}
+                  className={`p-4 rounded-lg border cursor-pointer transition-all flex items-center gap-4 ${
+                    paymentMethod === "PAYOS"
+                      ? "border-blue-500 bg-blue-50/20 dark:bg-blue-950/20 shadow-lg shadow-blue-500/10"
+                      : "border-slate-200 dark:border-slate-800 bg-transparent hover:border-slate-350 dark:hover:border-slate-700"
+                  }`}
+                >
+                  <div className={`p-3 rounded-xl ${paymentMethod === "PAYOS" ? "bg-blue-500/10 text-blue-500" : "bg-slate-100 dark:bg-slate-800 text-slate-400"}`}>
+                    <QrCode size={24} />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs font-bold text-slate-800 dark:text-white">
+                      {language === "en" ? "VietQR Online Payment (PayOS)" : "Thanh toán VietQR Online (PayOS)"}
+                    </p>
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
+                      {language === "en" ? "Scan QR code via banking app (auto-confirm)" : "Quét mã QR từ ứng dụng ngân hàng (xác nhận tự động)"}
+                    </p>
+                  </div>
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    checked={paymentMethod === "PAYOS"}
+                    onChange={() => setPaymentMethod("PAYOS")}
+                    className="accent-blue-500"
+                  />
                 </div>
-                <div>
-                  <p className="text-xs font-bold text-slate-800 dark:text-white">
-                    {language === "en" ? "VNPAY Online Payment (Mock)" : "Thanh toán trực tuyến VNPAY (Giả lập)"}
-                  </p>
-                  <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
-                    {language === "en" ? "Secure mock gateway" : "Cổng thanh toán giả lập an toàn"}
-                  </p>
+
+                {/* VNPAY Mock Option */}
+                <div
+                  onClick={() => setPaymentMethod("VNPAY")}
+                  className={`p-4 rounded-lg border cursor-pointer transition-all flex items-center gap-4 ${
+                    paymentMethod === "VNPAY"
+                      ? "border-blue-500 bg-blue-50/20 dark:bg-blue-950/20 shadow-lg shadow-blue-500/10"
+                      : "border-slate-200 dark:border-slate-800 bg-transparent hover:border-slate-350 dark:hover:border-slate-700"
+                  }`}
+                >
+                  <div className={`p-3 rounded-xl ${paymentMethod === "VNPAY" ? "bg-blue-500/10 text-blue-500" : "bg-slate-100 dark:bg-slate-800 text-slate-400"}`}>
+                    <CreditCard size={24} />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs font-bold text-slate-800 dark:text-white">
+                      {language === "en" ? "VNPAY Online Payment (Mock)" : "Thanh toán trực tuyến VNPAY (Giả lập)"}
+                    </p>
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
+                      {language === "en" ? "Secure mock gateway for sandbox testing" : "Cổng thanh toán giả lập dành cho kiểm thử"}
+                    </p>
+                  </div>
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    checked={paymentMethod === "VNPAY"}
+                    onChange={() => setPaymentMethod("VNPAY")}
+                    className="accent-blue-500"
+                  />
                 </div>
               </div>
             </div>
@@ -1342,7 +1416,7 @@ export default function BookSlot() {
               ) : (
                 <button
                   type="button"
-                  onClick={handleConfirmMockPayment}
+                  onClick={paymentMethod === "PAYOS" ? handlePayOsPayment : handleConfirmMockPayment}
                   disabled={processingPayment}
                   className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white font-black text-sm rounded-lg shadow-xl shadow-blue-900/25 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
@@ -1352,8 +1426,8 @@ export default function BookSlot() {
                     <ShieldCheck size={16} />
                   )}
                   {language === "en"
-                    ? "Confirm Payment"
-                    : "Xác nhận thanh toán"}
+                    ? (paymentMethod === "PAYOS" ? "Proceed to PayOS" : "Confirm Mock Payment")
+                    : (paymentMethod === "PAYOS" ? "Thanh toán qua PayOS" : "Xác nhận thanh toán giả lập")}
                 </button>
               )}
             </div>

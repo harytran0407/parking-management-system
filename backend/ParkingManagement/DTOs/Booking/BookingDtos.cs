@@ -81,7 +81,22 @@ public class BookingPriceResponse
     public decimal BasePrice { get; set; }
 
     [JsonPropertyName("hourly_rate")]
-    public decimal HourlyRate { get; set; }
+    public decimal HourlyRate { get; set; } // Compatibility field (holds SubsequentRate)
+
+    [JsonPropertyName("base_hours")]
+    public int BaseHours { get; set; }
+
+    [JsonPropertyName("subsequent_rate")]
+    public decimal SubsequentRate { get; set; }
+
+    [JsonPropertyName("subsequent_hours")]
+    public int SubsequentHours { get; set; }
+
+    [JsonPropertyName("daily_max_price")]
+    public decimal DailyMaxPrice { get; set; }
+
+    [JsonPropertyName("handling_fee")]
+    public decimal HandlingFee { get; set; }
 
     [JsonPropertyName("estimated_fee")]
     public decimal EstimatedFee { get; set; }

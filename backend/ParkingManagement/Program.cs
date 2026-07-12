@@ -110,6 +110,12 @@ builder.Services.AddScoped<IBookingService, BookingService>();
 builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 
+// Register PayOS singleton service
+var payOsClientId = Environment.GetEnvironmentVariable("PAYOS_CLIENT_ID") ?? "";
+var payOsApiKey = Environment.GetEnvironmentVariable("PAYOS_API_KEY") ?? "";
+var payOsChecksumKey = Environment.GetEnvironmentVariable("PAYOS_CHECKSUM_KEY") ?? "";
+builder.Services.AddSingleton(new PayOS.PayOSClient(payOsClientId, payOsApiKey, payOsChecksumKey));
+
 // ── Incident module ───────────────────────────────────────────────────────────────────────
 builder.Services.AddScoped<IIncidentRepository, IncidentRepository>();
 builder.Services.AddScoped<IIncidentService, IncidentService>();
@@ -189,14 +195,16 @@ app.UseHttpsRedirection();
 
 app.UseCors("AllowReactFrontend");
 
-// Security: IP filtering and rate limiting run before authentication/blacklist checks
+// Security: IP filtering runs before authentication/blacklist checks
 app.UseMiddleware<ParkingManagement.Middlewares.IpFilterMiddleware>(); //block/allow by IP
-app.UseMiddleware<ParkingManagement.Middlewares.RateLimitingMiddleware>(); //per-IP rate limiting
 
 // Security
 app.UseMiddleware<ParkingManagement.Middlewares.TokenBlacklistMiddleware>(); // Check blacklist
 app.UseAuthentication(); // Read JWT token
 app.UseAuthorization(); // Check role/permission
+
+app.UseMiddleware<ParkingManagement.Middlewares.RateLimitingMiddleware>(); //per-IP rate limiting
+
 app.UseStaticFiles();
 app.MapControllers();
 app.Run();

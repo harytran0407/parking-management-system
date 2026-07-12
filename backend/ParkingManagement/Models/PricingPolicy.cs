@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace ParkingManagement.Models;
@@ -9,9 +9,13 @@ public partial class PricingPolicy
 
     public decimal BasePrice { get; set; }
 
-    public decimal HourlyRate { get; set; }
+    public int BaseHours { get; set; }
 
-    public decimal OvernightFee { get; set; }
+    public decimal SubsequentRate { get; set; }
+
+    public int SubsequentHours { get; set; }
+
+    public decimal DailyMaxPrice { get; set; }
 
     public DateOnly EffectiveDate { get; set; }
 

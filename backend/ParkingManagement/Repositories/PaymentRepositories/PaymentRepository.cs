@@ -63,6 +63,16 @@ namespace ParkingManagement.Repositories
                             }
                         }
 
+                        if (!string.IsNullOrEmpty(payment.SessionId))
+                        {
+                            var session = await _context.ParkingSessions.FirstOrDefaultAsync(s => s.SessionId == payment.SessionId);
+                            if (session != null)
+                            {
+                                session.PaymentStatus = "PAID";
+                                session.TotalFee = amountPaid;
+                            }
+                        }
+
                         await _context.SaveChangesAsync();
                         await transaction.CommitAsync();
                     }

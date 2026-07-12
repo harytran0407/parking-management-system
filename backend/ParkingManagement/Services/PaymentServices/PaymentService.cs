@@ -12,11 +12,13 @@ namespace ParkingManagement.Services
     {
         private readonly IPaymentRepository _paymentRepository;
         private readonly IConfiguration _configuration;
+        private readonly PayOS.PayOSClient _payOS;
 
-        public PaymentService(IPaymentRepository paymentRepository, IConfiguration configuration)
+        public PaymentService(IPaymentRepository paymentRepository, IConfiguration configuration, PayOS.PayOSClient payOS)
         {
             _paymentRepository = paymentRepository;
             _configuration = configuration;
+            _payOS = payOS;
         }
 
         public async Task<object> CreateReservationPaymentAsync(CreatePaymentRequest request, string userId)
@@ -27,9 +29,57 @@ namespace ParkingManagement.Services
             int vehicleTypeId = booking.VehicleTypeId;
             decimal realAmount = await _paymentRepository.GetBasePriceForVehicleTypeAsync(vehicleTypeId);
 
-            string paymentId = "pay_" + Guid.NewGuid().ToString().Substring(0, 8);
+            string hexPart = Guid.NewGuid().ToString().Substring(0, 8);
+            string paymentId = "pay_" + hexPart;
 
-            var payment = new Payment
+            if (request.PaymentMethod?.ToUpper() == "PAYOS")
+            {
+                var payment = new Payment
+                {
+                    PaymentId = paymentId,
+                    PaymentType = "BOOKING",
+                    BookingId = request.BookingId,
+                    AmountDue = realAmount,
+                    AmountPaid = 0,
+                    ChangeDue = 0,
+                    PaymentMethod = "PAYOS",
+                    Status = "PENDING",
+                    UserId = userId,
+                    PaymentTime = null
+                };
+
+                await _paymentRepository.CreatePaymentAsync(payment);
+
+                long orderCode = Convert.ToInt64(hexPart, 16);
+                string payOsReturnUrl = request.ReturnUrl.Trim();
+                string payOsCancelUrl = request.CancelUrl.Trim();
+
+                var paymentRequestData = new PayOS.Models.V2.PaymentRequests.CreatePaymentLinkRequest
+                {
+                    OrderCode = orderCode,
+                    Amount = (long)realAmount,
+                    Description = "Thanh toan booking",
+                    ReturnUrl = payOsReturnUrl,
+                    CancelUrl = payOsCancelUrl
+                };
+
+                var createPaymentResult = await _payOS.PaymentRequests.CreateAsync(paymentRequestData);
+
+                return new
+                {
+                    success = true,
+                    data = new
+                    {
+                        payment_id = paymentId,
+                        payment_url = createPaymentResult.CheckoutUrl,
+                        qr_code = "data:image/png;base64,...",
+                        expires_in_seconds = 900,
+                        status = "PENDING"
+                    }
+                };
+            }
+
+            var paymentVnp = new Payment
             {
                 PaymentId = paymentId,
                 PaymentType = "BOOKING",
@@ -43,7 +93,7 @@ namespace ParkingManagement.Services
                 PaymentTime = null
             };
 
-            await _paymentRepository.CreatePaymentAsync(payment);
+            await _paymentRepository.CreatePaymentAsync(paymentVnp);
 
             // Fetch VNPay config
             var tmnCode = (_configuration["VNPay:TmnCode"] ?? "BMHHU8LO").Trim();
@@ -129,6 +179,35 @@ namespace ParkingManagement.Services
             decimal amount = ParkingCalculationHelper.CalculateBookingEstimatedFee(booking.ExpectedArrival, expiredAt, policy);
 
             return await _paymentRepository.ProcessMockPaymentConfirmationAsync(bookingId, paymentMethod, userId, amount);
+        }
+
+        public async Task<bool> ProcessPayOsWebhookAsync(PayOS.Models.Webhooks.Webhook webhookData)
+        {
+            try
+            {
+                // Verify signature using PayOS SDK
+                var verifiedData = await _payOS.Webhooks.VerifyAsync(webhookData);
+
+                if (webhookData.Success && verifiedData.Code == "00")
+                {
+                    long orderCode = verifiedData.OrderCode;
+                    string hexPart = orderCode.ToString("x8");
+                    string paymentId = "pay_" + hexPart;
+
+                    decimal amountPaid = verifiedData.Amount;
+                    await _paymentRepository.UpdateBookingAndPaymentSuccessAsync(
+                        paymentId,
+                        "txn_" + Guid.NewGuid().ToString().Substring(0, 6).ToUpper(),
+                        amountPaid
+                    );
+                    return true;
+                }
+            }
+            catch (Exception)
+            {
+                // Sign failure or webhook exception
+            }
+            return false;
         }
     }
 }

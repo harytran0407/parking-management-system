@@ -92,8 +92,11 @@ export default function UserDashboard() {
               vehicle_type_id: 1,
               vehicle_type_name: language === "en" ? "Automobile (Car)" : "Ô tô",
               base_price: 15000,
-              hourly_rate: 10000,
-              overnight_fee: 30000,
+              base_hours: 4,
+              subsequent_rate: 10000,
+              subsequent_hours: 1,
+              daily_max_price: 150000,
+              handling_fee: 20000,
               effective_date: "2026-01-01",
             },
             {
@@ -101,8 +104,11 @@ export default function UserDashboard() {
               vehicle_type_id: 2,
               vehicle_type_name: language === "en" ? "Motorbike" : "Xe máy",
               base_price: 5000,
-              hourly_rate: 2000,
-              overnight_fee: 10000,
+              base_hours: 4,
+              subsequent_rate: 2000,
+              subsequent_hours: 1,
+              daily_max_price: 30000,
+              handling_fee: 10000,
               effective_date: "2026-01-01",
             },
           ]);
@@ -354,23 +360,29 @@ export default function UserDashboard() {
                     <div className="grid grid-cols-3 gap-2 text-xs">
                       <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/50 rounded-xl p-3">
                         <p className="text-slate-400 dark:text-slate-500 text-[10px] font-bold mb-1">
-                          {language === "en" ? "Base / Entry" : "Phí vào"}
+                          {language === "en" ? `Base Price (${policy.base_hours}h)` : `Giá vào cổng (${policy.base_hours}h)`}
                         </p>
                         <p className="text-blue-600 dark:text-blue-400 font-black text-sm">{fmtVND(policy.base_price)}đ</p>
                       </div>
                       <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/50 rounded-xl p-3">
                         <p className="text-slate-400 dark:text-slate-500 text-[10px] font-bold mb-1">
-                          {language === "en" ? "Per Hour" : "Mỗi giờ"}
+                          {language === "en" ? `Subsequent (${policy.subsequent_hours}h)` : `Block sau (${policy.subsequent_hours}h)`}
                         </p>
-                        <p className="text-amber-600 dark:text-amber-400 font-black text-sm">{fmtVND(policy.hourly_rate)}đ</p>
+                        <p className="text-amber-600 dark:text-amber-400 font-black text-sm">+{fmtVND(policy.subsequent_rate)}đ</p>
                       </div>
                       <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/50 rounded-xl p-3">
                         <p className="text-slate-400 dark:text-slate-500 text-[10px] font-bold mb-1">
-                          {language === "en" ? "Overnight" : "Qua đêm"}
+                          {language === "en" ? "Daily Max 24h" : "Trần 24h"}
                         </p>
-                        <p className="text-emerald-600 dark:text-emerald-400 font-black text-sm">{fmtVND(policy.overnight_fee)}đ</p>
+                        <p className="text-emerald-600 dark:text-emerald-400 font-black text-sm">{fmtVND(policy.daily_max_price)}đ</p>
                       </div>
                     </div>
+                    {/* {policy.handling_fee > 0 && (
+                      <div className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 px-1 font-semibold flex justify-between">
+                        <span>{language === "en" ? "Lost Card Penalty" : "Phí báo mất thẻ"}:</span>
+                        <span className="font-bold text-rose-500">{fmtVND(policy.handling_fee)}đ</span>
+                      </div>
+                    )} */}
                   </div>
                 ))}
               </div>

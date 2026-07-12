@@ -32,6 +32,17 @@ namespace ParkingManagement.Middlewares
 
         public async Task InvokeAsync(HttpContext context)
         {
+            if (context.User.Identity?.IsAuthenticated == true)
+            {
+                if (context.User.IsInRole("SystemAdmin") ||
+                    context.User.IsInRole("ParkingManager") ||
+                    context.User.IsInRole("ParkingStaff"))
+                {
+                    await _next(context);
+                    return;
+                }
+            }
+
             var ip = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
             var key = $"rl_{ip}";
 

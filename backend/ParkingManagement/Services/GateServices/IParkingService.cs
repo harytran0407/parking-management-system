@@ -22,7 +22,7 @@ namespace ParkingManagement.Services
         /// <summary>
         /// Tìm kiếm thông tin phiên gửi xe đang hoạt động (ACTIVE) bằng biển số xe.
         /// </summary>
-        Task<ActiveSessionResponseDto> GetActiveSessionByLicensePlateAsync(string licensePlate, string? ticketSuffix = null, bool exactMatch = false);
+        Task<ActiveSessionResponseDto> GetActiveSessionByLicensePlateAsync(string licensePlate, string? ticketCode = null, bool exactMatch = false);
 
         /// <summary>
         /// Tìm kiếm thông tin phiên gửi xe đang hoạt động (ACTIVE) bằng tên ô đỗ xe.
@@ -57,7 +57,7 @@ namespace ParkingManagement.Services
         /// <summary>
         /// Xử lý thanh toán QuickPay cho phiên đỗ xe đang hoạt động.
         /// </summary>
-        Task<bool> ProcessQuickPayPaymentAsync(string sessionId, string paymentMethod, string? userId);
+        Task<object> ProcessQuickPayPaymentAsync(string sessionId, QuickPayRequestDto dto, string? userId);
 
         /// <summary>
         /// Lấy thống kê số lượng xe đang giữ chỗ (Booked) và sức chứa thực tế theo thời gian thực của các Zone đang hoạt động.
