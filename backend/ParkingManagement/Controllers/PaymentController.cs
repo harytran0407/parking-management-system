@@ -53,6 +53,19 @@ namespace ParkingManagement.Controllers
             return BadRequest(new { RspCode = "99", RspMessage = "Fail" });
         }
 
+        // [FR-BK-04] - Nhận kết quả tự động từ cổng thanh toán PayOS (Auto-confirm)
+        [AllowAnonymous]
+        [HttpPost("webhook/payos")]
+        public async Task<IActionResult> PayOsWebhook([FromBody] PayOS.Models.Webhooks.Webhook webhookData)
+        {
+            var isProcessed = await _paymentService.ProcessPayOsWebhookAsync(webhookData);
+            if (isProcessed)
+            {
+                return Ok(new { success = true });
+            }
+            return BadRequest(new { success = false, message = "Webhook processing failed" });
+        }
+
         // POST: api/v1/payments/confirm-mock
         [Authorize]
         [HttpPost("confirm-mock")]

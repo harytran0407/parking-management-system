@@ -434,7 +434,7 @@ public partial class AppDbContext : DbContext
                 .HasDefaultValueSql("'0.00'")
                 .HasColumnName("CHANGE_DUE");
             entity.Property(e => e.PaymentMethod)
-                .HasColumnType("enum('CASH','VNPAY','SUBSCRIPTION')")
+                .HasColumnType("enum('CASH','VNPAY','SUBSCRIPTION','PAYOS')")
                 .HasColumnName("PAYMENT_METHOD");
             entity.Property(e => e.PaymentTime)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
@@ -454,7 +454,7 @@ public partial class AppDbContext : DbContext
                 .HasColumnName("SESSION_ID");
             entity.Property(e => e.Status)
                 .HasDefaultValueSql("'SUCCESS'")
-                .HasColumnType("enum('SUCCESS','FAILED')")
+                .HasColumnType("enum('SUCCESS','FAILED','PENDING')")
                 .HasColumnName("STATUS");
             entity.Property(e => e.TransactionId)
                 .HasMaxLength(100)
@@ -489,12 +489,14 @@ public partial class AppDbContext : DbContext
                 .HasPrecision(10, 2)
                 .HasColumnName("BASE_PRICE");
             entity.Property(e => e.EffectiveDate).HasColumnName("EFFECTIVE_DATE");
-            entity.Property(e => e.HourlyRate)
+            entity.Property(e => e.BaseHours).HasColumnName("BASE_HOURS");
+            entity.Property(e => e.SubsequentRate)
                 .HasPrecision(10, 2)
-                .HasColumnName("HOURLY_RATE");
-            entity.Property(e => e.OvernightFee)
+                .HasColumnName("SUBSEQUENT_RATE");
+            entity.Property(e => e.SubsequentHours).HasColumnName("SUBSEQUENT_HOURS");
+            entity.Property(e => e.DailyMaxPrice)
                 .HasPrecision(10, 2)
-                .HasColumnName("OVERNIGHT_FEE");
+                .HasColumnName("DAILY_MAX_PRICE");
             entity.Property(e => e.VehicleTypeId).HasColumnName("VEHICLE_TYPE_ID");
 
             entity.Property(e => e.HandlingFee)

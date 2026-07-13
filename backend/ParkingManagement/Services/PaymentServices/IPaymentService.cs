@@ -20,5 +20,10 @@ namespace ParkingManagement.Services
         /// Xác nhận thanh toán giả lập (Mock Payment) cho đặt chỗ.
         /// </summary>
         Task<bool> ConfirmMockPaymentAsync(string bookingId, string paymentMethod, string userId);
+
+        /// <summary>
+        /// Tiếp nhận và xử lý tín hiệu phản hồi tự động (Webhook) từ cổng thanh toán PayOS khi khách hàng chuyển tiền xong.
+        /// </summary>
+        Task<bool> ProcessPayOsWebhookAsync(PayOS.Models.Webhooks.Webhook webhookData);
     }
 }

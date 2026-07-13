@@ -526,6 +526,12 @@ namespace ParkingManagement.Repositories
             await _context.SaveChangesAsync();
         }
 
+        public async Task CreatePaymentAsync(Payment payment)
+        {
+            await _context.Payments.AddAsync(payment);
+            await _context.SaveChangesAsync();
+        }
+
         public async Task<List<ZoneRealtimeStatsDto>> GetZoneRealtimeStatsAsync()
         {
             var zones = await _context.FloorZones

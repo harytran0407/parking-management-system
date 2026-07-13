@@ -100,6 +100,43 @@ namespace ParkingManagement.Services.Helpers
             return false;
         }
 
+        public static decimal CalculatePriceForMinutes(int totalMinutes, PricingPolicy? policy)
+        {
+            if (totalMinutes <= 0) return 0;
+
+            decimal basePrice = policy?.BasePrice ?? (policy?.VehicleTypeId == 1 ? 5000m : 15000m);
+            int baseHours = policy?.BaseHours ?? 4;
+            decimal subsequentRate = policy?.SubsequentRate ?? 2000m;
+            int subsequentHours = policy?.SubsequentHours ?? 1;
+            decimal dailyMaxPrice = policy?.DailyMaxPrice ?? 50000m;
+
+            int fullDays = totalMinutes / 1440;
+            int remainingMinutes = totalMinutes % 1440;
+
+            decimal remainingPrice = 0;
+            if (remainingMinutes > 0)
+            {
+                if (remainingMinutes <= baseHours * 60)
+                {
+                    remainingPrice = basePrice;
+                }
+                else
+                {
+                    int subsequentMinutes = remainingMinutes - (baseHours * 60);
+                    double subsequentBlockMinutes = subsequentHours * 60.0;
+                    int subsequentBlocks = (int)Math.Ceiling(subsequentMinutes / subsequentBlockMinutes);
+                    remainingPrice = basePrice + (subsequentBlocks * subsequentRate);
+                }
+
+                if (remainingPrice > dailyMaxPrice)
+                {
+                    remainingPrice = dailyMaxPrice;
+                }
+            }
+
+            return (fullDays * dailyMaxPrice) + remainingPrice;
+        }
+
         /// <summary>
         /// Hàm tính tiền nhận động chuỗi cấu hình giờ hoạt động áp dụng cho ngày hiện tại
         /// </summary>
@@ -109,50 +146,22 @@ namespace ParkingManagement.Services.Helpers
             TimeSpan duration = checkOutTime - checkInTime;
             int totalMinutes = (int)Math.Ceiling(duration.TotalMinutes);
 
-            // Trách trường hợp thời gian máy tính bị lệch âm
+            // Tránh trường hợp thời gian máy tính bị lệch âm
             if (totalMinutes < 0) totalMinutes = 0;
 
             decimal actualParkingFee = 0;
             int billedHours = 0;
-            decimal appliedOvernightFee = 0;
-
-            decimal basePrice = policy?.BasePrice ?? 15000m;
-            decimal hourlyRate = policy?.HourlyRate ?? 2000m;
-            decimal overnightFee = policy?.OvernightFee ?? 0m;
-
-            // Kiểm tra trạng thái phạt lố giờ hoạt động trước
-            bool isOvernight = IsOvernightParking(checkInTime, checkOutTime, operatingHours);
-            if (isOvernight)
-            {
-                appliedOvernightFee = overnightFee;
-            }
 
             // 2. KIỂM TRA ĐIỀU KIỆN ÂN HẠN (GRACE PERIOD)
-            // Xe CHỈ được miễn phí hoàn toàn nếu đỗ trong thời gian ân hạn VÀ không vi phạm đỗ lố giờ đóng cửa
-            if (totalMinutes <= gracePeriodMinutes && !isOvernight)
+            if (totalMinutes <= gracePeriodMinutes)
             {
                 actualParkingFee = 0;
                 billedHours = 0;
             }
             else
             {
-                // 3. NẾU VƯỢT QUÁ THỜI GIAN ÂN HẠN HOẶC BỊ PHẠT QUA ĐÊM: TIẾN HÀNH TÍNH LŨY TIẾN THEO BLOCK GIỜ
+                actualParkingFee = CalculatePriceForMinutes(totalMinutes, policy);
                 billedHours = (int)Math.Ceiling(totalMinutes / 60.0);
-
-                if (billedHours > 0)
-                {
-                    // Tiếng đầu tiên tính BasePrice
-                    actualParkingFee = basePrice;
-
-                    // Các tiếng tiếp theo tính lũy tiến theo HourlyRate
-                    if (billedHours > 1)
-                    {
-                        actualParkingFee += (billedHours - 1) * hourlyRate;
-                    }
-                }
-
-                // Cộng thêm phí qua đêm nếu có
-                actualParkingFee += appliedOvernightFee;
             }
 
             // Tính toán số giây ân hạn còn lại (nếu có)
@@ -170,19 +179,16 @@ namespace ParkingManagement.Services.Helpers
             {
                 CurrentFee = actualParkingFee,
                 Hours = billedHours,
-                OvernightFee = appliedOvernightFee,
+                OvernightFee = 0, // Overnight fee is deprecated/built into daily max price
                 GracePeriodRemainingSeconds = gracePeriodRemainingSeconds
             };
         }
 
         public static decimal CalculateBookingEstimatedFee(DateTime expectedArrival, DateTime expiredAt, PricingPolicy? policy)
         {
-            decimal basePrice = policy?.BasePrice ?? 15000m;
-            decimal hourlyRate = policy?.HourlyRate ?? 2000m;
             var duration = expiredAt - expectedArrival;
-            var billedHours = (int)Math.Ceiling(duration.TotalMinutes / 60.0);
-            decimal estimatedFee = basePrice + (billedHours > 1 ? (billedHours - 1) * hourlyRate : 0m);
-            return estimatedFee;
+            int totalMinutes = (int)Math.Ceiling(duration.TotalMinutes);
+            return CalculatePriceForMinutes(totalMinutes, policy);
         }
 
         public static decimal CalculateEarlyArrivalFee(DateTime checkInTime, DateTime expectedArrival, PricingPolicy? policy, string operatingHours)
@@ -203,9 +209,10 @@ namespace ParkingManagement.Services.Helpers
                 var overdueMinutes = (checkOutTime - expiredAt).TotalMinutes;
                 if (overdueMinutes > 15) // 15-minute grace period
                 {
-                    decimal hourlyRate = policy?.HourlyRate ?? 2000m;
-                    var overdueBlocks = (int)Math.Ceiling(overdueMinutes / 60.0);
-                    return overdueBlocks * hourlyRate * 2;
+                    decimal subsequentRate = policy?.SubsequentRate ?? 2000m;
+                    int subsequentHours = policy?.SubsequentHours ?? 1;
+                    var overdueBlocks = (int)Math.Ceiling(overdueMinutes / (subsequentHours * 60.0));
+                    return overdueBlocks * subsequentRate * 2;
                 }
             }
             return 0;
@@ -217,13 +224,9 @@ namespace ParkingManagement.Services.Helpers
             var totalPaid = booking.Payments?.Where(p => p.Status == "SUCCESS").Sum(p => p.AmountPaid) ?? 0m;
             var depositPayment = booking.Payments?.FirstOrDefault(p => p.PaymentType == "BOOKING" && p.Status == "SUCCESS");
             
-            decimal basePrice = policy?.BasePrice ?? (vehicleTypeId == 1 ? 5000m : 15000m);
-            decimal hourlyRate = policy?.HourlyRate ?? 2000m;
             var expectedArrival = ConvertToVnTime(booking.ExpectedArrival);
             var expiredAt = ConvertToVnTime(booking.ExpiredAt ?? expectedArrival.AddHours(2));
-            var origDuration = expiredAt - expectedArrival;
-            var origBilledHours = (int)Math.Ceiling(origDuration.TotalMinutes / 60.0);
-            decimal originalEstimatedFee = basePrice + (origBilledHours > 1 ? (origBilledHours - 1) * hourlyRate : 0m);
+            decimal originalEstimatedFee = CalculateBookingEstimatedFee(expectedArrival, expiredAt, policy);
 
             decimal depositAmount = depositPayment?.AmountPaid ?? originalEstimatedFee;
             return Math.Max(0m, totalPaid - depositAmount);
@@ -265,9 +268,10 @@ namespace ParkingManagement.Services.Helpers
                 var overdueMinutes = (checkOutVn - expiredAt).TotalMinutes;
                 if (overdueMinutes > 15) // 15-minute grace period
                 {
-                    decimal hourlyRate = policy?.HourlyRate ?? 2000m;
-                    var overdueBlocks = (int)Math.Ceiling(overdueMinutes / 60.0);
-                    result.LateCheckoutFee = overdueBlocks * hourlyRate * 2;
+                    decimal subsequentRate = policy?.SubsequentRate ?? 2000m;
+                    int subsequentHours = policy?.SubsequentHours ?? 1;
+                    var overdueBlocks = (int)Math.Ceiling(overdueMinutes / (subsequentHours * 60.0));
+                    result.LateCheckoutFee = overdueBlocks * subsequentRate * 2;
                     result.LateHours = overdueBlocks;
                 }
             }

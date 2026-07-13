@@ -27,17 +27,22 @@ export default function ManagerPricing() {
   const [addForm, setAddForm] = useState({
     vehicleTypeId: '',
     basePrice: 10000,
-    hourlyRate: 5000,
-    overnightFee: 50000,
+    baseHours: 4,
+    subsequentRate: 2000,
+    subsequentHours: 1,
+    dailyMaxPrice: 50000,
     handlingFee: 2000,
     effectiveDate: getTodayStr()
   })
 
   const [editForm, setEditForm] = useState({
     policyId: '',
+    vehicleTypeId: '',
     basePrice: 0,
-    hourlyRate: 0,
-    overnightFee: 0,
+    baseHours: 0,
+    subsequentRate: 0,
+    subsequentHours: 0,
+    dailyMaxPrice: 0,
     handlingFee: 0,
     effectiveDate: ''
   })
@@ -103,8 +108,10 @@ export default function ManagerPricing() {
       const response = await api.post('/admin/pricing', {
         vehicle_type_id: parseInt(addForm.vehicleTypeId),
         base_price: parseFloat(addForm.basePrice),
-        hourly_rate: parseFloat(addForm.hourlyRate),
-        overnight_fee: parseFloat(addForm.overnightFee),
+        base_hours: parseInt(addForm.baseHours),
+        subsequent_rate: parseFloat(addForm.subsequentRate),
+        subsequent_hours: parseInt(addForm.subsequentHours),
+        daily_max_price: parseFloat(addForm.dailyMaxPrice),
         handling_fee: parseFloat(addForm.handlingFee),
         effective_date: addForm.effectiveDate
       })
@@ -128,8 +135,10 @@ export default function ManagerPricing() {
       policyId: policy.policy_id,
       vehicleTypeId: policy.vehicle_type_id,
       basePrice: policy.base_price,
-      hourlyRate: policy.hourly_rate,
-      overnightFee: policy.overnight_fee,
+      baseHours: policy.base_hours,
+      subsequentRate: policy.subsequent_rate,
+      subsequentHours: policy.subsequent_hours,
+      dailyMaxPrice: policy.daily_max_price,
       handlingFee: policy.handling_fee || 0,
       effectiveDate: policy.effective_date
     })
@@ -140,16 +149,16 @@ export default function ManagerPricing() {
     e.preventDefault()
 
     // Validate duplicate date for the same vehicle type
-    const isDuplicate = policies.some(p => 
-      p.policy_id !== editForm.policyId && 
-      p.vehicle_type_id === editForm.vehicleTypeId && 
+    const isDuplicate = policies.some(p =>
+      p.policy_id !== editForm.policyId &&
+      p.vehicle_type_id === editForm.vehicleTypeId &&
       p.effective_date === editForm.effectiveDate
     );
 
     if (isDuplicate) {
       toast.error(
-        language === 'en' 
-          ? 'A pricing policy for this vehicle type already exists on this date.' 
+        language === 'en'
+          ? 'A pricing policy for this vehicle type already exists on this date.'
           : 'Chính sách giá cho loại xe này vào ngày này đã tồn tại.'
       )
       return
@@ -159,8 +168,10 @@ export default function ManagerPricing() {
     try {
       const response = await api.put(`/admin/pricing/${editForm.policyId}`, {
         base_price: parseFloat(editForm.basePrice),
-        hourly_rate: parseFloat(editForm.hourlyRate),
-        overnight_fee: parseFloat(editForm.overnightFee),
+        base_hours: parseInt(editForm.baseHours),
+        subsequent_rate: parseFloat(editForm.subsequentRate),
+        subsequent_hours: parseInt(editForm.subsequentHours),
+        daily_max_price: parseFloat(editForm.dailyMaxPrice),
         handling_fee: parseFloat(editForm.handlingFee),
         effective_date: editForm.effectiveDate
       })
@@ -205,7 +216,7 @@ export default function ManagerPricing() {
   const getPolicyStatus = (policy) => {
     const today = getTodayStr()
     const activePolicy = getActivePolicyForType(policy.vehicle_type_id)
-    
+
     if (activePolicy && policy.policy_id === activePolicy.policy_id) {
       return {
         label: language === 'en' ? 'Active' : 'Đang áp dụng',
@@ -226,28 +237,7 @@ export default function ManagerPricing() {
 
   return (
     <div className="animate-slide-in flex flex-col space-y-6">
-      {/* HEADER SECTION */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h2 className="section-title mb-1">
-            {language === 'en' ? 'Pricing Policy' : 'Chính sách & Bảng giá'}
-          </h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            {language === 'en'
-              ? 'Configure and manage active pricing rules for Car and Motorbike parking.'
-              : 'Thiết lập và quản lý biểu phí đỗ xe áp dụng cho xe máy và ô tô.'}
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setIsAddModalOpen(true)}
-            className="btn-primary flex items-center gap-2 shadow-lg hover:shadow-blue-500/25 transition-all duration-300"
-          >
-            <Plus size={18} />
-            {language === 'en' ? 'Add Pricing Policy' : 'Thêm chính sách giá'}
-          </button>
-        </div>
-      </div>
+
 
       {loading || typesLoading ? (
         <div className="flex flex-col items-center justify-center flex-1 py-16 gap-3">
@@ -263,7 +253,7 @@ export default function ManagerPricing() {
             <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">
               {language === 'en' ? 'Current Active Rates' : 'Giá vé đang áp dụng hiện tại'}
             </h3>
-            
+
             {vehicleTypes.length === 0 ? (
               <div className="card text-center py-10">
                 <p className="text-slate-400">{language === 'en' ? 'No vehicle types defined.' : 'Chưa có phân loại xe nào.'}</p>
@@ -273,33 +263,31 @@ export default function ManagerPricing() {
                 {vehicleTypes.map(type => {
                   const activePolicy = getActivePolicyForType(type.vehicle_type_id);
                   const isCar = type.vehicle_type_name?.toLowerCase().includes('car') || type.vehicle_type_name?.toLowerCase().includes('ô tô');
-                  
+
                   return (
-                    <div 
-                      key={type.vehicle_type_id} 
-                      className={`card relative overflow-hidden transition-all duration-300 hover:shadow-lg border ${
-                        isCar 
-                          ? 'bg-gradient-to-br from-blue-50/40 via-white to-blue-50/10 dark:from-blue-950/10 dark:via-slate-900 dark:to-blue-950/5 border-blue-100 dark:border-blue-900/30' 
-                          : 'bg-gradient-to-br from-amber-50/40 via-white to-amber-50/10 dark:from-amber-950/10 dark:via-slate-900 dark:to-amber-950/5 border-amber-100 dark:border-amber-900/30'
-                      }`}
+                    <div
+                      key={type.vehicle_type_id}
+                      className={`card relative overflow-hidden transition-all duration-300 hover:shadow-lg border ${isCar
+                        ? 'bg-gradient-to-br from-blue-50/40 via-white to-blue-50/10 dark:from-blue-950/10 dark:via-slate-900 dark:to-blue-950/5 border-blue-100 dark:border-blue-900/30'
+                        : 'bg-gradient-to-br from-amber-50/40 via-white to-amber-50/10 dark:from-amber-950/10 dark:via-slate-900 dark:to-amber-950/5 border-amber-100 dark:border-amber-900/30'
+                        }`}
                     >
                       <div className="flex justify-between items-start mb-5">
                         <div className="flex items-center gap-3">
-                          <div className={`p-3 rounded-2xl shadow-sm ${
-                            isCar 
-                              ? 'bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400' 
-                              : 'bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400'
-                          }`}>
+                          <div className={`p-3 rounded-2xl shadow-sm ${isCar
+                            ? 'bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400'
+                            : 'bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400'
+                            }`}>
                             {isCar ? <Car size={24} /> : <Bike size={24} />}
                           </div>
                           <div>
                             <h4 className="text-lg font-bold text-slate-800 dark:text-white leading-tight">
                               {type.vehicle_type_name}
                             </h4>
-                            <p className="text-[10px] font-mono text-slate-400 mt-0.5">ID: {type.vehicle_type_id}</p>
+                            <p className="text-[10px] font-sans text-slate-400 mt-0.5">ID: {type.vehicle_type_id}</p>
                           </div>
                         </div>
-                        
+
                         {activePolicy ? (
                           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/20">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -317,9 +305,9 @@ export default function ManagerPricing() {
                           {/* Base Price Display */}
                           <div className="text-center py-4 bg-slate-50/50 dark:bg-slate-800/10 rounded-2xl border border-slate-100/50 dark:border-slate-800/20">
                             <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 block mb-1">
-                              {language === 'en' ? 'Base Entry Fee' : 'Giá vào cổng'}
+                              {language === 'en' ? 'Base Entry Fee' : 'Giá vào cổng'} ({activePolicy.base_hours}h)
                             </span>
-                            <div className="text-3xl font-black text-slate-800 dark:text-white font-mono flex items-center justify-center gap-1">
+                            <div className="text-3xl font-black text-slate-800 dark:text-white font-sans flex items-center justify-center gap-1">
                               {parseFloat(activePolicy.base_price).toLocaleString()}
                               <span className="text-base font-bold text-slate-400">₫</span>
                             </div>
@@ -331,11 +319,11 @@ export default function ManagerPricing() {
                               <div className="flex items-center gap-2">
                                 <Clock size={16} className="text-blue-500" />
                                 <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                                  {language === 'en' ? 'Hourly Rate' : 'Giá mỗi giờ tiếp theo'}
+                                  {language === 'en' ? `Subsequent Rate (per ${activePolicy.subsequent_hours}h)` : `Giá block tiếp theo (mỗi ${activePolicy.subsequent_hours}h)`}
                                 </span>
                               </div>
-                              <span className="text-sm font-bold font-mono text-slate-800 dark:text-white">
-                                +{parseFloat(activePolicy.hourly_rate).toLocaleString()} ₫
+                              <span className="text-sm font-bold font-sans text-slate-800 dark:text-white">
+                                +{parseFloat(activePolicy.subsequent_rate).toLocaleString()} ₫
                               </span>
                             </div>
 
@@ -343,11 +331,11 @@ export default function ManagerPricing() {
                               <div className="flex items-center gap-2">
                                 <Calendar size={16} className="text-indigo-500" />
                                 <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                                  {language === 'en' ? 'Overnight Fee' : 'Phí gửi qua đêm'}
+                                  {language === 'en' ? 'Daily Max Price (24h)' : 'Giá trần 24h'}
                                 </span>
                               </div>
-                              <span className="text-sm font-bold font-mono text-slate-800 dark:text-white">
-                                {parseFloat(activePolicy.overnight_fee).toLocaleString()} ₫
+                              <span className="text-sm font-bold font-sans text-slate-800 dark:text-white">
+                                {parseFloat(activePolicy.daily_max_price).toLocaleString()} ₫
                               </span>
                             </div>
 
@@ -358,7 +346,7 @@ export default function ManagerPricing() {
                                   {language === 'en' ? 'Lost Card Penalty' : 'Phí phạt mất thẻ'}
                                 </span>
                               </div>
-                              <span className="text-sm font-bold font-mono text-slate-800 dark:text-white">
+                              <span className="text-sm font-bold font-sans text-slate-800 dark:text-white">
                                 {parseFloat(activePolicy.handling_fee || 0).toLocaleString()} ₫
                               </span>
                             </div>
@@ -366,13 +354,13 @@ export default function ManagerPricing() {
 
                           {/* Effective Date & Quick Actions */}
                           <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800/60 text-xs">
-                            <div className="flex items-center gap-1.5 font-bold font-mono text-slate-400">
+                            <div className="flex items-center gap-1.5 font-bold font-sans text-slate-400">
                               <Calendar size={14} />
                               <span>
                                 {language === 'en' ? 'Since' : 'Áp dụng từ'}: {activePolicy.effective_date}
                               </span>
                             </div>
-                            
+
                             <div className="flex gap-2">
                               <button
                                 onClick={() => openEditModal(activePolicy)}
@@ -441,9 +429,9 @@ export default function ManagerPricing() {
                   <thead>
                     <tr>
                       <th className="table-header">{language === 'en' ? 'Vehicle Type' : 'Loại xe'}</th>
-                      <th className="table-header">{language === 'en' ? 'Base Price' : 'Giá vào cổng'}</th>
-                      <th className="table-header">{language === 'en' ? 'Hourly Rate' : 'Giá giờ sau'}</th>
-                      <th className="table-header">{language === 'en' ? 'Overnight Fee' : 'Phí qua đêm'}</th>
+                      <th className="table-header">{language === 'en' ? 'Base Rate' : 'Giá vào cổng'}</th>
+                      <th className="table-header">{language === 'en' ? 'Subsequent Rate' : 'Giá block sau'}</th>
+                      <th className="table-header">{language === 'en' ? 'Daily Max' : 'Giá trần 24h'}</th>
                       <th className="table-header">{language === 'en' ? 'Lost Card Penalty' : 'Phí mất thẻ'}</th>
                       <th className="table-header">{language === 'en' ? 'Effective Date' : 'Ngày hiệu lực'}</th>
                       <th className="table-header">{language === 'en' ? 'Status' : 'Trạng thái'}</th>
@@ -456,7 +444,7 @@ export default function ManagerPricing() {
                       .map((policy) => {
                         const statusInfo = getPolicyStatus(policy);
                         const isCar = policy.vehicle_type_name?.toLowerCase().includes('car') || policy.vehicle_type_name?.toLowerCase().includes('ô tô');
-                        
+
                         return (
                           <tr
                             key={policy.policy_id}
@@ -472,19 +460,19 @@ export default function ManagerPricing() {
                                 </span>
                               </div>
                             </td>
-                            <td className="table-cell font-semibold font-mono text-slate-700 dark:text-slate-300">
-                              {parseFloat(policy.base_price).toLocaleString()} ₫
+                            <td className="table-cell font-semibold font-sans text-slate-700 dark:text-slate-300">
+                              {parseFloat(policy.base_price).toLocaleString()} ₫ ({policy.base_hours}h)
                             </td>
-                            <td className="table-cell font-semibold font-mono text-slate-700 dark:text-slate-300">
-                              +{parseFloat(policy.hourly_rate).toLocaleString()} ₫/hr
+                            <td className="table-cell font-semibold font-sans text-slate-700 dark:text-slate-300">
+                              +{parseFloat(policy.subsequent_rate).toLocaleString()} ₫ ({policy.subsequent_hours}h)
                             </td>
-                            <td className="table-cell font-semibold font-mono text-slate-700 dark:text-slate-300">
-                              {parseFloat(policy.overnight_fee).toLocaleString()} ₫
+                            <td className="table-cell font-semibold font-sans text-slate-700 dark:text-slate-300">
+                              {parseFloat(policy.daily_max_price).toLocaleString()} ₫
                             </td>
-                            <td className="table-cell font-semibold font-mono text-slate-700 dark:text-slate-300">
+                            <td className="table-cell font-semibold font-sans text-slate-700 dark:text-slate-300">
                               {parseFloat(policy.handling_fee || 0).toLocaleString()} ₫
                             </td>
-                            <td className="table-cell font-semibold font-mono text-xs text-slate-500 dark:text-slate-400">
+                            <td className="table-cell font-semibold font-sans text-xs text-slate-500 dark:text-slate-400">
                               {policy.effective_date}
                             </td>
                             <td className="table-cell">
@@ -554,23 +542,21 @@ export default function ManagerPricing() {
                   {vehicleTypes.map(type => {
                     const isCar = type.vehicle_type_name?.toLowerCase().includes('car') || type.vehicle_type_name?.toLowerCase().includes('ô tô');
                     const isSelected = addForm.vehicleTypeId === type.vehicle_type_id.toString();
-                    
+
                     return (
                       <button
                         key={type.vehicle_type_id}
                         type="button"
                         onClick={() => setAddForm(prev => ({ ...prev, vehicleTypeId: type.vehicle_type_id.toString() }))}
-                        className={`flex flex-col items-center justify-center py-4 px-6 rounded-2xl border-2 transition-all duration-200 gap-2 ${
-                          isSelected
-                            ? 'border-blue-600 bg-blue-50/20 text-blue-600 dark:border-blue-500 dark:bg-blue-950/20 dark:text-blue-400 shadow-md'
-                            : 'border-slate-100 dark:border-slate-800/80 bg-slate-50/30 hover:bg-slate-50 dark:bg-slate-800/20 dark:hover:bg-slate-800/40 text-slate-500 dark:text-slate-400'
-                        }`}
+                        className={`flex flex-col items-center justify-center py-4 px-6 rounded-2xl border-2 transition-all duration-200 gap-2 ${isSelected
+                          ? 'border-blue-600 bg-blue-50/20 text-blue-600 dark:border-blue-500 dark:bg-blue-950/20 dark:text-blue-400 shadow-md'
+                          : 'border-slate-100 dark:border-slate-800/80 bg-slate-50/30 hover:bg-slate-50 dark:bg-slate-800/20 dark:hover:bg-slate-800/40 text-slate-500 dark:text-slate-400'
+                          }`}
                       >
-                        <div className={`p-2.5 rounded-xl ${
-                          isSelected 
-                            ? (isCar ? 'bg-blue-100 dark:bg-blue-900/40' : 'bg-amber-100 dark:bg-amber-900/40') 
-                            : 'bg-slate-100 dark:bg-slate-800'
-                        }`}>
+                        <div className={`p-2.5 rounded-xl ${isSelected
+                          ? (isCar ? 'bg-blue-100 dark:bg-blue-900/40' : 'bg-amber-100 dark:bg-amber-900/40')
+                          : 'bg-slate-100 dark:bg-slate-800'
+                          }`}>
                           {isCar ? <Car size={20} /> : <Bike size={20} />}
                         </div>
                         <span className="text-xs font-bold">{type.vehicle_type_name}</span>
@@ -587,13 +573,13 @@ export default function ManagerPricing() {
                   required
                   value={addForm.effectiveDate}
                   onChange={(e) => setAddForm(prev => ({ ...prev, effectiveDate: e.target.value }))}
-                  className="input-field font-mono font-bold"
+                  className="input-field font-sans font-bold"
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="label">{language === 'en' ? 'Base Price (Entry) *' : 'Giá sàn vào cổng *'}</label>
+                  <label className="label">{language === 'en' ? 'Base Price *' : 'Giá sàn vào cổng *'}</label>
                   <div className="relative">
                     <input
                       type="number"
@@ -601,7 +587,7 @@ export default function ManagerPricing() {
                       min={0}
                       value={addForm.basePrice}
                       onChange={(e) => setAddForm(prev => ({ ...prev, basePrice: e.target.value }))}
-                      className="input-field pr-10 font-mono font-bold"
+                      className="input-field pr-10 font-sans font-bold"
                       placeholder="10000"
                     />
                     <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400 font-bold text-xs">
@@ -610,35 +596,62 @@ export default function ManagerPricing() {
                   </div>
                 </div>
                 <div>
-                  <label className="label">{language === 'en' ? 'Hourly Rate *' : 'Giá mỗi giờ tiếp theo *'}</label>
+                  <label className="label">{language === 'en' ? 'Base Hours *' : 'Số giờ sàn vào cổng *'}</label>
+                  <input
+                    type="number"
+                    required
+                    min={1}
+                    value={addForm.baseHours}
+                    onChange={(e) => setAddForm(prev => ({ ...prev, baseHours: e.target.value }))}
+                    className="input-field font-sans font-bold"
+                    placeholder="4"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="label">{language === 'en' ? 'Subsequent Rate *' : 'Giá block tiếp theo *'}</label>
                   <div className="relative">
                     <input
                       type="number"
                       required
                       min={0}
-                      value={addForm.hourlyRate}
-                      onChange={(e) => setAddForm(prev => ({ ...prev, hourlyRate: e.target.value }))}
-                      className="input-field pr-10 font-mono font-bold"
-                      placeholder="5000"
+                      value={addForm.subsequentRate}
+                      onChange={(e) => setAddForm(prev => ({ ...prev, subsequentRate: e.target.value }))}
+                      className="input-field pr-10 font-sans font-bold"
+                      placeholder="2000"
                     />
                     <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400 font-bold text-xs">
                       ₫
                     </div>
                   </div>
                 </div>
+                <div>
+                  <label className="label">{language === 'en' ? 'Subsequent Hours *' : 'Số giờ block tiếp theo *'}</label>
+                  <input
+                    type="number"
+                    required
+                    min={1}
+                    value={addForm.subsequentHours}
+                    onChange={(e) => setAddForm(prev => ({ ...prev, subsequentHours: e.target.value }))}
+                    className="input-field font-sans font-bold"
+                    placeholder="1"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="label">{language === 'en' ? 'Overnight Penalty *' : 'Phí gửi qua đêm *'}</label>
+                  <label className="label">{language === 'en' ? 'Daily Max Price *' : 'Giá trần 24h *'}</label>
                   <div className="relative">
                     <input
                       type="number"
                       required
                       min={0}
-                      value={addForm.overnightFee}
-                      onChange={(e) => setAddForm(prev => ({ ...prev, overnightFee: e.target.value }))}
-                      className="input-field pr-10 font-mono font-bold"
+                      value={addForm.dailyMaxPrice}
+                      onChange={(e) => setAddForm(prev => ({ ...prev, dailyMaxPrice: e.target.value }))}
+                      className="input-field pr-10 font-sans font-bold"
                       placeholder="50000"
                     />
                     <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400 font-bold text-xs">
@@ -655,7 +668,7 @@ export default function ManagerPricing() {
                       min={0}
                       value={addForm.handlingFee}
                       onChange={(e) => setAddForm(prev => ({ ...prev, handlingFee: e.target.value }))}
-                      className="input-field pr-10 font-mono font-bold"
+                      className="input-field pr-10 font-sans font-bold"
                       placeholder="2000"
                     />
                     <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400 font-bold text-xs">
@@ -721,13 +734,13 @@ export default function ManagerPricing() {
                   required
                   value={editForm.effectiveDate}
                   onChange={(e) => setEditForm(prev => ({ ...prev, effectiveDate: e.target.value }))}
-                  className="input-field font-mono font-bold"
+                  className="input-field font-sans font-bold"
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="label">{language === 'en' ? 'Base Price (Entry) *' : 'Giá sàn vào cổng *'}</label>
+                  <label className="label">{language === 'en' ? 'Base Price *' : 'Giá sàn vào cổng *'}</label>
                   <div className="relative">
                     <input
                       type="number"
@@ -735,7 +748,7 @@ export default function ManagerPricing() {
                       min={0}
                       value={editForm.basePrice}
                       onChange={(e) => setEditForm(prev => ({ ...prev, basePrice: e.target.value }))}
-                      className="input-field pr-10 font-mono font-bold"
+                      className="input-field pr-10 font-sans font-bold"
                     />
                     <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400 font-bold text-xs">
                       ₫
@@ -743,34 +756,59 @@ export default function ManagerPricing() {
                   </div>
                 </div>
                 <div>
-                  <label className="label">{language === 'en' ? 'Hourly Rate *' : 'Giá mỗi giờ tiếp theo *'}</label>
-                  <div className="relative">
-                    <input
-                      type="number"
-                      required
-                      min={0}
-                      value={editForm.hourlyRate}
-                      onChange={(e) => setEditForm(prev => ({ ...prev, hourlyRate: e.target.value }))}
-                      className="input-field pr-10 font-mono font-bold"
-                    />
-                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400 font-bold text-xs">
-                      ₫
-                    </div>
-                  </div>
+                  <label className="label">{language === 'en' ? 'Base Hours *' : 'Số giờ sàn vào cổng *'}</label>
+                  <input
+                    type="number"
+                    required
+                    min={1}
+                    value={editForm.baseHours}
+                    onChange={(e) => setEditForm(prev => ({ ...prev, baseHours: e.target.value }))}
+                    className="input-field font-sans font-bold"
+                  />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="label">{language === 'en' ? 'Overnight Penalty *' : 'Phí gửi qua đêm *'}</label>
+                  <label className="label">{language === 'en' ? 'Subsequent Rate *' : 'Giá block tiếp theo *'}</label>
                   <div className="relative">
                     <input
                       type="number"
                       required
                       min={0}
-                      value={editForm.overnightFee}
-                      onChange={(e) => setEditForm(prev => ({ ...prev, overnightFee: e.target.value }))}
-                      className="input-field pr-10 font-mono font-bold"
+                      value={editForm.subsequentRate}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, subsequentRate: e.target.value }))}
+                      className="input-field pr-10 font-sans font-bold"
+                    />
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400 font-bold text-xs">
+                      ₫
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <label className="label">{language === 'en' ? 'Subsequent Hours *' : 'Số giờ block tiếp theo *'}</label>
+                  <input
+                    type="number"
+                    required
+                    min={1}
+                    value={editForm.subsequentHours}
+                    onChange={(e) => setEditForm(prev => ({ ...prev, subsequentHours: e.target.value }))}
+                    className="input-field font-sans font-bold"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="label">{language === 'en' ? 'Daily Max Price *' : 'Giá trần 24h *'}</label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      required
+                      min={0}
+                      value={editForm.dailyMaxPrice}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, dailyMaxPrice: e.target.value }))}
+                      className="input-field pr-10 font-sans font-bold"
                     />
                     <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400 font-bold text-xs">
                       ₫
@@ -786,7 +824,7 @@ export default function ManagerPricing() {
                       min={0}
                       value={editForm.handlingFee}
                       onChange={(e) => setEditForm(prev => ({ ...prev, handlingFee: e.target.value }))}
-                      className="input-field pr-10 font-mono font-bold"
+                      className="input-field pr-10 font-sans font-bold"
                     />
                     <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400 font-bold text-xs">
                       ₫

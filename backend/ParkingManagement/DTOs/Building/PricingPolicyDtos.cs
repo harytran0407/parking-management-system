@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 
 namespace ParkingManagement.DTOs.Building;
@@ -19,11 +19,17 @@ public class PricingPolicyResponse
     [JsonPropertyName("base_price")]
     public decimal BasePrice { get; set; }
 
-    [JsonPropertyName("hourly_rate")]
-    public decimal HourlyRate { get; set; }
+    [JsonPropertyName("base_hours")]
+    public int BaseHours { get; set; }
 
-    [JsonPropertyName("overnight_fee")]
-    public decimal OvernightFee { get; set; }
+    [JsonPropertyName("subsequent_rate")]
+    public decimal SubsequentRate { get; set; }
+
+    [JsonPropertyName("subsequent_hours")]
+    public int SubsequentHours { get; set; }
+
+    [JsonPropertyName("daily_max_price")]
+    public decimal DailyMaxPrice { get; set; }
 
     [JsonPropertyName("effective_date")]
     public string EffectiveDate { get; set; } = null!;
@@ -45,14 +51,24 @@ public class CreatePricingPolicyRequest
     public decimal BasePrice { get; set; }
 
     [Required]
-    [Range(0, double.MaxValue, ErrorMessage = "hourly_rate must be >= 0")]
-    [JsonPropertyName("hourly_rate")]
-    public decimal HourlyRate { get; set; }
+    [Range(1, int.MaxValue, ErrorMessage = "base_hours must be >= 1")]
+    [JsonPropertyName("base_hours")]
+    public int BaseHours { get; set; }
 
     [Required]
-    [Range(0, double.MaxValue, ErrorMessage = "overnight_fee must be >= 0")]
-    [JsonPropertyName("overnight_fee")]
-    public decimal OvernightFee { get; set; }
+    [Range(0, double.MaxValue, ErrorMessage = "subsequent_rate must be >= 0")]
+    [JsonPropertyName("subsequent_rate")]
+    public decimal SubsequentRate { get; set; }
+
+    [Required]
+    [Range(1, int.MaxValue, ErrorMessage = "subsequent_hours must be >= 1")]
+    [JsonPropertyName("subsequent_hours")]
+    public int SubsequentHours { get; set; }
+
+    [Required]
+    [Range(0, double.MaxValue, ErrorMessage = "daily_max_price must be >= 0")]
+    [JsonPropertyName("daily_max_price")]
+    public decimal DailyMaxPrice { get; set; }
 
     [Required(ErrorMessage = "effective_date is required (YYYY-MM-DD)")]
     [JsonPropertyName("effective_date")]
@@ -71,13 +87,21 @@ public class UpdatePricingPolicyRequest
     [JsonPropertyName("base_price")]
     public decimal? BasePrice { get; set; }
 
-    [Range(0, double.MaxValue)]
-    [JsonPropertyName("hourly_rate")]
-    public decimal? HourlyRate { get; set; }
+    [Range(1, int.MaxValue)]
+    [JsonPropertyName("base_hours")]
+    public int? BaseHours { get; set; }
 
     [Range(0, double.MaxValue)]
-    [JsonPropertyName("overnight_fee")]
-    public decimal? OvernightFee { get; set; }
+    [JsonPropertyName("subsequent_rate")]
+    public decimal? SubsequentRate { get; set; }
+
+    [Range(1, int.MaxValue)]
+    [JsonPropertyName("subsequent_hours")]
+    public int? SubsequentHours { get; set; }
+
+    [Range(0, double.MaxValue)]
+    [JsonPropertyName("daily_max_price")]
+    public decimal? DailyMaxPrice { get; set; }
 
     [JsonPropertyName("effective_date")]
     public string? EffectiveDate { get; set; }

@@ -68,9 +68,12 @@ public class BuildingController : ControllerBase
                 VehicleTypeId = p.VehicleTypeId,
                 VehicleTypeName = p.VehicleType?.VehicleTypeName ?? (p.VehicleTypeId == 2 ? "Car" : "Motorbike"),
                 BasePrice = p.BasePrice,
-                HourlyRate = p.HourlyRate,
-                OvernightFee = p.OvernightFee,
-                EffectiveDate = p.EffectiveDate.ToString("yyyy-MM-dd")
+                BaseHours = p.BaseHours,
+                SubsequentRate = p.SubsequentRate,
+                SubsequentHours = p.SubsequentHours,
+                DailyMaxPrice = p.DailyMaxPrice,
+                EffectiveDate = p.EffectiveDate.ToString("yyyy-MM-dd"),
+                HandlingFee = p.HandlingFee
             })
             .ToList();
 

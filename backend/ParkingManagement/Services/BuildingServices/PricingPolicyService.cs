@@ -1,4 +1,4 @@
-﻿using ParkingManagement.DTOs.Building;
+using ParkingManagement.DTOs.Building;
 using ParkingManagement.Models;
 using ParkingManagement.Repositories;
 
@@ -69,11 +69,12 @@ public class PricingPolicyService : IPricingPolicyService
         {
             VehicleTypeId = request.VehicleTypeId,
             BasePrice = request.BasePrice,
-            HourlyRate = request.HourlyRate,
-            OvernightFee = request.OvernightFee,
+            BaseHours = request.BaseHours,
+            SubsequentRate = request.SubsequentRate,
+            SubsequentHours = request.SubsequentHours,
+            DailyMaxPrice = request.DailyMaxPrice,
             EffectiveDate = effectiveDate,
             HandlingFee = request.HandlingFee
-
         };
 
         var created = await _repo.CreateAsync(policy);
@@ -91,11 +92,17 @@ public class PricingPolicyService : IPricingPolicyService
         if (request.BasePrice.HasValue)
             policy.BasePrice = request.BasePrice.Value;
 
-        if (request.HourlyRate.HasValue)
-            policy.HourlyRate = request.HourlyRate.Value;
+        if (request.BaseHours.HasValue)
+            policy.BaseHours = request.BaseHours.Value;
 
-        if (request.OvernightFee.HasValue)
-            policy.OvernightFee = request.OvernightFee.Value;
+        if (request.SubsequentRate.HasValue)
+            policy.SubsequentRate = request.SubsequentRate.Value;
+
+        if (request.SubsequentHours.HasValue)
+            policy.SubsequentHours = request.SubsequentHours.Value;
+
+        if (request.DailyMaxPrice.HasValue)
+            policy.DailyMaxPrice = request.DailyMaxPrice.Value;
 
         if (!string.IsNullOrEmpty(request.EffectiveDate))
         {
@@ -128,10 +135,11 @@ public class PricingPolicyService : IPricingPolicyService
         VehicleTypeId = p.VehicleTypeId,
         VehicleTypeName = p.VehicleType?.VehicleTypeName ?? "",
         BasePrice = p.BasePrice,
-        HourlyRate = p.HourlyRate,
-        OvernightFee = p.OvernightFee,
+        BaseHours = p.BaseHours,
+        SubsequentRate = p.SubsequentRate,
+        SubsequentHours = p.SubsequentHours,
+        DailyMaxPrice = p.DailyMaxPrice,
         EffectiveDate = p.EffectiveDate.ToString("yyyy-MM-dd"),
         HandlingFee = p.HandlingFee
-
     };
 }
