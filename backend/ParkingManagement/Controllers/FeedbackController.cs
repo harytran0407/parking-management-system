@@ -48,13 +48,27 @@ namespace ParkingManagement.Controllers
         // ==========================================
 
         [HttpGet]
-        [Authorize(Roles = "ParkingManager,SystemAdmin")]
+        [Authorize(Roles = "ParkingManager,SystemAdmin,ParkingStaff")]
         public async Task<IActionResult> GetAllFeedbacks(
             [FromQuery] string? status,
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 10)
         {
-            var (items, totalItems, totalPages) = await _feedbackService.GetAllFeedbacksAsync(status, page, pageSize);
+            bool isManager = User.IsInRole("ParkingManager");
+            if (isManager && !string.IsNullOrEmpty(status) && status.ToUpper() == "OPEN")
+            {
+                return Ok(new
+                {
+                    success = true,
+                    data = new
+                    {
+                        items = new List<object>(),
+                        pagination = new { page, page_size = pageSize, total_items = 0, total_pages = 0 }
+                    }
+                });
+            }
+
+            var (items, totalItems, totalPages) = await _feedbackService.GetAllFeedbacksAsync(status, isManager, page, pageSize);
             return Ok(new
             {
                 success = true,
@@ -76,7 +90,7 @@ namespace ParkingManagement.Controllers
         // 3. PROCESS: XỬ LÝ FEEDBACK (DÀNH CHO MANAGER)
         // ==========================================
         [HttpPut("{id}/process")]
-        [Authorize(Roles = "ParkingManager,SystemAdmin")]
+        [Authorize(Roles = "ParkingManager,SystemAdmin,ParkingStaff")]
         public async Task<IActionResult> ProcessFeedback(
             [FromRoute] int id,
             [FromBody] ProcessFeedbackRequestDto request)
@@ -97,6 +111,33 @@ namespace ParkingManagement.Controllers
             {
                 success = true,
                 message = "The feedback has been successfully processed."
+            });
+        }
+
+        // ==========================================
+        // 4. LẤY LỊCH SỬ PHẢN HỒI CỦA USER (MY FEEDBACKS)
+        // ==========================================
+        [HttpGet("MyFeedback")]
+        [Authorize]
+        public async Task<IActionResult> GetMyFeedbacks()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (userId == null)
+            {
+                return Unauthorized(new
+                {
+                    success = false,
+                    message = "Please log in to view your feedback history."
+                });
+            }
+
+            var oldFeedbacks = await _feedbackService.GetMyFeedbacksAsync(userId);
+
+            return Ok(new
+            {
+                success = true,
+                data = oldFeedbacks
             });
         }
     }
