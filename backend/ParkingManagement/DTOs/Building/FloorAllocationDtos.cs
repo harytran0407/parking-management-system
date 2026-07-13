@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 
 namespace ParkingManagement.DTOs.Building;
@@ -47,6 +47,9 @@ public class UpdateFloorAllocationRequest
     [RegularExpression("^(ACTIVE|MAINTENANCE)$",
         ErrorMessage = "status must be ACTIVE or MAINTENANCE")]
     public string? Status { get; set; }
+
+    [JsonPropertyName("zone_name")]
+    public string? ZoneName { get; set; }
 }
 
 // ─── PUT response ─────────────────────────────────────────────────────────────

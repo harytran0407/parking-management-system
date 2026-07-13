@@ -41,11 +41,13 @@ public class BookingService : IBookingService
 
     private readonly AppDbContext _context;
     private readonly IParkingRepository _parkingRepo;
+    private readonly PayOS.PayOSClient _payOS;
 
-    public BookingService(AppDbContext context, IParkingRepository parkingRepo)
+    public BookingService(AppDbContext context, IParkingRepository parkingRepo, PayOS.PayOSClient payOS)
     {
         _context = context;
         _parkingRepo = parkingRepo;
+        _payOS = payOS;
     }
 
     // ─── GET PRICE ESTIMATE ────────────────────────────────────────────────────
@@ -106,6 +108,7 @@ public class BookingService : IBookingService
 
     public async Task<BookingResponse> CreateBookingAsync(string userId, CreateBookingRequest request)
     {
+        await AutoCancelExpiredBookingsAsync();
         var vnNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, _vnTz);
         var checkTime = vnNow.AddHours(-24);
 
@@ -252,7 +255,8 @@ public class BookingService : IBookingService
 
     public async Task<List<BookingResponse>> GetMyBookingsAsync(string userId)
     {
-        await AutoCancelExpiredBookingsAsync(userId);
+        await SyncPendingPayOsBookingsAsync(userId);
+        await AutoCancelExpiredBookingsAsync();
 
         var bookings = await _context.Bookings
             .Include(b => b.VehicleType)
@@ -371,7 +375,8 @@ public class BookingService : IBookingService
 
     public async Task<BookingDashboardStatsResponse> GetBookingStatsAsync(string userId)
     {
-        await AutoCancelExpiredBookingsAsync(userId);
+        await SyncPendingPayOsBookingsAsync(userId);
+        await AutoCancelExpiredBookingsAsync();
 
         var totalBookings = await _context.Bookings.CountAsync(b => b.VehicleUserId == userId);
 
@@ -407,7 +412,8 @@ public class BookingService : IBookingService
 
     public async Task<List<BookingResponse>> GetActiveBookingsAsync(string userId)
     {
-        await AutoCancelExpiredBookingsAsync(userId);
+        await SyncPendingPayOsBookingsAsync(userId);
+        await AutoCancelExpiredBookingsAsync();
 
         var activeBookings = await _context.Bookings
             .Include(b => b.VehicleType)
@@ -428,7 +434,8 @@ public class BookingService : IBookingService
 
     public async Task<List<BookingResponse>> GetBookingHistoryAsync(string userId)
     {
-        await AutoCancelExpiredBookingsAsync(userId);
+        await SyncPendingPayOsBookingsAsync(userId);
+        await AutoCancelExpiredBookingsAsync();
 
         var historyBookings = await _context.Bookings
             .Include(b => b.VehicleType)
@@ -498,7 +505,8 @@ public class BookingService : IBookingService
 
     public async Task<BookingResponse> GetBookingByIdAsync(string bookingId, string userId)
     {
-        await AutoCancelExpiredBookingsAsync(userId);
+        await SyncPendingPayOsBookingsAsync(userId);
+        await AutoCancelExpiredBookingsAsync();
 
         var booking = await _context.Bookings
             .Include(b => b.VehicleType)
@@ -541,6 +549,7 @@ public class BookingService : IBookingService
 
     public async Task<BookingCapacityStatusResponse> GetBookingCapacityStatusAsync(int vehicleTypeId)
     {
+        await AutoCancelExpiredBookingsAsync();
         var totalCapacity = await _context.FloorZones
             .Where(z => z.VehicleTypeId == vehicleTypeId && z.Status == "ACTIVE")
             .SumAsync(z => z.Capacity);
@@ -561,13 +570,57 @@ public class BookingService : IBookingService
         };
     }
 
-    private async Task AutoCancelExpiredBookingsAsync(string userId)
+    private async Task SyncPendingPayOsBookingsAsync(string userId)
+    {
+        var vnNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, _vnTz);
+        
+        var bookingsToSync = await _context.Bookings
+            .Include(b => b.Payments)
+            .Where(b => b.VehicleUserId == userId && b.Status == "PENDING")
+            .ToListAsync();
+
+        foreach (var booking in bookingsToSync)
+        {
+            var pendingPayOsPayment = booking.Payments
+                .Where(p => p.PaymentMethod == "PAYOS" && p.Status == "PENDING")
+                .OrderByDescending(p => p.PaymentTime)
+                .FirstOrDefault();
+
+            if (pendingPayOsPayment != null)
+            {
+                try
+                {
+                    string paymentId = pendingPayOsPayment.PaymentId;
+                    string hexPart = paymentId.Replace("pay_", "");
+                    long orderCode = Convert.ToInt64(hexPart, 16);
+
+                    var payOsInfo = await _payOS.PaymentRequests.GetAsync(orderCode);
+                    if (payOsInfo != null && payOsInfo.Status.ToString().Equals("PAID", StringComparison.OrdinalIgnoreCase))
+                    {
+                        pendingPayOsPayment.Status = "SUCCESS";
+                        pendingPayOsPayment.TransactionId = "payos_" + Guid.NewGuid().ToString().Substring(0, 8).ToUpper();
+                        pendingPayOsPayment.PaymentTime = vnNow;
+                        pendingPayOsPayment.AmountPaid = payOsInfo.Amount;
+
+                        booking.Status = "CONFIRMED";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error syncing booking PayOS status: {ex.Message}");
+                }
+            }
+        }
+        
+        await _context.SaveChangesAsync();
+    }
+
+    private async Task AutoCancelExpiredBookingsAsync()
     {
         var vnNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, _vnTz);
         var expiredBookings = await _context.Bookings
-            .Where(b => b.VehicleUserId == userId
-                        && ((b.Status == "PENDING" && ((b.BookingTime.HasValue && b.BookingTime.Value.AddMinutes(5) < vnNow) || b.ExpectedArrival.AddMinutes(30) < vnNow))
-                            || (b.Status == "CONFIRMED" && b.ExpectedArrival.AddMinutes(30) < vnNow)))
+            .Where(b => (b.Status == "PENDING" && ((b.BookingTime.HasValue && b.BookingTime.Value.AddMinutes(5) < vnNow) || b.ExpectedArrival.AddMinutes(30) < vnNow))
+                        || (b.Status == "CONFIRMED" && b.ExpectedArrival.AddMinutes(30) < vnNow))
             .ToListAsync();
 
         if (expiredBookings.Any())

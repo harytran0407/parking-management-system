@@ -71,9 +71,32 @@ public class FloorAllocationRepository : IFloorAllocationRepository
 
     public async Task DeleteZoneAsync(FloorZone zoneId)
     {
-        var slots = await _db.ParkingSlots.Where(s => s.ZoneId == zoneId.ZoneId).ToListAsync();
-        _db.ParkingSlots.RemoveRange(slots);
+        // Nullify ZoneId reference in bookings
+        var bookings = await _db.Bookings.Where(b => b.ZoneId == zoneId.ZoneId).ToListAsync();
+        foreach (var b in bookings)
+        {
+            b.ZoneId = null;
+        }
 
+        // Nullify ZoneId reference in parking sessions
+        var sessions = await _db.ParkingSessions.Where(s => s.ZoneId == zoneId.ZoneId).ToListAsync();
+        foreach (var s in sessions)
+        {
+            s.ZoneId = null;
+        }
+
+        var slots = await _db.ParkingSlots.Where(s => s.ZoneId == zoneId.ZoneId).ToListAsync();
+
+        // Nullify SlotId reference in parking sessions for slots in this zone
+        var slotIds = slots.Select(s => s.SlotId).ToList();
+        var sessionsWithSlots = await _db.ParkingSessions.Where(s => s.SlotId != null && slotIds.Contains(s.SlotId)).ToListAsync();
+        foreach (var s in sessionsWithSlots)
+        {
+            s.SlotId = null;
+        }
+
+        _db.ParkingSlots.RemoveRange(slots);
+ 
         _db.FloorZones.Remove(zoneId);
         await _db.SaveChangesAsync();
     }
@@ -84,54 +107,85 @@ public class FloorAllocationRepository : IFloorAllocationRepository
             .Include(z => z.ParkingSlots)
             .Include(z => z.VehicleType)
             .FirstOrDefaultAsync(z => z.ZoneId == zoneId);
-
+    
         if (zone == null) return;
-
+    
         int currentSlotsCount = zone.ParkingSlots.Count;
         if (targetCapacity == currentSlotsCount) return;
-
+    
         if (targetCapacity > currentSlotsCount)
         {
             var newSlots = new List<ParkingSlot>();
             int countToCreate = targetCapacity - currentSlotsCount;
-
-            // Calculate the maximum slot number (STT) currently existing in this zone to prevent collisions
+    
+            string idPrefix = $"slt_{zone.FloorNumber}";
             int maxSlotNumber = 0;
-            foreach (var s in zone.ParkingSlots)
+    
+            var allFloorSlotIds = await _db.ParkingSlots
+                .Where(s => s.SlotId.StartsWith(idPrefix))
+                .Select(s => s.SlotId)
+                .ToListAsync();
+
+            foreach (var baseId in allFloorSlotIds)
             {
-                if (!string.IsNullOrEmpty(s.SlotId))
+                if (string.IsNullOrEmpty(baseId)) continue;
+    
+                string parsedBaseId = baseId;
+    
+                // Nếu id có hậu tố "_x" do lần tạo trước bị trùng (vd: slt_101_1),
+                // chỉ cắt bỏ phần hậu tố ĐÓ, không cắt từ dấu "_" đầu tiên của prefix.
+                int underscoreAfterPrefix = parsedBaseId.IndexOf('_', idPrefix.Length);
+                if (underscoreAfterPrefix > 0)
                 {
-                    string cleanId = s.SlotId.Contains("_") ? s.SlotId.Split('_')[0] : s.SlotId;
-                    if (cleanId.Length >= 2)
+                    parsedBaseId = parsedBaseId.Substring(0, underscoreAfterPrefix);
+                }
+    
+                if (parsedBaseId.StartsWith(idPrefix))
+                {
+                    string numberPart = parsedBaseId.Substring(idPrefix.Length);
+                    if (int.TryParse(numberPart, out int num))
                     {
-                        string lastTwo = cleanId.Substring(cleanId.Length - 2);
-                        if (int.TryParse(lastTwo, out int num))
-                        {
-                            if (num > maxSlotNumber) maxSlotNumber = num;
-                        }
+                        if (num > maxSlotNumber) maxSlotNumber = num;
                     }
                 }
             }
-
+    
+            string zoneLetter = "Z";
+            if (!string.IsNullOrEmpty(zone.ZoneName))
+            {
+                string cleanZoneName = zone.ZoneName.Replace("Zone", "", StringComparison.OrdinalIgnoreCase).Trim();
+                if (!string.IsNullOrEmpty(cleanZoneName))
+                {
+                    zoneLetter = cleanZoneName.Substring(0, 1).ToUpper();
+                }
+                else
+                {
+                    zoneLetter = zone.ZoneName.Substring(0, 1).ToUpper();
+                }
+            }
+    
             for (int i = 1; i <= countToCreate; i++)
             {
                 int slotNumber = maxSlotNumber + i;
-                string zoneLetter = zone.ZoneName.Length > 5 ? zone.ZoneName[5].ToString() : "X";
-                string slotId = $"{zoneLetter}{zone.FloorNumber}{slotNumber:D2}";
-
+                string slotId = $"slt_{zone.FloorNumber}{slotNumber:D2}";
+                string slotName = $"{zoneLetter}{zone.FloorNumber}{slotNumber:D2}";
+    
                 int suffix = 0;
                 string candidateId = slotId;
-                while (await _db.ParkingSlots.AnyAsync(s => s.SlotId == candidateId))
+                string candidateName = slotName;
+                while (await _db.ParkingSlots.AnyAsync(s => s.SlotId == candidateId || s.SlotName == candidateName))
                 {
                     suffix++;
                     candidateId = $"{slotId}_{suffix}";
+                    candidateName = $"{slotName}_{suffix}";
                 }
                 slotId = candidateId;
-
+                slotName = candidateName;
+    
                 var slot = new ParkingSlot
                 {
                     SlotId = slotId,
-                    SlotName = slotId,
+                    SlotName = slotName,
                     Status = "AVAILABLE",
                     IsHandicap = false,
                     IsElectricCharging = false,
@@ -150,15 +204,15 @@ public class FloorAllocationRepository : IFloorAllocationRepository
                 .OrderByDescending(s => s.SlotId)
                 .Take(countToDelete)
                 .ToList();
-
+    
             if (availableSlots.Count < countToDelete)
             {
                 throw new InvalidOperationException($"Cannot reduce capacity: not enough AVAILABLE slots to delete. Need to delete {countToDelete} slot(s), but only found {availableSlots.Count} AVAILABLE slot(s).");
             }
-
+    
             _db.ParkingSlots.RemoveRange(availableSlots);
         }
-
+    
         await _db.SaveChangesAsync();
     }
 }

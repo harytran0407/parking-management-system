@@ -31,11 +31,6 @@ public class FloorAllocationService : IFloorAllocationService
         foreach (var z in zones)
         {
             var zoneName = z.ZoneName;
-            int hyphenIndex = zoneName.IndexOf(" - ");
-            if (hyphenIndex >= 0)
-            {
-                zoneName = zoneName.Substring(0, hyphenIndex);
-            }
 
             result.Add(new FloorZoneResponse
             {
@@ -99,21 +94,25 @@ public class FloorAllocationService : IFloorAllocationService
         var vehicleType = await _repo.GetVehicleTypeAsync(request.VehicleTypeId)
             ?? throw new KeyNotFoundException($"Vehicle type {request.VehicleTypeId} not found");
 
-        // AC2: cảnh báo nếu đang có xe
+        // AC2: cảnh báo nếu đang có xe và thay đổi loại xe
         int activeVehicles = await _repo.CountActiveVehiclesAsync(zoneId);
-        string? warning = activeVehicles > 0
+        string? warning = (activeVehicles > 0 && request.VehicleTypeId != zone.VehicleTypeId)
             ? $"Warning: {activeVehicles} active vehicle(s) in this zone. Changes take effect from save time."
             : null;
 
-        // Dọn dẹp hậu tố " - {loại xe}" cũ nếu có để đưa tên phân khu về dạng thuần túy
-        int hyphenIndex = zone.ZoneName.IndexOf(" - ");
-        if (hyphenIndex >= 0)
+        // Giữ nguyên tên phân khu đầy đủ không tự động cắt bỏ
+
+        if (!string.IsNullOrEmpty(request.ZoneName) && zone.ZoneName != request.ZoneName)
         {
-            zone.ZoneName = zone.ZoneName.Substring(0, hyphenIndex);
+            if (await _repo.FloorNumberExistsAsync(zone.BuildingId, zone.FloorNumber, request.ZoneName))
+                throw new InvalidOperationException($"Floor {zone.FloorNumber} with zone name '{request.ZoneName}' already exists in this building");
+
+            zone.ZoneName = request.ZoneName;
         }
+
         zone.VehicleTypeId = request.VehicleTypeId;
 
-        if (request.Capacity.HasValue)
+        if (request.Capacity.HasValue && request.Capacity.Value != zone.Capacity)
         {
             if (request.Capacity.Value < activeVehicles)
             {
