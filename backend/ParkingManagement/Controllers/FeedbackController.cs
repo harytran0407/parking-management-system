@@ -56,19 +56,6 @@ namespace ParkingManagement.Controllers
             [FromQuery] int pageSize = 10)
         {
             bool isManager = User.IsInRole("ParkingManager");
-            if (isManager && !string.IsNullOrEmpty(status) && status.ToUpper() == "OPEN")
-            {
-                return Ok(new
-                {
-                    success = true,
-                    data = new
-                    {
-                        items = new List<object>(),
-                        pagination = new { page, page_size = pageSize, total_items = 0, total_pages = 0 }
-                    }
-                });
-            }
-
             var (items, totalItems, totalPages) = await _feedbackService.GetAllFeedbacksAsync(status, isManager, page, pageSize);
             return Ok(new
             {
