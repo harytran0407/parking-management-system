@@ -638,7 +638,7 @@ namespace ParkingManagement.Controllers
             {
                 // Đảm bảo dữ liệu phân trang luôn hợp lệ
                 if (filter.Page < 1) filter.Page = 1;
-                if (filter.PageSize < 1 || filter.PageSize > 100) filter.PageSize = 20;
+                if (filter.PageSize < 1 || filter.PageSize > 2000) filter.PageSize = 20;
 
                 var response = await _parkingService.GetRealtimeSlotsAsync(filter);
                 return Ok(response);
@@ -708,6 +708,52 @@ namespace ParkingManagement.Controllers
         {
             await _slotManagementService.DeleteSlotAsync(slotId);
             return NoContent();
+        }
+
+        /// <summary>
+        /// Bulk delete slots — cannot delete if status != AVAILABLE for any slot
+        /// </summary>
+        [HttpDelete("slots/bulk")]
+        [Authorize(Roles = "ParkingManager")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+        public async Task<IActionResult> BulkDeleteSlots([FromBody] BulkDeleteSlotsRequest request)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(new { success = false, message = "Dữ liệu đầu vào không hợp lệ." });
+            }
+
+            try
+            {
+                await _slotManagementService.BulkDeleteSlotsAsync(request.SlotIds);
+                return NoContent();
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { success = false, error_code = "SLOT_NOT_FOUND", message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return StatusCode(StatusCodes.Status422UnprocessableEntity, new
+                {
+                    success = false,
+                    error_code = "BULK_DELETE_INVALID_OPERATION",
+                    message = ex.Message
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new
+                {
+                    success = false,
+                    error_code = "DATABASE_UPDATE_FAILED",
+                    message = "Lỗi kết nối cơ sở dữ liệu, hành động chưa được ghi nhận.",
+                    details = ex.Message
+                });
+            }
         }
 
         /// <summary>

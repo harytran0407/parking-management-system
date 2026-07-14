@@ -9,6 +9,7 @@ public interface ISlotManagementService
     Task<BulkCreateSlotsResponse> BulkCreateSlotsAsync(BulkCreateSlotsRequest request);
     Task<EditSlotResponse> EditSlotAsync(string slotId, EditSlotRequest request);
     Task DeleteSlotAsync(string slotId);
+    Task BulkDeleteSlotsAsync(List<string> slotIds);
 }
 
 public class SlotManagementService : ISlotManagementService
@@ -26,53 +27,69 @@ public class SlotManagementService : ISlotManagementService
     {
         var zone = await _repo.GetZoneWithTypeAsync(request.ZoneId)
             ?? throw new KeyNotFoundException($"Zone {request.ZoneId} not found");
-
-        // Đếm slot hiện có để generate tên tiếp theo
-        int existingCount = await _repo.CountSlotsInZoneAsync(request.ZoneId);
-
+    
+        string zoneLetter = "Z";
+        if (!string.IsNullOrEmpty(zone.ZoneName))
+        {
+            string cleanZoneName = zone.ZoneName.Replace("Zone", "", StringComparison.OrdinalIgnoreCase).Trim();
+    
+            if (!string.IsNullOrEmpty(cleanZoneName))
+            {
+                zoneLetter = cleanZoneName.Substring(0, 1).ToUpper();
+            }
+            else
+            {
+                zoneLetter = zone.ZoneName.Substring(0, 1).ToUpper();
+            }
+        }
+    
+        int currentSerialNumber = await _repo.GetMaxSlotNumberAsync(zone.FloorNumber);
+    
         var newSlots = new List<ParkingSlot>();
         var createdItems = new List<SlotCreatedItem>();
-
-        for (int i = 1; i <= request.Count; i++)
+        int slotsCreatedCount = 0;
+    
+        while (slotsCreatedCount < request.Count)
         {
-            int slotNumber = existingCount + i;
-            string zoneLetter = zone.ZoneName.Length > 5 ? zone.ZoneName[5].ToString() : "X";
-
-            // SlotId: "A101", "A102"... — ZoneLetter + FloorNumber + SlotNumber(2 digits)
-            string slotId = $"{zoneLetter}{zone.FloorNumber}{slotNumber:D2}";
-            string slotName = slotId;
-
-            // Tránh trùng SlotId nếu đã tồn tại
-            int suffix = 0;
-            string candidateId = slotId;
-            while (await _repo.SlotIdExistsAsync(candidateId))
+            currentSerialNumber++;
+    
+            // Đệm số thứ tự thành 2 chữ số: 1 -> "01", 12 -> "12"
+            string serialPart = currentSerialNumber.ToString("D2");
+    
+            string candidateId = $"slt_{zone.FloorNumber}{serialPart}";
+            string candidateName = $"{zoneLetter}{zone.FloorNumber}{serialPart}";
+    
+            bool isIdExists = await _repo.SlotIdExistsAsync(candidateId);
+            bool isNameExists = await _repo.SlotNameExistsAsync(candidateName);
+    
+            if (isIdExists || isNameExists)
             {
-                suffix++;
-                candidateId = $"{slotId}_{suffix}";
+                continue;
             }
-            slotId = candidateId;
-            slotName = candidateId;
-
+    
             var slot = new ParkingSlot
             {
-                SlotId = slotId,
-                SlotName = slotName,
+                SlotId = candidateId,
+                SlotName = candidateName,
                 Status = "AVAILABLE",
                 IsHandicap = false,
                 IsElectricCharging = false,
                 ZoneId = request.ZoneId,
                 LastUpdated = DateTime.UtcNow
             };
-
+    
             newSlots.Add(slot);
-            createdItems.Add(new SlotCreatedItem { SlotId = slotId, SlotName = slotName });
+            createdItems.Add(new SlotCreatedItem { SlotId = candidateId, SlotName = candidateName });
+    
+            slotsCreatedCount++;
         }
-
+    
+        // Cập nhật sức chứa của Zone
         zone.Capacity += request.Count;
         zone.AvailableCapacity += request.Count;
-
+    
         await _repo.AddSlotsAsync(newSlots);
-
+    
         return new BulkCreateSlotsResponse
         {
             ZoneId = zone.ZoneId,
@@ -93,13 +110,11 @@ public class SlotManagementService : ISlotManagementService
 
         bool sessionCleared = false;
 
-        // Nếu yêu cầu xóa session hiện tại
         if (request.ClearSession && !string.IsNullOrEmpty(slot.CurrentSessionId))
         {
             var session = await _repo.GetActiveSessionBySlotAsync(slotId);
             if (session != null)
             {
-                // Cancel session và reset slot về AVAILABLE
                 session.Status = "CANCELLED";
                 session.CheckOutTime = DateTime.UtcNow;
                 await _repo.UpdateSessionAsync(session);
@@ -111,7 +126,6 @@ public class SlotManagementService : ISlotManagementService
             sessionCleared = true;
         }
 
-        // Update các field khác nếu được truyền vào
         if (request.IsHandicap.HasValue)
             slot.IsHandicap = request.IsHandicap.Value;
 
@@ -146,5 +160,29 @@ public class SlotManagementService : ISlotManagementService
                 $"Cannot delete slot '{slotId}': current status is '{slot.Status}'. Only AVAILABLE slots can be deleted.");
 
         await _repo.DeleteSlotAsync(slot);
+    }
+
+    public async Task BulkDeleteSlotsAsync(List<string> slotIds)
+    {
+        if (slotIds == null || slotIds.Count == 0)
+            return;
+
+        var slots = new List<ParkingSlot>();
+        foreach (var id in slotIds)
+        {
+            var slot = await _repo.GetSlotByIdAsync(id)
+                ?? throw new KeyNotFoundException($"Slot '{id}' not found");
+
+            if (slot.Status != "AVAILABLE")
+                throw new InvalidOperationException(
+                    $"Cannot delete slot '{id}': current status is '{slot.Status}'. Only AVAILABLE slots can be deleted.");
+
+            slots.Add(slot);
+        }
+
+        foreach (var slot in slots)
+        {
+            await _repo.DeleteSlotAsync(slot);
+        }
     }
 }

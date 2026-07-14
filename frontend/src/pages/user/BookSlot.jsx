@@ -558,7 +558,7 @@ export default function BookSlot() {
         vehicle_type_id: vehicleTypeId,
         expected_arrival: expectedArrival.length === 16 ? expectedArrival + ":00+07:00" : expectedArrival + "+07:00",
         expired_at: expectedDeparture.length === 16 ? expectedDeparture + ":00+07:00" : expectedDeparture + "+07:00",
-        notes: `Mock payment reservation (${calculatedFee.toLocaleString()} VND)`,
+        notes: `Payment reservation (${calculatedFee.toLocaleString()} VND)`,
       };
 
       const bookingRes = await api.post("/bookings", bookingPayload);
@@ -1346,11 +1346,10 @@ export default function BookSlot() {
                 {/* PayOS VietQR Option */}
                 <div
                   onClick={() => setPaymentMethod("PAYOS")}
-                  className={`p-4 rounded-lg border cursor-pointer transition-all flex items-center gap-4 ${
-                    paymentMethod === "PAYOS"
-                      ? "border-blue-500 bg-blue-50/20 dark:bg-blue-950/20 shadow-lg shadow-blue-500/10"
-                      : "border-slate-200 dark:border-slate-800 bg-transparent hover:border-slate-350 dark:hover:border-slate-700"
-                  }`}
+                  className={`p-4 rounded-lg border cursor-pointer transition-all flex items-center gap-4 ${paymentMethod === "PAYOS"
+                    ? "border-blue-500 bg-blue-50/20 dark:bg-blue-950/20 shadow-lg shadow-blue-500/10"
+                    : "border-slate-200 dark:border-slate-800 bg-transparent hover:border-slate-350 dark:hover:border-slate-700"
+                    }`}
                 >
                   <div className={`p-3 rounded-xl ${paymentMethod === "PAYOS" ? "bg-blue-500/10 text-blue-500" : "bg-slate-100 dark:bg-slate-800 text-slate-400"}`}>
                     <QrCode size={24} />
@@ -1375,11 +1374,10 @@ export default function BookSlot() {
                 {/* VNPAY Mock Option */}
                 <div
                   onClick={() => setPaymentMethod("VNPAY")}
-                  className={`p-4 rounded-lg border cursor-pointer transition-all flex items-center gap-4 ${
-                    paymentMethod === "VNPAY"
-                      ? "border-blue-500 bg-blue-50/20 dark:bg-blue-950/20 shadow-lg shadow-blue-500/10"
-                      : "border-slate-200 dark:border-slate-800 bg-transparent hover:border-slate-350 dark:hover:border-slate-700"
-                  }`}
+                  className={`p-4 rounded-lg border cursor-pointer transition-all flex items-center gap-4 ${paymentMethod === "VNPAY"
+                    ? "border-blue-500 bg-blue-50/20 dark:bg-blue-950/20 shadow-lg shadow-blue-500/10"
+                    : "border-slate-200 dark:border-slate-800 bg-transparent hover:border-slate-350 dark:hover:border-slate-700"
+                    }`}
                 >
                   <div className={`p-3 rounded-xl ${paymentMethod === "VNPAY" ? "bg-blue-500/10 text-blue-500" : "bg-slate-100 dark:bg-slate-800 text-slate-400"}`}>
                     <CreditCard size={24} />

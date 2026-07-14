@@ -128,7 +128,7 @@ export default function ManagerBuilding() {
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
                   {language === 'en' ? 'Floors' : 'Số tầng'}
                 </span>
-                <span className="text-lg font-bold text-slate-800 dark:text-white font-mono">
+                <span className="text-lg font-bold text-slate-800 dark:text-white font-sans">
                   {buildingData?.total_floors} {language === 'en' ? 'Levels' : 'Tầng'}
                 </span>
               </div>
@@ -140,7 +140,7 @@ export default function ManagerBuilding() {
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
                   {language === 'en' ? 'Total Slots' : 'Tổng số chỗ'}
                 </span>
-                <span className="text-lg font-bold text-slate-800 dark:text-white font-mono">
+                <span className="text-lg font-bold text-slate-800 dark:text-white font-sans">
                   {buildingData?.total_slots} {language === 'en' ? 'Slots' : 'Chỗ'}
                 </span>
               </div>
@@ -195,19 +195,19 @@ export default function ManagerBuilding() {
             <h3 className="subsection-title">
               {language === 'en' ? 'Real-Time Occupancy Rate' : 'Tỉ lệ lấp đầy thời gian thực'}
             </h3>
-            
+
             <div className="space-y-4">
               <div className="flex justify-between text-sm font-bold">
                 <span className="text-slate-500">
                   {language === 'en' ? 'Filled Slots' : 'Số chỗ đã đỗ'}
                 </span>
-                <span className="text-blue-600 dark:text-blue-400 font-mono">
+                <span className="text-blue-600 dark:text-blue-400 font-sans">
                   {buildingData.current_occupancy.total_occupied} / {buildingData.total_slots} {language === 'en' ? 'slots' : 'chỗ'}
                 </span>
               </div>
-              
+
               <div className="w-full bg-slate-100 dark:bg-slate-800 h-3.5 rounded-full overflow-hidden shadow-inner">
-                <div 
+                <div
                   className="bg-blue-600 dark:bg-blue-500 h-full rounded-full transition-all duration-500 ease-out"
                   style={{ width: `${buildingData.current_occupancy.occupancy_rate}%` }}
                 />
@@ -289,7 +289,7 @@ export default function ManagerBuilding() {
                     <select
                       value={formData.weekdayHours}
                       onChange={(e) => setFormData(prev => ({ ...prev, weekdayHours: e.target.value }))}
-                      className="input-field pr-10 cursor-pointer appearance-none font-mono text-sm"
+                      className="input-field pr-10 cursor-pointer appearance-none font-sans text-sm"
                     >
                       {getRangeOptions(formData.weekdayHours).map(range => (
                         <option key={range} value={range}>{range}</option>
@@ -308,7 +308,7 @@ export default function ManagerBuilding() {
                     <select
                       value={formData.weekendHours}
                       onChange={(e) => setFormData(prev => ({ ...prev, weekendHours: e.target.value }))}
-                      className="input-field pr-10 cursor-pointer appearance-none font-mono text-sm"
+                      className="input-field pr-10 cursor-pointer appearance-none font-sans text-sm"
                     >
                       {getRangeOptions(formData.weekendHours).map(range => (
                         <option key={range} value={range}>{range}</option>
