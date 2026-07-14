@@ -24,30 +24,20 @@ const getBackendRootUrl = () => {
   const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
   return baseUrl.replace("/api/v1", "");
 };
-import { useNavigate } from "react-router-dom";
 import api from "../../utils/api";
 import { useAuth } from "../../hooks/useAuth";
 import { useLanguage } from "../../hooks/useLanguage";
 
 export default function Issues() {
-  const navigate = useNavigate();
   const { user } = useAuth();
   const { language } = useLanguage();
-
-  const getIssueTypeLabel = (type) => {
-    switch (type) {
-      case "SYSTEM_ERROR": return language === "en" ? "System & App Error" : "Lỗi ứng dụng & hệ thống";
-      case "LOST_TICKET": return language === "en" ? "Lost Ticket" : "Mất thẻ xe";
-      case "WRONG_SLOT": return language === "en" ? "Wrong Slot Occupancy" : "Chỗ đỗ xe bị chiếm";
-      default: return language === "en" ? "Other Feedback / General Inquiry" : "Ý kiến khác / Giải đáp chung";
-    }
-  };
 
   const getTicketStatusLabel = (status) => {
     switch (status) {
       case "RESOLVED": return language === "en" ? "Resolved" : "Đã xử lý";
-      case "PENDING": return language === "en" ? "Pending" : "Đang chờ";
-      default: return language === "en" ? "In Review" : "Đang duyệt";
+      case "CLOSED": return language === "en" ? "Closed" : "Đã đóng";
+      case "IN_PROGRESS": return language === "en" ? "In Progress" : "Đang xử lý";
+      default: return language === "en" ? "Open" : "Chờ xử lý";
     }
   };
 
@@ -56,7 +46,6 @@ export default function Issues() {
   // ==========================================
   const [formData, setFormData] = useState({
     rating: 0,
-    issueType: "SYSTEM_ERROR", // LOST_TICKET, WRONG_SLOT, SYSTEM_ERROR, OTHER
     subject: "",
     message: "",
     customerPhone: "",
@@ -91,12 +80,12 @@ export default function Issues() {
   // Load past tickets
   const fetchTickets = async () => {
     try {
-      const response = await api.get("/user/incidents");
+      const response = await api.get("/feedbacks/MyFeedback");
       if (response.data && response.data.success) {
         setTickets(response.data.data);
       }
     } catch (err) {
-      console.error("Lỗi lấy danh sách sự cố:", err);
+      console.error("Lỗi lấy danh sách phản hồi:", err);
     }
   };
 
@@ -133,55 +122,11 @@ export default function Issues() {
     }
   };
 
-  const parseDescription = (description) => {
-    if (!description) {
-      return { rating: 0, subject: "", message: "", attachment: "", feedback: "" };
-    }
 
-    // Extract attachment
-    let attachment = "";
-    const attachmentMatch = description.match(/\[Attachment:\s*([^\]]+)\]/);
-    if (attachmentMatch) {
-      attachment = attachmentMatch[1];
-    }
-
-    // Clean description by removing the attachment part
-    let cleanedDesc = description.replace(/\[Attachment:\s*[^\]]+\]/, "").trim();
-
-    // Extract staff feedback
-    let feedback = "";
-    const feedbackMatch = cleanedDesc.match(/\[Feedback:\s*([^\]]+)\]/);
-    if (feedbackMatch) {
-      feedback = feedbackMatch[1];
-      cleanedDesc = cleanedDesc.replace(/\[Feedback:\s*[^\]]+\]/, "").trim();
-    }
-
-    // Extract rating
-    let rating = 0;
-    const ratingMatch = cleanedDesc.match(/\[Rating:\s*(\d)★?\]/);
-    if (ratingMatch) {
-      rating = parseInt(ratingMatch[1], 10);
-      cleanedDesc = cleanedDesc.replace(/\[Rating:\s*\d★?\]/, "").trim();
-    }
-
-    // Extract subject and message
-    let subject = "";
-    let message = cleanedDesc;
-
-    // If there is a subject colon message structure: "Subject: Message"
-    const colonIndex = cleanedDesc.indexOf(":");
-    if (colonIndex > 0) {
-      subject = cleanedDesc.substring(0, colonIndex).trim();
-      message = cleanedDesc.substring(colonIndex + 1).trim();
-    }
-
-    return { rating, subject, message, attachment, feedback };
-  };
 
   const handleDiscard = () => {
     setFormData({
       rating: 0,
-      issueType: "SYSTEM_ERROR",
       subject: "",
       message: "",
       customerPhone: user?.phone || "",
@@ -209,7 +154,7 @@ export default function Issues() {
     formDataUpload.append("file", file);
 
     try {
-      const response = await api.post("/user/incidents/upload", formDataUpload, {
+      const response = await api.post("/feedbacks/upload", formDataUpload, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
@@ -253,19 +198,17 @@ export default function Issues() {
 
     setStatus("submitting");
     try {
-      let finalDescription = `[Rating: ${formData.rating}★] ${formData.subject}: ${formData.message}`;
-      if (attachmentUrl) {
-        finalDescription += `\n[Attachment: ${attachmentUrl}]`;
-      }
-
       const payload = {
-        issue_type: formData.issueType,
-        description: finalDescription,
+        full_name: user?.full_name || user?.username || "Guest",
+        title: formData.subject,
+        content: formData.message,
+        star_rating: formData.rating,
         customer_phone: formData.customerPhone || null,
         customer_email: formData.customerEmail || null,
+        attachment_url: attachmentUrl || null,
       };
 
-      const response = await api.post("/user/incidents", payload);
+      const response = await api.post("/feedbacks", payload);
       if (response.data && response.data.success) {
         setStatus("success");
         await fetchTickets();
@@ -283,7 +226,7 @@ export default function Issues() {
       if (!errorMsg) {
         errorMsg = error?.toString() || "Unknown error";
       }
-      alert((language === "en" ? "Error submitting issue: " : "Lỗi khi gửi yêu cầu hỗ trợ: ") + errorMsg);
+      alert((language === "en" ? "Error submitting feedback: " : "Lỗi khi gửi phản hồi: ") + errorMsg);
     }
   };
 
@@ -338,38 +281,6 @@ export default function Issues() {
           {language === "en" ? "File a Support Request" : "Báo cáo sự cố / Gửi hỗ trợ"}
         </h3>
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Category Dropdown Selector */}
-          <div>
-            <h3 className="text-sm font-bold text-slate-800 dark:text-white mb-2 flex items-center gap-1.5">
-              {language === "en" ? "Issue Category" : "Phân loại sự cố"}
-            </h3>
-            <div className="relative">
-              <select
-                name="issueType"
-                value={formData.issueType}
-                onChange={(e) => setFormData({ ...formData, issueType: e.target.value })}
-                className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 focus:border-blue-500 dark:focus:border-blue-500 rounded-2xl px-5 py-3.5 pr-12 text-slate-800 dark:text-white focus:outline-none transition-all text-sm font-semibold cursor-pointer appearance-none"
-              >
-                <option value="SYSTEM_ERROR" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white font-medium">
-                  {language === "en" ? "System & App Error" : "Lỗi ứng dụng & hệ thống"}
-                </option>
-                <option value="LOST_TICKET" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white font-medium">
-                  {language === "en" ? "Lost Ticket" : "Mất thẻ xe"}
-                </option>
-                <option value="WRONG_SLOT" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white font-medium">
-                  {language === "en" ? "Wrong Slot Occupancy" : "Chỗ đỗ xe bị chiếm"}
-                </option>
-                <option value="OTHER" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white font-medium">
-                  {language === "en" ? "Other Feedback / General Inquiry" : "Ý kiến khác / Giải đáp chung"}
-                </option>
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-500 dark:text-slate-400">
-                <ChevronDown size={18} />
-              </div>
-            </div>
-          </div>
-
-
           {/* Subject Title */}
           <div>
             <h3 className="text-sm font-bold text-slate-800 dark:text-white mb-2">
@@ -588,37 +499,38 @@ export default function Issues() {
             </div>
           ) : (
             tickets.map((ticket) => {
-              const { rating, subject, message, attachment, feedback } = parseDescription(ticket.description);
+              const rating = ticket.star_rating;
+              const subject = ticket.title;
+              const message = ticket.content;
+              const attachment = ticket.attachment_url;
+              const feedback = ticket.response_note;
               const backendRoot = getBackendRootUrl();
-              const isExpanded = expandedTicketId === ticket.log_id;
+              const isExpanded = expandedTicketId === ticket.feedback_id;
 
               return (
                 <div
-                  key={ticket.log_id}
+                  key={ticket.feedback_id}
                   className={`bg-white dark:bg-slate-900 border transition-all duration-200 rounded-3xl p-5 shadow-xs relative overflow-hidden ${isExpanded
                       ? "border-blue-500/50 dark:border-blue-500/30 ring-1 ring-blue-500/20"
                       : "border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-sm"
-                    }`}
+                     }`}
                 >
                   {/* Collapsed Header Click Box */}
                   <div
-                    onClick={() => setExpandedTicketId(isExpanded ? null : ticket.log_id)}
+                    onClick={() => setExpandedTicketId(isExpanded ? null : ticket.feedback_id)}
                     className="flex justify-between items-center cursor-pointer select-none"
                   >
                     <div className="flex flex-wrap items-center gap-3">
                       <span className="text-[10px] font-bold text-slate-400 font-mono tracking-wider bg-slate-50 dark:bg-slate-800 px-2 py-0.5 rounded">
-                        #TCK-{ticket.log_id}
+                        #TCK-{ticket.feedback_id}
                       </span>
-                      <h4 className="font-extrabold text-slate-800 dark:text-white uppercase text-[10px] tracking-wider font-sans">
-                        {getIssueTypeLabel(ticket.issue_type)}
-                      </h4>
                       <span className="text-[10px] text-slate-400 font-medium">
-                        {ticket.report_time ? new Date(ticket.report_time).toLocaleDateString(language === "en" ? "en-US" : "vi-VN") : 'N/A'}
+                        {ticket.created_at ? new Date(ticket.created_at).toLocaleDateString(language === "en" ? "en-US" : "vi-VN") : 'N/A'}
                       </span>
                     </div>
                     <div className="flex items-center gap-3">
                       <span
-                        className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ${ticket.status === "RESOLVED"
+                        className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ${ticket.status === "RESOLVED" || ticket.status === "CLOSED"
                             ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/20 dark:text-emerald-400"
                             : "bg-blue-50 text-blue-600 dark:bg-blue-950/20 dark:text-blue-400"
                           }`}
@@ -645,8 +557,8 @@ export default function Issues() {
                         <div className="flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-white">
                           <span className="text-blue-500">{language === "en" ? "Reported" : "Đã gửi"}</span>
                           <span className="text-slate-300 dark:text-slate-700">→</span>
-                          <span className={ticket.status === "RESOLVED" ? "text-emerald-500" : "text-slate-400 dark:text-slate-500"}>
-                            {ticket.status === "RESOLVED" ? (language === "en" ? "Resolved" : "Đã xử lý") : (language === "en" ? "In Review" : "Đang duyệt")}
+                          <span className={ticket.status === "RESOLVED" || ticket.status === "CLOSED" ? "text-emerald-500" : "text-slate-400 dark:text-slate-500"}>
+                            {getTicketStatusLabel(ticket.status)}
                           </span>
                         </div>
                       </div>
