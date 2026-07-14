@@ -7,7 +7,6 @@ namespace ParkingManagement.Models
         public int FeedbackId { get; set; }
         public string? UserId { get; set; }
         public string FullName { get; set; } = string.Empty;
-        public string IdCardNumber { get; set; } = string.Empty;
         public string Title { get; set; } = string.Empty;
         public string Content { get; set; } = string.Empty;
         public string Status { get; set; } = "OPEN"; 
@@ -18,5 +17,7 @@ namespace ParkingManagement.Models
         public int? StarRating { get; set; }
         public string? CustomerPhone { get; set; }
         public string? CustomerEmail { get; set; }
+        public string? AttachmentUrl { get; set; }
+
     }
 }

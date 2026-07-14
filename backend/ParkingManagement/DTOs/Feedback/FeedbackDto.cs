@@ -8,10 +8,6 @@ namespace ParkingManagement.DTOs.Feedback
         [StringLength(100, ErrorMessage = "Fullname must not exceed 100 characters")]
         public string FullName { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Please enter your Identity Card")]
-        [StringLength(20)]
-        public string IdCardNumber { get; set; } = string.Empty;
-
         [Required(ErrorMessage = "Please enter the title to response")]
         [StringLength(100)]
         public string Title { get; set; } = string.Empty;
@@ -23,6 +19,8 @@ namespace ParkingManagement.DTOs.Feedback
         public int? StarRating { get; set; }
         public string? CustomerPhone { get; set; }
         public string? CustomerEmail { get; set; }
+        public string? AttachmentUrl { get; set; }
+
     }
 
     public class FeedbackDto
@@ -30,7 +28,6 @@ namespace ParkingManagement.DTOs.Feedback
         public int FeedbackId { get; set; }
         public string? UserId { get; set; }
         public string FullName { get; set; } = string.Empty;
-        public string IdCardNumber { get; set; } = string.Empty;
         public string Title { get; set; } = string.Empty;
         public string Content { get; set; } = string.Empty;
         public string Status { get; set; } = string.Empty;
@@ -40,6 +37,8 @@ namespace ParkingManagement.DTOs.Feedback
         public string? ResponseNote { get; set; }
         public string? CustomerPhone { get; set; }
         public string? CustomerEmail { get; set; }
+        public string? AttachmentUrl { get; set; }
+
     }
 
     public class ProcessFeedbackRequestDto
