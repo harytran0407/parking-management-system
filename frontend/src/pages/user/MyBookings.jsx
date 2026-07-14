@@ -12,12 +12,15 @@ import {
   Lock,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   Info,
   DollarSign,
   CreditCard,
   ShieldCheck,
   CheckCircle2,
   RefreshCw,
+  QrCode,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import api from "../../utils/api";
@@ -55,10 +58,16 @@ export default function MyBookings() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortOrder, setSortOrder] = useState("newest"); // "newest" or "oldest"
 
+  // Pagination
+  const PAGE_SIZE = 10;
+  const [currentPage, setCurrentPage] = useState(1);
+
   // Modal Controllers
   const [activeModal, setActiveModal] = useState(null);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [cancelCountdown, setCancelCountdown] = useState(5);
+  const [paymentMethod, setPaymentMethod] = useState("PAYOS");
+  const [processingPayment, setProcessingPayment] = useState(false);
 
   const toggleExpand = (bookingId) => {
     setExpandedBookings((prev) => ({
@@ -113,7 +122,46 @@ export default function MyBookings() {
   };
 
   useEffect(() => {
-    loadBookingDashboard();
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get("status");
+    const vnpResponseCode = params.get("vnp_ResponseCode");
+
+    if (vnpResponseCode) {
+      if (vnpResponseCode === "00") {
+        const payload = {
+          vnp_Amount: params.get("vnp_Amount"),
+          vnp_ResponseCode: vnpResponseCode,
+          vnp_TxnRef: params.get("vnp_TxnRef"),
+          vnp_SecureHash: params.get("vnp_SecureHash") || "mock_hash"
+        };
+        api.post("/payments/webhook/vnpay", payload)
+          .then(() => {
+            alert(language === "en" ? "Payment successful! Your booking is confirmed." : "Thanh toán thành công! Lịch đặt chỗ của bạn đã được xác nhận.");
+            loadBookingDashboard();
+            window.history.replaceState({}, document.title, window.location.pathname);
+          })
+          .catch((err) => {
+            console.error("Lỗi xác nhận VNPay:", err);
+            alert(language === "en" ? "Failed to confirm payment." : "Xác nhận thanh toán thất bại.");
+            loadBookingDashboard();
+            window.history.replaceState({}, document.title, window.location.pathname);
+          });
+      } else {
+        alert(language === "en" ? "Payment failed or cancelled." : "Thanh toán thất bại hoặc đã bị hủy.");
+        loadBookingDashboard();
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    } else if (status === "success") {
+      alert(language === "en" ? "PayOS payment succeeded! Your booking is confirmed." : "Thanh toán PayOS thành công! Lịch đặt chỗ của bạn đã được xác nhận.");
+      loadBookingDashboard();
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (status === "cancelled") {
+      alert(language === "en" ? "PayOS payment was cancelled." : "Thanh toán PayOS đã bị hủy bỏ.");
+      loadBookingDashboard();
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else {
+      loadBookingDashboard();
+    }
   }, []);
 
   useEffect(() => {
@@ -219,6 +267,32 @@ export default function MyBookings() {
     });
   }, [bookings, searchQuery, statusFilter, sortOrder]);
 
+  // Reset to page 1 whenever filter/search/sort changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, sortOrder]);
+
+  // Derived pagination values
+  const totalPages = Math.max(1, Math.ceil(sortedAndFilteredBookings.length / PAGE_SIZE));
+  const paginatedBookings = sortedAndFilteredBookings.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  );
+
+  const formatBookedAt = (dtString) => {
+    if (!dtString) return "";
+    try {
+      const d = new Date(dtString);
+      return d.toLocaleString(language === "en" ? "en-US" : "vi-VN", {
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      });
+    } catch { return ""; }
+  };
+
   const openModal = (type, booking) => {
     setSelectedBooking(booking);
     setActiveModal(type);
@@ -267,6 +341,58 @@ export default function MyBookings() {
     } catch (error) {
       console.error("Lỗi khóa xe:", error);
       alert(error.response?.data?.message || (language === "en" ? "Failed to lock vehicle." : "Khóa bảo vệ xe thất bại."));
+    }
+  };
+
+  const handleConfirmMockPayment = async () => {
+    if (!selectedBooking) return;
+
+    setProcessingPayment(true);
+    try {
+      const payload = {
+        booking_id: selectedBooking.id,
+        payment_method: "VNPAY"
+      };
+
+      const res = await api.post("/payments/confirm-mock", payload);
+      if (res.data && res.data.success) {
+        alert(language === "en" ? "Mock payment succeeded!" : "Thanh toán giả lập thành công!");
+        closeModal();
+        await loadBookingDashboard();
+      } else {
+        alert(language === "en" ? "Mock payment failed." : "Thanh toán giả lập thất bại.");
+      }
+    } catch (err) {
+      console.error("Mock payment error:", err);
+      alert(err.response?.data?.message || (language === "en" ? "Payment failed. Please try again." : "Thanh toán thất bại. Vui lòng thử lại."));
+    } finally {
+      setProcessingPayment(false);
+    }
+  };
+
+  const handlePayOsPayment = async () => {
+    if (!selectedBooking) return;
+
+    setProcessingPayment(true);
+    try {
+      const payload = {
+        booking_id: selectedBooking.id,
+        payment_method: "PAYOS",
+        return_url: window.location.origin + "/user/bookings?status=success",
+        cancel_url: window.location.origin + "/user/bookings?status=cancelled"
+      };
+
+      const res = await api.post("/payments/create", payload);
+      if (res.data && res.data.success && res.data.data?.payment_url) {
+        window.location.href = res.data.data.payment_url;
+      } else {
+        alert(language === "en" ? "Failed to create PayOS payment link." : "Khởi tạo thanh toán PayOS thất bại.");
+        setProcessingPayment(false);
+      }
+    } catch (err) {
+      console.error("PayOS payment error:", err);
+      alert(err.response?.data?.message || (language === "en" ? "Payment failed. Please try again." : "Thanh toán thất bại. Vui lòng thử lại."));
+      setProcessingPayment(false);
     }
   };
 
@@ -405,8 +531,9 @@ export default function MyBookings() {
             </p>
           </div>
         ) : (
-          <div className="flex flex-col gap-6">
-            {sortedAndFilteredBookings.map((booking) => {
+          <>
+            <div className="flex flex-col gap-6">
+            {paginatedBookings.map((booking) => {
               const locked = isCurrentlyLocked(booking);
               const isCar = booking.vehicleType === "car";
               const isExpanded = expandedBookings[booking.id] ?? false;
@@ -454,9 +581,13 @@ export default function MyBookings() {
                             <span className="text-emerald-600 dark:text-emerald-405 font-bold">
                               {language === "en" ? "Status: Completed" : "Trạng thái: Hoàn thành"}
                             </span>
-                          ) : (
-                            <span className="text-amber-600 dark:text-amber-405 font-bold">
+                          ) : booking.status === "confirmed" ? (
+                            <span className="text-blue-600 dark:text-blue-400 font-bold">
                               {language === "en" ? "Status: Awaiting Check-in" : "Trạng thái: Chờ xe vào bãi"}
+                            </span>
+                          ) : (
+                            <span className="text-amber-600 dark:text-amber-450 font-bold">
+                              {language === "en" ? "Status: Waiting Payment" : "Trạng thái: Chờ thanh toán"}
                             </span>
                           )}
                         </p>
@@ -485,6 +616,16 @@ export default function MyBookings() {
                           </div>
                         </div>
                       )}
+
+                      {/* Booked At */}
+                      <div className="min-w-[90px]">
+                        <p className="text-[9px] text-slate-400 uppercase font-bold tracking-wider mb-0.5">
+                          {language === "en" ? "Booked at" : "Đặt lúc"}
+                        </p>
+                        <p className="text-slate-700 dark:text-slate-200">
+                          {formatBookedAt(booking.bookingTime) || "—"}
+                        </p>
+                      </div>
 
                       {/* Time Window */}
                       <div className="min-w-[90px]">
@@ -544,9 +685,13 @@ export default function MyBookings() {
                           <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold tracking-wide bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30">
                             <CheckCircle2 size={10} /> {language === "en" ? "COMPLETED" : "HOÀN THÀNH"}
                           </span>
-                        ) : (
+                        ) : booking.status === "confirmed" ? (
                           <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold tracking-wide bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-455 border border-blue-100 dark:border-blue-900/30">
-                            <Clock size={10} /> {language === "en" ? "BOOKED" : "ĐÃ ĐẶT"}
+                            <Clock size={10} /> {language === "en" ? "BOOKED" : "ĐÃ ĐẶT CHỖ"}
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-extrabold tracking-wide bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-455 border border-amber-100 dark:border-amber-900/30 animate-pulse">
+                            <CreditCard size={10} /> {language === "en" ? "UNPAID" : "CHƯA THANH TOÁN"}
                           </span>
                         )}
 
@@ -674,7 +819,7 @@ export default function MyBookings() {
                             )}
                           </div>
                         ) : booking.status === "cancelled" ? (
-                          <div className="lg:col-span-5 bg-gradient-to-b from-red-200/50 to-rose-200/30 dark:from-slate-950/40 dark:to-slate-900/20 p-6  flex flex-col items-center justify-center border border-slate-200/60 dark:border-slate-800 shadow-sm">
+                          <div className="lg:col-span-5 bg-gradient-to-b from-red-100 to-rose-100 dark:from-slate-950/40 dark:to-slate-900/20 p-6  flex flex-col items-center justify-center border border-slate-200/60 dark:border-slate-800 shadow-sm">
                             <div className="p-4 bg-red-500/10 text-red-500 dark:text-red-450 rounded-full mb-3 shadow-inner">
                               <X size={32} className="text-red-500" />
                             </div>
@@ -705,9 +850,9 @@ export default function MyBookings() {
                               {language === "en" ? "Status: Completed" : "Trạng thái: Hoàn thành"}
                             </div>
                           </div>
-                        ) : (
-                          <div className="lg:col-span-5 bg-gradient-to-b from-amber-50/50 to-orange-50/30 dark:from-slate-950/40 dark:to-slate-900/20 p-6 flex flex-col items-center justify-center border border-slate-200/60 dark:border-slate-800 shadow-sm">
-                            <div className="p-4 bg-amber-500/10 text-amber-500 dark:text-amber-455 rounded-full mb-3 shadow-inner">
+                        ) : booking.status === "confirmed" ? (
+                          <div className="lg:col-span-5 bg-gradient-to-b from-blue-100 to-indigo-100 dark:from-slate-950/40 dark:to-slate-900/20 p-6 flex flex-col items-center justify-center border border-slate-200/60 dark:border-slate-800 shadow-sm">
+                            <div className="p-4 bg-blue-500/10 text-blue-500 dark:text-blue-400 rounded-full mb-3 shadow-inner">
                               <Clock size={32} />
                             </div>
                             <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
@@ -717,9 +862,33 @@ export default function MyBookings() {
                               {language === "en" ? "This booking has not checked in yet." : "Đặt chỗ này chưa quét xe vào bãi."}
                             </p>
 
-                            <div className="w-full max-w-[240px] py-2.5 text-center border border-dashed border-amber-300 dark:border-amber-700/60 rounded-xl bg-amber-50/30 dark:bg-amber-950/10 text-amber-600 dark:text-amber-455 text-[10px] font-bold uppercase tracking-wider">
+                            <div className="w-full max-w-[240px] py-2.5 text-center border border-dashed border-blue-300 dark:border-blue-700/60 rounded-xl bg-blue-50/30 dark:bg-blue-950/10 text-blue-600 dark:text-blue-455 text-[10px] font-bold uppercase tracking-wider">
                               {language === "en" ? "Status: Confirmed" : "Trạng thái: Đã xác nhận"}
                             </div>
+                          </div>
+                        ) : (
+                          <div className="lg:col-span-5 bg-gradient-to-b from-amber-100 to-orange-100 dark:from-slate-950/40 dark:to-slate-900/20 p-6 flex flex-col items-center justify-center border border-slate-200/60 dark:border-slate-800 shadow-sm">
+                            <div className="p-4 bg-amber-500/10 text-amber-500 dark:text-amber-455 rounded-full mb-3 shadow-inner">
+                              <CreditCard size={32} />
+                            </div>
+                            <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
+                              {language === "en" ? "Awaiting Payment" : "Chờ thanh toán"}
+                            </h4>
+                            <p className="text-[11px] text-slate-400 dark:text-slate-500 text-center mb-5 max-w-[220px] leading-relaxed">
+                              {language === "en"
+                                ? "Please complete payment within 5 minutes to secure your spot."
+                                : "Vui lòng thanh toán cọc trong vòng 5 phút để giữ chỗ."}
+                            </p>
+
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openModal("payBooking", booking);
+                              }}
+                              className="w-full max-w-[240px] flex items-center justify-center gap-2 bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 px-4 rounded-xl shadow-md transition-all text-xs active:scale-[0.98]"
+                            >
+                              <CreditCard size={14} /> {language === "en" ? "Pay Now" : "Thanh toán ngay"}
+                            </button>
                           </div>
                         )}
 
@@ -843,6 +1012,101 @@ export default function MyBookings() {
               );
             })}
           </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
+              {/* Result count */}
+              <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">
+                {language === "en"
+                  ? `Showing ${(currentPage - 1) * PAGE_SIZE + 1}–${Math.min(currentPage * PAGE_SIZE, sortedAndFilteredBookings.length)} of ${sortedAndFilteredBookings.length} bookings`
+                  : `Hiển thị ${(currentPage - 1) * PAGE_SIZE + 1}–${Math.min(currentPage * PAGE_SIZE, sortedAndFilteredBookings.length)} / ${sortedAndFilteredBookings.length} lượt đặt`}
+              </p>
+
+              {/* Page buttons */}
+              <div className="flex items-center gap-1.5">
+                {/* Prev */}
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className={`p-1.5 rounded-lg border transition-all ${
+                    currentPage === 1
+                      ? "border-slate-200 dark:border-slate-800 text-slate-300 dark:text-slate-700 cursor-not-allowed bg-transparent"
+                      : "border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-950/30 hover:border-blue-300 dark:hover:border-blue-700 hover:text-blue-600 dark:hover:text-blue-400"
+                  }`}
+                  aria-label="Previous page"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+
+                {/* Page number buttons */}
+                {(() => {
+                  const getPageItems = () => {
+                    const items = [];
+                    let prev = null;
+                    for (let p = 1; p <= totalPages; p++) {
+                      if (
+                        p === 1 ||
+                        p === totalPages ||
+                        Math.abs(p - currentPage) <= 1
+                      ) {
+                        if (prev !== null && p - prev > 1) {
+                          items.push({ type: "ellipsis", key: `e-${p}` });
+                        }
+                        items.push({ type: "page", value: p });
+                        prev = p;
+                      }
+                    }
+                    return items;
+                  };
+
+                  return getPageItems().map((item) =>
+                    item.type === "ellipsis" ? (
+                      <span
+                        key={item.key}
+                        className="px-1.5 text-xs text-slate-400 dark:text-slate-600 select-none"
+                      >
+                        …
+                      </span>
+                    ) : (
+                      <button
+                        key={item.value}
+                        onClick={() => setCurrentPage(item.value)}
+                        className={`min-w-[32px] h-8 rounded-lg border text-xs font-bold transition-all ${
+                          currentPage === item.value
+                            ? "bg-blue-600 border-blue-600 text-white shadow-sm shadow-blue-200 dark:shadow-blue-900/30"
+                            : "border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-950/30 hover:border-blue-300 dark:hover:border-blue-700 hover:text-blue-600 dark:hover:text-blue-400"
+                        }`}
+                      >
+                        {item.value}
+                      </button>
+                    )
+                  );
+                })()}
+
+
+                {/* Next */}
+                <button
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className={`p-1.5 rounded-lg border transition-all ${
+                    currentPage === totalPages
+                      ? "border-slate-200 dark:border-slate-800 text-slate-300 dark:text-slate-700 cursor-not-allowed bg-transparent"
+                      : "border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-950/30 hover:border-blue-300 dark:hover:border-blue-700 hover:text-blue-600 dark:hover:text-blue-400"
+                  }`}
+                  aria-label="Next page"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+
+              {/* Per-page label */}
+              <p className="text-[10px] text-slate-400 dark:text-slate-600 font-medium hidden sm:block">
+                {language === "en" ? "10 per page" : "10 mục / trang"}
+              </p>
+            </div>
+          )}
+          </>
         )}
       </div>
 
@@ -1045,6 +1309,88 @@ export default function MyBookings() {
                     className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs transition-colors shadow-sm"
                   >
                     {language === "en" ? "Close" : "Đóng"}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Modal: Complete Payment */}
+            {activeModal === "payBooking" && (
+              <div className="p-6 md:p-8 text-center max-w-md mx-auto">
+                <div className="w-12 h-12 bg-blue-50 text-blue-500 dark:bg-blue-950/30 rounded-full flex items-center justify-center mx-auto mb-4 border border-blue-100 dark:border-blue-900/30">
+                  <CreditCard size={24} />
+                </div>
+                <h3 className="font-bold text-slate-900 dark:text-white text-xl mb-1">
+                  {language === "en" ? "Complete Payment" : "Hoàn tất thanh toán"}
+                </h3>
+                <p className="text-slate-500 dark:text-slate-400 text-xs mb-5">
+                  {language === "en"
+                    ? "Choose your payment method to confirm reservation deposit."
+                    : "Chọn phương thức thanh toán để xác nhận tiền cọc đặt chỗ."}
+                </p>
+
+                {/* Options */}
+                <div className="space-y-3 mb-6 text-left">
+                  {/* PayOS VietQR Option */}
+                  <div
+                    onClick={() => setPaymentMethod("PAYOS")}
+                    className={`p-4 rounded-lg border cursor-pointer transition-all flex items-center gap-4 ${paymentMethod === "PAYOS"
+                      ? "border-blue-500 bg-blue-50/20 dark:bg-blue-950/20 shadow-lg shadow-blue-500/10"
+                      : "border-slate-200 dark:border-slate-800 bg-transparent hover:border-slate-350 dark:hover:border-slate-700"
+                      }`}
+                  >
+                    <div className={`p-3 rounded-xl ${paymentMethod === "PAYOS" ? "bg-blue-500/10 text-blue-500" : "bg-slate-100 dark:bg-slate-800 text-slate-400"}`}>
+                      <QrCode size={24} />
+                    </div>
+                    <div>
+                      <p className="font-bold text-slate-800 dark:text-white text-sm">
+                        {language === "en" ? "PayOS VietQR" : "Cổng PayOS (Quét QR)"}
+                      </p>
+                      <p className="text-[10px] text-slate-400">
+                        {language === "en" ? "Instant checkout using any banking app" : "Thanh toán ngay bằng app ngân hàng"}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* VNPAY Mock Option */}
+                  <div
+                    onClick={() => setPaymentMethod("VNPAY")}
+                    className={`p-4 rounded-lg border cursor-pointer transition-all flex items-center gap-4 ${paymentMethod === "VNPAY"
+                      ? "border-blue-500 bg-blue-50/20 dark:bg-blue-950/20 shadow-lg shadow-blue-500/10"
+                      : "border-slate-200 dark:border-slate-800 bg-transparent hover:border-slate-350 dark:hover:border-slate-700"
+                      }`}
+                  >
+                    <div className={`p-3 rounded-xl ${paymentMethod === "VNPAY" ? "bg-blue-500/10 text-blue-500" : "bg-slate-100 dark:bg-slate-800 text-slate-400"}`}>
+                      <CreditCard size={24} />
+                    </div>
+                    <div>
+                      <p className="font-bold text-slate-800 dark:text-white text-sm">
+                        {language === "en" ? "VNPAY (Mock)" : "VNPAY Giả lập (Nhanh)"}
+                      </p>
+                      <p className="text-[10px] text-slate-400">
+                        {language === "en" ? "Instant simulated successful payment" : "Mô phỏng thanh toán thành công tức thì"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <button onClick={closeModal} className="flex-1 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold py-2.5 rounded-xl text-xs transition-colors">
+                    {language === "en" ? "Go Back" : "Quay lại"}
+                  </button>
+                  <button
+                    disabled={processingPayment}
+                    onClick={paymentMethod === "PAYOS" ? handlePayOsPayment : handleConfirmMockPayment}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-bold py-2.5 rounded-xl text-xs transition-all shadow-sm flex items-center justify-center gap-1.5"
+                  >
+                    {processingPayment ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        {language === "en" ? "Processing..." : "Đang xử lý..."}
+                      </>
+                    ) : (
+                      language === "en" ? "Pay Now" : "Thanh toán ngay"
+                    )}
                   </button>
                 </div>
               </div>

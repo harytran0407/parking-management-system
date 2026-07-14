@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 
 namespace ParkingManagement.DTOs;
@@ -89,4 +89,12 @@ public class EditSlotResponse
 
     [JsonPropertyName("session_cleared")]
     public bool SessionCleared { get; set; }
+}
+
+// ─── DELETE: Bulk delete slots ──────────────────────────────────────────────────
+public class BulkDeleteSlotsRequest
+{
+    [Required(ErrorMessage = "slot_ids is required")]
+    [JsonPropertyName("slot_ids")]
+    public List<string> SlotIds { get; set; } = new();
 }

@@ -1,11 +1,11 @@
 // src/context/AuthContext.jsx
-import React, { createContext, useState, useCallback, useContext } from "react";
-import api from "../utils/api"; // Sử dụng instance Axios đã cấu hình gạch dưới snake_case của bạn
+import React, { createContext, useState, useCallback, useContext, useEffect } from "react";
+import api from "../utils/api";
 
 export const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  // 1. LAZY INITIALIZATION: Đồng bộ quét đúng bộ Key lưu trữ thực tế khi F5 trang web
+  // Đọc userData từ localStorage ngay lập tức để tránh flash trắng
   const [user, setUser] = useState(() => {
     const savedUser = localStorage.getItem("userData");
     if (savedUser) {
@@ -24,30 +24,75 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(false);
 
   /**
-   * ====================================================
-   *  HÀM ĐĂNG NHẬP THỰC TẾ (TÍCH HỢP AXIOS API-RECAPTCHA)
-   * ====================================================
-   * @param {string} emailOrPhone - Email hoặc Số điện thoại người dùng
-   * @param {string} password - Mật khẩu thô
+   * isInitializing = true trong khi đang verify token lúc app khởi động.
+   * ProtectedRoute sẽ hiển thị spinner cho đến khi biến này = false,
+   * tránh tình trạng cho vào route rồi bị đá ra sau khi 401 trả về.
+   */
+  const [isInitializing, setIsInitializing] = useState(
+    () => !!localStorage.getItem("accessToken")
+  );
+
+  /** Hàm nội bộ: dọn sạch session phía client */
+  const _clearSession = useCallback(() => {
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("userData");
+    setUser(null);
+  }, []);
+
+  /**
+   * Khi app khởi động, nếu có token thì gọi /auth/profile để kiểm tra
+   * xem token còn hợp lệ không.
+   *  - Hợp lệ  → cập nhật user data mới nhất từ server
+   *  - Hết hạn → xóa session ngay, user thấy trang login thay vì flash rồi redirect
+   */
+  useEffect(() => {
+    const token = localStorage.getItem("accessToken");
+    if (!token) {
+      setIsInitializing(false);
+      return;
+    }
+
+    const verifyToken = async () => {
+      try {
+        const response = await api.get("/auth/profile");
+        if (response.data?.success) {
+          const profileData = response.data.data;
+          setUser((prev) => {
+            const updated = { ...prev, ...profileData };
+            localStorage.setItem("userData", JSON.stringify(updated));
+            return updated;
+          });
+        } else {
+          _clearSession();
+        }
+      } catch {
+        // 401 hoặc lỗi mạng → xóa session
+        _clearSession();
+      } finally {
+        setIsInitializing(false);
+      }
+    };
+
+    verifyToken();
+  }, [_clearSession]);
+
+  /**
+   * ĐĂNG NHẬP
    */
   const login = useCallback(async (emailOrPhone, password, captchaToken) => {
     setLoading(true);
     try {
-      // Gọi chính xác API thực tế theo cấu hình snake_case của dự án bãi xe
       const response = await api.post("/auth/login", {
         email_or_phone: emailOrPhone.trim(),
         password: password,
         captcha_token: captchaToken,
       });
 
-      // Đối chiếu cấu trúc response.data.data thành công từ authController.cs
       if (response.data && response.data.success) {
         const { token, user: backendUser } = response.data.data;
 
-        // Đồng bộ lưu trữ trọn vẹn vào hệ thống LocalStorage
         localStorage.setItem("accessToken", token);
         localStorage.setItem("userData", JSON.stringify(backendUser));
-
         setUser(backendUser);
 
         return backendUser;
@@ -56,16 +101,14 @@ export function AuthProvider({ children }) {
       }
     } catch (error) {
       console.error("Quá trình đăng nhập tại AuthContext gặp sự cố:", error);
-      throw error; // Ném lỗi ra ngoài để màn hình Login.jsx bắt được hiển thị lên UI
+      throw error;
     } finally {
       setLoading(false);
     }
   }, []);
 
   /**
-   * ==========================================
-   *  HÀM ĐĂNG NHẬP GOOGLE THỰC TẾ (TÍCH HỢP AXIOS API)
-   * ==========================================
+   * ĐĂNG NHẬP GOOGLE
    */
   const loginWithGoogle = useCallback(async (googleAccessToken) => {
     setLoading(true);
@@ -79,8 +122,6 @@ export function AuthProvider({ children }) {
 
         localStorage.setItem("accessToken", token);
         localStorage.setItem("userData", JSON.stringify(backendUser));
-
-        // Kích hoạt đồng bộ hóa trạng thái React toàn cục
         setUser(backendUser);
         return backendUser;
       } else {
@@ -95,26 +136,20 @@ export function AuthProvider({ children }) {
   }, []);
 
   /**
-   * ==========================================
-   * 🛑 HÀM ĐĂNG XUẤT HỆ THỐNG TRỰC TIẾP
-   * ==========================================
+   * ĐĂNG XUẤT
    */
   const logout = useCallback(async () => {
     try {
-      // Gọi API đăng xuất lên Server theo đặc tả FR-AUTH-03 nếu đã có token
       await api.post("/auth/logout");
     } catch (e) {
       console.warn("Server-side logout token revocation skipped or failed:", e);
     } finally {
-      // Luôn luôn dọn sạch bộ nhớ bộ nhớ Client bất kể API thành công hay gặp lỗi
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("userData");
-      setUser(null);
+      _clearSession();
     }
-  }, []);
+  }, [_clearSession]);
 
   /**
-   * Cập nhật thông tin cá nhân cục bộ (Phục vụ chức năng FR-AUTH-05)
+   * Cập nhật thông tin cá nhân cục bộ (không gọi API)
    */
   const updateUser = useCallback((updateData) => {
     setUser((prevUser) => {
@@ -124,14 +159,16 @@ export function AuthProvider({ children }) {
       return newUser;
     });
   }, []);
-  // lấy thông tin profile từ DB
+
+  /**
+   * Lấy thông tin profile mới nhất từ DB
+   */
   const fetchProfile = useCallback(async () => {
     try {
       const response = await api.get("/auth/profile");
       if (response.data && response.data.success) {
         const profileData = response.data.data;
 
-        // Sử dụng functional updater form (prev => ...) để loại bỏ sự phụ thuộc vào biến 'user'
         setUser((prevUser) => {
           const updated = { ...prevUser, ...profileData };
           localStorage.setItem("userData", JSON.stringify(updated));
@@ -147,36 +184,28 @@ export function AuthProvider({ children }) {
   }, []);
 
   /**
-   *  CẬP NHẬT PROFILE LÊN SERVER DÙNG MULTIPART FORMDATA
-   * SỬA LỖI ĐỒNG BỘ: Đổi key khớp chuẩn xác 100% với thuộc tính UpdateProfileRequestDto trong C#
+   * Cập nhật profile lên server dùng multipart FormData
    */
   const updateProfileApi = useCallback(async (profileData) => {
     const formData = new FormData();
-
-    
-    // formData.append("Username", profileData.username || "");
-    formData.append("FullName", profileData.full_name || ""); 
-    // formData.append("Email", profileData.email || "");
+    formData.append("FullName", profileData.full_name || "");
     formData.append("Phone", profileData.phone || "");
 
-    // Gắn tệp tin nhị phân gốc vào trường Avatar nếu có phát hiện file mới chọn
     if (profileData.avatarFile) {
-      formData.append("Avatar", profileData.avatarFile); 
+      formData.append("Avatar", profileData.avatarFile);
     }
 
     try {
       const response = await api.put("/auth/profile", formData, {
-        headers: {
-          // Chỉ định cấu hình Multipart định dạng dữ liệu truyền tải
-          "Content-Type": "multipart/form-data",
-        },
+        headers: { "Content-Type": "multipart/form-data" },
       });
       return response.data;
     } catch (error) {
       console.error("Error executing profile update multipart transmit:", error);
       throw error.response?.data || error;
     }
-  }, []); // Thêm mảng dependency trống bảo vệ hiệu năng hàm
+  }, []);
+
   const isAuthenticated = !!user;
 
   return (
@@ -184,6 +213,7 @@ export function AuthProvider({ children }) {
       value={{
         user,
         loading,
+        isInitializing,
         login,
         logout,
         isAuthenticated,
@@ -191,13 +221,14 @@ export function AuthProvider({ children }) {
         loginWithGoogle,
         fetchProfile,
         updateProfileApi,
-      }}>
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
 }
 
-// 🎯 XUẤT BẢN CUSTOM HOOK USEAUTH ĐỂ DÙNG TẬP TRUNG TOÀN DỰ ÁN
+// CUSTOM HOOK
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {

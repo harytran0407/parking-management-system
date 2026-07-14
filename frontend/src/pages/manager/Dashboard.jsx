@@ -265,7 +265,7 @@ function LineAreaChart({
               value: valueFormatter(
                 Math.round(
                   dataPoints.reduce((s, p) => s + getValue(p), 0) /
-                    Math.max(dataPoints.filter((p) => getValue(p) > 0).length, 1)
+                  Math.max(dataPoints.filter((p) => getValue(p) > 0).length, 1)
                 )
               ),
             },
@@ -369,10 +369,10 @@ export default function ManagerDashboard() {
   const { language } = useLanguage();
 
   const periods = [
-    { key: "day",    labelEn: "Today",         labelVi: "Hôm nay" },
-    { key: "week",   labelEn: "Last 7 days",   labelVi: "7 ngày qua" },
-    { key: "month",  labelEn: "Last 30 days",  labelVi: "30 ngày qua" },
-    { key: "custom", labelEn: "Custom range",  labelVi: "Tùy chọn" },
+    { key: "day", labelEn: "Today", labelVi: "Hôm nay" },
+    { key: "week", labelEn: "Last 7 days", labelVi: "7 ngày qua" },
+    { key: "month", labelEn: "Last 30 days", labelVi: "30 ngày qua" },
+    { key: "custom", labelEn: "Custom range", labelVi: "Tùy chọn" },
   ];
 
   const [period, setPeriod] = useState("day");
@@ -507,19 +507,19 @@ export default function ManagerDashboard() {
     data?.occupancy?.occupancy_rate_percent >= 90
       ? "text-rose-500"
       : data?.occupancy?.occupancy_rate_percent >= 60
-      ? "text-amber-500"
-      : "text-emerald-500";
+        ? "text-amber-500"
+        : "text-emerald-500";
 
   const occupancyTag =
     data?.occupancy?.occupancy_rate_percent >= 90
       ? { label: language === "en" ? "Critical" : "Gần đầy", cls: "bg-rose-50 text-rose-600 dark:bg-rose-950/20 dark:text-rose-400 border-rose-100 dark:border-rose-900/40" }
       : data?.occupancy?.occupancy_rate_percent >= 60
-      ? { label: language === "en" ? "Moderate" : "Trung bình", cls: "bg-amber-50 text-amber-700 dark:bg-amber-950/20 dark:text-amber-400 border-amber-100 dark:border-amber-900/40" }
-      : { label: language === "en" ? "Normal" : "Bình thường", cls: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/40" };
+        ? { label: language === "en" ? "Moderate" : "Trung bình", cls: "bg-amber-50 text-amber-700 dark:bg-amber-950/20 dark:text-amber-400 border-amber-100 dark:border-amber-900/40" }
+        : { label: language === "en" ? "Normal" : "Bình thường", cls: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/40" };
 
   const donutSlices = [
     { label: "VNPAY", value: data?.revenue?.by_payment_method?.VNPAY ?? 0, color: "#2563eb" },
-    { label: "CASH",  value: data?.revenue?.by_payment_method?.CASH  ?? 0, color: "#f59e0b" },
+    { label: "CASH", value: data?.revenue?.by_payment_method?.CASH ?? 0, color: "#f59e0b" },
   ];
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -550,11 +550,10 @@ export default function ManagerDashboard() {
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => setIsDemoMode((d) => !d)}
-            className={`text-[11px] font-extrabold px-3 py-2 rounded-xl transition border flex items-center gap-1.5 shadow-xs ${
-              isDemoMode
+            className={`text-[11px] font-extrabold px-3 py-2 rounded-xl transition border flex items-center gap-1.5 shadow-xs ${isDemoMode
                 ? "bg-amber-500 hover:bg-amber-600 border-amber-600 text-white"
                 : "bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300"
-            }`}
+              }`}
           >
             <Sparkles size={13} />
             {isDemoMode
@@ -597,11 +596,10 @@ export default function ManagerDashboard() {
             <button
               key={item.key}
               onClick={() => setPeriod(item.key)}
-              className={`flex-1 md:flex-none px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider transition ${
-                period === item.key
+              className={`flex-1 md:flex-none px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider transition ${period === item.key
                   ? "bg-white dark:bg-slate-800 text-blue-600 dark:text-white shadow-xs font-black"
                   : "text-slate-400 hover:text-slate-700 dark:text-slate-500 dark:hover:text-slate-300"
-              }`}
+                }`}
             >
               {language === "en" ? item.labelEn : item.labelVi}
             </button>
@@ -615,7 +613,7 @@ export default function ManagerDashboard() {
           >
             {[
               { label: language === "en" ? "Start date" : "Ngày bắt đầu", value: startDate, set: setStartDate },
-              { label: language === "en" ? "End date"   : "Ngày kết thúc", value: endDate,   set: setEndDate   },
+              { label: language === "en" ? "End date" : "Ngày kết thúc", value: endDate, set: setEndDate },
             ].map(({ label, value, set }) => (
               <div key={label} className="space-y-1">
                 <span className="block text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
@@ -945,9 +943,8 @@ export default function ManagerDashboard() {
                       <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                         <div
                           style={{ width: `${pct}%` }}
-                          className={`h-full rounded-full transition-all duration-300 ${
-                            isVnpay ? "bg-blue-500" : "bg-amber-500"
-                          }`}
+                          className={`h-full rounded-full transition-all duration-300 ${isVnpay ? "bg-blue-500" : "bg-amber-500"
+                            }`}
                         />
                       </div>
                     </div>

@@ -291,12 +291,12 @@ namespace ParkingManagement.Repositories
             int availableCapacity = matchingZones.Sum(z => z.AvailableCapacity);
 
             int occupiedCount = await _context.ParkingSessions
-                .CountAsync(s => s.Status == "ACTIVE" && s.ZoneId.HasValue && zoneIds.Contains(s.ZoneId.Value));
+                .CountAsync(s => s.Status == "ACTIVE" && (s.ZoneId.HasValue || s.SlotId != null) && 
+                                 zoneIds.Contains(s.ZoneId ?? s.Slot!.ZoneId));
 
             int reservedCount = await _context.Bookings
-                .CountAsync(b => (b.Status == "CONFIRMED" || b.Status == "PENDING") && 
-                                 ((b.ZoneId.HasValue && zoneIds.Contains(b.ZoneId.Value)) || 
-                                  (!b.ZoneId.HasValue && vehicleTypeIds.Contains(b.VehicleTypeId))));
+                .CountAsync(b => (b.Status == "CONFIRMED" || b.Status == "PENDING") && b.ZoneId.HasValue && 
+                                 zoneIds.Contains(b.ZoneId.Value));
 
             var maintQuery = _context.ParkingSlots.AsQueryable();
             if (filter.Floor.HasValue) maintQuery = maintQuery.Where(s => s.Zone.FloorNumber == filter.Floor.Value);
@@ -540,30 +540,29 @@ namespace ParkingManagement.Repositories
                 .Where(z => z.Status == "ACTIVE")
                 .ToListAsync();
 
-            // Số xe đang đỗ thực tế theo từng zone (ACTIVE sessions có ZoneId)
+            // Số xe đang đỗ thực tế theo từng zone (ACTIVE sessions có ZoneId hoặc gián tiếp qua Slot)
             var occupiedByZone = await _context.ParkingSessions
-                .Where(s => s.Status == "ACTIVE" && s.ZoneId.HasValue)
-                .GroupBy(s => s.ZoneId!.Value)
+                .Where(s => s.Status == "ACTIVE" && (s.ZoneId.HasValue || s.SlotId != null))
+                .GroupBy(s => s.ZoneId ?? s.Slot!.ZoneId)
                 .Select(g => new { ZoneId = g.Key, Count = g.Count() })
                 .ToDictionaryAsync(x => x.ZoneId, x => x.Count);
 
-            // Số booking CONFIRMED chưa check-in — đếm theo BookingId (distinct)
-            // Nhóm theo VehicleTypeId vì ZoneId thường null trước khi check-in
-            var bookedByVehicleType = await _context.Bookings
-                .Where(b => b.Status == "CONFIRMED" || b.Status == "PENDING")
-                .GroupBy(b => b.VehicleTypeId)
-                .Select(g => new { VehicleTypeId = g.Key, Count = g.Select(b => b.BookingId).Distinct().Count() })
-                .ToDictionaryAsync(x => x.VehicleTypeId, x => x.Count);
+            // Số booking CONFIRMED/PENDING chưa check-in theo từng zone
+            var bookedByZone = await _context.Bookings
+                .Where(b => (b.Status == "CONFIRMED" || b.Status == "PENDING") && b.ZoneId.HasValue)
+                .GroupBy(b => b.ZoneId!.Value)
+                .Select(g => new { ZoneId = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.ZoneId, x => x.Count);
 
             return zones.Select(z => new ZoneRealtimeStatsDto
             {
                 ZoneId = z.ZoneId,
                 ZoneName = z.ZoneName,
                 FloorNumber = z.FloorNumber,
-                Capacity = z.ParkingSlots.Count,
-                AvailableCapacity = z.ParkingSlots.Count(s => s.Status == "AVAILABLE"),
+                Capacity = z.Capacity,
+                AvailableCapacity = z.AvailableCapacity,
                 OccupiedCount = occupiedByZone.GetValueOrDefault(z.ZoneId, 0),
-                BookedCount = bookedByVehicleType.GetValueOrDefault(z.VehicleTypeId, 0),
+                BookedCount = bookedByZone.GetValueOrDefault(z.ZoneId, 0),
                 MaintenanceCount = z.ParkingSlots.Count(s => s.Status == "MAINTENANCE"),
                 VehicleTypeName = z.VehicleType.VehicleTypeName
             }).ToList();

@@ -9,7 +9,9 @@ public interface ISlotManagementRepository
     Task<FloorZone?> GetZoneWithTypeAsync(int zoneId);
     Task<ParkingSlot?> GetSlotByIdAsync(string slotId);
     Task<bool> SlotIdExistsAsync(string slotId);
+    Task<bool> SlotNameExistsAsync(string slotName);
     Task<int> CountSlotsInZoneAsync(int zoneId);
+    Task<int> GetMaxSlotNumberAsync(int floorNumber); // <-- THÊM DÒNG NÀY
     Task<ParkingSession?> GetActiveSessionBySlotAsync(string slotId);
     Task AddSlotsAsync(List<ParkingSlot> slots);
     Task UpdateSlotAsync(ParkingSlot slot);
@@ -29,6 +31,7 @@ public class SlotManagementRepository : ISlotManagementRepository
     public Task<FloorZone?> GetZoneWithTypeAsync(int zoneId) =>
         _db.FloorZones
            .Include(z => z.VehicleType)
+           .Include(z => z.ParkingSlots)
            .FirstOrDefaultAsync(z => z.ZoneId == zoneId);
 
 
@@ -40,8 +43,36 @@ public class SlotManagementRepository : ISlotManagementRepository
     public Task<bool> SlotIdExistsAsync(string slotId) =>
         _db.ParkingSlots.AnyAsync(s => s.SlotId == slotId);
 
+    public Task<bool> SlotNameExistsAsync(string slotName) =>
+        _db.ParkingSlots.AnyAsync(s => s.SlotName == slotName);
+
     public Task<int> CountSlotsInZoneAsync(int zoneId) =>
         _db.ParkingSlots.CountAsync(s => s.ZoneId == zoneId);
+
+    public async Task<int> GetMaxSlotNumberAsync(int floorNumber)
+    {
+        string idPrefix = $"slt_{floorNumber}";
+    
+        var slotIds = await _db.ParkingSlots
+            .Where(s => s.SlotId.StartsWith(idPrefix))
+            .Select(s => s.SlotId)
+            .ToListAsync();
+    
+        if (!slotIds.Any()) return 0;
+    
+        int maxNumber = 0;
+        foreach (var id in slotIds)
+        {
+            string numberPart = id.Substring(idPrefix.Length); // "slt_101" -> "01"
+    
+            if (int.TryParse(numberPart, out int parsedNum))
+            {
+                if (parsedNum > maxNumber) maxNumber = parsedNum;
+            }
+        }
+    
+        return maxNumber;
+    }
 
     // Lấy session ACTIVE đang chiếm slot này
     public Task<ParkingSession?> GetActiveSessionBySlotAsync(string slotId) =>

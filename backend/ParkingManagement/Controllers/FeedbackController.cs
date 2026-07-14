@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using ParkingManagement.DTOs.Building;
 using ParkingManagement.DTOs.Feedback;
 using ParkingManagement.Models;
 using ParkingManagement.Services.FeedbackServices;
@@ -140,5 +141,47 @@ namespace ParkingManagement.Controllers
                 data = oldFeedbacks
             });
         }
+
+        // ==========================================
+        // 5. UPLOAD FILE ĐÍNH KÈM PHẢN HỒI
+        // ==========================================
+        [HttpPost("upload")]
+        public async Task<IActionResult> UploadAttachment(IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+            {
+                return BadRequest(ApiResponse<object>.Fail("No file uploaded"));
+            }
+
+            var extension = Path.GetExtension(file.FileName).ToLower();
+            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".pdf", ".txt", ".doc", ".docx" };
+            if (!allowedExtensions.Contains(extension))
+            {
+                return BadRequest(ApiResponse<object>.Fail("Invalid file type. Allowed: JPG, JPEG, PNG, PDF, TXT, DOC, DOCX"));
+            }
+
+            // Max size 5MB
+            if (file.Length > 5 * 1024 * 1024)
+            {
+                return BadRequest(ApiResponse<object>.Fail("File size exceeds 5MB limit"));
+            }
+
+            var uploadFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "feedbacks");
+            if (!Directory.Exists(uploadFolder))
+            {
+                Directory.CreateDirectory(uploadFolder);
+            }
+
+            var fileName = Guid.NewGuid().ToString() + extension;
+            var filePath = Path.Combine(uploadFolder, fileName);
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            var fileUrl = $"/uploads/feedbacks/{fileName}";
+            return Ok(ApiResponse<object>.Ok(new { url = fileUrl }, "File uploaded successfully"));
+        }
+
     }
 }

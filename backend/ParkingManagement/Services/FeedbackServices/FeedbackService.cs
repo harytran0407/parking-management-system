@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Org.BouncyCastle.Asn1.Ocsp;
 using ParkingManagement.Data;
 using ParkingManagement.DTOs.Feedback;
 using ParkingManagement.Models;
@@ -21,14 +22,14 @@ namespace ParkingManagement.Services.FeedbackServices
                 {
                     UserId = userId,
                     FullName = request.FullName,
-                    IdCardNumber = request.IdCardNumber,
                     Title = request.Title,
                     Content = request.Content,
                     Status = "OPEN",
                     CreatedAt = DateTime.UtcNow,
                     StarRating = request.StarRating,
                     CustomerPhone = request.CustomerPhone,
-                    CustomerEmail = request.CustomerEmail
+                    CustomerEmail = request.CustomerEmail,
+                    AttachmentUrl = request.AttachmentUrl
                 };
                 _context.Feedbacks.Add(feedback);
                 await _context.SaveChangesAsync();
@@ -68,7 +69,6 @@ namespace ParkingManagement.Services.FeedbackServices
                     FeedbackId = f.FeedbackId,
                     UserId = f.UserId,
                     FullName = f.FullName,
-                    IdCardNumber = f.IdCardNumber,
                     Title = f.Title,
                     Content = f.Content,
                     Status = f.Status,
@@ -77,7 +77,8 @@ namespace ParkingManagement.Services.FeedbackServices
                     ResolvedBy = f.ResolvedBy,
                     ResponseNote = f.ResponseNote,
                     CustomerPhone = f.CustomerPhone,
-                    CustomerEmail = f.CustomerEmail
+                    CustomerEmail = f.CustomerEmail,
+                    AttachmentUrl = f.AttachmentUrl
                 })
                 .ToListAsync();
             return (feedbacks, totalItems, totalPages);
@@ -119,7 +120,6 @@ namespace ParkingManagement.Services.FeedbackServices
                     FeedbackId = f.FeedbackId,
                     UserId = f.UserId,
                     FullName = f.FullName,
-                    IdCardNumber = f.IdCardNumber,
                     Title = f.Title,
                     Content = f.Content,
                     Status = f.Status,
@@ -128,7 +128,8 @@ namespace ParkingManagement.Services.FeedbackServices
                     ResolvedBy = f.ResolvedBy,
                     ResponseNote = f.ResponseNote,
                     CustomerEmail = f.CustomerEmail,
-                    CustomerPhone = f.CustomerPhone
+                    CustomerPhone = f.CustomerPhone,
+                    AttachmentUrl = f.AttachmentUrl
                 }).ToListAsync();
             return oldFeedbacks;
         }

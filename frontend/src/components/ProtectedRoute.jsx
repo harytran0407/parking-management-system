@@ -2,40 +2,49 @@ import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 
 /**
- * Component Bảo vệ Tuyến đường (Route Guard) cải tiến
- * @param {Array} allowedRoles - Mảng các role được phép truy cập (Ví dụ: ['ParkingUser', 'ParkingStaff'])
+ * Component Bảo vệ Tuyến đường (Route Guard)
+ *
+ * Luồng hoạt động:
+ *  1. isInitializing = true  → Hiển thị spinner, đợi AuthContext verify token với server
+ *  2. isInitializing = false + !isAuthenticated → Redirect về /login
+ *  3. isInitializing = false + isAuthenticated + sai role → Redirect về /forbidden hoặc /
+ *  4. Tất cả hợp lệ → Render children
+ *
+ * @param {Array} allowedRoles - Mảng các role được phép truy cập
  */
 export default function ProtectedRoute({ children, allowedRoles }) {
-  const { isAuthenticated, user, loading } = useAuth();
+  const { isAuthenticated, isInitializing, user } = useAuth();
   const location = useLocation();
 
-  // Giữ nguyên giao diện Loading mượt mà của bạn
-  if (loading) {
+  // Đang verify token với server → hiện spinner, KHÔNG render route hay redirect vội
+  if (isInitializing) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-dark-900">
+      <div className="flex items-center justify-center min-h-screen bg-slate-950">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-          <p className="mt-4 text-gray-300">Loading...</p>
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500" />
+          <p className="mt-4 text-gray-300 text-sm">Verifying session...</p>
         </div>
       </div>
     );
   }
 
-  // TH 1: Nếu chưa đăng nhập -> Đá về /login và lưu lại vị trí cũ để sau khi login xong tự quay lại
+  // Chưa đăng nhập (hoặc token đã bị xóa sau khi verify) → về login, lưu vị trí cũ
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
+  // Đăng nhập đúng nhưng sai role → về trang phù hợp
   if (allowedRoles && !allowedRoles.includes(user?.role)) {
-
-    return (
-      <Navigate
-        to={user?.role === "ParkingStaff" ? "/staff/dashboard" : "/"}
-        replace
-      />
-    );
+    const fallback =
+      user?.role === "ParkingStaff"
+        ? "/staff/dashboard"
+        : user?.role === "ParkingManager"
+        ? "/manager/dashboard"
+        : user?.role === "SystemAdmin"
+        ? "/admin/dashboard"
+        : "/";
+    return <Navigate to={fallback} replace />;
   }
-
 
   return children;
 }

@@ -266,18 +266,11 @@ export default function ManagerPricing() {
 
                   return (
                     <div
-                      key={type.vehicle_type_id}
-                      className={`card relative overflow-hidden transition-all duration-300 hover:shadow-lg border ${isCar
-                        ? 'bg-gradient-to-br from-blue-50/40 via-white to-blue-50/10 dark:from-blue-950/10 dark:via-slate-900 dark:to-blue-950/5 border-blue-100 dark:border-blue-900/30'
-                        : 'bg-gradient-to-br from-amber-50/40 via-white to-amber-50/10 dark:from-amber-950/10 dark:via-slate-900 dark:to-amber-950/5 border-amber-100 dark:border-amber-900/30'
-                        }`}
+                      className={`card relative overflow-hidden transition-all duration-300 hover:shadow-lg border`}
                     >
                       <div className="flex justify-between items-start mb-5">
                         <div className="flex items-center gap-3">
-                          <div className={`p-3 rounded-2xl shadow-sm ${isCar
-                            ? 'bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400'
-                            : 'bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400'
-                            }`}>
+                          <div className="p-3 rounded-2xl shadow-sm" >
                             {isCar ? <Car size={24} /> : <Bike size={24} />}
                           </div>
                           <div>
