@@ -502,10 +502,10 @@ export default function Register() {
             </div>
             {isPasswordTyped && (
               <div className="mt-2.5 space-y-2 bg-slate-50 p-3.5 rounded-lg border border-slate-300">
-                <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                <p className="text-[11px] font-semibold text-slate-800 uppercase tracking-wider">
                   {language === "vi" ? "Yêu cầu mật khẩu:" : "Password requirements:"}
                 </p>
-                <ul className="space-y-1.5 text-xs">
+                <ul className="space-y-1.5 text-xs text-slate-800">
                   <li className={`flex items-center gap-2 transition-colors duration-200 ${checks.minLength ? "text-green-600 font-medium" : "text-slate-450"}`}>
                     {checks.minLength ? (
                       <CheckCircle className="w-3.5 h-3.5 text-green-500 shrink-0" />
@@ -639,9 +639,9 @@ export default function Register() {
               <h3 className="text-xl font-bold text-slate-900">{t[language].verifyTitle}</h3>
               <p className="text-sm text-slate-500 mt-2 flex flex-col items-center gap-2">
                 <span>
-                {t[language].verifyDesc}
+                  {t[language].verifyDesc}
                 </span>
-                 <span className="font-semibold text-slate-800 break-all">{registeredEmail}</span>
+                <span className="font-semibold text-slate-800 break-all">{registeredEmail}</span>
               </p>
             </div>
 

@@ -301,30 +301,6 @@ export default function ManagerStaff() {
   return (
     <>
       <div className="animate-slide-in flex flex-col space-y-6">
-        {/* HEADER SECTION */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-          <div>
-            <h2 className="section-title mb-1">
-              {language === 'en' ? 'Staff Management' : 'Quản lý Nhân viên'}
-            </h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              {language === 'en'
-                ? 'Create, update, and manage access status for parking operations staff.'
-                : 'Tạo mới, cập nhật và quản lý trạng thái truy cập của nhân viên vận hành bãi xe.'}
-            </p>
-          </div>
-          <button
-            onClick={() => {
-              setAddErrors({})
-              setIsAddModalOpen(true)
-            }}
-            className="btn-primary flex items-center gap-2 shadow-lg hover:shadow-blue-500/25 transition-all duration-300"
-          >
-            <UserPlus size={18} />
-            {language === 'en' ? 'Add Parking Staff' : 'Thêm nhân viên'}
-          </button>
-        </div>
-
         {/* FILTER & SEARCH BAR */}
         <div className="card mb-6 p-4">
           <form onSubmit={handleSearchSubmit} className="flex flex-col md:flex-row gap-4 items-center justify-between">
@@ -419,7 +395,7 @@ export default function ManagerStaff() {
                           </div>
                           <div>
                             <p className="font-semibold text-slate-800 dark:text-white">{staff.full_name || 'N/A'}</p>
-                            <p className="text-xs text-slate-400 dark:text-slate-500 font-mono">@{staff.username}</p>
+                            <p className="text-xs text-slate-400 dark:text-slate-500 font-sans">@{staff.username}</p>
                           </div>
                         </div>
                       </td>
@@ -530,6 +506,20 @@ export default function ManagerStaff() {
               </table>
             </div>
           )}
+        </div>
+
+        {/* ADD STAFF BUTTON AT THE BOTTOM */}
+        <div className="flex justify-end">
+          <button
+            onClick={() => {
+              setAddErrors({})
+              setIsAddModalOpen(true)
+            }}
+            className="btn-primary flex items-center gap-2 shadow-lg hover:shadow-blue-500/25 transition-all duration-300"
+          >
+            <UserPlus size={18} />
+            {language === 'en' ? 'Add Parking Staff' : 'Thêm nhân viên'}
+          </button>
         </div>
       </div>
 

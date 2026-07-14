@@ -1,6 +1,6 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useState } from 'react';
-import { History, LogIn, LogOut, AlertTriangle, Map, User, ScanSearch } from "lucide-react";
+import { History, LogIn, LogOut, AlertTriangle, Map, User, ScanSearch, CalendarCheck } from "lucide-react";
 import Sidebar from "../components/Sidebar";
 import Header from "../components/Header";
 import Profile from '../pages/user/Profile';
@@ -10,6 +10,7 @@ import HistoryPage from "../pages/staff/HistoryPage";
 import IncidentHandlingPage from '../pages/staff/IncidentHandling';
 import SlotGateManagementPage from '../pages/staff/SlotGateManagement';
 import SessionLookupPage from '../pages/staff/SessionLookupPage';
+import BookingReconciliationPage from '../pages/staff/BookingReconciliationPage';
 import { useLanguage } from '../hooks/useLanguage';
 
 export default function StaffLayout() {
@@ -48,6 +49,11 @@ export default function StaffLayout() {
       label: language === 'en' ? "Session Lookup" : "Tra cứu phiên xe",
       icon: <ScanSearch size={20} />,
     },
+    {
+      path: "/staff/booking-reconciliation",
+      label: "Booking Record",
+      icon: <CalendarCheck size={20} />,
+    },
   ];
 
   return (
@@ -75,6 +81,7 @@ export default function StaffLayout() {
             <Route path="/incidents" element={<IncidentHandlingPage />} />
             <Route path="/slots" element={<SlotGateManagementPage />} />
             <Route path="/session-lookup" element={<SessionLookupPage />} />
+            <Route path="/booking-reconciliation" element={<BookingReconciliationPage />} />
             <Route path="profile" element={<Profile />} />
 
             {/* NẾU ĐƯỜNG DẪN SAI: Tự động redirect về Check-In luôn thay vì Dashboard */}

@@ -172,6 +172,81 @@ public class BookingResponse
 
     [JsonPropertyName("qr_code_data")]
     public string QrCodeData { get; set; } = string.Empty;
+
+    [JsonPropertyName("early_fee")]
+    public decimal EarlyFee { get; set; }
+
+    [JsonPropertyName("penalty_fee")]
+    public decimal PenaltyFee { get; set; }
+
+    [JsonPropertyName("actual_check_in")]
+    public DateTime? ActualCheckIn { get; set; }
+
+    [JsonPropertyName("actual_check_out")]
+    public DateTime? ActualCheckOut { get; set; }
+}
+
+public class StaffBookingResponse
+{
+    [JsonPropertyName("booking_id")]
+    public string BookingId { get; set; } = null!;
+
+    [JsonPropertyName("full_name")]
+    public string? FullName { get; set; }
+
+    [JsonPropertyName("phone")]
+    public string? Phone { get; set; }
+
+    [JsonPropertyName("email")]
+    public string? Email { get; set; }
+
+    [JsonPropertyName("license_plate")]
+    public string LicensePlate { get; set; } = string.Empty;
+
+    [JsonPropertyName("vehicle_type")]
+    public string VehicleType { get; set; } = string.Empty;
+
+    [JsonPropertyName("vehicle_type_id")]
+    public int VehicleTypeId { get; set; }
+
+    [JsonPropertyName("expected_arrival")]
+    public DateTime ExpectedArrival { get; set; }
+
+    [JsonPropertyName("expired_at")]
+    public DateTime? ExpiredAt { get; set; }
+
+    [JsonPropertyName("booking_time")]
+    public DateTime? BookingTime { get; set; }
+
+    [JsonPropertyName("status")]
+    public string? Status { get; set; }
+
+    [JsonPropertyName("notes")]
+    public string? Notes { get; set; }
+
+    [JsonPropertyName("zone_name")]
+    public string? ZoneName { get; set; }
+
+    [JsonPropertyName("floor_number")]
+    public int? FloorNumber { get; set; }
+
+    [JsonPropertyName("estimated_fee")]
+    public decimal EstimatedFee { get; set; }
+
+    [JsonPropertyName("deposit_paid")]
+    public decimal DepositPaid { get; set; }
+
+    [JsonPropertyName("early_fee")]
+    public decimal EarlyFee { get; set; }
+
+    [JsonPropertyName("penalty_fee")]
+    public decimal PenaltyFee { get; set; }
+
+    [JsonPropertyName("actual_check_in")]
+    public DateTime? ActualCheckIn { get; set; }
+
+    [JsonPropertyName("actual_check_out")]
+    public DateTime? ActualCheckOut { get; set; }
 }
 
 

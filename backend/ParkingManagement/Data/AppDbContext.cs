@@ -710,10 +710,7 @@ public partial class AppDbContext : DbContext
                 .IsRequired()
                 .HasMaxLength(100);
 
-            entity.Property(e => e.IdCardNumber)
-                .HasColumnName("ID_CARD_NUMBER")
-                .IsRequired()
-                .HasMaxLength(20);
+            
 
             entity.Property(e => e.Title)
                 .HasColumnName("TITLE")

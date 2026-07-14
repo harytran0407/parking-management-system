@@ -343,7 +343,7 @@ const DEMO_DATA = {
   vehicle_count: { total_check_ins: 148, total_check_outs: 112, currently_parked: 36 },
   revenue: {
     total: 5850000,
-    by_payment_method: { CASH: 2150000, VNPAY: 3700000 },
+    by_payment_method: { CASH: 1150000, VNPAY: 2700000, PAYOS: 2000000 },
   },
   occupancy: { total_slots: 450, occupied_slots: 268, occupancy_rate_percent: 59.6 },
   peak_hours: [
@@ -519,6 +519,7 @@ export default function ManagerDashboard() {
 
   const donutSlices = [
     { label: "VNPAY", value: data?.revenue?.by_payment_method?.VNPAY ?? 0, color: "#2563eb" },
+    { label: "PAYOS", value: data?.revenue?.by_payment_method?.PAYOS ?? 0, color: "#ef4444" },
     { label: "CASH", value: data?.revenue?.by_payment_method?.CASH ?? 0, color: "#f59e0b" },
   ];
 
@@ -542,8 +543,8 @@ export default function ManagerDashboard() {
           </div>
           <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
             {language === "en"
-              ? "Monitor occupancy, vehicle activity, and revenue in real time."
-              : "Theo dõi mật độ đỗ xe, hoạt động phương tiện và doanh thu theo thời gian thực."}
+              ? "Monitor occupancy, vehicle activity, and bookings in real time."
+              : "Theo dõi mật độ đỗ xe, hoạt động phương tiện và đặt chỗ theo thời gian thực."}
           </p>
         </div>
 
@@ -551,8 +552,8 @@ export default function ManagerDashboard() {
           <button
             onClick={() => setIsDemoMode((d) => !d)}
             className={`text-[11px] font-extrabold px-3 py-2 rounded-xl transition border flex items-center gap-1.5 shadow-xs ${isDemoMode
-                ? "bg-amber-500 hover:bg-amber-600 border-amber-600 text-white"
-                : "bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300"
+              ? "bg-amber-500 hover:bg-amber-600 border-amber-600 text-white"
+              : "bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300"
               }`}
           >
             <Sparkles size={13} />
@@ -597,8 +598,8 @@ export default function ManagerDashboard() {
               key={item.key}
               onClick={() => setPeriod(item.key)}
               className={`flex-1 md:flex-none px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider transition ${period === item.key
-                  ? "bg-white dark:bg-slate-800 text-blue-600 dark:text-white shadow-xs font-black"
-                  : "text-slate-400 hover:text-slate-700 dark:text-slate-500 dark:hover:text-slate-300"
+                ? "bg-white dark:bg-slate-800 text-blue-600 dark:text-white shadow-xs font-black"
+                : "text-slate-400 hover:text-slate-700 dark:text-slate-500 dark:hover:text-slate-300"
                 }`}
             >
               {language === "en" ? item.labelEn : item.labelVi}
@@ -716,7 +717,7 @@ export default function ManagerDashboard() {
             <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-between">
               <div className="space-y-1">
                 <span className="block text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">
-                  {language === "en" ? "Total revenue" : "Tổng doanh thu"}
+                  {language === "en" ? "Total booking" : "Tổng đặt chỗ"}
                 </span>
                 <span className="block text-xl font-black text-slate-800 dark:text-white">
                   {formatCurrency(data.revenue.total)}
@@ -783,8 +784,8 @@ export default function ManagerDashboard() {
                   </h3>
                   <p className="text-[10px] text-slate-400 mt-0.5">
                     {language === "en"
-                      ? "Check-in share and revenue by category."
-                      : "Tỉ lệ lượt vào và đóng góp doanh thu theo loại xe."}
+                      ? "Check-in share and booking by category."
+                      : "Tỉ lệ lượt vào và đặt chỗ theo loại xe."}
                   </p>
                 </div>
                 <div className="p-2 bg-blue-50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400 rounded-xl">
@@ -832,7 +833,7 @@ export default function ManagerDashboard() {
                             color: "bg-blue-500",
                           },
                           {
-                            label: language === "en" ? "Revenue share" : "Đóng góp doanh thu",
+                            label: language === "en" ? "Booking share" : "Tỉ lệ đặt chỗ",
                             pct: revPct,
                             color: "bg-emerald-500",
                           },
@@ -865,7 +866,7 @@ export default function ManagerDashboard() {
                 </span>
                 <span className="flex items-center gap-1.5">
                   <span className="w-2.5 h-2.5 rounded bg-emerald-500 inline-block" />
-                  {language === "en" ? "Revenue" : "Doanh thu"}
+                  {language === "en" ? "Booking" : "Đặt chỗ"}
                 </span>
               </div>
             </div>
@@ -875,11 +876,11 @@ export default function ManagerDashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 items-stretch">
             <div className="lg:col-span-3">
               <LineAreaChart
-                title={language === "en" ? "Hourly income" : "Doanh thu theo giờ"}
+                title={language === "en" ? "Hourly bookings" : "Đặt chỗ theo giờ"}
                 subtitle={
                   language === "en"
-                    ? "Revenue generated each hour from parking fees."
-                    : "Doanh thu phát sinh mỗi giờ từ phí đỗ xe."
+                    ? "Bookings generated each hour from parking fees."
+                    : "Lượt đặt chỗ phát sinh mỗi giờ từ phí đỗ xe."
                 }
                 dataPoints={normalizedHours}
                 getValue={(p) => Math.round(p.check_ins * avgRevenuePerCheckIn)}
@@ -903,8 +904,8 @@ export default function ManagerDashboard() {
                   </h3>
                   <p className="text-[10px] text-slate-400 mt-0.5">
                     {language === "en"
-                      ? "Revenue split by payment method."
-                      : "Phân bổ doanh thu theo hình thức thanh toán."}
+                      ? "Bookings split by payment method."
+                      : "Phân bổ đặt chỗ theo hình thức thanh toán."}
                   </p>
                 </div>
                 <div className="p-2 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 rounded-xl">
@@ -923,15 +924,30 @@ export default function ManagerDashboard() {
                   const pct = data.revenue.total > 0
                     ? Math.round((Number(amount) / Number(data.revenue.total)) * 100)
                     : 0;
-                  const isVnpay = method.toUpperCase() === "VNPAY";
+                  const methodUpper = method.toUpperCase();
+                  const isVnpay = methodUpper === "VNPAY";
+                  const isPayos = methodUpper === "PAYOS";
+
+                  let iconColor = "text-amber-500";
+                  let barColor = "bg-amber-500";
+                  if (isVnpay) {
+                    iconColor = "text-blue-500";
+                    barColor = "bg-blue-500";
+                  } else if (isPayos) {
+                    iconColor = "text-red-500";
+                    barColor = "bg-red-500";
+                  }
+
                   return (
                     <div key={method} className="space-y-1.5">
                       <div className="flex justify-between items-center text-xs font-semibold text-slate-700 dark:text-slate-300">
                         <span className="flex items-center gap-1.5 font-bold">
                           {isVnpay ? (
-                            <CreditCard size={12} className="text-blue-500" />
+                            <CreditCard size={12} className={iconColor} />
+                          ) : isPayos ? (
+                            <Sparkles size={12} className={iconColor} />
                           ) : (
-                            <Wallet size={12} className="text-amber-500" />
+                            <Wallet size={12} className={iconColor} />
                           )}
                           {method}
                         </span>
@@ -943,8 +959,7 @@ export default function ManagerDashboard() {
                       <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                         <div
                           style={{ width: `${pct}%` }}
-                          className={`h-full rounded-full transition-all duration-300 ${isVnpay ? "bg-blue-500" : "bg-amber-500"
-                            }`}
+                          className={`h-full rounded-full transition-all duration-300 ${barColor}`}
                         />
                       </div>
                     </div>
