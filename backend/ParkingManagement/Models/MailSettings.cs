@@ -3,6 +3,7 @@ namespace ParkingManagement.Models;
 public class MailSettings
 {
     public string Mail { get; set; } = string.Empty;
+    public string? Username { get; set; }
     public string DisplayName { get; set; } = string.Empty;
     public string Password { get; set; } = string.Empty;
     public string Host { get; set; } = string.Empty;
