@@ -45,12 +45,6 @@ namespace ParkingManagement.Services.FeedbackServices
         {
             var query = _context.Feedbacks.AsQueryable();
 
-            // Manager chỉ được xem các trạng thái khác OPEN
-            if (isManager)
-            {
-                query = query.Where(f => f.Status != "OPEN");
-            }
-
             // Bộ lọc (Filter): Áp dụng cho tất cả các role
             if (!string.IsNullOrWhiteSpace(status))
             {
@@ -88,7 +82,7 @@ namespace ParkingManagement.Services.FeedbackServices
         {
             var feedback = await _context.Feedbacks.FindAsync(feedbackId);
             if (feedback == null) return false;
-            feedback.Status = request.Status.Replace(" ", "_").ToUpper(); // Allow input like "IN_PROGRESS", "in_progress", "In Progress"
+            feedback.Status = request.Status.ToUpper(); // Allow input like "open, ClOsEd"
             // Update trạng thái và ghi chú
             if (!string.IsNullOrWhiteSpace(request.ResponseNote))
             {
@@ -97,13 +91,13 @@ namespace ParkingManagement.Services.FeedbackServices
 
             feedback.ResolvedBy = managerId;
 
-            if (feedback.Status == "RESOLVED" || feedback.Status == "CLOSED")
+            if (feedback.Status == "RESOLVED")
             {
                 feedback.ResolvedAt = DateTime.UtcNow;
             }
             else
             {
-                feedback.ResolvedAt = null; // Trường hợp status đang là "IN_PROGRESS"
+                feedback.ResolvedAt = null; 
             }
 
             await _context.SaveChangesAsync();
