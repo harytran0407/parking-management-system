@@ -33,10 +33,11 @@ public class EmailService : IEmailService
             };
             message.To.Add(new MailAddress(toEmail));
 
+            var login = string.IsNullOrEmpty(_mailSettings.Username) ? _mailSettings.Mail : _mailSettings.Username;
             using var client = new SmtpClient(_mailSettings.Host, _mailSettings.Port)
             {
-                Credentials = new NetworkCredential(_mailSettings.Mail, _mailSettings.Password),
-                EnableSsl = true
+                Credentials = new NetworkCredential(login, _mailSettings.Password),
+                EnableSsl = false
             };
 
             await client.SendMailAsync(message);

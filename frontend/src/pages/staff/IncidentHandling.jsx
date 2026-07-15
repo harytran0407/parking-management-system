@@ -287,16 +287,19 @@ export default function StaffIncidentHandling() {
     const fetchUserIncidents = async (status = userStatusFilter, search = userSearchQuery) => {
         setUserIncidentsLoading(true);
         try {
-            const res = await api.get("/staff/incidents", {
+            const res = await api.get("/feedbacks", {
                 params: {
                     status: status || undefined,
-                    search: search || undefined
+                    search: search || undefined,
+                    page: 1,
+                    pageSize: 1000
                 }
             });
             if (res.data?.success) {
-                setUserIncidents(res.data.data);
+                const items = res.data.data.items || [];
+                setUserIncidents(items);
                 if (selectedIncident) {
-                    const updated = res.data.data.find(i => i.log_id === selectedIncident.log_id);
+                    const updated = items.find(i => i.feedback_id === selectedIncident.feedback_id);
                     setSelectedIncident(updated || null);
                 }
             }
@@ -322,8 +325,9 @@ export default function StaffIncidentHandling() {
 
         setIsSubmitting(true);
         try {
-            const res = await api.put(`/staff/incidents/${selectedIncident.log_id}/resolve`, {
-                feedback: feedbackText.trim()
+            const res = await api.put(`/feedbacks/${selectedIncident.feedback_id}/process`, {
+                status: "RESOLVED",
+                response_note: feedbackText.trim()
             });
 
             if (res.data?.success) {
@@ -622,7 +626,7 @@ export default function StaffIncidentHandling() {
                                 </div>
                             ) : userIncidents.length === 0 ? (
                                 <div className="bg-white dark:bg-slate-900 p-12 border border-slate-200 dark:border-slate-800 rounded-md shadow-sm text-center">
-                                    <AlertCircle className="mx-auto text-slate-350 dark:text-slate-650 mb-2" size={36} />
+                                    <AlertCircle className="mx-auto text-slate-350 dark:text-slate-655 mb-2" size={36} />
                                     <p className="text-slate-500 dark:text-slate-400 font-bold text-xs uppercase tracking-wide">{t[language].noIncidents}</p>
                                     <p className="text-slate-400 dark:text-slate-655 text-[10px] mt-1">
                                         {t[language].noIncidentsSub}
@@ -630,11 +634,12 @@ export default function StaffIncidentHandling() {
                                 </div>
                             ) : (
                                 userIncidents.map((incident) => {
-                                    const { subject, message } = parseDescription(incident.description);
-                                    const isSelected = selectedIncident?.log_id === incident.log_id;
+                                    const subject = incident.title;
+                                    const message = incident.content;
+                                    const isSelected = selectedIncident?.feedback_id === incident.feedback_id;
                                     return (
                                         <div
-                                            key={incident.log_id}
+                                            key={incident.feedback_id}
                                             onClick={() => {
                                                 setSelectedIncident(incident);
                                                 setFeedbackText("");
@@ -652,37 +657,22 @@ export default function StaffIncidentHandling() {
                                                         }`}>
                                                         {incident.status === "OPEN" ? t[language].statusOpen : t[language].statusResolved}
                                                     </span>
-                                                    <span className="text-[10px] font-bold text-slate-400 font-mono">#{incident.log_id}</span>
+                                                    <span className="text-[10px] font-bold text-slate-400 font-mono">#{incident.feedback_id}</span>
                                                 </div>
                                                 <span className="text-[10px] text-slate-400 font-mono">
-                                                    {incident.report_time ? new Date(incident.report_time).toLocaleString(language === "vi" ? "vi-VN" : "en-US") : ""}
+                                                    {incident.created_at ? new Date(incident.created_at).toLocaleString(language === "vi" ? "vi-VN" : "en-US") : ""}
                                                 </span>
                                             </div>
-
+ 
                                             <div className="flex items-center gap-2 mb-2">
                                                 <div className="w-6 h-6 rounded-full overflow-hidden bg-blue-150 text-blue-650 font-bold flex items-center justify-center text-[10px] uppercase border border-blue-200 dark:border-slate-750">
-                                                    {incident.reporter_avatar ? (
-                                                        <img
-                                                            src={
-                                                                incident.reporter_avatar.startsWith("http")
-                                                                    ? incident.reporter_avatar
-                                                                    : `${getBackendRootUrl()}${incident.reporter_avatar}`
-                                                            }
-                                                            alt="Reporter Avatar"
-                                                            className="w-full h-full object-cover"
-                                                        />
-                                                    ) : (
-                                                        <span>{incident.reporter_name ? incident.reporter_name.charAt(0) : "U"}</span>
-                                                    )}
+                                                    <span>{incident.full_name ? incident.full_name.charAt(0) : "U"}</span>
                                                 </div>
                                                 <span className="text-xs font-bold text-slate-850 dark:text-white truncate">
-                                                    {incident.reporter_name || t[language].systemUser}
+                                                    {incident.full_name || t[language].systemUser}
                                                 </span>
                                             </div>
-
-                                            <div className="text-xs font-extrabold text-slate-900 dark:text-white uppercase mb-1">
-                                                {incident.issue_type?.replace("_", " ")}
-                                            </div>
+ 
                                             {subject && (
                                                 <div className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                                                     {subject}
@@ -697,7 +687,6 @@ export default function StaffIncidentHandling() {
                             )}
                         </div>
                     </div>
-
                     {/* RIGHT COLUMN: DETAIL PANEL */}
                     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md p-5 relative overflow-hidden h-fit space-y-4">
                         <div className="flex items-center gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
@@ -712,28 +701,16 @@ export default function StaffIncidentHandling() {
                                 {/* REPORTER CARD */}
                                 <div className="flex items-center gap-3 bg-slate-50 dark:bg-slate-800 p-3 rounded-md border border-slate-200 dark:border-slate-700">
                                     <div className="w-10 h-10 rounded-full overflow-hidden bg-blue-100 text-blue-600 dark:bg-blue-950 dark:text-blue-400 font-bold flex items-center justify-center shrink-0 border border-blue-200 dark:border-slate-700 shadow-inner">
-                                        {selectedIncident.reporter_avatar ? (
-                                            <img
-                                                src={
-                                                    selectedIncident.reporter_avatar.startsWith("http")
-                                                        ? selectedIncident.reporter_avatar
-                                                        : `${getBackendRootUrl()}${selectedIncident.reporter_avatar}`
-                                                }
-                                                alt="Reporter Avatar"
-                                                className="w-full h-full object-cover"
-                                            />
-                                        ) : (
-                                            <span className="text-sm font-black uppercase">
-                                                {selectedIncident.reporter_name ? selectedIncident.reporter_name.charAt(0) : "U"}
-                                            </span>
-                                        )}
+                                        <span className="text-sm font-black uppercase">
+                                            {selectedIncident.full_name ? selectedIncident.full_name.charAt(0) : "U"}
+                                        </span>
                                     </div>
                                     <div className="min-w-0">
                                         <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-950/40 text-[9px] font-black uppercase text-blue-600 dark:text-blue-400 tracking-wider mb-0.5">
                                             {t[language].reporterLabel}
                                         </span>
-                                        <p className="text-xs font-black text-slate-850 dark:text-white truncate font-extrabold">
-                                            {selectedIncident.reporter_name || t[language].systemUser}
+                                        <p className="text-xs font-black text-slate-855 dark:text-white truncate font-extrabold">
+                                            {selectedIncident.full_name || t[language].systemUser}
                                         </p>
                                     </div>
                                 </div>
@@ -767,14 +744,13 @@ export default function StaffIncidentHandling() {
 
                                 {/* TICKET CONTENT */}
                                 {(() => {
-                                    const { rating, subject, message, attachment, feedback } = parseDescription(selectedIncident.description);
+                                    const rating = selectedIncident.star_rating;
+                                    const subject = selectedIncident.title;
+                                    const message = selectedIncident.content;
+                                    const attachment = selectedIncident.attachment_url;
+                                    const feedback = selectedIncident.response_note;
                                     return (
                                         <div className="space-y-3 text-xs">
-                                            <div className="border-t border-slate-100 dark:border-slate-800 pt-3">
-                                                <span className="text-[10px] font-black uppercase text-slate-450 tracking-wider block mb-0.5 font-bold">{t[language].issueTypeLabel}</span>
-                                                <span className="font-extrabold text-slate-800 dark:text-white uppercase">{selectedIncident.issue_type?.replace("_", " ")}</span>
-                                            </div>
-
                                             {rating > 0 && (
                                                 <div>
                                                     <span className="text-[10px] font-black uppercase text-slate-455 tracking-wider block mb-1 font-bold">{t[language].expRatingLabel}</span>
@@ -792,7 +768,7 @@ export default function StaffIncidentHandling() {
 
                                             {subject && (
                                                 <div>
-                                                    <span className="text-[10px] font-black uppercase text-slate-450 tracking-wider block mb-0.5 font-bold">{t[language].subjectLabel}</span>
+                                                    <span className="text-[10px] font-black uppercase text-slate-455 tracking-wider block mb-0.5 font-bold">{t[language].subjectLabel}</span>
                                                     <p className="font-extrabold text-slate-855 dark:text-white leading-snug">{subject}</p>
                                                 </div>
                                             )}
@@ -847,7 +823,7 @@ export default function StaffIncidentHandling() {
                                                         <span className="text-[9px] font-black uppercase text-emerald-600 dark:text-emerald-400 block tracking-wider mb-1 font-bold">
                                                             {t[language].feedbackLabel}
                                                         </span>
-                                                        <p className="text-xs text-slate-850 dark:text-slate-300 font-semibold leading-relaxed mb-2">
+                                                        <p className="text-xs text-slate-855 dark:text-slate-300 font-semibold leading-relaxed mb-2">
                                                             {feedback || t[language].resolvedNoFeedback}
                                                         </p>
                                                         {selectedIncident.resolved_by && (
@@ -864,10 +840,10 @@ export default function StaffIncidentHandling() {
                                 })()}
                             </div>
                         ) : (
-                            <div className="text-center py-24 text-slate-400 dark:text-slate-500 font-medium text-xs space-y-2 font-semibold">
+                            <div className="text-center py-24 text-slate-400 dark:text-slate-505 font-medium text-xs space-y-2 font-semibold">
                                 <ClipboardList size={32} className="mx-auto text-slate-200 dark:text-slate-800 stroke-[1.5]" />
                                 <div>{t[language].noIncidentSelected}</div>
-                                <div className="text-[10px] text-slate-350 dark:text-slate-600 mt-1 max-w-[200px] mx-auto not-italic">
+                                <div className="text-[10px] text-slate-355 dark:text-slate-600 mt-1 max-w-[200px] mx-auto not-italic">
                                     {t[language].noIncidentSelectedSub}
                                 </div>
                             </div>
