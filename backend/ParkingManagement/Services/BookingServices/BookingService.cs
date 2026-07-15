@@ -263,6 +263,7 @@ public class BookingService : IBookingService
             .Include(b => b.Zone)
             .Include(b => b.Payments)
             .Include(b => b.ParkingSessions)
+                .ThenInclude(ps => ps.Payments)
             .Where(b => b.VehicleUserId == userId)
             .OrderByDescending(b => b.BookingTime)
             .ToListAsync();
@@ -420,6 +421,7 @@ public class BookingService : IBookingService
             .Include(b => b.Zone)
             .Include(b => b.Payments)
             .Include(b => b.ParkingSessions)
+                .ThenInclude(ps => ps.Payments)
             .Where(b => b.VehicleUserId == userId && (b.Status == "PENDING" || b.Status == "CONFIRMED" || b.ParkingSessions.Any(ps => ps.Status == "ACTIVE")))
             .OrderBy(b => b.ExpectedArrival)
             .ToListAsync();
@@ -442,6 +444,7 @@ public class BookingService : IBookingService
             .Include(b => b.Zone)
             .Include(b => b.Payments)
             .Include(b => b.ParkingSessions)
+                .ThenInclude(ps => ps.Payments)
             .Where(b => b.VehicleUserId == userId && ((b.Status == "COMPLETED" && !b.ParkingSessions.Any(ps => ps.Status == "ACTIVE")) || b.Status == "CANCELLED"))
             .OrderByDescending(b => b.BookingTime)
             .ToListAsync();
@@ -463,6 +466,7 @@ public class BookingService : IBookingService
             .Include(b => b.Zone)
             .Include(b => b.Payments)
             .Include(b => b.ParkingSessions)
+                .ThenInclude(ps => ps.Payments)
             .FirstOrDefaultAsync(b => b.BookingId == bookingId && b.VehicleUserId == userId)
             ?? throw new KeyNotFoundException("Booking not found.");
 
@@ -513,6 +517,7 @@ public class BookingService : IBookingService
             .Include(b => b.Zone)
             .Include(b => b.Payments)
             .Include(b => b.ParkingSessions)
+                .ThenInclude(ps => ps.Payments)
             .FirstOrDefaultAsync(b => b.BookingId == bookingId && b.VehicleUserId == userId)
             ?? throw new KeyNotFoundException("Booking not found.");
 
@@ -660,6 +665,48 @@ public class BookingService : IBookingService
         decimal estimatedFee = originalEstimatedFee;
 
         var activeSession = b.ParkingSessions?.FirstOrDefault(ps => ps.Status == "ACTIVE");
+        
+        var directPayments = b.Payments?.Where(p => p.Status == "SUCCESS").Sum(p => (decimal?)p.AmountPaid) ?? 0m;
+        var sessionPayments = b.ParkingSessions?.SelectMany(ps => ps.Payments).Where(p => p.Status == "SUCCESS").Sum(p => (decimal?)p.AmountPaid) ?? 0m;
+        var successPaymentSum = directPayments + sessionPayments;
+
+        decimal earlyFee = 0;
+        decimal penaltyFee = 0;
+        DateTime? actualCheckIn = null;
+        DateTime? actualCheckOut = null;
+
+        var session = b.ParkingSessions?.FirstOrDefault();
+        if (session != null)
+        {
+            try
+            {
+                string operatingHours = await _parkingRepo.GetOperatingHoursForDayAsync(b.ExpectedArrival);
+                var checkOutTime = session.CheckOutTime ?? vnNow;
+
+                var details = ParkingCalculationHelper.CalculateBookingFeeDetails(
+                    session.CheckInTime,
+                    checkOutTime,
+                    b,
+                    policy,
+                    operatingHours
+                );
+
+                earlyFee = details.EarlyArrivalFee;
+                penaltyFee = details.LateCheckoutFee;
+
+                actualCheckIn = session.CheckInTime.HasValue
+                    ? DateTime.SpecifyKind(TimeZoneInfo.ConvertTimeToUtc(session.CheckInTime.Value, _vnTz), DateTimeKind.Utc)
+                    : (DateTime?)null;
+                actualCheckOut = session.CheckOutTime.HasValue
+                    ? DateTime.SpecifyKind(TimeZoneInfo.ConvertTimeToUtc(session.CheckOutTime.Value, _vnTz), DateTimeKind.Utc)
+                    : (DateTime?)null;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error calculating check-in/penalty details for booking {b.BookingId}: {ex.Message}");
+            }
+        }
+
         if (activeSession != null)
         {
             decimal overduePenaltyFee = ParkingCalculationHelper.CalculateOverdueFee(vnNow, expiredAt, policy);
@@ -667,7 +714,6 @@ public class BookingService : IBookingService
         }
         else if (b.Status?.Equals("COMPLETED", StringComparison.OrdinalIgnoreCase) == true)
         {
-            var successPaymentSum = b.Payments?.Where(p => p.Status == "SUCCESS").Sum(p => (decimal?)p.AmountPaid) ?? 0m;
             if (successPaymentSum > 0)
             {
                 estimatedFee = successPaymentSum;
@@ -679,7 +725,6 @@ public class BookingService : IBookingService
         }
         else
         {
-            var successPaymentSum = b.Payments?.Where(p => p.Status == "SUCCESS").Sum(p => (decimal?)p.AmountPaid) ?? 0m;
             if (successPaymentSum > 0)
             {
                 estimatedFee = successPaymentSum;
@@ -714,8 +759,95 @@ public class BookingService : IBookingService
             IsLocked = activeSession != null ? activeSession.IsLocked : false,
             Notes = b.Notes,
             EstimatedFee = estimatedFee,
-            DepositPaid = b.Payments?.Where(p => p.Status == "SUCCESS").Sum(p => (decimal?)p.AmountPaid) ?? 0m,
-            QrCodeData = $"Ticket_Valid_BKG_{b.BookingId}_Plate_{b.LicensePlate}"
+            DepositPaid = successPaymentSum,
+            QrCodeData = $"Ticket_Valid_BKG_{b.BookingId}_Plate_{b.LicensePlate}",
+            EarlyFee = earlyFee,
+            PenaltyFee = penaltyFee,
+            ActualCheckIn = actualCheckIn,
+            ActualCheckOut = actualCheckOut
         };
+    }
+
+    public async Task<List<StaffBookingResponse>> GetStaffBookingsAsync()
+    {
+        await AutoCancelExpiredBookingsAsync();
+
+        var bookings = await _context.Bookings
+            .Include(b => b.VehicleType)
+            .Include(b => b.Zone)
+            .Include(b => b.VehicleUser)
+            .Include(b => b.ParkingSessions)
+                .ThenInclude(ps => ps.Payments)
+            .Include(b => b.Payments)
+            .Where(b => b.Status != "CANCELLED")
+            .OrderByDescending(b => b.BookingTime)
+            .ToListAsync();
+
+        var resultList = new List<StaffBookingResponse>();
+        foreach (var b in bookings)
+        {
+            var bookingRes = await MapToBookingResponseAsync(b);
+
+            decimal earlyFee = 0;
+            decimal penaltyFee = 0;
+
+            var session = b.ParkingSessions?.FirstOrDefault();
+            if (session != null)
+            {
+                try
+                {
+                    var policy = await _parkingRepo.GetActivePricingPolicyByVehicleTypeAsync(b.VehicleTypeId);
+                    string operatingHours = await _parkingRepo.GetOperatingHoursForDayAsync(b.ExpectedArrival);
+                    var vnNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, _vnTz);
+                    var checkOutTime = session.CheckOutTime ?? vnNow;
+
+                    var details = ParkingCalculationHelper.CalculateBookingFeeDetails(
+                        session.CheckInTime,
+                        checkOutTime,
+                        b,
+                        policy,
+                        operatingHours
+                    );
+
+                    earlyFee = details.EarlyArrivalFee;
+                    penaltyFee = details.LateCheckoutFee;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error calculating check-in/penalty details for booking {b.BookingId}: {ex.Message}");
+                }
+            }
+
+            resultList.Add(new StaffBookingResponse
+            {
+                BookingId = b.BookingId,
+                FullName = b.VehicleUser?.FullName,
+                Phone = b.VehicleUser?.Phone,
+                Email = b.VehicleUser?.Email,
+                LicensePlate = b.LicensePlate,
+                VehicleType = b.VehicleType?.VehicleTypeName ?? "Unknown",
+                VehicleTypeId = b.VehicleTypeId,
+                ExpectedArrival = b.ExpectedArrival,
+                ExpiredAt = b.ExpiredAt,
+                BookingTime = b.BookingTime.HasValue
+                    ? DateTime.SpecifyKind(TimeZoneInfo.ConvertTimeToUtc(b.BookingTime.Value, _vnTz), DateTimeKind.Utc)
+                    : (DateTime?)null,
+                Status = bookingRes.Status,
+                Notes = b.Notes,
+                ZoneName = b.Zone?.ZoneName,
+                FloorNumber = b.Zone?.FloorNumber,
+                EstimatedFee = bookingRes.EstimatedFee,
+                DepositPaid = bookingRes.DepositPaid,
+                EarlyFee = earlyFee,
+                PenaltyFee = penaltyFee,
+                ActualCheckIn = session?.CheckInTime.HasValue == true
+                    ? DateTime.SpecifyKind(TimeZoneInfo.ConvertTimeToUtc(session.CheckInTime.Value, _vnTz), DateTimeKind.Utc)
+                    : (DateTime?)null,
+                ActualCheckOut = session?.CheckOutTime.HasValue == true
+                    ? DateTime.SpecifyKind(TimeZoneInfo.ConvertTimeToUtc(session.CheckOutTime.Value, _vnTz), DateTimeKind.Utc)
+                    : (DateTime?)null
+            });
+        }
+        return resultList;
     }
 }

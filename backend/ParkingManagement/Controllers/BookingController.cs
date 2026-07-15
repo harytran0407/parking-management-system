@@ -238,4 +238,21 @@ public class BookingController : ControllerBase
         var data = await _service.GetBookingCapacityStatusAsync(vehicle_type_id);
         return Ok(new { success = true, data });
     }
+
+    // GET: api/v1/bookings/staff-all
+    [HttpGet("staff-all")]
+    [Authorize(Roles = "ParkingStaff,ParkingManager,SystemAdmin")]
+    [ProducesResponseType(typeof(List<StaffBookingResponse>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetStaffBookings()
+    {
+        try
+        {
+            var data = await _service.GetStaffBookingsAsync();
+            return Ok(new { success = true, data });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
 }

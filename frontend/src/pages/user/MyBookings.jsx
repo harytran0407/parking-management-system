@@ -21,6 +21,8 @@ import {
   CheckCircle2,
   RefreshCw,
   QrCode,
+  LogIn,
+  LogOut,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import api from "../../utils/api";
@@ -100,6 +102,10 @@ export default function MyBookings() {
             endTime: b.expired_at,
             totalPrice: b.estimated_fee || b.deposit_paid || defaultPrice,
             depositPaid: b.deposit_paid || defaultPrice,
+            earlyFee: b.early_fee || 0,
+            penaltyFee: b.penalty_fee || 0,
+            actualCheckIn: b.actual_check_in || null,
+            actualCheckOut: b.actual_check_out || null,
             status: b.status.toLowerCase(),
             isLocked: b.is_locked,
             bookingTime: b.booking_time,
@@ -455,7 +461,7 @@ export default function MyBookings() {
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
               {language === "en" ? "Total Bookings" : "Tổng lượt đặt chỗ"}
             </p>
-            <h3 className="text-3xl font-bold text-slate-900 dark:text-white font-mono">
+            <h3 className="text-3xl font-bold text-slate-900 dark:text-white font-sans">
               {stats.totalBookings}
             </h3>
           </div>
@@ -470,7 +476,7 @@ export default function MyBookings() {
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
               {language === "en" ? "Vehicles Parked" : "Tổng xe đang đỗ"}
             </p>
-            <h3 className="text-3xl font-bold text-emerald-600 dark:text-emerald-455 font-mono">
+            <h3 className="text-3xl font-bold text-emerald-600 dark:text-emerald-455 font-sans">
               {stats.activeSessions}
             </h3>
           </div>
@@ -533,579 +539,635 @@ export default function MyBookings() {
         ) : (
           <>
             <div className="flex flex-col gap-6">
-            {paginatedBookings.map((booking) => {
-              const locked = isCurrentlyLocked(booking);
-              const isCar = booking.vehicleType === "car";
-              const isExpanded = expandedBookings[booking.id] ?? false;
+              {paginatedBookings.map((booking) => {
+                const locked = isCurrentlyLocked(booking);
+                const isCar = booking.vehicleType === "car";
+                const isExpanded = expandedBookings[booking.id] ?? false;
 
-              // Check if parked past expiration time
-              const isOverdue = booking.status === "active" && booking.endTime && currentTime > new Date(booking.endTime).getTime();
-              // Check if late to check-in
-              const isLateToCheckIn = (booking.status === "pending" || booking.status === "confirmed") && currentTime > new Date(booking.startTime).getTime();
+                // Check if parked past expiration time
+                const isOverdue = booking.status === "active" && booking.endTime && currentTime > new Date(booking.endTime).getTime();
+                // Check if late to check-in
+                const isLateToCheckIn = (booking.status === "pending" || booking.status === "confirmed") && currentTime > new Date(booking.startTime).getTime();
 
-              // Standard background and border for all
-              const bgClass = "bg-white dark:bg-slate-900";
-              const borderClass = "border border-slate-200/70 dark:border-slate-800/80 shadow-sm";
+                // Standard background and border for all
+                const bgClass = "bg-white dark:bg-slate-900";
+                const borderClass = "border border-slate-200/70 dark:border-slate-800/80 shadow-sm";
 
-              return (
-                <div
-                  key={booking.id}
-                  className={`rounded-2xl overflow-hidden transition-all duration-300 ${bgClass} ${borderClass}`}
-                >
-                  {/* Collapsed Header View */}
+                return (
                   <div
-                    onClick={() => toggleExpand(booking.id)}
-                    className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between cursor-pointer hover:bg-slate-50/50 dark:hover:bg-slate-850/20 select-none gap-4"
+                    key={booking.id}
+                    className={`rounded-2xl overflow-hidden transition-all duration-300 ${bgClass} ${borderClass}`}
                   >
-                    <div className="flex items-center gap-4 flex-1 min-w-[200px]">
-                      {/* Vehicle icon */}
-                      <div className="p-3 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-800/60 rounded-xl text-slate-500 dark:text-slate-400 shadow-sm">
-                        {isCar ? <Car size={24} /> : <Bike size={24} />}
+                    {/* Collapsed Header View */}
+                    <div
+                      onClick={() => toggleExpand(booking.id)}
+                      className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between cursor-pointer hover:bg-slate-50/50 dark:hover:bg-slate-850/20 select-none gap-4"
+                    >
+                      <div className="flex items-center gap-4 flex-1 min-w-[200px]">
+                        {/* Vehicle icon */}
+                        <div className="p-3 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-800/60 rounded-xl text-slate-500 dark:text-slate-400 shadow-sm">
+                          {isCar ? <Car size={24} /> : <Bike size={24} />}
+                        </div>
+
+                        {/* License plate & Slot/Zone location */}
+                        <div>
+                          <h4 className="text-lg font-black text-slate-900 dark:text-white tracking-tight leading-none mb-1.5  ">
+                            {booking.plate_number}
+                          </h4>
+                          <p className="text-xs text-slate-400 dark:text-slate-505 font-medium flex items-center gap-1.5 flex-wrap">
+                            {booking.status === "active" ? (
+                              <>
+                                <span className="font-bold text-emerald-600 dark:text-emerald-405">{booking.zoneName}</span>
+                              </>
+                            ) : booking.status === "cancelled" ? (
+                              <span className="text-red-650 dark:text-red-455 font-bold">
+                                {language === "en" ? "Status: Cancelled" : "Trạng thái: Đã hủy"}
+                              </span>
+                            ) : booking.status === "completed" ? (
+                              <span className="text-emerald-600 dark:text-emerald-405 font-bold">
+                                {language === "en" ? "Status: Completed" : "Trạng thái: Hoàn thành"}
+                              </span>
+                            ) : booking.status === "confirmed" ? (
+                              <span className="text-blue-600 dark:text-blue-400 font-bold">
+                                {language === "en" ? "Status: Awaiting Check-in" : "Trạng thái: Chờ xe vào bãi"}
+                              </span>
+                            ) : (
+                              <span className="text-amber-600 dark:text-amber-450 font-bold">
+                                {language === "en" ? "Status: Waiting Payment" : "Trạng thái: Chờ thanh toán"}
+                              </span>
+                            )}
+                          </p>
+                        </div>
                       </div>
 
-                      {/* License plate & Slot/Zone location */}
-                      <div>
-                        <h4 className="text-lg font-black text-slate-900 dark:text-white tracking-tight leading-none mb-1.5  ">
-                          {booking.plate_number}
-                        </h4>
-                        <p className="text-xs text-slate-400 dark:text-slate-505 font-medium flex items-center gap-1.5 flex-wrap">
-                          {booking.status === "active" ? (
-                            <>
-                              <span className="font-bold text-emerald-600 dark:text-emerald-405">{booking.zoneName}</span>
-                            </>
-                          ) : booking.status === "cancelled" ? (
-                            <span className="text-red-650 dark:text-red-455 font-bold">
-                              {language === "en" ? "Status: Cancelled" : "Trạng thái: Đã hủy"}
-                            </span>
-                          ) : booking.status === "completed" ? (
-                            <span className="text-emerald-600 dark:text-emerald-405 font-bold">
-                              {language === "en" ? "Status: Completed" : "Trạng thái: Hoàn thành"}
-                            </span>
-                          ) : booking.status === "confirmed" ? (
-                            <span className="text-blue-600 dark:text-blue-400 font-bold">
-                              {language === "en" ? "Status: Awaiting Check-in" : "Trạng thái: Chờ xe vào bãi"}
-                            </span>
-                          ) : (
-                            <span className="text-amber-600 dark:text-amber-450 font-bold">
-                              {language === "en" ? "Status: Waiting Payment" : "Trạng thái: Chờ thanh toán"}
+
+
+                      {/* Summarized details (visible before expanding) */}
+                      <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-xs font-semibold text-slate-500 dark:text-slate-400 w-full sm:w-auto">
+                        {/* Overtime Fee display */}
+                        {isOverdue && (booking.totalPrice - booking.depositPaid > 0) && (
+                          <div className="flex items-center gap-2 px-2.5 py-1 rounded-xl">
+                            <div>
+                              <p className="text-[9px] text-red-500 dark:text-red-400 uppercase font-bold tracking-wider mb-0.5">
+                                {language === "en" ? "Overtime" : "Quá hạn"}
+                              </p>
+                              <p className="text-red-600 dark:text-red-400 font-extrabold">
+                                {(booking.totalPrice - booking.depositPaid).toLocaleString()}đ
+                                {getOverdueDuration(booking) && (
+                                  <span className="text-[9px] text-red-500 dark:text-red-400 font-medium ml-1">
+                                    ({getOverdueDuration(booking)})
+                                  </span>
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Booked At */}
+                        <div className="min-w-[90px]">
+                          <p className="text-[9px] text-slate-400 uppercase font-bold tracking-wider mb-0.5">
+                            {language === "en" ? "Booked at" : "Đặt lúc"}
+                          </p>
+                          <p className="text-slate-700 dark:text-slate-200">
+                            {formatBookedAt(booking.bookingTime) || "—"}
+                          </p>
+                        </div>
+
+                        {/* Time Window */}
+                        <div className="min-w-[90px]">
+                          <p className="text-[9px] text-slate-400 uppercase font-bold tracking-wider mb-0.5">
+                            {language === "en" ? "Time" : "Thời gian"}
+                          </p>
+                          <p className="text-slate-700 dark:text-slate-200">
+                            {formatTimeOnly(booking.startTime)} - {formatTimeOnly(booking.endTime) || "18:00"}
+                          </p>
+                        </div>
+
+                        {/* Vehicle Type */}
+                        <div className="min-w-[70px]">
+                          <p className="text-[9px] text-slate-400 uppercase font-bold tracking-wider mb-0.5">
+                            {language === "en" ? "Type" : "Loại xe"}
+                          </p>
+                          <p className="text-slate-700 dark:text-slate-200">
+                            {isCar ? (language === "en" ? "Car" : "Ô tô") : (language === "en" ? "Motorbike" : "Xe máy")}
+                          </p>
+                        </div>
+
+                        {/* Amount Paid */}
+                        <div className="min-w-[80px]">
+                          <p className="text-[9px] text-slate-455 dark:text-slate-500 uppercase font-bold tracking-wider mb-0.5">
+                            {language === "en" ? "Paid" : "Đã trả"}
+                          </p>
+                          <p className="text-slate-700 dark:text-slate-200 ">
+                            {booking.depositPaid.toLocaleString()}đ
+                          </p>
+                        </div>
+
+
+
+                        {/* Lock status pill and expansion toggle */}
+                        <div className="flex items-center gap-3 ml-auto sm:ml-0">
+                          {isLateToCheckIn && (
+                            <span className="bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-455 text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider">
+                              {language === "en" ? "Late Check-in" : "Trễ hẹn"}
                             </span>
                           )}
-                        </p>
-                      </div>
-                    </div>
 
-
-
-                    {/* Summarized details (visible before expanding) */}
-                    <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-xs font-semibold text-slate-500 dark:text-slate-400 w-full sm:w-auto">
-                      {/* Overtime Fee display */}
-                      {isOverdue && (booking.totalPrice - booking.depositPaid > 0) && (
-                        <div className="flex items-center gap-2 px-2.5 py-1 rounded-xl">
-                          <div>
-                            <p className="text-[9px] text-red-500 dark:text-red-400 uppercase font-bold tracking-wider mb-0.5">
-                              {language === "en" ? "Overtime" : "Quá hạn"}
-                            </p>
-                            <p className="text-red-600 dark:text-red-400 font-extrabold">
-                              {(booking.totalPrice - booking.depositPaid).toLocaleString()}đ
-                              {getOverdueDuration(booking) && (
-                                <span className="text-[9px] text-red-500 dark:text-red-400 font-medium ml-1">
-                                  ({getOverdueDuration(booking)})
-                                </span>
-                              )}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Booked At */}
-                      <div className="min-w-[90px]">
-                        <p className="text-[9px] text-slate-400 uppercase font-bold tracking-wider mb-0.5">
-                          {language === "en" ? "Booked at" : "Đặt lúc"}
-                        </p>
-                        <p className="text-slate-700 dark:text-slate-200">
-                          {formatBookedAt(booking.bookingTime) || "—"}
-                        </p>
-                      </div>
-
-                      {/* Time Window */}
-                      <div className="min-w-[90px]">
-                        <p className="text-[9px] text-slate-400 uppercase font-bold tracking-wider mb-0.5">
-                          {language === "en" ? "Time" : "Thời gian"}
-                        </p>
-                        <p className="text-slate-700 dark:text-slate-200">
-                          {formatTimeOnly(booking.startTime)} - {formatTimeOnly(booking.endTime) || "18:00"}
-                        </p>
-                      </div>
-
-                      {/* Vehicle Type */}
-                      <div className="min-w-[70px]">
-                        <p className="text-[9px] text-slate-400 uppercase font-bold tracking-wider mb-0.5">
-                          {language === "en" ? "Type" : "Loại xe"}
-                        </p>
-                        <p className="text-slate-700 dark:text-slate-200">
-                          {isCar ? (language === "en" ? "Car" : "Ô tô") : (language === "en" ? "Motorbike" : "Xe máy")}
-                        </p>
-                      </div>
-
-                      {/* Amount Paid */}
-                      <div className="min-w-[80px]">
-                        <p className="text-[9px] text-slate-455 dark:text-slate-500 uppercase font-bold tracking-wider mb-0.5">
-                          {language === "en" ? "Paid" : "Đã trả"}
-                        </p>
-                        <p className="text-slate-700 dark:text-slate-200 ">
-                          {booking.depositPaid.toLocaleString()}đ
-                        </p>
-                      </div>
-
-
-
-                      {/* Lock status pill and expansion toggle */}
-                      <div className="flex items-center gap-3 ml-auto sm:ml-0">
-                        {isLateToCheckIn && (
-                          <span className="bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-455 text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider">
-                            {language === "en" ? "Late Check-in" : "Trễ hẹn"}
-                          </span>
-                        )}
-
-                        {booking.status === "active" ? (
-                          locked ? (
-                            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold tracking-wide bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-455 border border-rose-100 dark:border-rose-900/30">
-                              <Lock size={10} /> {language === "en" ? "LOCKED" : "ĐÃ KHÓA"}
+                          {booking.status === "active" ? (
+                            locked ? (
+                              <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold tracking-wide bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-455 border border-rose-100 dark:border-rose-900/30">
+                                <Lock size={10} /> {language === "en" ? "LOCKED" : "ĐÃ KHÓA"}
+                              </span>
+                            ) : (
+                              <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold tracking-wide bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-455 border border-emerald-100 dark:border-emerald-900/30">
+                                <Unlock size={10} /> {language === "en" ? "UNLOCKED" : "ĐÃ MỞ KHÓA"}
+                              </span>
+                            )
+                          ) : booking.status === "cancelled" ? (
+                            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold tracking-wide bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400 border border-red-100 dark:border-red-900/30">
+                              <X size={10} /> {language === "en" ? "CANCELLED" : "ĐÃ HỦY"}
+                            </span>
+                          ) : booking.status === "completed" ? (
+                            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold tracking-wide bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30">
+                              <CheckCircle2 size={10} /> {language === "en" ? "COMPLETED" : "HOÀN THÀNH"}
+                            </span>
+                          ) : booking.status === "confirmed" ? (
+                            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold tracking-wide bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-455 border border-blue-100 dark:border-blue-900/30">
+                              <Clock size={10} /> {language === "en" ? "BOOKED" : "ĐÃ ĐẶT CHỖ"}
                             </span>
                           ) : (
-                            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold tracking-wide bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-455 border border-emerald-100 dark:border-emerald-900/30">
-                              <Unlock size={10} /> {language === "en" ? "UNLOCKED" : "ĐÃ MỞ KHÓA"}
+                            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-extrabold tracking-wide bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-455 border border-amber-100 dark:border-amber-900/30 animate-pulse">
+                              <CreditCard size={10} /> {language === "en" ? "UNPAID" : "CHƯA THANH TOÁN"}
                             </span>
-                          )
-                        ) : booking.status === "cancelled" ? (
-                          <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold tracking-wide bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400 border border-red-100 dark:border-red-900/30">
-                            <X size={10} /> {language === "en" ? "CANCELLED" : "ĐÃ HỦY"}
-                          </span>
-                        ) : booking.status === "completed" ? (
-                          <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold tracking-wide bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30">
-                            <CheckCircle2 size={10} /> {language === "en" ? "COMPLETED" : "HOÀN THÀNH"}
-                          </span>
-                        ) : booking.status === "confirmed" ? (
-                          <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold tracking-wide bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-455 border border-blue-100 dark:border-blue-900/30">
-                            <Clock size={10} /> {language === "en" ? "BOOKED" : "ĐÃ ĐẶT CHỖ"}
-                          </span>
-                        ) : (
-                          <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-extrabold tracking-wide bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-455 border border-amber-100 dark:border-amber-900/30 animate-pulse">
-                            <CreditCard size={10} /> {language === "en" ? "UNPAID" : "CHƯA THANH TOÁN"}
-                          </span>
-                        )}
+                          )}
 
-                        <div className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-1">
-                          {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                          <div className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-1">
+                            {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Expanded View with Smooth Slide Animation */}
-                  <div
-                    className={`transition-all duration-300 ease-in-out overflow-hidden ${isExpanded ? "max-h-[1000px] opacity-100 py-4" : "max-h-0 opacity-0"}`}
-                  >
+                    {/* Expanded View with Smooth Slide Animation */}
+                    <div
+                      className={`transition-all duration-300 ease-in-out overflow-hidden ${isExpanded ? "max-h-[1000px] opacity-100 py-4" : "max-h-0 opacity-0"}`}
+                    >
 
-                    <div className="pt-4">
-                      {/* Red Overdue Warning Alert Box */}
-                      {isOverdue && (
-                        <div className="bg-red-50 dark:bg-red-955/40   p-4 mb-6 text-left flex gap-3 items-start text-red-700 dark:text-red-400 text-xs font-semibold shadow-sm">
-                          <AlertTriangle className="text-red-500 shrink-0 mt-0.5" size={18} />
-                          <div className="flex-1">
-                            <div className="flex items-center justify-between flex-wrap gap-2">
-                              <p className="font-extrabold text-sm">{language === "en" ? "Overdue Parking Alert!" : "Cảnh báo quá hạn giờ đỗ!"}</p>
+                      <div className="pt-4">
+                        {/* Red Overdue Warning Alert Box */}
+                        {isOverdue && (
+                          <div className="bg-red-50 dark:bg-red-955/40   p-4 mb-6 text-left flex gap-3 items-start text-red-700 dark:text-red-400 text-xs font-semibold shadow-sm">
+                            <AlertTriangle className="text-red-500 shrink-0 mt-0.5" size={18} />
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between flex-wrap gap-2">
+                                <p className="font-extrabold text-sm">{language === "en" ? "Overdue Parking Alert!" : "Cảnh báo quá hạn giờ đỗ!"}</p>
+                              </div>
+                              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed font-medium">
+                                {booking.totalPrice - booking.depositPaid > 0 ? (
+                                  language === "en"
+                                    ? `Your vehicle has exceeded the reserved checkout time by ${getOverdueDuration(booking)}. Current penalty fee is ${(booking.totalPrice - booking.depositPaid).toLocaleString()}đ. Please pay by cash at the exit gate to check-out.`
+                                    : `Phương tiện của bạn đã đỗ quá giờ hẹn ${getOverdueDuration(booking)}. Số tiền phạt hiện tại là ${(booking.totalPrice - booking.depositPaid).toLocaleString()}đ. Vui lòng thanh toán bằng tiền mặt trực tiếp tại cổng checkout để hoàn tất.`
+                                ) : (
+                                  language === "en"
+                                    ? `You have a 15-minute grace period to exit the parking lot without penalty. Please proceed to checkout.`
+                                    : `Bạn đang trong thời gian ân hạn 15 phút để check-out xe mà không bị tính phí phạt.`
+                                )}
+                              </p>
                             </div>
-                            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed font-medium">
-                              {booking.totalPrice - booking.depositPaid > 0 ? (
-                                language === "en"
-                                  ? `Your vehicle has exceeded the reserved checkout time by ${getOverdueDuration(booking)}. Current penalty fee is ${(booking.totalPrice - booking.depositPaid).toLocaleString()}đ. Please pay by cash at the exit gate to check-out.`
-                                  : `Phương tiện của bạn đã đỗ quá giờ hẹn ${getOverdueDuration(booking)}. Số tiền phạt hiện tại là ${(booking.totalPrice - booking.depositPaid).toLocaleString()}đ. Vui lòng thanh toán bằng tiền mặt trực tiếp tại cổng checkout để hoàn tất.`
+                          </div>
+                        )}
+
+                        {/* Red/Yellow Late Check-in Warning Alert Box */}
+                        {isLateToCheckIn && (
+                          <div className="bg-rose-50 dark:bg-rose-950/40  p-4 mb-6 text-left flex gap-3 items-start text-rose-700 dark:text-rose-455 text-xs font-semibold shadow-sm">
+                            <AlertTriangle className="text-red-500 shrink-0 mt-0.5" size={18} />
+                            <div>
+                              <p className="font-extrabold text-sm">{language === "en" ? "Late Arrival Warning!" : "Cảnh báo trễ giờ đỗ xe!"}</p>
+                              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed font-medium">
+                                {language === "en"
+                                  ? "The reserved arrival time has passed, but the vehicle is not parked yet. Please enter the parking lot or adjust your booking schedule."
+                                  : "Đã quá giờ hẹn vào bãi đỗ nhưng phương tiện chưa vào vị trí. Vui lòng di chuyển xe vào bãi hoặc thực hiện điều chỉnh lại lịch đặt."}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                          {/* Cột trái: Smart Lock hoặc Badge chờ xe vào bãi */}
+                          {booking.status === "active" ? (
+                            <div className="lg:col-span-5 bg-gradient-to-b from-blue-50/50 to-indigo-50/30 dark:from-slate-950/40 dark:to-slate-900/20 p-6 flex flex-col items-center justify-center border border-slate-100 dark:border-slate-800 shadow-sm">
+                              {locked ? (
+                                <>
+                                  <div className="p-4 bg-red-300 text-red-950 dark:text-red-50 rounded-full mb-3 shadow-inner">
+                                    <Lock size={32} />
+                                  </div>
+                                  <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
+                                    {language === "en" ? "Slot Locked" : "Vị trí đang khóa"}
+                                  </h4>
+                                  <p className="text-[11px] text-slate-450 dark:text-slate-500 text-center mb-5 max-w-[220px] leading-relaxed">
+                                    {booking.isLocked === true
+                                      ? (language === "en" ? "Security active. Keep locked until you manually unlock." : "Bảo mật đang bật. Xe sẽ được giữ khóa an toàn cho đến khi bạn mở khóa.")
+                                      : (language === "en" ? "Security active. Auto-unlocks when 5 mins remaining." : "Bảo mật đang bật. Tự động mở khóa khi còn lại 5 phút.")}
+                                  </p>
+
+                                  {/* Ô hiển thị Auto Unlock hoặc trạng thái khóa thủ công */}
+                                  {booking.isLocked === true ? (
+                                    <div className="bg-blue-50 dark:bg-blue-950/40 border border-blue-200/50 dark:border-blue-900/30 px-6 py-2 rounded-xl text-center w-full max-w-[240px] mb-4 shadow-sm">
+                                      <p className="text-[10px] uppercase font-black text-blue-600 dark:text-blue-400 tracking-wider">
+                                        {language === "en" ? "Manual Lock Active" : "Đã khóa thủ công"}
+                                      </p>
+                                    </div>
+                                  ) : (
+                                    <div className="bg-white dark:bg-slate-950 border border-slate-200/60 dark:border-slate-800 px-6 py-2.5 rounded-xl text-center w-full max-w-[240px] mb-4 shadow-sm">
+                                      <p className="text-[9px] uppercase font-bold text-slate-400 tracking-wider mb-0.5">
+                                        {language === "en" ? "Auto-unlock in" : "Tự động mở khóa sau"}
+                                      </p>
+                                      <p className="text-lg font-bold text-slate-950 dark:text-white font-sans">
+                                        {getCountdownText(booking)}
+                                      </p>
+                                    </div>
+                                  )}
+
+                                  {/* Nút Manual Unlock chính */}
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      openModal("unlockConfirm", booking);
+                                    }}
+                                    className="w-full max-w-[240px] flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500 text-white font-bold py-2.5 px-4 rounded-xl shadow-md transition-all text-xs active:scale-[0.98]"
+                                  >
+                                    <Unlock size={14} /> {language === "en" ? "Unlock Early" : "Mở khóa để ra sớm"}
+                                  </button>
+                                </>
                               ) : (
-                                language === "en"
-                                  ? `You have a 15-minute grace period to exit the parking lot without penalty. Please proceed to checkout.`
-                                  : `Bạn đang trong thời gian ân hạn 15 phút để check-out xe mà không bị tính phí phạt.`
+                                <>
+                                  <div className="p-4 bg-emerald-300 text-emerald-950 dark:text-emerald-50 rounded-full mb-3 shadow-inner">
+                                    <Unlock size={32} />
+                                  </div>
+                                  <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
+                                    {language === "en" ? "Slot Unlocked" : "Đã mở khóa"}
+                                  </h4>
+                                  <p className="text-[11px] text-slate-400 dark:text-slate-550 text-center mb-5 max-w-[220px] leading-relaxed">
+                                    {language === "en" ? "Unlocked. You can exit the parking lot early, or lock again to protect your vehicle." : "Đã mở khóa. Bạn có thể lái xe ra hoặc khóa bảo vệ xe trở lại."}
+                                  </p>
+
+                                  {/* Nút Khóa bảo vệ xe linh hoạt */}
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      openModal("lockConfirm", booking);
+                                    }}
+                                    className="w-full max-w-[240px] flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500 text-white font-bold py-2.5 px-4 rounded-xl shadow-md transition-all text-xs active:scale-[0.98]"
+                                  >
+                                    <Lock size={14} /> {language === "en" ? "Lock Vehicle" : "Khóa bảo vệ xe"}
+                                  </button>
+                                </>
                               )}
-                            </p>
-                          </div>
-                        </div>
-                      )}
+                            </div>
+                          ) : booking.status === "cancelled" ? (
+                            <div className="lg:col-span-5 bg-gradient-to-b from-red-100 to-rose-100 dark:from-slate-950/40 dark:to-slate-900/20 p-6  flex flex-col items-center justify-center border border-slate-200/60 dark:border-slate-800 shadow-sm">
+                              <div className="p-4 bg-red-500/10 text-red-500 dark:text-red-450 rounded-full mb-3 shadow-inner">
+                                <X size={32} className="text-red-500" />
+                              </div>
+                              <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
+                                {language === "en" ? "Booking Cancelled" : "Đã hủy đặt chỗ"}
+                              </h4>
+                              <p className="text-[11px] text-slate-400 dark:text-slate-500 text-center mb-5 max-w-[220px] leading-relaxed">
+                                {language === "en" ? "This booking has been cancelled." : "Yêu cầu đặt chỗ này đã bị hủy."}
+                              </p>
 
-                      {/* Red/Yellow Late Check-in Warning Alert Box */}
-                      {isLateToCheckIn && (
-                        <div className="bg-rose-50 dark:bg-rose-950/40  p-4 mb-6 text-left flex gap-3 items-start text-rose-700 dark:text-rose-455 text-xs font-semibold shadow-sm">
-                          <AlertTriangle className="text-red-500 shrink-0 mt-0.5" size={18} />
-                          <div>
-                            <p className="font-extrabold text-sm">{language === "en" ? "Late Arrival Warning!" : "Cảnh báo trễ giờ đỗ xe!"}</p>
-                            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed font-medium">
-                              {language === "en"
-                                ? "The reserved arrival time has passed, but the vehicle is not parked yet. Please enter the parking lot or adjust your booking schedule."
-                                : "Đã quá giờ hẹn vào bãi đỗ nhưng phương tiện chưa vào vị trí. Vui lòng di chuyển xe vào bãi hoặc thực hiện điều chỉnh lại lịch đặt."}
-                            </p>
-                          </div>
-                        </div>
-                      )}
+                              <div className="w-full max-w-[240px] py-2.5 text-center border border-dashed border-red-300 dark:border-red-700/60 rounded-xl bg-red-50/30 dark:bg-red-955/10 text-red-650 dark:text-red-400 text-[10px] font-bold uppercase tracking-wider">
+                                {language === "en" ? "Status: Cancelled" : "Trạng thái: Đã hủy"}
+                              </div>
+                            </div>
+                          ) : booking.status === "completed" ? (
+                            <div className="lg:col-span-5 bg-gradient-to-b from-emerald-50/50 to-teal-50/30 dark:from-slate-950/40 dark:to-slate-900/20 p-6 flex flex-col items-center justify-center border border-slate-200/60 dark:border-slate-800 shadow-sm">
+                              <div className="p-4 bg-emerald-500/10 text-emerald-500 dark:text-emerald-450 rounded-full mb-3 shadow-inner">
+                                <CheckCircle2 size={32} className="text-emerald-500" />
+                              </div>
+                              <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
+                                {language === "en" ? "Parking Completed" : "Hoàn thành gửi xe"}
+                              </h4>
+                              <p className="text-[11px] text-slate-400 dark:text-slate-500 text-center mb-5 max-w-[220px] leading-relaxed">
+                                {language === "en" ? "This parking session has completed." : "Lượt gửi xe này đã hoàn tất."}
+                              </p>
 
-                      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                        {/* Cột trái: Smart Lock hoặc Badge chờ xe vào bãi */}
-                        {booking.status === "active" ? (
-                          <div className="lg:col-span-5 bg-gradient-to-b from-blue-50/50 to-indigo-50/30 dark:from-slate-950/40 dark:to-slate-900/20 p-6 flex flex-col items-center justify-center border border-slate-100 dark:border-slate-800 shadow-sm">
-                            {locked ? (
-                              <>
-                                <div className="p-4 bg-red-300 text-red-950 dark:text-red-50 rounded-full mb-3 shadow-inner">
-                                  <Lock size={32} />
-                                </div>
-                                <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
-                                  {language === "en" ? "Slot Locked" : "Vị trí đang khóa"}
-                                </h4>
-                                <p className="text-[11px] text-slate-450 dark:text-slate-500 text-center mb-5 max-w-[220px] leading-relaxed">
-                                  {booking.isLocked === true
-                                    ? (language === "en" ? "Security active. Keep locked until you manually unlock." : "Bảo mật đang bật. Xe sẽ được giữ khóa an toàn cho đến khi bạn mở khóa.")
-                                    : (language === "en" ? "Security active. Auto-unlocks when 5 mins remaining." : "Bảo mật đang bật. Tự động mở khóa khi còn lại 5 phút.")}
+                              <div className="w-full max-w-[240px] py-2.5 text-center border border-dashed border-emerald-300 dark:border-emerald-700/60 rounded-xl bg-emerald-50/30 dark:bg-emerald-950/10 text-emerald-600 dark:text-emerald-455 text-[10px] font-bold uppercase tracking-wider">
+                                {language === "en" ? "Status: Completed" : "Trạng thái: Hoàn thành"}
+                              </div>
+                            </div>
+                          ) : booking.status === "confirmed" ? (
+                            <div className="lg:col-span-5 bg-gradient-to-b from-blue-100 to-indigo-100 dark:from-slate-950/40 dark:to-slate-900/20 p-6 flex flex-col items-center justify-center border border-slate-200/60 dark:border-slate-800 shadow-sm">
+                              <div className="p-4 bg-blue-500/10 text-blue-500 dark:text-blue-400 rounded-full mb-3 shadow-inner">
+                                <Clock size={32} />
+                              </div>
+                              <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
+                                {language === "en" ? "Awaiting Check-in" : "Chờ xe vào bãi"}
+                              </h4>
+                              <p className="text-[11px] text-slate-400 dark:text-slate-500 text-center mb-5 max-w-[220px] leading-relaxed">
+                                {language === "en" ? "This booking has not checked in yet." : "Đặt chỗ này chưa quét xe vào bãi."}
+                              </p>
+
+                              <div className="w-full max-w-[240px] py-2.5 text-center border border-dashed border-blue-300 dark:border-blue-700/60 rounded-xl bg-blue-50/30 dark:bg-blue-950/10 text-blue-600 dark:text-blue-455 text-[10px] font-bold uppercase tracking-wider">
+                                {language === "en" ? "Status: Confirmed" : "Trạng thái: Đã xác nhận"}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="lg:col-span-5 bg-gradient-to-b from-amber-100 to-orange-100 dark:from-slate-950/40 dark:to-slate-900/20 p-6 flex flex-col items-center justify-center border border-slate-200/60 dark:border-slate-800 shadow-sm">
+                              <div className="p-4 bg-amber-500/10 text-amber-500 dark:text-amber-455 rounded-full mb-3 shadow-inner">
+                                <CreditCard size={32} />
+                              </div>
+                              <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
+                                {language === "en" ? "Awaiting Payment" : "Chờ thanh toán"}
+                              </h4>
+                              <p className="text-[11px] text-slate-400 dark:text-slate-500 text-center mb-5 max-w-[220px] leading-relaxed">
+                                {language === "en"
+                                  ? "Please complete payment within 5 minutes to secure your spot."
+                                  : "Vui lòng thanh toán cọc trong vòng 5 phút để giữ chỗ."}
+                              </p>
+
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openModal("payBooking", booking);
+                                }}
+                                className="w-full max-w-[240px] flex items-center justify-center gap-2 bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 px-4 rounded-xl shadow-md transition-all text-xs active:scale-[0.98]"
+                              >
+                                <CreditCard size={14} /> {language === "en" ? "Pay Now" : "Thanh toán ngay"}
+                              </button>
+                            </div>
+                          )}
+
+                          {/* Cột phải: Chi tiết thông tin đăng ký */}
+                          <div className="lg:col-span-7 flex flex-col justify-between">
+                            <div className="space-y-4">
+                              <div>
+                                <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                                  {language === "en" ? "Registered Vehicle" : "Phương tiện đăng ký"}
                                 </p>
+                                <h4 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight mt-0.5 ">
+                                  {booking.plate_number}
+                                </h4>
+                              </div>
 
-                                {/* Ô hiển thị Auto Unlock hoặc trạng thái khóa thủ công */}
-                                {booking.isLocked === true ? (
-                                  <div className="bg-blue-50 dark:bg-blue-950/40 border border-blue-200/50 dark:border-blue-900/30 px-6 py-2 rounded-xl text-center w-full max-w-[240px] mb-4 shadow-sm">
-                                    <p className="text-[10px] uppercase font-black text-blue-600 dark:text-blue-400 tracking-wider">
-                                      {language === "en" ? "Manual Lock Active" : "Đã khóa thủ công"}
+                              {/* Danh sách thuộc tính */}
+                              <div className="space-y-2">
+                                {/* Hàng Vehicle Type */}
+                                <div className="flex items-center gap-3 p-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/60 rounded-xl">
+                                  <div className="p-2 bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 rounded-lg shadow-sm">
+                                    {isCar ? <Car size={16} /> : <Bike size={16} />}
+                                  </div>
+                                  <div>
+                                    <p className="text-[9px] text-slate-400 dark:text-slate-505 uppercase font-bold tracking-wider">
+                                      {language === "en" ? "Vehicle Type" : "Loại xe"}
+                                    </p>
+                                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200 mt-0.5">
+                                      {isCar ? (language === "en" ? "Car" : "Ô tô") : (language === "en" ? "Motorbike" : "Xe máy")}
                                     </p>
                                   </div>
+                                </div>
+
+                                {/* Hàng Amount Paid (Breakdown for completed/active bookings) */}
+                                {booking.status === "completed" || booking.earlyFee > 0 || booking.penaltyFee > 0 ? (
+                                  <div className="flex flex-col gap-2 p-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/60 rounded-xl">
+                                    <div className="flex items-center gap-3">
+                                      <div className="p-2 bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 rounded-lg shadow-sm">
+                                        <Calendar size={16} />
+                                      </div>
+                                      <div>
+                                        <p className="text-[9px] text-slate-400 dark:text-slate-505 uppercase font-bold tracking-wider">
+                                          {language === "en" ? "Reservation Fee" : "Tiền đặt chỗ"}
+                                        </p>
+                                        <p className="text-xs font-bold text-slate-800 dark:text-slate-200 mt-0.5">
+                                          {Math.max(0, booking.depositPaid - booking.earlyFee - booking.penaltyFee).toLocaleString()}đ
+                                        </p>
+                                      </div>
+                                    </div>
+
+                                    {(booking.earlyFee > 0 || booking.status === "completed") && (
+                                      <div className="flex items-center gap-3 pl-4 border-l border-slate-200 dark:border-slate-700/60 py-1">
+                                        <div>
+                                          <p className="text-[9px] text-slate-400 dark:text-slate-505 uppercase font-bold tracking-wider">
+                                            {language === "en" ? "Early Arrival Fee" : "Phí đỗ đến sớm"}
+                                          </p>
+                                          <p className="text-xs font-bold text-slate-700 dark:text-slate-300 mt-0.5">
+                                            {booking.earlyFee.toLocaleString()}đ
+                                          </p>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {(booking.penaltyFee > 0 || booking.status === "completed") && (
+                                      <div className="flex items-center gap-3 pl-4 border-l border-red-300 dark:border-red-900/60 py-1">
+                                        <div>
+                                          <p className="text-[9px] text-red-500 dark:text-red-400 uppercase font-black tracking-wider">
+                                            {language === "en" ? "Overdue Penalty Fee" : "Phí phạt đỗ quá giờ"}
+                                          </p>
+                                          <p className="text-xs font-black text-rose-600 dark:text-rose-450 mt-0.5">
+                                            {booking.penaltyFee.toLocaleString()}đ
+                                          </p>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    <div className="border-t border-slate-200/60 dark:border-slate-700/60 pt-2 flex items-center gap-3">
+                                      <div className="p-2 bg-emerald-50 text-emerald-600 dark:bg-emerald-950/20 dark:text-emerald-450 rounded-lg shadow-sm">
+                                        <CreditCard size={16} />
+                                      </div>
+                                      <div>
+                                        <p className="text-[9px] text-emerald-600 dark:text-emerald-450 uppercase font-bold tracking-wider">
+                                          {language === "en" ? "Total Paid" : "Tổng số tiền đã nộp"}
+                                        </p>
+                                        <p className="text-xs font-extrabold text-emerald-600 dark:text-emerald-400 mt-0.5">
+                                          {booking.depositPaid.toLocaleString()}đ
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </div>
                                 ) : (
-                                  <div className="bg-white dark:bg-slate-950 border border-slate-200/60 dark:border-slate-800 px-6 py-2.5 rounded-xl text-center w-full max-w-[240px] mb-4 shadow-sm">
-                                    <p className="text-[9px] uppercase font-bold text-slate-400 tracking-wider mb-0.5">
-                                      {language === "en" ? "Auto-unlock in" : "Tự động mở khóa sau"}
-                                    </p>
-                                    <p className="text-lg font-bold text-slate-950 dark:text-white font-mono">
-                                      {getCountdownText(booking)}
-                                    </p>
+                                  /* Standard single-row payment */
+                                  <div className="flex items-center gap-3 p-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/60 rounded-xl">
+                                    <div className="p-2 bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 rounded-lg shadow-sm">
+                                      <Calendar size={16} />
+                                    </div>
+                                    <div>
+                                      <p className="text-[9px] text-slate-400 dark:text-slate-505 uppercase font-bold tracking-wider">
+                                        {language === "en" ? "Amount Paid" : "Số tiền đã nộp"}
+                                      </p>
+                                      <p className="text-xs font-bold text-slate-800 dark:text-slate-200 mt-0.5">
+                                        {booking.depositPaid.toLocaleString()}đ
+                                      </p>
+                                    </div>
                                   </div>
                                 )}
 
-                                {/* Nút Manual Unlock chính */}
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    openModal("unlockConfirm", booking);
-                                  }}
-                                  className="w-full max-w-[240px] flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500 text-white font-bold py-2.5 px-4 rounded-xl shadow-md transition-all text-xs active:scale-[0.98]"
-                                >
-                                  <Unlock size={14} /> {language === "en" ? "Unlock Early" : "Mở khóa để ra sớm"}
-                                </button>
-                              </>
-                            ) : (
-                              <>
-                                <div className="p-4 bg-emerald-300 text-emerald-950 dark:text-emerald-50 rounded-full mb-3 shadow-inner">
-                                  <Unlock size={32} />
-                                </div>
-                                <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
-                                  {language === "en" ? "Slot Unlocked" : "Đã mở khóa"}
-                                </h4>
-                                <p className="text-[11px] text-slate-400 dark:text-slate-550 text-center mb-5 max-w-[220px] leading-relaxed">
-                                  {language === "en" ? "Unlocked. You can exit the parking lot early, or lock again to protect your vehicle." : "Đã mở khóa. Bạn có thể lái xe ra hoặc khóa bảo vệ xe trở lại."}
-                                </p>
-
-                                {/* Nút Khóa bảo vệ xe linh hoạt */}
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    openModal("lockConfirm", booking);
-                                  }}
-                                  className="w-full max-w-[240px] flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500 text-white font-bold py-2.5 px-4 rounded-xl shadow-md transition-all text-xs active:scale-[0.98]"
-                                >
-                                  <Lock size={14} /> {language === "en" ? "Lock Vehicle" : "Khóa bảo vệ xe"}
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        ) : booking.status === "cancelled" ? (
-                          <div className="lg:col-span-5 bg-gradient-to-b from-red-100 to-rose-100 dark:from-slate-950/40 dark:to-slate-900/20 p-6  flex flex-col items-center justify-center border border-slate-200/60 dark:border-slate-800 shadow-sm">
-                            <div className="p-4 bg-red-500/10 text-red-500 dark:text-red-450 rounded-full mb-3 shadow-inner">
-                              <X size={32} className="text-red-500" />
-                            </div>
-                            <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
-                              {language === "en" ? "Booking Cancelled" : "Đã hủy đặt chỗ"}
-                            </h4>
-                            <p className="text-[11px] text-slate-400 dark:text-slate-500 text-center mb-5 max-w-[220px] leading-relaxed">
-                              {language === "en" ? "This booking has been cancelled." : "Yêu cầu đặt chỗ này đã bị hủy."}
-                            </p>
-
-                            <div className="w-full max-w-[240px] py-2.5 text-center border border-dashed border-red-300 dark:border-red-700/60 rounded-xl bg-red-50/30 dark:bg-red-955/10 text-red-650 dark:text-red-400 text-[10px] font-bold uppercase tracking-wider">
-                              {language === "en" ? "Status: Cancelled" : "Trạng thái: Đã hủy"}
-                            </div>
-                          </div>
-                        ) : booking.status === "completed" ? (
-                          <div className="lg:col-span-5 bg-gradient-to-b from-emerald-50/50 to-teal-50/30 dark:from-slate-950/40 dark:to-slate-900/20 p-6 flex flex-col items-center justify-center border border-slate-200/60 dark:border-slate-800 shadow-sm">
-                            <div className="p-4 bg-emerald-500/10 text-emerald-500 dark:text-emerald-450 rounded-full mb-3 shadow-inner">
-                              <CheckCircle2 size={32} className="text-emerald-500" />
-                            </div>
-                            <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
-                              {language === "en" ? "Parking Completed" : "Hoàn thành gửi xe"}
-                            </h4>
-                            <p className="text-[11px] text-slate-400 dark:text-slate-500 text-center mb-5 max-w-[220px] leading-relaxed">
-                              {language === "en" ? "This parking session has completed." : "Lượt gửi xe này đã hoàn tất."}
-                            </p>
-
-                            <div className="w-full max-w-[240px] py-2.5 text-center border border-dashed border-emerald-300 dark:border-emerald-700/60 rounded-xl bg-emerald-50/30 dark:bg-emerald-950/10 text-emerald-600 dark:text-emerald-455 text-[10px] font-bold uppercase tracking-wider">
-                              {language === "en" ? "Status: Completed" : "Trạng thái: Hoàn thành"}
-                            </div>
-                          </div>
-                        ) : booking.status === "confirmed" ? (
-                          <div className="lg:col-span-5 bg-gradient-to-b from-blue-100 to-indigo-100 dark:from-slate-950/40 dark:to-slate-900/20 p-6 flex flex-col items-center justify-center border border-slate-200/60 dark:border-slate-800 shadow-sm">
-                            <div className="p-4 bg-blue-500/10 text-blue-500 dark:text-blue-400 rounded-full mb-3 shadow-inner">
-                              <Clock size={32} />
-                            </div>
-                            <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
-                              {language === "en" ? "Awaiting Check-in" : "Chờ xe vào bãi"}
-                            </h4>
-                            <p className="text-[11px] text-slate-400 dark:text-slate-500 text-center mb-5 max-w-[220px] leading-relaxed">
-                              {language === "en" ? "This booking has not checked in yet." : "Đặt chỗ này chưa quét xe vào bãi."}
-                            </p>
-
-                            <div className="w-full max-w-[240px] py-2.5 text-center border border-dashed border-blue-300 dark:border-blue-700/60 rounded-xl bg-blue-50/30 dark:bg-blue-950/10 text-blue-600 dark:text-blue-455 text-[10px] font-bold uppercase tracking-wider">
-                              {language === "en" ? "Status: Confirmed" : "Trạng thái: Đã xác nhận"}
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="lg:col-span-5 bg-gradient-to-b from-amber-100 to-orange-100 dark:from-slate-950/40 dark:to-slate-900/20 p-6 flex flex-col items-center justify-center border border-slate-200/60 dark:border-slate-800 shadow-sm">
-                            <div className="p-4 bg-amber-500/10 text-amber-500 dark:text-amber-455 rounded-full mb-3 shadow-inner">
-                              <CreditCard size={32} />
-                            </div>
-                            <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
-                              {language === "en" ? "Awaiting Payment" : "Chờ thanh toán"}
-                            </h4>
-                            <p className="text-[11px] text-slate-400 dark:text-slate-500 text-center mb-5 max-w-[220px] leading-relaxed">
-                              {language === "en"
-                                ? "Please complete payment within 5 minutes to secure your spot."
-                                : "Vui lòng thanh toán cọc trong vòng 5 phút để giữ chỗ."}
-                            </p>
-
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openModal("payBooking", booking);
-                              }}
-                              className="w-full max-w-[240px] flex items-center justify-center gap-2 bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 px-4 rounded-xl shadow-md transition-all text-xs active:scale-[0.98]"
-                            >
-                              <CreditCard size={14} /> {language === "en" ? "Pay Now" : "Thanh toán ngay"}
-                            </button>
-                          </div>
-                        )}
-
-                        {/* Cột phải: Chi tiết thông tin đăng ký */}
-                        <div className="lg:col-span-7 flex flex-col justify-between">
-                          <div className="space-y-4">
-                            <div>
-                              <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
-                                {language === "en" ? "Registered Vehicle" : "Phương tiện đăng ký"}
-                              </p>
-                              <h4 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight mt-0.5 ">
-                                {booking.plate_number}
-                              </h4>
-                            </div>
-
-                            {/* Danh sách thuộc tính */}
-                            <div className="space-y-2">
-                              {/* Hàng Vehicle Type */}
-                              <div className="flex items-center gap-3 p-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/60 rounded-xl">
-                                <div className="p-2 bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 rounded-lg shadow-sm">
-                                  {isCar ? <Car size={16} /> : <Bike size={16} />}
-                                </div>
-                                <div>
-                                  <p className="text-[9px] text-slate-400 dark:text-slate-505 uppercase font-bold tracking-wider">
-                                    {language === "en" ? "Vehicle Type" : "Loại xe"}
-                                  </p>
-                                  <p className="text-xs font-bold text-slate-800 dark:text-slate-200 mt-0.5">
-                                    {isCar ? (language === "en" ? "Car" : "Ô tô") : (language === "en" ? "Motorbike" : "Xe máy")}
-                                  </p>
-                                </div>
-                              </div>
-
-                              {/* Hàng Amount Paid */}
-                              <div className="flex items-center gap-3 p-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/60 rounded-xl">
-                                <div className="p-2 bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 rounded-lg shadow-sm">
-                                  <Calendar size={16} />
-                                </div>
-                                <div>
-                                  <p className="text-[9px] text-slate-400 dark:text-slate-505 uppercase font-bold tracking-wider">
-                                    {language === "en" ? "Amount Paid" : "Số tiền đã nộp"}
-                                  </p>
-                                  <p className="text-xs font-bold text-slate-800 dark:text-slate-200 mt-0.5">
-                                    {booking.totalPrice.toLocaleString()}đ
-                                  </p>
-                                </div>
-                              </div>
-
-                              {/* Hàng Time Window */}
-                              <div className="flex items-center gap-3 p-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/60 rounded-xl">
-                                <div className="p-2 bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 rounded-lg shadow-sm">
-                                  <Clock size={16} />
-                                </div>
-                                <div>
-                                  <p className="text-[9px] text-slate-400 dark:text-slate-555 uppercase font-bold tracking-wider">
-                                    {language === "en" ? "Time Window" : "Khung thời gian"}
-                                  </p>
-                                  <p className="text-xs font-bold text-slate-800 dark:text-slate-200 mt-0.5">
-                                    {formatTimeOnly(booking.startTime)} - {formatTimeOnly(booking.endTime) || "18:00"} ({language === "en" ? "Today" : "Hôm nay"})
-                                  </p>
-                                </div>
-                              </div>
-
-                              {/* Overtime Fee warning detail box */}
-                              {isOverdue && (booking.totalPrice - booking.depositPaid > 0) && (
-                                <div className="flex items-center justify-between p-3.5 bg-red-50/50 dark:bg-red-955/15 border border-red-200/60 dark:border-red-900/40 rounded-xl mt-3 shadow-sm">
-                                  <div className="w-full">
-                                    <p className="text-[9px] text-red-500 dark:text-red-400 uppercase font-black tracking-wider">
-                                      {language === "en" ? "Overtime Penalty Fee" : "Phí phát sinh do quá giờ"}
+                                {/* Hàng Time Window */}
+                                <div className="flex items-center gap-3 p-2.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/60 rounded-xl">
+                                  <div className="p-2 bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 rounded-lg shadow-sm">
+                                    <Clock size={16} />
+                                  </div>
+                                  <div>
+                                    <p className="text-[9px] text-slate-400 dark:text-slate-555 uppercase font-bold tracking-wider">
+                                      {language === "en" ? "Arrival & Departure" : "Thời gian vào/ra"}
                                     </p>
-                                    <p className="text-base font-black text-red-650 dark:text-red-400 mt-0.5">
-                                      {(booking.totalPrice - booking.depositPaid).toLocaleString()}đ
-                                    </p>
-                                    <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 leading-normal font-semibold">
-                                      {language === "en"
-                                        ? "Overtime fee must be paid in cash at the exit gate."
-                                        : "Phí quá giờ phải thanh toán bằng tiền mặt tại cổng check-out."}
+                                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200 mt-0.5">
+                                      {formatTimeOnly(booking.startTime)} - {formatTimeOnly(booking.endTime) || "18:00"} ({language === "en" ? "Today" : "Hôm nay"})
                                     </p>
                                   </div>
                                 </div>
-                              )}
-                            </div>
-                          </div>
 
-                          {/* Nút tác vụ nhanh bên dưới */}
-                          <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center pr-4 md:pr-6">
-                            <div className="flex items-center gap-2">
-                              <span className="text-[10px] text-slate-400 dark:text-slate-505 uppercase font-bold tracking-wider">
-                                {language === "en" ? "Booked At:" : "Thời điểm đặt:"}
-                              </span>
-                              <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
-                                {formatDate(booking.bookingTime)}
-                              </span>
+                                {/* Overtime Fee warning detail box */}
+                                {isOverdue && (booking.totalPrice - booking.depositPaid > 0) && (
+                                  <div className="flex items-center justify-between p-3.5 bg-red-50/50 dark:bg-red-955/15 border border-red-200/60 dark:border-red-900/40 rounded-xl mt-3 shadow-sm">
+                                    <div className="w-full">
+                                      <p className="text-[9px] text-red-500 dark:text-red-400 uppercase font-black tracking-wider">
+                                        {language === "en" ? "Overtime Penalty Fee" : "Phí phát sinh do quá giờ"}
+                                      </p>
+                                      <p className="text-base font-black text-red-650 dark:text-red-400 mt-0.5">
+                                        {(booking.totalPrice - booking.depositPaid).toLocaleString()}đ
+                                      </p>
+                                      <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 leading-normal font-semibold">
+                                        {language === "en"
+                                          ? "Overtime fee must be paid in cash at the exit gate."
+                                          : "Phí quá giờ phải thanh toán bằng tiền mặt tại cổng check-out."}
+                                      </p>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                            {(() => {
-                              if (booking.status === "cancelled" || booking.status === "completed") return null;
-                              const canCancel = booking.status !== "active" && booking.status !== "completed" && booking.status !== "cancelled" && new Date(booking.startTime).getTime() - new Date().getTime() >= 60 * 60 * 1000;
-                              return (
-                                <button
-                                  disabled={!canCancel}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    openModal("cancel", booking);
-                                  }}
-                                  className={`text-xs font-bold px-3 py-2 rounded-md transition-colors ${canCancel
-                                    ? "text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 bg-red-50 hover:bg-red-100 dark:bg-red-950/20 cursor-pointer"
-                                    : "text-slate-400 dark:text-slate-600 bg-slate-50 dark:bg-slate-900 cursor-not-allowed"
-                                    }`}
-                                >
-                                  {canCancel
-                                    ? (language === "en" ? "Cancel Booking" : "Hủy đặt chỗ này")
-                                    : (language === "en" ? "Cannot Cancel" : "Không thể hủy")}
-                                </button>
-                              );
-                            })()}
+
+                            {/* Nút tác vụ nhanh bên dưới */}
+                            <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center pr-4 md:pr-6">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] text-slate-400 dark:text-slate-505 uppercase font-bold tracking-wider">
+                                  {language === "en" ? "Booked At:" : "Thời điểm đặt:"}
+                                </span>
+                                <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                                  {formatDate(booking.bookingTime)}
+                                </span>
+                              </div>
+                              {(() => {
+                                if (booking.status === "cancelled" || booking.status === "completed") return null;
+                                const canCancel = booking.status !== "active" && booking.status !== "completed" && booking.status !== "cancelled" && new Date(booking.startTime).getTime() - new Date().getTime() >= 60 * 60 * 1000;
+                                return (
+                                  <button
+                                    disabled={!canCancel}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      openModal("cancel", booking);
+                                    }}
+                                    className={`text-xs font-bold px-3 py-2 rounded-md transition-colors ${canCancel
+                                      ? "text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 bg-red-50 hover:bg-red-100 dark:bg-red-950/20 cursor-pointer"
+                                      : "text-slate-400 dark:text-slate-600 bg-slate-50 dark:bg-slate-900 cursor-not-allowed"
+                                      }`}
+                                  >
+                                    {canCancel
+                                      ? (language === "en" ? "Cancel Booking" : "Hủy đặt chỗ này")
+                                      : (language === "en" ? "Cannot Cancel" : "Không thể hủy")}
+                                  </button>
+                                );
+                              })()}
+                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
 
-          {/* Pagination Controls */}
-          {totalPages > 1 && (
-            <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
-              {/* Result count */}
-              <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">
-                {language === "en"
-                  ? `Showing ${(currentPage - 1) * PAGE_SIZE + 1}–${Math.min(currentPage * PAGE_SIZE, sortedAndFilteredBookings.length)} of ${sortedAndFilteredBookings.length} bookings`
-                  : `Hiển thị ${(currentPage - 1) * PAGE_SIZE + 1}–${Math.min(currentPage * PAGE_SIZE, sortedAndFilteredBookings.length)} / ${sortedAndFilteredBookings.length} lượt đặt`}
-              </p>
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
+                {/* Result count */}
+                <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">
+                  {language === "en"
+                    ? `Showing ${(currentPage - 1) * PAGE_SIZE + 1}–${Math.min(currentPage * PAGE_SIZE, sortedAndFilteredBookings.length)} of ${sortedAndFilteredBookings.length} bookings`
+                    : `Hiển thị ${(currentPage - 1) * PAGE_SIZE + 1}–${Math.min(currentPage * PAGE_SIZE, sortedAndFilteredBookings.length)} / ${sortedAndFilteredBookings.length} lượt đặt`}
+                </p>
 
-              {/* Page buttons */}
-              <div className="flex items-center gap-1.5">
-                {/* Prev */}
-                <button
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                  className={`p-1.5 rounded-lg border transition-all ${
-                    currentPage === 1
+                {/* Page buttons */}
+                <div className="flex items-center gap-1.5">
+                  {/* Prev */}
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className={`p-1.5 rounded-lg border transition-all ${currentPage === 1
                       ? "border-slate-200 dark:border-slate-800 text-slate-300 dark:text-slate-700 cursor-not-allowed bg-transparent"
                       : "border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-950/30 hover:border-blue-300 dark:hover:border-blue-700 hover:text-blue-600 dark:hover:text-blue-400"
-                  }`}
-                  aria-label="Previous page"
-                >
-                  <ChevronLeft size={16} />
-                </button>
+                      }`}
+                    aria-label="Previous page"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
 
-                {/* Page number buttons */}
-                {(() => {
-                  const getPageItems = () => {
-                    const items = [];
-                    let prev = null;
-                    for (let p = 1; p <= totalPages; p++) {
-                      if (
-                        p === 1 ||
-                        p === totalPages ||
-                        Math.abs(p - currentPage) <= 1
-                      ) {
-                        if (prev !== null && p - prev > 1) {
-                          items.push({ type: "ellipsis", key: `e-${p}` });
+                  {/* Page number buttons */}
+                  {(() => {
+                    const getPageItems = () => {
+                      const items = [];
+                      let prev = null;
+                      for (let p = 1; p <= totalPages; p++) {
+                        if (
+                          p === 1 ||
+                          p === totalPages ||
+                          Math.abs(p - currentPage) <= 1
+                        ) {
+                          if (prev !== null && p - prev > 1) {
+                            items.push({ type: "ellipsis", key: `e-${p}` });
+                          }
+                          items.push({ type: "page", value: p });
+                          prev = p;
                         }
-                        items.push({ type: "page", value: p });
-                        prev = p;
                       }
-                    }
-                    return items;
-                  };
+                      return items;
+                    };
 
-                  return getPageItems().map((item) =>
-                    item.type === "ellipsis" ? (
-                      <span
-                        key={item.key}
-                        className="px-1.5 text-xs text-slate-400 dark:text-slate-600 select-none"
-                      >
-                        …
-                      </span>
-                    ) : (
-                      <button
-                        key={item.value}
-                        onClick={() => setCurrentPage(item.value)}
-                        className={`min-w-[32px] h-8 rounded-lg border text-xs font-bold transition-all ${
-                          currentPage === item.value
+                    return getPageItems().map((item) =>
+                      item.type === "ellipsis" ? (
+                        <span
+                          key={item.key}
+                          className="px-1.5 text-xs text-slate-400 dark:text-slate-600 select-none"
+                        >
+                          …
+                        </span>
+                      ) : (
+                        <button
+                          key={item.value}
+                          onClick={() => setCurrentPage(item.value)}
+                          className={`min-w-[32px] h-8 rounded-lg border text-xs font-bold transition-all ${currentPage === item.value
                             ? "bg-blue-600 border-blue-600 text-white shadow-sm shadow-blue-200 dark:shadow-blue-900/30"
                             : "border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-950/30 hover:border-blue-300 dark:hover:border-blue-700 hover:text-blue-600 dark:hover:text-blue-400"
-                        }`}
-                      >
-                        {item.value}
-                      </button>
-                    )
-                  );
-                })()}
+                            }`}
+                        >
+                          {item.value}
+                        </button>
+                      )
+                    );
+                  })()}
 
 
-                {/* Next */}
-                <button
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                  className={`p-1.5 rounded-lg border transition-all ${
-                    currentPage === totalPages
+                  {/* Next */}
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className={`p-1.5 rounded-lg border transition-all ${currentPage === totalPages
                       ? "border-slate-200 dark:border-slate-800 text-slate-300 dark:text-slate-700 cursor-not-allowed bg-transparent"
                       : "border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-950/30 hover:border-blue-300 dark:hover:border-blue-700 hover:text-blue-600 dark:hover:text-blue-400"
-                  }`}
-                  aria-label="Next page"
-                >
-                  <ChevronRight size={16} />
-                </button>
-              </div>
+                      }`}
+                    aria-label="Next page"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
 
-              {/* Per-page label */}
-              <p className="text-[10px] text-slate-400 dark:text-slate-600 font-medium hidden sm:block">
-                {language === "en" ? "10 per page" : "10 mục / trang"}
-              </p>
-            </div>
-          )}
+                {/* Per-page label */}
+                <p className="text-[10px] text-slate-400 dark:text-slate-600 font-medium hidden sm:block">
+                  {language === "en" ? "10 per page" : "10 mục / trang"}
+                </p>
+              </div>
+            )}
           </>
         )}
       </div>

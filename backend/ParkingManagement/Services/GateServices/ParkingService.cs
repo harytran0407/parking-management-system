@@ -323,6 +323,25 @@ namespace ParkingManagement.Services
                 {
                     await _parkingRepository.IncrementZoneCapacityAsync(session.ZoneId.Value);
                 }
+
+                if (finalFee > 0)
+                {
+                    var payment = new Payment
+                    {
+                        PaymentId = "PAY-CO-" + Guid.NewGuid().ToString("N").Substring(0, 10).ToUpper(),
+                        PaymentType = "SESSION",
+                        SessionId = session.SessionId,
+                        AmountDue = finalFee,
+                        AmountPaid = finalFee,
+                        ChangeDue = 0,
+                        PaymentMethod = "CASH",
+                        Status = "SUCCESS",
+                        UserId = null,
+                        PaymentTime = checkOutTime,
+                        TransactionId = "CASH_" + Guid.NewGuid().ToString("N").Substring(0, 12).ToUpper()
+                    };
+                    await _parkingRepository.CreatePaymentAsync(payment);
+                }
             });
 
             return MapToCheckOutResponseDto(session, finalFee, durationMinutes, checkOutTime);
@@ -431,6 +450,25 @@ namespace ParkingManagement.Services
                 if (session.ZoneId.HasValue)
                 {
                     await _parkingRepository.IncrementZoneCapacityAsync(session.ZoneId.Value);
+                }
+
+                if (totalExtraFee > 0)
+                {
+                    var payment = new Payment
+                    {
+                        PaymentId = "PAY-CO-" + Guid.NewGuid().ToString("N").Substring(0, 10).ToUpper(),
+                        PaymentType = "SESSION",
+                        SessionId = session.SessionId,
+                        AmountDue = totalExtraFee,
+                        AmountPaid = totalExtraFee,
+                        ChangeDue = 0,
+                        PaymentMethod = "CASH",
+                        Status = "SUCCESS",
+                        UserId = null,
+                        PaymentTime = checkOutTime,
+                        TransactionId = "CASH_" + Guid.NewGuid().ToString("N").Substring(0, 12).ToUpper()
+                    };
+                    await _parkingRepository.CreatePaymentAsync(payment);
                 }
             });
 

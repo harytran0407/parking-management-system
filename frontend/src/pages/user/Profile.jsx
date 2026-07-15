@@ -195,7 +195,7 @@ export default function Profile() {
         {/* NOTIFICATION DYNAMIC LAYER (Vá lỗi biến chưa định nghĩa cũ) */}
         {status.message && (
           <div
-            className={`mx-6 mt-4 p-3.5 rounded-xl text-xs font-semibold flex items-start gap-2 border ${status.type === "success" ? "bg-emerald-950/40 text-emerald-400 border-emerald-800/40" : "bg-rose-950/40 text-rose-400 border-rose-800/40"
+            className={`mx-6 mt-4 p-3.5 rounded-xl text-xs font-semibold flex items-start gap-2 border ${status.type === "success" ? "bg-emerald-950/40 text-emerald-400 border-emerald-800/40" : "bg-rose-500 text-white border-rose-800/40"
               }`}>
             <AlertCircle size={16} className="shrink-0 mt-0.5" />
             <div>{status.message}</div>
@@ -232,7 +232,7 @@ export default function Profile() {
                   onChange={handleChange}
                   disabled={!isEditing.full_name}
                   maxLength={100} // Chặn lỗi tràn cột VARCHAR(100) của DB
-                  className={`flex-1 bg-transparent text-slate-800 dark:text-white font-medium py-1 border-b-2 transition-colors focus:outline-none ${isEditing.full_name ? "border-blue-500" : "border-slate-200 dark:border-slate-700"
+                  className={`flex-1 text-sm bg-transparent text-slate-800 dark:text-white font-medium py-1 border-b-2 transition-colors focus:outline-none ${isEditing.full_name ? "border-blue-500" : "border-slate-200 dark:border-slate-700"
                     }`}
                 />
                 <button
@@ -247,10 +247,10 @@ export default function Profile() {
             {/* FIELD: EMAIL (READ-ONLY KHÓA CỨNG AN TOÀN ĐỊNH DANH) */}
             <div className="group opacity-50">
               <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-2">
-                <Mail size={14} /> {language === "en" ? "Email Address (Read-only)" : "Địa chỉ Email (Chỉ đọc)"}
+                <Mail size={14} /> {language === "en" ? "Email Address" : "Địa chỉ Email"}
               </label>
               <div className="flex items-center gap-3 border-b-2 border-slate-200 dark:border-slate-700 py-1">
-                <input type="email" value={profile.email} disabled className="flex-1 bg-transparent text-slate-400 font-medium focus:outline-none cursor-not-allowed" />
+                <input type="email" value={profile.email} disabled className="flex-1 text-sm bg-transparent text-slate-400 font-medium focus:outline-none cursor-not-allowed" />
                 <Mail size={16} className="text-slate-500 mx-2" />
               </div>
             </div>
@@ -268,7 +268,7 @@ export default function Profile() {
                   onChange={handleChange}
                   disabled={!isEditing.phone}
                   maxLength={15} // Giới hạn kích thước độ dài chuỗi cột USERS.PHONE
-                  className={`flex-1 bg-transparent text-slate-800 dark:text-white font-medium py-1 border-b-2 transition-colors focus:outline-none ${isEditing.phone ? "border-blue-500" : "border-slate-200 dark:border-slate-700"
+                  className={`flex-1 text-sm bg-transparent text-slate-800 dark:text-white font-medium py-1 border-b-2 transition-colors focus:outline-none ${isEditing.phone ? "border-blue-500" : "border-slate-200 dark:border-slate-700"
                     }`}
                 />
                 <button

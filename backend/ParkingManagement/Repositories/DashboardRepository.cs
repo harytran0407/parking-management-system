@@ -62,14 +62,17 @@ public class DashboardRepository : IDashboardRepository
     }
 
     public Task<int> GetTotalSlotsAsync(string buildingId) =>
-        _db.ParkingSlots
-           .Include(s => s.Zone)
-           .CountAsync(s => s.Zone.BuildingId == buildingId);
+        _db.FloorZones
+           .Where(z => z.BuildingId == buildingId && z.Status == "ACTIVE")
+           .SumAsync(z => z.Capacity);
 
-    public Task<int> GetOccupiedSlotsAsync(string buildingId) =>
-        _db.ParkingSlots
-           .Include(s => s.Zone)
-           .CountAsync(s => s.Zone.BuildingId == buildingId && s.Status == "OCCUPIED");
+    public async Task<int> GetOccupiedSlotsAsync(string buildingId)
+    {
+        var zones = await _db.FloorZones
+           .Where(z => z.BuildingId == buildingId && z.Status == "ACTIVE")
+           .ToListAsync();
+        return zones.Sum(z => z.Capacity - z.AvailableCapacity);
+    }
 
     public async Task<List<(int Hour, int Count)>> GetPeakHoursAsync(DateTime from, DateTime to)
     {
