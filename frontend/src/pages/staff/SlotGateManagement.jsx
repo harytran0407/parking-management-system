@@ -167,7 +167,7 @@ function ZoneHeaderCard({ zone }) {
         </div>
 
         {/* Available */}
-        <div className="p-3 bg-emerald-100/10 dark:bg-emerald-950/20 border border-emerald-100/50 dark:border-emerald-900/30 rounded-lg text-center flex flex-col justify-center items-center">
+        <div className="p-3 bg-emerald-100/80 dark:bg-emerald-950/20 rounded-lg text-center flex flex-col justify-center items-center">
           <span className="text-xs font-bold text-emerald-500 uppercase block mb-1">
             {t[language].available} ({getPercentage(computedAvailable)}%)
           </span>
@@ -177,7 +177,7 @@ function ZoneHeaderCard({ zone }) {
         </div>
 
         {/* Occupied */}
-        <div className="p-3 bg-red-100/10 dark:bg-red-955/20 border border-red-100/50 dark:border-red-900/30 rounded-lg text-center flex flex-col justify-center items-center">
+        <div className="p-3 bg-red-100/80 dark:bg-red-955/20 rounded-lg text-center flex flex-col justify-center items-center">
           <span className="text-xs font-bold text-red-500 uppercase block mb-1">
             {t[language].occupied} ({getPercentage(occupiedCount)}%)
           </span>
@@ -187,7 +187,7 @@ function ZoneHeaderCard({ zone }) {
         </div>
 
         {/* Booked / Reserved */}
-        <div className="p-3 bg-amber-100/10 dark:bg-amber-955/20 border border-amber-100/50 dark:border-amber-900/30 rounded-lg text-center flex flex-col justify-center items-center">
+        <div className="p-3 bg-amber-100/80 dark:bg-amber-955/20 rounded-lg text-center flex flex-col justify-center items-center">
           <span className="text-xs font-bold text-amber-505 uppercase block mb-1">
             {t[language].reserved} ({getPercentage(bookedCount)}%)
           </span>
@@ -197,8 +197,8 @@ function ZoneHeaderCard({ zone }) {
         </div>
 
         {/* Maintenance */}
-        <div className="p-3 bg-slate-300 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-center col-span-2 md:col-span-1 flex flex-col justify-center items-center">
-          <span className="text-xs font-bold text-slate-400 uppercase block mb-1">
+        <div className="p-3 bg-slate-200 dark:bg-slate-800 rounded-lg text-center col-span-2 md:col-span-1 flex flex-col justify-center items-center">
+          <span className="text-xs font-bold text-slate-600 uppercase block mb-1">
             {t[language].maintenance} ({getPercentage(maintenanceCount)}%)
           </span>
           <span className="text-2xl md:text-3xl font-bold text-slate-600 dark:text-slate-400">
@@ -289,21 +289,25 @@ function FloorOverviewCard({ floorData, onClick, language }) {
 
       {/* Grid Stats */}
       <div className="grid grid-cols-2 gap-2 text-center">
-        <div className="p-2 bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 rounded-lg">
+        <div className="col-span-2 p-2 bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 rounded-lg">
           <span className="text-[10px] font-bold text-slate-400 block mb-0.5 uppercase">{language === "en" ? "Total Capacity" : "Tổng sức chứa"}</span>
           <span className="text-sm font-extrabold text-slate-850 dark:text-white">{capacity}</span>
         </div>
-        <div className="p-2 bg-emerald-50/40 dark:bg-emerald-955/10 border border-emerald-100/50 dark:border-emerald-900/20 rounded-lg">
+        <div className="p-2 bg-emerald-100/80 dark:bg-emerald-955/10 rounded-lg">
           <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-450 block mb-0.5 uppercase">{language === "en" ? "Available" : "Còn trống"}</span>
           <span className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400">{availableCount}</span>
         </div>
-        <div className="p-2 bg-rose-50/40 dark:bg-rose-955/10 border border-rose-100/50 dark:border-rose-900/20 rounded-lg">
+        <div className="p-2 bg-rose-100/80 dark:bg-rose-955/10 rounded-lg">
           <span className="text-[10px] font-bold text-rose-600 dark:text-rose-455 block mb-0.5 uppercase">{language === "en" ? "Occupied" : "Đang đỗ"}</span>
           <span className="text-sm font-extrabold text-rose-600 dark:text-rose-400">{occupiedCount}</span>
         </div>
-        <div className="p-2 bg-amber-50/40 dark:bg-amber-955/10 border border-amber-100/50 dark:border-amber-900/20 rounded-lg">
+        <div className="p-2 bg-amber-100/80 dark:bg-amber-955/10 rounded-lg">
           <span className="text-[10px] font-bold text-amber-550 dark:text-amber-505 block mb-0.5 uppercase">{language === "en" ? "Booked" : "Đã đặt"}</span>
           <span className="text-sm font-extrabold text-amber-600 dark:text-amber-400">{bookedCount}</span>
+        </div>
+        <div className="p-2 bg-slate-100/90 dark:bg-slate-800/60 rounded-lg">
+          <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block mb-0.5 uppercase">{language === "en" ? "Maintenance" : "Bảo trì"}</span>
+          <span className="text-sm font-extrabold text-slate-755 dark:text-slate-200">{maintenanceCount}</span>
         </div>
       </div>
     </div>
@@ -347,7 +351,6 @@ function SlotCard({ slot, isSelected, onClick }) {
       <div className="flex justify-between items-start">
         <div className="min-w-0">
           <span className="text-sm font-bold truncate block">{slot.slot_name}</span>
-          <span className="text-[9px] opacity-75 font-semibold block mt-0.5 truncate">ID: {slot.slot_id}</span>
         </div>
         <div className="flex items-center gap-0.5 ml-1 shrink-0 mt-0.5">
           {slot.is_electric_charging && (

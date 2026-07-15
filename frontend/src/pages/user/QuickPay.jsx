@@ -36,7 +36,7 @@ export default function SessionLookup() {
   const [graceSeconds, setGraceSeconds] = useState(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState("PAYOS");
-  const [showTicketInput, setShowTicketInput] = useState(false);
+  const [showTicketInput, setShowTicketInput] = useState(true);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -53,37 +53,26 @@ export default function SessionLookup() {
     if (status === "success") {
       setSuccessMessage(language === "en" ? "PayOS payment succeeded! Your parking session is paid." : "Thanh toán PayOS thành công! Phiên gửi xe đã được thanh toán.");
       window.history.replaceState({}, document.title, window.location.pathname);
-      localStorage.removeItem("qp_licensePlate");
-      localStorage.removeItem("qp_ticketCode");
-      if (savedPlate && savedCode) {
-        setTimeout(() => {
-          const cleanPlate = savedPlate.replace(/[-.\s]/g, "").toUpperCase();
-          api.get(`/parking/sessions/active/${cleanPlate}?ticketCode=${savedCode.trim().toUpperCase()}`)
-            .then(res => {
-              if (res.data && res.data.success) {
-                setSession(res.data.data);
-                setSearched(true);
-              }
-            }).catch(() => { });
-        }, 300);
-      }
     } else if (status === "cancelled") {
       setError(language === "en" ? "PayOS payment was cancelled." : "Thanh toán PayOS đã bị hủy bỏ.");
       window.history.replaceState({}, document.title, window.location.pathname);
-      localStorage.removeItem("qp_licensePlate");
-      localStorage.removeItem("qp_ticketCode");
-      if (savedPlate && savedCode) {
-        setTimeout(() => {
-          const cleanPlate = savedPlate.replace(/[-.\s]/g, "").toUpperCase();
-          api.get(`/parking/sessions/active/${cleanPlate}?ticketCode=${savedCode.trim().toUpperCase()}`)
-            .then(res => {
-              if (res.data && res.data.success) {
-                setSession(res.data.data);
-                setSearched(true);
-              }
-            }).catch(() => { });
-        }, 300);
-      }
+    }
+
+    if (savedPlate && savedCode) {
+      const cleanPlate = savedPlate.replace(/[-.\s]/g, "").toUpperCase();
+      api.get(`/parking/sessions/active/${cleanPlate}?ticketCode=${savedCode.trim().toUpperCase()}`)
+        .then(res => {
+          if (res.data && res.data.success) {
+            setSession(res.data.data);
+            setSearched(true);
+          }
+        })
+        .catch(err => {
+          if (err.response?.status === 404) {
+            localStorage.removeItem("qp_licensePlate");
+            localStorage.removeItem("qp_ticketCode");
+          }
+        });
     }
   }, [language]);
 
@@ -167,6 +156,8 @@ export default function SessionLookup() {
       const res = await api.get(url);
       if (res.data && res.data.success) {
         setSession(res.data.data);
+        localStorage.setItem("qp_licensePlate", licensePlate);
+        localStorage.setItem("qp_ticketCode", ticketCode);
       } else {
         setSession(null);
         setError(language === "en"
@@ -195,11 +186,9 @@ export default function SessionLookup() {
     setSuccessMessage("");
     setError("");
     try {
-      if (paymentMethod === "PAYOS") {
-        // Save search parameters to restore on return
-        localStorage.setItem("qp_licensePlate", licensePlate);
-        localStorage.setItem("qp_ticketCode", ticketCode);
-      }
+      // Save search parameters to restore on return
+      localStorage.setItem("qp_licensePlate", licensePlate);
+      localStorage.setItem("qp_ticketCode", ticketCode);
 
       const payload = {
         payment_method: paymentMethod,
@@ -249,113 +238,123 @@ export default function SessionLookup() {
   return (
     <div className="animate-slide-in w-full max-w-3xl xl:max-w-5xl 2xl:max-w-6xl mx-auto px-4 md:px-6 xl:px-8 py-4 md:py-6 transition-colors duration-300">
 
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-3 mb-6">
-        <Link
-          to="/user"
-          className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-white transition"
-        >
-          <ArrowLeft size={16} />
-        </Link>
-        <div>
-          <h2 className="text-xl xl:text-2xl font-black text-slate-800 dark:text-white leading-tight">
-            {language === "en" ? "Active Session Lookup" : "Tra cứu phiên đỗ xe"}
+      {/* ── MAIN GRID PANEL ── */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-lg shadow-slate-200/60 dark:shadow-slate-950/60 border border-slate-100 dark:border-slate-800 overflow-hidden mb-6">
+
+        {/* Panel Header */}
+        <div className="px-6 xl:px-8 py-5 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-br from-[#1e3a8a] via-[#1d4ed8] to-[#3b5cf6] dark:bg-slate-900/50">
+          <h2 className="text-lg xl:text-xl font-bold text-white dark:text-white">
+            {language === "en" ? "Parking Fee Payment" : "Thanh toán phí gửi xe"}
           </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            {language === "en"
-              ? "Check your vehicle's parking status, location, and current fee in real-time"
-              : "Kiểm tra trạng thái, vị trí ô đỗ và chi phí tạm tính theo thời gian thực"}
-          </p>
+
         </div>
-      </div>
 
-      {/* ── SEARCH CARD ── */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-lg shadow-slate-200/60 dark:shadow-slate-950/60 border border-slate-100 dark:border-slate-800 p-6 xl:p-7 mb-4">
-        <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">
-          {language === "en" ? "Active Session Lookup" : "Tra cứu phiên đỗ xe"}
-        </p>
-        <form onSubmit={(e) => handleSearch(e)} className="flex flex-col gap-3.5">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <span className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-blue-500">
-                <Car size={17} />
-              </span>
-              <input
-                type="text"
-                value={licensePlate}
-                onChange={(e) => setLicensePlate(e.target.value.toUpperCase())}
-                placeholder={language === "en" ? "Plate (e.g. 51F-123.45)" : "Biển số xe (VD: 51F-123.45)"}
-                className="w-full pl-11 pr-4 py-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-800 dark:text-white text-base font-bold placeholder-slate-300 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition-all tracking-widest"
-                required
-                disabled={loading}
-              />
-            </div>
+        <div className="p-6 xl:p-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
 
-            {!showTicketInput && (
-              <button
-                type="submit"
-                disabled={!licensePlate.trim()}
-                className="flex items-center justify-center gap-2 px-8 py-3.5 bg-blue-700 hover:bg-blue-600 active:bg-blue-800 text-white font-bold text-sm rounded-2xl shadow-lg shadow-blue-700/25 transition-all active:scale-[0.99] whitespace-nowrap"
-              >
-                {language === "en" ? "Continue" : "Tiếp tục"}
-              </button>
-            )}
-          </div>
-
-          {showTicketInput && (
-            <div className="flex flex-col sm:flex-row gap-3 animate-fade-in">
-              <div className="relative flex-1">
-                <span className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-blue-500">
-                  <Hash size={17} />
-                </span>
+          {/* LEFT COLUMN: Input Fields */}
+          <div className="lg:col-span-7 flex flex-col justify-between">
+            <form onSubmit={(e) => handleSearch(e)} className="flex flex-col gap-4">
+              {/* License Plate Input */}
+              <div className="relative">
                 <input
                   type="text"
-                  value={ticketCode}
-                  onChange={(e) => setTicketCode(e.target.value.toUpperCase())}
-                  placeholder={language === "en" ? "Enter Full Ticket Code (e.g. TICKET-12345)" : "Nhập toàn bộ mã vé (VD: TICKET-12345)"}
-                  className="w-full pl-11 pr-4 py-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-800 dark:text-white text-base font-bold placeholder-slate-300 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition-all tracking-wider"
+                  value={licensePlate}
+                  onChange={(e) => setLicensePlate(e.target.value.toUpperCase())}
+                  placeholder={language === "en" ? "License Plate" : "Nhập biển số xe"}
+                  className="w-full pl-4 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 font-semibold border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-white text-base  placeholder-slate-300 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition-all tracking-widest"
                   required
                   disabled={loading}
                 />
               </div>
 
+              {/* Ticket Code Input */}
+              <div className="relative">
+                <input
+                  type="text"
+                  value={ticketCode}
+                  onChange={(e) => setTicketCode(e.target.value.toUpperCase())}
+                  placeholder={language === "en" ? "Ticket Code" : "Nhập mã vé xe"}
+                  className="w-full pl-4 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 font-semibold border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-white text-base  placeholder-slate-300 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition-all tracking-wider"
+                  required
+                  disabled={loading}
+                />
+              </div>
+
+              {/* Lookup Button */}
               <button
                 type="submit"
                 disabled={loading || !licensePlate.trim() || !ticketCode.trim()}
-                className="flex items-center justify-center gap-2 px-8 py-3.5 bg-blue-700 hover:bg-blue-600 active:bg-blue-800 text-white font-bold text-sm rounded-2xl shadow-lg shadow-blue-700/25 transition-all active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                className="flex items-center justify-center gap-2 w-full py-4 bg-gradient-to-r from-blue-700 to-blue-600 hover:from-blue-800 hover:to-blue-700 text-white font-extrabold text-xs rounded-2xl shadow-lg shadow-blue-700/25 transition active:scale-[0.98] disabled:opacity-50 tracking-wider"
               >
-                {loading ? <RefreshCw size={15} className="animate-spin" /> : <Search size={15} />}
-                {language === "en" ? "Find My Vehicle" : "Tìm phương tiện"}
+                {loading ? <RefreshCw size={16} className="animate-spin" /> : <Search size={16} />}
+                {language === "en" ? "FIND MY VEHICLE" : "TRA CỨU PHÍ GỬI XE"}
               </button>
-            </div>
-          )}
-        </form>
+            </form>
 
-        {/* Error */}
-        {searched && error && (
-          <div className="mt-4 flex items-start gap-3 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 rounded-2xl p-4">
-            <AlertCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
-            <div>
-              <p className="text-xs font-bold text-rose-700 dark:text-rose-400">
-                {language === "en" ? "Error" : "Lỗi"}
-              </p>
-              <p className="text-xs text-rose-600/80 dark:text-rose-400/70 mt-0.5 leading-relaxed">{error}</p>
+            {/* Error Notification */}
+            {searched && error && (
+              <div className="mt-4 flex items-start gap-3 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 rounded-2xl p-4 animate-fade-in">
+                <AlertCircle className="w-4.5 h-4.5 text-rose-500 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-xs font-bold text-rose-700 dark:text-rose-400">
+                    {language === "en" ? "Error" : "Lỗi"}
+                  </p>
+                  <p className="text-xs text-rose-800 dark:text-rose-400/70 mt-0.5 leading-relaxed">{error}</p>
+                </div>
+              </div>
+            )}
+
+
+          </div>
+
+          {/* RIGHT COLUMN: Instructions/Guide */}
+          <div className="lg:col-span-5 bg-slate-50 dark:bg-slate-800/40 rounded-2xl p-5 border border-slate-100 dark:border-slate-800/60 flex flex-col justify-center">
+            <h3 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4">
+              {language === "en" ? "Payment Guide" : "Hướng dẫn thanh toán"}
+            </h3>
+
+            <div className="space-y-4">
+              {[
+                {
+                  step: "1",
+                  titleVi: "Nhập Biển Số Xe",
+                  titleEn: "Enter License Plate",
+                  descVi: "Nhập biển số xe viết liền không dấu, ví dụ: 51F12345.",
+                  descEn: "Enter plate number without spaces or dashes, e.g. 51F12345."
+                },
+                {
+                  step: "2",
+                  titleVi: "Nhập Mã Vé",
+                  titleEn: "Enter Ticket Code",
+                  descVi: "Nhập mã vé đỗ xe được in trên thẻ hoặc từ quầy, ví dụ: TICKET-10001.",
+                  descEn: "Enter the code printed on the ticket card, e.g. TICKET-10001."
+                },
+                {
+                  step: "3",
+                  titleVi: "Thanh Toán An Toàn",
+                  titleEn: "Secure Payment",
+                  descVi: "Xác nhận chi tiết thời gian đỗ, vị trí và thanh toán qua PayOS.",
+                  descEn: "Confirm duration/charges and pay via PayOS payment gateway."
+                }
+              ].map((item, i) => (
+                <div key={i} className="flex gap-3">
+                  <div className="w-6 h-6 rounded-full bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 font-extrabold text-xs flex items-center justify-center shrink-0 border border-blue-100 dark:border-blue-900/50">
+                    {item.step}
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                      {language === "en" ? item.titleEn : item.titleVi}
+                    </h4>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
+                      {language === "en" ? item.descEn : item.descVi}
+                    </p>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-        )}
 
-        {/* Success */}
-        {successMessage && (
-          <div className="mt-4 flex items-start gap-3 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 rounded-2xl p-4 animate-fade-in">
-            <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-            <div>
-              <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
-                {language === "en" ? "Success" : "Thành công"}
-              </p>
-              <p className="text-xs text-emerald-600/80 dark:text-emerald-400/70 mt-0.5 leading-relaxed">{successMessage}</p>
-            </div>
-          </div>
-        )}
+        </div>
       </div>
 
       {/* ── SESSION RESULT ── */}
@@ -364,7 +363,7 @@ export default function SessionLookup() {
         <div className="grid grid-cols-1 xl:grid-cols-5 gap-4 animate-fade-in">
 
           {/* LEFT COL — vehicle info (3/5) */}
-          <div className="xl:col-span-3 bg-white dark:bg-slate-900 rounded-3xl shadow-lg shadow-slate-200/60 dark:shadow-slate-950/60 border border-slate-100 dark:border-slate-800 overflow-hidden">
+          <div className="xl:col-span-3 bg-white dark:bg-slate-900 rounded-2xl shadow-lg shadow-slate-200/60 dark:shadow-slate-950/60 border border-slate-100 dark:border-slate-800 overflow-hidden">
 
             {/* Vehicle header */}
             <div className="px-6 xl:px-7 py-5 flex items-center justify-between border-b border-slate-100 dark:border-slate-800">
@@ -374,12 +373,12 @@ export default function SessionLookup() {
                 </div>
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-black text-slate-800 dark:text-white tracking-widest text-base xl:text-lg">
+                    <span className="font-black text-slate-800 dark:text-white text-base xl:text-lg">
                       {session.license_plate_in || licensePlate}
                     </span>
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wide bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                      {language === "en" ? "Active" : "Đang đỗ"}
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wide bg-blue-100 dark:bg-blue-950/60 text-blue-500 dark:text-blue-400 border border-blue-200 dark:border-blue-900">
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                      {language === "en" ? "Parking" : "Đang đỗ"}
                     </span>
                   </div>
                   <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
@@ -446,7 +445,7 @@ export default function SessionLookup() {
 
             {session.payment_status?.toUpperCase() === "PAID" ? (
               /* PAID status card with countdown */
-              <div className="bg-emerald-600 dark:bg-emerald-700 rounded-3xl shadow-lg shadow-emerald-700/25 overflow-hidden flex-1 flex flex-col justify-between p-6 text-white border border-emerald-500/20">
+              <div className="bg-emerald-600 dark:bg-emerald-700 rounded-2xl shadow-lg shadow-emerald-700/25 overflow-hidden flex-1 flex flex-col justify-between p-6 text-white border border-emerald-500/20">
                 <div>
                   <div className="flex items-center gap-2 mb-2 text-white font-bold uppercase tracking-widest text-[10px]">
                     <CheckCircle size={14} className="text-white shrink-0 " />
@@ -471,7 +470,7 @@ export default function SessionLookup() {
               </div>
             ) : (
               /* Fee card */
-              <div className="bg-blue-700 dark:bg-blue-800 rounded-3xl shadow-lg shadow-blue-700/25 overflow-hidden flex-1">
+              <div className="bg-blue-700 dark:bg-blue-800 rounded-2xl shadow-lg shadow-blue-700/25 overflow-hidden flex-1">
                 <div className="px-6 xl:px-7 pt-6 pb-5">
                   <p className="text-[10px] font-black text-blue-200 uppercase tracking-widest mb-3">
                     {language === "en" ? "Total Amount Due" : "Phí tạm tính"}
@@ -544,7 +543,7 @@ export default function SessionLookup() {
             )}
 
             {/* Grace period notice */}
-            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-amber-200 dark:border-amber-900/40 shadow-lg shadow-slate-200/60 dark:shadow-slate-950/60 px-6 xl:px-7 py-5 flex items-start gap-3">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-amber-200 dark:border-amber-900/40 shadow-lg shadow-slate-200/60 dark:shadow-slate-950/60 px-6 xl:px-7 py-5 flex items-start gap-3">
               <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center shrink-0 mt-0.5">
                 <Info size={14} className="text-amber-600 dark:text-amber-400" />
               </div>
@@ -569,28 +568,6 @@ export default function SessionLookup() {
                 </p>
               </div>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Empty state hint */}
-      {!searched && (
-        <div className="flex flex-col gap-3 bg-blue-50/60 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30 rounded-2xl p-4">
-          <div className="flex items-start gap-3">
-            <CheckCircle size={15} className="text-blue-500 shrink-0 mt-0.5" />
-            <p className="text-xs text-blue-600/80 dark:text-blue-400/80 leading-relaxed">
-              {language === "en"
-                ? "Enter your vehicle's license plate and your ticket code to view parking status, slot location, and current fee in real-time."
-                : "Nhập biển số xe và mã vé xe để kiểm tra trạng thái đỗ xe, vị trí ô đỗ và chi phí tạm tính theo thời gian thực."}
-            </p>
-          </div>
-          <div className="flex items-start gap-3 border-t border-blue-100/30 dark:border-blue-900/20 pt-3">
-            <Info size={15} className="text-amber-500 shrink-0 mt-0.5" />
-            <p className="text-xs text-amber-700 dark:text-amber-400/90 leading-relaxed">
-              {language === "en"
-                ? "Note: Quick Pay is exclusively for registered walk-in vehicles. Booking-based parking sessions must be checked out at the gates."
-                : "Lưu ý: Quick Pay chỉ dành cho xe vãng lai đã đăng ký tài khoản. Các lượt gửi xe đặt trước (Booking) vui lòng thực hiện check-out tại cổng."}
-            </p>
           </div>
         </div>
       )}

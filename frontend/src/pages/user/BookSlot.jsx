@@ -723,12 +723,7 @@ export default function BookSlot() {
     return (
       <div className="animate-slide-in h-[calc(100vh-8rem)] flex flex-col relative p-4 md:p-6">
         <div className="mb-6 flex items-center gap-4">
-          <button
-            onClick={() => navigate("/user")}
-            className="p-2 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition"
-          >
-            <ArrowLeft className="w-5 h-5 text-slate-600 dark:text-slate-300" />
-          </button>
+
           <div>
             <h2 className="text-xl md:text-2xl font-black text-slate-800 dark:text-white leading-tight">
               {language === "en" ? "Choose Vehicle Type" : "Chọn loại phương tiện"}

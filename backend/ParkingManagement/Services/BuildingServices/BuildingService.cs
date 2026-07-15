@@ -38,7 +38,7 @@ public class BuildingService : IBuildingService
             BuildingName = building.BuildingName,
             Address = building.Address,
             TotalFloors = building.TotalFloors,
-            TotalSlots = building.TotalSlots,
+            TotalSlots = total,  // Use live computed total from FloorZones (occupied + available)
             Status = building.Status,
             OperationHours = new OperationHoursDto
             {
