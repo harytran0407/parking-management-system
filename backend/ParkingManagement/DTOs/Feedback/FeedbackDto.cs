@@ -44,7 +44,7 @@ namespace ParkingManagement.DTOs.Feedback
     public class ProcessFeedbackRequestDto
     {
         [Required(ErrorMessage = "Please provide processing status")]
-        [RegularExpression(@"(?i)^(OPEN|IN_PROGRESS|IN PROGRESS|RESOLVED|CLOSED)$", ErrorMessage = "Invalid Status")]
+        [RegularExpression(@"(?i)^(OPEN|RESOLVED)$", ErrorMessage = "Invalid Status")]
         public string Status { get; set; } = string.Empty;
 
         public string? ResponseNote { get; set; }

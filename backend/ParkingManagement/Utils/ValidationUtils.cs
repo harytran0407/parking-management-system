@@ -11,8 +11,8 @@ namespace ParkingManagement.Utils
         public static bool IsValidEmail(string email)
         {
             if (string.IsNullOrEmpty(email)) return false;
-            string emailPattern = @"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$";
-            return Regex.IsMatch(email, emailPattern);
+            string emailPattern = @"^[a-zA-Z0-9._%+-]+@(gmail\.com|hotmail\.com|outlook\.com|yahoo\.com)$";
+            return Regex.IsMatch(email, emailPattern, RegexOptions.IgnoreCase); // Cho phép 4 loại mai : Gmail, Outlook, Hotmail, yahoo
         }
 
         public static bool IsValidPhoneNumber(string phoneNumber)
