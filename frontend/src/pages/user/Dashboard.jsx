@@ -21,6 +21,10 @@ import {
   Building,
   Layers,
   Info,
+  CheckCircle2,
+  CalendarCheck,
+  MoreVertical,
+  Receipt,
 } from "lucide-react";
 import { useLanguage } from "../../hooks/useLanguage";
 
@@ -38,6 +42,20 @@ const FALLBACK_MAP_URL =
 
 const fmtVND = (val) => (val != null ? val.toLocaleString("vi-VN") : "0");
 
+const formatTime = (iso, language = "vi") => {
+  if (!iso) return "—";
+  try {
+    const date = new Date(iso);
+    return date.toLocaleTimeString(language === "en" ? "en-US" : "vi-VN", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+  } catch (e) {
+    return "—";
+  }
+};
+
 export default function UserDashboard() {
   const navigate = useNavigate();
   const { language } = useLanguage();
@@ -45,6 +63,7 @@ export default function UserDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showRulesModal, setShowRulesModal] = useState(false);
+  const [recentBooking, setRecentBooking] = useState(null);
 
   const [buildingInfo, setBuildingInfo] = useState({
     building_id: "",
@@ -125,6 +144,65 @@ export default function UserDashboard() {
         } catch (floorsErr) {
           console.error("Failed to load floors allocation:", floorsErr);
         }
+
+        // Fetch user's bookings to show the most recent session
+        try {
+          const bookingsRes = await api.get("/bookings/my");
+          if (bookingsRes.data?.success && bookingsRes.data.data.length > 0) {
+            // Filter out cancelled; only keep confirmed / active / completed
+            const eligible = bookingsRes.data.data.filter((bk) => {
+              const st = (bk.status.toLowerCase() === "active" && !bk.actual_check_in)
+                ? "confirmed"
+                : bk.status.toLowerCase();
+              return st === "confirmed" || st === "active" || st === "completed";
+            });
+
+            if (eligible.length === 0) { setRecentBooking(null); return; }
+
+            const sorted = [...eligible].sort((a, b) => {
+              const score = (bk) => {
+                const stat = (bk.status.toLowerCase() === "active" && !bk.actual_check_in) ? "confirmed" : bk.status.toLowerCase();
+                if (stat === "confirmed") return 4;
+                return 1;
+              };
+              const scoreDiff = score(b) - score(a);
+              if (scoreDiff !== 0) return scoreDiff;
+              return new Date(b.booking_time).getTime() - new Date(a.booking_time).getTime();
+            });
+
+            const b = sorted[0];
+            const typeId = b.vehicle_type_id;
+            const typeNameLower = (b.vehicle_type || "").toLowerCase();
+            const isCar = typeId === 2 || (typeId !== 1 && (typeNameLower.includes("car") || typeNameLower.includes("ô tô")));
+            const defaultPrice = isCar ? 15000 : 5000;
+
+            setRecentBooking({
+              id: b.booking_id,
+              slotId: b.slot_id || "N/A",
+              slotName: b.slot_name || (language === "en" ? "Assigned at Check-in" : "Chỉ định lúc Check-in"),
+              floorNumber: b.floor_number,
+              zoneName: b.zone_name || "TBD",
+              vehicleType: isCar ? "car" : "motorbike",
+              plate_number: b.license_plate,
+              startTime: b.expected_arrival,
+              endTime: b.expired_at,
+              totalPrice: b.estimated_fee || b.deposit_paid || defaultPrice,
+              depositPaid: b.deposit_paid || defaultPrice,
+              earlyFee: b.early_fee || 0,
+              penaltyFee: b.penalty_fee || 0,
+              actualCheckIn: b.actual_check_in || null,
+              actualCheckOut: b.actual_check_out || null,
+              status: (b.status.toLowerCase() === "active" && !b.actual_check_in) ? "confirmed" : b.status.toLowerCase(),
+              isLocked: b.is_locked,
+              bookingTime: b.booking_time,
+              paymentMethod: b.payment_method || null,
+            });
+          } else {
+            setRecentBooking(null);
+          }
+        } catch (bookingErr) {
+          console.error("Failed to load user recent booking:", bookingErr);
+        }
       } catch (err) {
         setError(
           err.message ||
@@ -174,7 +252,7 @@ export default function UserDashboard() {
   // ==========================================
   if (loading) {
     return (
-      <div className="w-full h-96 flex flex-col items-center justify-center space-y-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-3xl transition-colors duration-300">
+      <div className="w-full h-96 flex flex-col items-center justify-center space-y-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl transition-colors duration-300">
         <RefreshCw className="w-7 h-7 text-blue-500 dark:text-blue-400 animate-spin" />
         <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">
           {language === "en" ? "Updating live parking status..." : "Đang cập nhật trạng thái đỗ xe..."}
@@ -188,7 +266,7 @@ export default function UserDashboard() {
   // ==========================================
   if (error) {
     return (
-      <div className="w-full p-8 bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/40 rounded-3xl flex flex-col items-center text-center space-y-3 transition-colors duration-300">
+      <div className="w-full p-8 bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/40 rounded-2xl flex flex-col items-center text-center space-y-3 transition-colors duration-300">
         <AlertCircle className="w-10 h-10 text-rose-500" />
         <h4 className="text-base font-black text-rose-700 dark:text-rose-400">
           {language === "en" ? "Connection Error" : "Lỗi kết nối"}
@@ -222,7 +300,7 @@ export default function UserDashboard() {
     <div className="animate-slide-in w-full font-sans transition-colors duration-300">
 
       {/* ── HERO SECTION ── */}
-      <div className="relative w-full rounded-xl overflow-hidden min-h-[320px] md:min-h-[400px] group">
+      <div className="relative w-full rounded-xl overflow-hidden min-h-[280px] sm:min-h-[340px] md:min-h-[400px] group">
         {/* Background carousel */}
         <div
           className="absolute inset-0 flex transition-transform duration-1000 ease-in-out"
@@ -267,7 +345,7 @@ export default function UserDashboard() {
         </button>
 
         {/* Dots */}
-        <div className="absolute bottom-[130px] md:bottom-6 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
+        <div className="absolute bottom-[150px] sm:bottom-[120px] md:bottom-6 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
           {STATIC_IMAGES.map((_, i) => (
             <button
               key={i}
@@ -280,8 +358,8 @@ export default function UserDashboard() {
         </div>
 
         {/* Hero content — always on dark overlay so text stays white */}
-        <div className="absolute bottom-0 left-0 right-0 z-20 p-5 md:p-7">
-          <h1 className="text-3xl md:text-4xl font-black text-white leading-tight tracking-tight mb-2 drop-shadow-lg">
+        <div className="absolute bottom-0 left-0 right-0 z-20 p-4 sm:p-5 md:p-7">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-white leading-tight tracking-tight mb-2 drop-shadow-lg">
             {buildingInfo.building_name || (language === "en" ? "Smart Parking Lot" : "Bãi đỗ xe thông minh")}
           </h1>
           <div className="flex flex-wrap items-center gap-4 text-sm text-slate-300">
@@ -327,80 +405,124 @@ export default function UserDashboard() {
         </div>
       </div>
 
-
-
       {/* ── MAIN CONTENT GRID ── */}
-      <div className="mt-3 grid grid-cols-1 lg:grid-cols-3 gap-3">
+      <div className="mt-6 grid grid-cols-1 lg:grid-cols-10 gap-6">
 
         {/* LEFT COL */}
-        <div className="lg:col-span-2 flex flex-col gap-3">
+        <div className="order-2 lg:order-1 lg:col-span-6 flex flex-col gap-6">
 
           {/* Pricing Rates */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 transition-colors duration-300">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                <DollarSign size={13} />
-                {language === "en" ? "Parking Rates" : "Bảng giá đỗ xe"}
-              </h3>
-              <span className="text-[10px] font-black bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800/50 px-2 py-0.5 rounded-md uppercase tracking-wider">
-                {language === "en" ? "Standard" : "Tiêu chuẩn"}
-              </span>
+            {/* Header */}
+            <div className="flex items-center gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
+              <div className="w-8 h-8 rounded-xl bg-blue-600 dark:bg-blue-500 flex items-center justify-center text-white shrink-0 shadow-md">
+                <Receipt size={18} />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-tight">
+                  {language === "en" ? "Parking Fee Schedule" : "Biểu phí đỗ xe"}
+                </h3>
+              </div>
             </div>
 
-            {pricingPolicy.length > 0 ? (
-              <div className="space-y-4">
-                {pricingPolicy.map((policy) => (
-                  <div key={policy.policy_id || policy.vehicle_type_id}>
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="text-blue-500 dark:text-blue-400">{vehicleIcon(policy.vehicle_type_name)}</div>
-                      <span className="text-xs font-black text-slate-700 dark:text-white uppercase tracking-wide">
-                        {policy.vehicle_type_name}
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-3 gap-2 text-xs">
-                      <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/50 rounded-xl p-3">
-                        <p className="text-slate-400 dark:text-slate-500 text-[10px] font-bold mb-1">
-                          {language === "en" ? `Base Price (${policy.base_hours}h)` : `Giá vào cổng (${policy.base_hours}h)`}
-                        </p>
-                        <p className="text-blue-600 dark:text-blue-400 font-black text-sm">{fmtVND(policy.base_price)}đ</p>
-                      </div>
-                      <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/50 rounded-xl p-3">
-                        <p className="text-slate-400 dark:text-slate-500 text-[10px] font-bold mb-1">
-                          {language === "en" ? `Subsequent (${policy.subsequent_hours}h)` : `Block sau (${policy.subsequent_hours}h)`}
-                        </p>
-                        <p className="text-amber-600 dark:text-amber-400 font-black text-sm">+{fmtVND(policy.subsequent_rate)}đ</p>
-                      </div>
-                      <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/50 rounded-xl p-3">
-                        <p className="text-slate-400 dark:text-slate-500 text-[10px] font-bold mb-1">
-                          {language === "en" ? "Daily Max 24h" : "Trần 24h"}
-                        </p>
-                        <p className="text-emerald-600 dark:text-emerald-400 font-black text-sm">{fmtVND(policy.daily_max_price)}đ</p>
-                      </div>
-                    </div>
-                    {/* {policy.handling_fee > 0 && (
-                      <div className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 px-1 font-semibold flex justify-between">
-                        <span>{language === "en" ? "Lost Card Penalty" : "Phí báo mất thẻ"}:</span>
-                        <span className="font-bold text-rose-500">{fmtVND(policy.handling_fee)}đ</span>
-                      </div>
-                    )} */}
+            {pricingPolicy.length > 0 ? (() => {
+              const firstPolicy = pricingPolicy[0] || { base_hours: 4, subsequent_hours: 1 };
+              const baseHoursLabel = `${firstPolicy.base_hours}H`;
+              const subsequentHoursLabel = `${firstPolicy.subsequent_hours}H`;
+              const lostFee = pricingPolicy.find(p => p.handling_fee > 0)?.handling_fee || 50000;
+
+              return (
+                <>
+                  <div className="overflow-x-auto w-full mt-4">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-slate-50 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider text-[10px] border-b border-slate-100 dark:border-slate-800">
+                          <th className="py-3 px-4 font-semibold text-[10px] uppercase text-slate-500 dark:text-slate-400">
+                            {language === "en" ? "Vehicle Type" : "Loại xe"}
+                          </th>
+                          <th className="py-3 px-4 font-semibold text-[10px] uppercase text-slate-500 dark:text-slate-400">
+                            {language === "en" ? `Base Price (${baseHoursLabel})` : `Giá cổng (${baseHoursLabel})`}
+                          </th>
+                          <th className="py-3 px-4 font-semibold text-[10px] uppercase text-slate-500 dark:text-slate-400">
+                            {language === "en" ? `Subsequent (${subsequentHoursLabel})` : `Block sau (${subsequentHoursLabel})`}
+                          </th>
+                          <th className="py-3 px-4 font-semibold text-[10px] uppercase text-slate-500 dark:text-slate-400 text-right">
+                            {language === "en" ? "Daily Max (24H)" : "Trần 24H"}
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                        {pricingPolicy.map((policy) => {
+                          const isCar = (policy.vehicle_type_name || "").toLowerCase().includes("car") || (policy.vehicle_type_name || "").toLowerCase().includes("ô tô") || policy.vehicle_type_id === 2;
+                          const titleVi = isCar ? "Ô TÔ" : "XE MÁY";
+                          const titleEn = isCar ? "CAR" : "MOTORBIKE";
+                          const icon = isCar ? <Car size={18} className="shrink-0" /> : <Bike size={18} className="shrink-0" />;
+
+                          return (
+                            <tr key={policy.policy_id || policy.vehicle_type_id} className="hover:bg-slate-50/20 dark:hover:bg-slate-800/10">
+                              {/* Col 1: Vehicle Type */}
+                              <td className="py-3 px-4 flex items-center gap-3">
+                                <div className="text-blue-600 dark:text-blue-400">
+                                  {icon}
+                                </div>
+                                <div className="flex flex-col">
+                                  <span className="font-bold text-sm text-slate-800 dark:text-slate-200">
+                                    {language === "en" ? titleEn : titleVi}
+                                  </span>
+                                  <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">
+                                    {language === "en" ? titleVi : titleEn}
+                                  </span>
+                                </div>
+                              </td>
+                              {/* Col 2: Base Price */}
+                              <td className="py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-350">
+                                {fmtVND(policy.base_price)}đ
+                              </td>
+                              {/* Col 3: Subsequent */}
+                              <td className="py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-350">
+                                +{fmtVND(policy.subsequent_rate)}đ
+                              </td>
+                              {/* Col 4: Daily Max */}
+                              <td className="py-3 px-4 text-sm font-bold text-emerald-600 dark:text-emerald-400 text-right">
+                                {fmtVND(policy.daily_max_price)}đ
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-xs text-slate-400 italic text-center py-4">
+
+                  <div className="mt-4 p-3.5 bg-slate-50 dark:bg-slate-800/20 border border-slate-100 dark:border-slate-800/80 rounded-xl flex items-start gap-2.5 text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
+                    <Info size={16} className="text-blue-500 dark:text-blue-400 shrink-0 mt-0.5" />
+                    <p className="margin-0 text-[11px]">
+                      {language === "en"
+                        ? `Lost ticket fee is ${fmtVND(lostFee)}đ. Overnight parking is available and secure.`
+                        : `Phí mất vé là ${fmtVND(lostFee)}đ. Có chỗ đỗ xe qua đêm an toàn.`}
+                    </p>
+                  </div>
+                </>
+              );
+            })() : (
+              <p className="text-xs text-slate-400 italic text-center py-8">
                 {language === "en" ? "Loading pricing rates..." : "Đang tải bảng giá..."}
               </p>
             )}
-
 
           </div>
 
           {/* Operating Hours */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 transition-colors duration-300">
-            <h3 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2 mb-4">
-              <Clock size={13} />
-              {language === "en" ? "Operating Hours" : "Giờ hoạt động"}
-            </h3>
+            <div className="flex items-center gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
+              <div className="w-8 h-8 rounded-xl bg-blue-600 dark:bg-blue-500 flex items-center justify-center text-white shrink-0 shadow-md">
+                <Clock size={18} />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-tight">
+                  {language === "en" ? "Operating Hours" : "Giờ hoạt động"}
+                </h3>
+              </div>
+            </div>
             <div className="space-y-0">
               {[
                 {
@@ -431,17 +553,20 @@ export default function UserDashboard() {
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden transition-colors duration-300">
             <div className="px-5 pt-4 pb-3 flex items-center justify-between">
               <div>
-                <h3 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                  <MapPin size={13} />
-                  {language === "en" ? "Location & Surroundings" : "Vị trí & Xung quanh"}
-                </h3>
-                <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
-                  {language === "en" ? "92 - 94 Nam Ky Khoi Nghia, Ho Chi Minh" : "92 - 94 Nam Kỳ Khởi Nghĩa, Hồ Chí Minh"}
-                </p>
+                <div className="flex items-center gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
+                  <div className="w-8 h-8 rounded-xl bg-blue-600 dark:bg-blue-500 flex items-center justify-center text-white shrink-0 shadow-md">
+                    <MapPin size={18} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-tight">
+                      {language === "en" ? "Location" : "Vị trí & Xung quanh"}
+                    </h3>
+                  </div>
+                </div>
+
               </div>
-              <MapPin size={14} className="text-blue-500" />
             </div>
-            <div className="h-48 w-full">
+            <div className="h-44 sm:h-48 md:h-52 w-full">
               <iframe
                 src={FALLBACK_MAP_URL}
                 width="100%"
@@ -469,199 +594,287 @@ export default function UserDashboard() {
               </button>
             </div>
           </div>
+
+
+
         </div>
 
         {/* RIGHT COL */}
-        <div className="flex flex-col gap-3">
+        <div className="order-1 lg:order-2 lg:col-span-4 flex flex-col gap-6">
 
-          {/* Live Availability */}
+          {/* Parking Capacity — styled identical to Landing Page CapacityPill */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 transition-colors duration-300">
+            {/* Header */}
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                {language === "en" ? "Live Availability" : "Chỗ trống hiện tại"}
-              </h3>
-              <div className="flex items-center gap-1.5">
-                <span className="relative flex h-2 w-2">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                <span className="relative flex h-2.5 w-2.5 mr-1">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
                 </span>
-                <span className="text-[10px] font-black text-emerald-500 dark:text-emerald-400 uppercase tracking-wider">Live</span>
-              </div>
+                {language === "en" ? "Parking Capacity" : "Chỗ trống hiện tại"}
+              </h3>
+              <span className="text-[10px] font-black text-emerald-500 dark:text-emerald-400 uppercase tracking-wider">Live</span>
             </div>
 
-            {buildingInfo.vehicle_type_availability && buildingInfo.vehicle_type_availability.length > 0 ? (
-              buildingInfo.vehicle_type_availability.map((vt) => {
-                const available = vt.available_slots;
-                const cap = vt.total_slots;
-                const pct = cap > 0 ? Math.min(100, Math.round(((cap - available) / cap) * 100)) : 0;
-                const isHighOccupancy = pct > 70;
+            {(() => {
+              const availability = buildingInfo.vehicle_type_availability || [];
+              const moto = availability.find(vt => vt.vehicle_type_id === 1) || { available_slots: 0, total_slots: 0 };
+              const car = availability.find(vt => vt.vehicle_type_id === 2) || { available_slots: 0, total_slots: 0 };
 
+              const fallbackCarAvail = availableSlotsCount;
+              const fallbackCarTotal = totalSlots;
+              const fallbackMotoAvail = Math.round(availableSlotsCount * 0.6);
+              const fallbackMotoTotal = Math.round(totalSlots * 0.6);
+
+              const motoAvail = moto.total_slots > 0 ? moto.available_slots : fallbackMotoAvail;
+              const motoTotal = moto.total_slots > 0 ? moto.total_slots : fallbackMotoTotal;
+              const motoPct = motoTotal > 0 ? Math.min(100, Math.round(((motoTotal - motoAvail) / motoTotal) * 100)) : 0;
+
+              const carAvail = car.total_slots > 0 ? car.available_slots : fallbackCarAvail;
+              const carTotal = car.total_slots > 0 ? car.total_slots : fallbackCarTotal;
+              const carPct = carTotal > 0 ? Math.min(100, Math.round(((carTotal - carAvail) / carTotal) * 100)) : 0;
+
+              const Pill = ({ icon: Icon, label, avail, total, pct, minW = "120px" }) => {
+                const isFull = avail === 0;
                 return (
-                  <div key={vt.vehicle_type_id} className="mb-4">
-                    <div className="flex items-center justify-between mb-1.5">
-                      <div className="flex items-center gap-2">
-                        <div className="text-blue-500 dark:text-blue-400">{vehicleIcon(vt.vehicle_type_name)}</div>
-                        <span className="text-xs font-bold text-slate-600 dark:text-slate-300">{vt.vehicle_type_name}</span>
+                  <div
+                    style={{
+                      background: "#ffffff",
+                      border: `1.5px solid ${isFull ? "#dc2626" : "rgb(226,232,240)"}`,
+                      borderRadius: 16,
+                      padding: "18px 18px 14px",
+                      flex: 1,
+                      minWidth: minW,
+                      boxShadow: isFull
+                        ? "0 4px 18px rgba(220,38,38,0.10)"
+                        : "0 4px 18px rgba(15,23,42,0.08)",
+                    }}
+                  >
+                    {/* Label row */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, color: isFull ? "#dc2626" : "#475569", marginBottom: 10 }}>
+                      <Icon size={13} color={isFull ? "#dc2626" : "#1d4ed8"} />
+                      {label}
+                      {isFull && (
+                        <span style={{ marginLeft: "auto", fontSize: 10, background: "#fee2e2", color: "#dc2626", padding: "1px 7px", borderRadius: 99, fontWeight: 700 }}>
+                          {language === "en" ? "Full" : "Hết"}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Hero number: available / total */}
+                    <div style={{ textAlign: "center", padding: "10px 0 12px" }}>
+                      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: 4 }}>
+                        <span style={{ fontSize: 46, fontWeight: 900, lineHeight: 1, color: isFull ? "#dc2626" : "#1d4ed8", letterSpacing: "-0.03em", textShadow: isFull ? "0 2px 16px rgba(220,38,38,0.2)" : "0 2px 16px rgba(29,78,216,0.2)" }}>
+                          {avail}
+                        </span>
+                        <span style={{ fontSize: 18, fontWeight: 700, color: "#94a3b8", letterSpacing: "-0.02em" }}>
+                          /{total}
+                        </span>
                       </div>
-                      <span className="text-xs font-black text-slate-800 dark:text-white">
-                        {available} <span className="text-slate-400 dark:text-slate-500 font-normal">/ {cap}</span>
-                      </span>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: isFull ? "#ef4444" : "#1d4ed8", letterSpacing: "0.06em", textTransform: "uppercase", marginTop: 4, opacity: 0.7 }}>
+                        {language === "en" ? "available slots" : "chỗ trống"}
+                      </div>
                     </div>
-                    <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all duration-700 ${isHighOccupancy
-                          ? "bg-gradient-to-r from-amber-500 to-rose-500"
-                          : "bg-gradient-to-r from-blue-500 to-indigo-500"
-                          }`}
-                        style={{ width: `${pct}%` }}
-                      />
+
+                    {/* Progress bar */}
+                    <div style={{ height: 6, borderRadius: 99, background: isFull ? "#fee2e2" : "#dbeafe", overflow: "hidden" }}>
+                      <div style={{ height: "100%", borderRadius: 99, width: `${pct}%`, background: isFull ? "#ef4444" : "#1d4ed8", transition: "width 0.6s ease" }} />
                     </div>
-                    <div className="flex items-center justify-between mt-1">
-                      <p className={`text-[10px] font-bold ${isHighOccupancy ? "text-amber-500 dark:text-amber-400" : "text-slate-400 dark:text-slate-500"}`}>
-                        {pct}% {language === "en" ? "Capacity Reached" : "Đã sử dụng"}
-                      </p>
-                      <p className="text-[10px] font-bold text-emerald-500 dark:text-emerald-400">
-                      </p>
+                    <div style={{ fontSize: 11, color: isFull ? "#ef4444" : "#93c5fd", marginTop: 5, textAlign: "right" }}>
+                      {pct}% occupied
                     </div>
                   </div>
                 );
-              })
-            ) : (
-              pricingPolicy.map((policy) => {
-                const isCar = policy.vehicle_type_id === 2;
-                const available = isCar ? availableSlotsCount : Math.round(availableSlotsCount * 0.6);
-                const cap = isCar ? totalSlots : Math.round(totalSlots * 0.6);
-                const pct = cap > 0 ? Math.min(100, Math.round(((cap - available) / cap) * 100)) : 0;
-                const isHighOccupancy = pct > 70;
+              };
 
-                return (
-                  <div key={policy.policy_id} className="mb-4">
-                    <div className="flex items-center justify-between mb-1.5">
-                      <div className="flex items-center gap-2">
-                        <div className="text-blue-500 dark:text-blue-400">{vehicleIcon(policy.vehicle_type_name)}</div>
-                        <span className="text-xs font-bold text-slate-600 dark:text-slate-300">{policy.vehicle_type_name}</span>
-                      </div>
-                      <span className="text-xs font-black text-slate-800 dark:text-white">
-                        {available} <span className="text-slate-400 dark:text-slate-500 font-normal">/ {cap}</span>
-                      </span>
-                    </div>
-                    <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all duration-700 ${isHighOccupancy
-                          ? "bg-gradient-to-r from-amber-500 to-rose-500"
-                          : "bg-gradient-to-r from-blue-500 to-indigo-500"
-                          }`}
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                    <div className="flex items-center justify-between mt-1">
-                      <p className={`text-[10px] font-bold ${isHighOccupancy ? "text-amber-500 dark:text-amber-400" : "text-slate-400 dark:text-slate-500"}`}>
-                        {pct}% {language === "en" ? "Capacity Reached" : "Đã sử dụng"}
-                      </p>
-                      <p className="text-[10px] font-bold text-emerald-500 dark:text-emerald-400">
-                        {available} {language === "en" ? "Available" : "Còn trống"}
-                      </p>
-                    </div>
+              const totalLiveSlots = motoTotal + carTotal;
+
+              return (
+                <div>
+                  <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
+                    <Pill icon={Bike} label={language === "en" ? "Motorbikes" : "Xe máy"} avail={motoAvail} total={motoTotal} pct={motoPct} minW="140px" />
+                    <Pill icon={Car} label={language === "en" ? "Cars" : "Ô tô"} avail={carAvail} total={carTotal} pct={carPct} minW="140px" />
                   </div>
-                );
-              })
-            )}
 
-            {/* Total Capacity & Floors */}
-            <div className="grid grid-cols-2 gap-2 mt-2 pt-3 border-t border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-2">
-                <div className="bg-blue-50 dark:bg-blue-950/50 p-1.5 rounded-lg">
-                  <Building size={13} className="text-blue-600 dark:text-blue-400" />
+                  {/* Stats row — identical to Landing Page */}
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", background: "#f8fafc", borderRadius: 12, border: "1px solid #e2e8f0", overflow: "hidden" }}>
+                    {[
+                      [totalLiveSlots > 0 ? String(totalLiveSlots) : "—", language === "en" ? "Parking Spots" : "Tổng chỗ đỗ"],
+                      ["98%", language === "en" ? "On-time Check-in" : "Đúng giờ"],
+                      ["24/7", language === "en" ? "Open" : "Hoạt động"],
+                    ].map(([val, lbl], i) => (
+                      <div key={lbl} style={{ padding: "14px 0", textAlign: "center", borderRight: i < 2 ? "1px solid #e2e8f0" : "none" }}>
+                        <div style={{ fontSize: 18, fontWeight: 700, color: "#1d4ed8" }}>{val}</div>
+                        <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>{lbl}</div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div>
-                  <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold">{language === "en" ? "Capacity" : "Sức chứa"}</p>
-                  <p className="text-xs font-black text-slate-800 dark:text-white">{totalSlots}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="bg-indigo-50 dark:bg-indigo-950/50 p-1.5 rounded-lg">
-                  <Layers size={13} className="text-indigo-600 dark:text-indigo-400" />
-                </div>
-                <div>
-                  <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold">{language === "en" ? "Floors" : "Số tầng"}</p>
-                  <p className="text-xs font-black text-slate-800 dark:text-white">{buildingInfo?.total_floors}</p>
-                </div>
-              </div>
-            </div>
+              );
+            })()}
           </div>
 
-          {/* Floor Allocation Map Card */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 transition-colors duration-300">
-            <h3 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4">
-              {language === "en" ? "Floor Map" : "Bản đồ tầng"}
-            </h3>
+          {/* Upcoming Booking — Premium Blue Card */}
+          {recentBooking ? (() => {
+            const isActive = recentBooking.status === "active";
+            const isConfirmed = recentBooking.status === "confirmed";
+            const isCompleted = recentBooking.status === "completed";
 
-            {floors.length > 0 ? (
-              <div className="space-y-3">
-                {floors.map((fl) => {
-                  const isCar = fl.vehicle_type_id === 2;
-                  return (
-                    <div
-                      key={fl.zone_id}
-                      className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/60 rounded-xl hover:bg-slate-100/50 dark:hover:bg-slate-850/30 transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 rounded-lg shadow-sm">
-                          <span className="text-xs font-black font-mono">F{fl.floor_number}</span>
-                        </div>
-                        <div>
-                          <p className="text-xs font-black text-slate-800 dark:text-white">
-                            {language === "en" ? `Floor ${fl.floor_number}` : `Tầng ${fl.floor_number}`} — {fl.zone_name}
-                          </p>
-                          <p className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold mt-0.5">
-                            {language === "en" ? `Capacity: ${fl.capacity} slots` : `Sức chứa: ${fl.capacity} xe`}
-                          </p>
-                        </div>
-                      </div>
+            /* Format date nicely */
+            const fmtDate = (iso) => {
+              if (!iso) return "—";
+              try {
+                return new Date(iso).toLocaleDateString(language === "en" ? "en-US" : "vi-VN", {
+                  weekday: "short", day: "2-digit", month: "short", year: "numeric",
+                });
+              } catch { return "—"; }
+            };
 
-                      <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${isCar
-                        ? "bg-blue-50/80 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400 border border-blue-100 dark:border-blue-900/30"
-                        : "bg-emerald-50/80 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30"
-                        }`}>
-                        {isCar ? <Car size={13} /> : <Bike size={13} />}
+            const displayDate = fmtDate(recentBooking.startTime);
+            const displayTimeRange = `${formatTime(recentBooking.startTime, language)} - ${formatTime(recentBooking.endTime, language)}`;
+
+            let statusText = "";
+            let badgeClass = "";
+            if (isActive) {
+              statusText = language === "en" ? "Active" : "Đang đỗ";
+              badgeClass = "bg-emerald-500 ring-4 ring-emerald-500/25";
+            } else if (isConfirmed) {
+              statusText = language === "en" ? "Upcoming" : "Đã xác nhận";
+              badgeClass = "bg-yellow-500 ring-4 ring-yellow-500/25 animate-pulse";
+            } else {
+              statusText = language === "en" ? "Completed" : "Hoàn tất";
+              badgeClass = "bg-slate-400 dark:bg-slate-500 ring-4 ring-slate-400/20 dark:ring-slate-500/20";
+            }
+
+            return (
+              <div className="rounded-[20px] overflow-hidden shadow-xl shadow-slate-900/10 dark:shadow-black/20 font-sans bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 transition-colors duration-300">
+
+                {/* ── HERO PANEL ── */}
+                <div className="bg-gradient-to-br from-[#1e3a8a] via-[#1d4ed8] to-[#3b5cf6] p-[22px] pb-[28px] relative overflow-hidden">
+
+                  {/* Decorative rings */}
+                  <div className="absolute -top-[30px] -right-[30px] w-[120px] h-[120px] rounded-full border-[1.5px] border-white/10" />
+                  <div className="absolute -top-[10px] -right-[10px] w-[80px] h-[80px] rounded-full border-[1.5px] border-white/5" />
+
+                  {/* Header row */}
+                  <div className="flex items-center justify-between mb-[18px]">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-[10px] bg-white/15 flex items-center justify-center backdrop-blur-[4px]">
+                        <CalendarCheck size={16} color="white" />
                       </div>
+                      <span className="text-lg font-semibold text-white ">
+                        {language === "en" ? "My Booking" : "Lịch đặt chỗ"}
+                      </span>
                     </div>
-                  );
-                })}
+
+                    {/* Status badge */}
+                    <span className={`text-[10px] font-extrabold uppercase tracking-[0.06em] text-white px-2.5 py-1 rounded-full flex items-center gap-1.5 ${badgeClass}`}>
+                      {isConfirmed && (
+                        <span className="relative flex h-1.5 w-1.5">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
+                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white" />
+                        </span>
+                      )}
+                      {statusText}
+                    </span>
+                  </div>
+
+                  {/* Building name */}
+                  <div className="mb-1.5">
+                    <h4 className="text-xl font-black text-white -tracking-[0.02em] leading-snug m-0">
+                      {buildingInfo.building_name || (language === "en" ? "eParking Building" : "Tòa nhà eParking")}
+                    </h4>
+                  </div>
+
+                  {/* Location row */}
+                  <div className="flex items-center gap-1.5 mb-[18px]">
+                    <MapPin size={12} className="text-white/60" />
+                    <span className="text-xs text-white/60 font-medium">
+                      {isActive || isCompleted
+                        ? `${language === "en" ? "Floor" : "Tầng"} ${recentBooking.floorNumber} - ${recentBooking.zoneName}`
+                        : (language === "en" ? "Zone: Assigned at Check-in" : "Chỉ định lúc Check-in")}
+                    </span>
+                  </div>
+
+                </div>
+
+                {/* ── DETAILS PANEL ── */}
+                <div className="bg-white dark:bg-slate-900 p-[22px] pb-0 transition-colors duration-300">
+
+                  {/* Date row */}
+                  <div className="flex items-center gap-3 pb-3.5 border-b border-slate-100 dark:border-slate-800/80">
+                    <div className="w-9 h-9 rounded-[10px] shrink-0 bg-blue-50 dark:bg-blue-950/40 flex items-center justify-center">
+                      <Calendar size={16} className="text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div>
+                      <p className="text-[9px] font-extrabold text-slate-400 dark:text-slate-500 tracking-[0.08em] uppercase mb-0.5">
+                        {language === "en" ? "Booked Date" : "Ngày đặt"}
+                      </p>
+                      <p className="text-xs font-bold text-slate-900 dark:text-slate-200 m-0">{displayDate}</p>
+                    </div>
+                    <div className="ml-auto text-right">
+                      <p className="text-[9px] font-extrabold text-slate-400 dark:text-slate-500 tracking-[0.08em] uppercase mb-0.5">
+                        {language === "en" ? "Booked Time" : "Khung giờ đặt"}
+                      </p>
+                      <p className="text-base font-black text-blue-600 dark:text-blue-400 m-0 -tracking-[0.02em]">{displayTimeRange}</p>
+                    </div>
+                  </div>
+
+                  {/* Plate row */}
+                  <div className="flex items-center gap-3 py-3.5">
+                    <div className="w-9 h-9 rounded-[10px] shrink-0 bg-green-50 dark:bg-green-950/30 flex items-center justify-center">
+                      {recentBooking.vehicleType === "car"
+                        ? <Car size={16} className="text-green-600 dark:text-green-400" />
+                        : <Bike size={16} className="text-green-600 dark:text-green-400" />}
+                    </div>
+                    <div>
+                      <p className="text-[9px] font-extrabold text-slate-400 dark:text-slate-500 tracking-[0.08em] uppercase mb-0.5">
+                        {language === "en" ? "License Plate" : "Biển số xe"}
+                      </p>
+                      <p className="text-sm font-extrabold text-slate-900 dark:text-slate-200 tracking-[0.06em] m-0">
+                        {recentBooking.plate_number || "—"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ── CTA BUTTON ── */}
+                <div className="bg-white dark:bg-slate-900 p-[22px] pt-0 rounded-b-[20px] transition-colors duration-300">
+                  <button
+                    type="button"
+                    onClick={() => navigate(isActive || isConfirmed ? "/user/bookings" : "/user/book")}
+                    className={`w-full py-3 text-[13px] font-extrabold text-white rounded-xl border-0 cursor-pointer tracking-wide flex items-center justify-center gap-2 transition-all active:scale-[0.98] hover:opacity-90 ${isCompleted ? 'bg-gradient-to-r from-slate-500 to-slate-600 shadow-md shadow-slate-500/20' : 'bg-gradient-to-r from-blue-700 to-blue-600 shadow-md shadow-blue-500/30'}`}
+                  >
+                    {isCompleted
+                      ? <> {language === "en" ? "Book Again" : "Đặt lại"}</>
+                      : <>{language === "en" ? "View Details" : "Xem chi tiết"}</>}
+                  </button>
+                </div>
               </div>
-            ) : (
-              <p className="text-xs text-slate-400 italic text-center py-4">
-                {language === "en" ? "Loading floor configurations..." : "Đang tải cấu hình phân tầng..."}
+            );
+          })() : (
+            /* Empty state */
+            <div className="bg-gradient-to-br from-[#1e3a8a] to-[#1d4ed8] rounded-[20px] py-8 px-6 text-center shadow-xl shadow-blue-500/20 relative overflow-hidden">
+              <div className="absolute -top-[30px] -right-[30px] w-[120px] h-[120px] rounded-full border-[1.5px] border-white/10" />
+              <div className="w-13 h-13 rounded-2xl mx-auto mb-4 bg-white/15 flex items-center justify-center border-[1.5px] border-white/20 relative z-10">
+                <CalendarCheck size={24} color="rgba(255,255,255,0.85)" />
+              </div>
+              <p className="text-[13px] font-bold text-white/85 mb-1.5 relative z-10">
+                {language === "en" ? "No Upcoming Bookings" : "Chưa có lịch đặt chỗ"}
               </p>
-            )}
-          </div>
-
-          {/* Latest Feedback */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 transition-colors duration-300">
-            <h3 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">
-              {language === "en" ? "Latest Feedback" : "Đánh giá gần đây"}
-            </h3>
-            <div className="flex gap-3">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-black shrink-0">
-                J
-              </div>
-              <div>
-                <div className="flex items-center gap-1 mb-1">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} size={10} className="fill-amber-400 text-amber-400" />
-                  ))}
-                </div>
-                <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed italic">
-                  {language === "en"
-                    ? '"Best parking experience in the area. The automated entry is flawless."'
-                    : '"Trải nghiệm đỗ xe tốt nhất khu vực. Hệ thống vào tự động rất mượt mà."'}
-                </p>
-                <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1.5 font-bold">
-                  James R. · {language === "en" ? "2 hours ago" : "2 giờ trước"}
-                </p>
-              </div>
+              <p className="text-[11px] text-white/50 mb-5 relative z-10">
+                {language === "en" ? "Reserve a spot to see it here." : "Đặt chỗ ngay để xem ở đây."}
+              </p>
+              <button
+                type="button"
+                onClick={() => navigate("/user/book")}
+                className="px-7 py-[11px] bg-white text-blue-700 text-xs font-extrabold rounded-xl border-none cursor-pointer shadow-md shadow-black/15 transition-opacity hover:opacity-90 active:scale-95 relative z-10"
+              >
+                {language === "en" ? "Book a Spot" : "Đặt chỗ ngay"}
+              </button>
             </div>
-          </div>
+          )}
+
 
 
         </div>

@@ -764,7 +764,9 @@ public class BookingService : IBookingService
             EarlyFee = earlyFee,
             PenaltyFee = penaltyFee,
             ActualCheckIn = actualCheckIn,
-            ActualCheckOut = actualCheckOut
+            ActualCheckOut = actualCheckOut,
+            PaymentMethod = b.Payments?.FirstOrDefault(p => p.Status == "SUCCESS")?.PaymentMethod 
+                ?? b.ParkingSessions?.SelectMany(ps => ps.Payments).FirstOrDefault(p => p.Status == "SUCCESS")?.PaymentMethod
         };
     }
 

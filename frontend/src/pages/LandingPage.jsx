@@ -131,21 +131,28 @@ function CapacityPill({ icon: Icon, label, available, total, accentColor }) {
         )}
       </div>
 
-      {/* ── Hero number ── */}
+      {/* ── Hero number: available / total ── */}
       <div style={{ textAlign: "center", padding: "10px 0 12px" }}>
-        <div
-          style={{
-            fontSize: 52,
-            fontWeight: 900,
-            lineHeight: 1,
-            color: isFull ? "#dc2626" : "#1d4ed8",
-            letterSpacing: "-0.03em",
-            textShadow: isFull
-              ? "0 2px 16px rgba(220,38,38,0.2)"
-              : "0 2px 16px rgba(29,78,216,0.2)",
-          }}
-        >
-          {available != null ? available : "—"}
+        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: 4 }}>
+          <span
+            style={{
+              fontSize: 46,
+              fontWeight: 900,
+              lineHeight: 1,
+              color: isFull ? "#dc2626" : "#1d4ed8",
+              letterSpacing: "-0.03em",
+              textShadow: isFull
+                ? "0 2px 16px rgba(220,38,38,0.2)"
+                : "0 2px 16px rgba(29,78,216,0.2)",
+            }}
+          >
+            {available != null ? available : "—"}
+          </span>
+          {total != null && (
+            <span style={{ fontSize: 18, fontWeight: 700, color: "#94a3b8", letterSpacing: "-0.02em" }}>
+              /{total}
+            </span>
+          )}
         </div>
         <div
           style={{

@@ -184,6 +184,9 @@ public class BookingResponse
 
     [JsonPropertyName("actual_check_out")]
     public DateTime? ActualCheckOut { get; set; }
+
+    [JsonPropertyName("payment_method")]
+    public string? PaymentMethod { get; set; }
 }
 
 public class StaffBookingResponse

@@ -24,7 +24,7 @@ export default function Header({ title, isSidebarCollapsed, setIsSidebarCollapse
   // ==========================================
   const pageTitles = {
     en: {
-      "/user": "Parking Info",
+      "/user": "Dashboard",
       "/user/book": "Book Slot",
       "/user/bookings": "Booking Sessions",
       "/user/vehicle": "My Vehicles",
@@ -49,7 +49,7 @@ export default function Header({ title, isSidebarCollapsed, setIsSidebarCollapse
       "/manager/issues": "Reported Issues",
     },
     vi: {
-      "/user": "Thông tin đỗ xe",
+      "/user": "Trang chủ",
       "/user/book": "Đặt vị trí đỗ",
       "/user/bookings": "Lịch sử đặt chỗ",
       "/user/vehicle": "Phương tiện của tôi",
@@ -99,11 +99,11 @@ export default function Header({ title, isSidebarCollapsed, setIsSidebarCollapse
   };
 
   const currentTitle = title || pageTitles[language][location.pathname] || getFallbackTitle();
-  const targetProfileRoute = 
+  const targetProfileRoute =
     user?.role === "SystemAdmin" ? "/admin/profile" :
-    user?.role === "ParkingManager" ? "/manager/profile" :
-    user?.role === "ParkingStaff" ? "/staff/profile" : 
-    "/user/profile";
+      user?.role === "ParkingManager" ? "/manager/profile" :
+        user?.role === "ParkingStaff" ? "/staff/profile" :
+          "/user/profile";
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -155,23 +155,14 @@ export default function Header({ title, isSidebarCollapsed, setIsSidebarCollapse
           {theme === "dark" ? <Sun size={18} className="text-amber-400 fill-amber-400/20" /> : <Moon size={18} className="text-slate-600" />}
         </button>
 
-        {/* Live Notification Dot Center */}
-        <button className="p-2.5 bg-slate-50 border border-slate-200 text-slate-500 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-all focus:outline-none relative">
-          <Bell size={18} />
-          <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-900">
-            <span className="absolute inset-0 w-full h-full bg-red-400 rounded-full animate-ping opacity-75"></span>
-          </span>
-        </button>
-
         <div className="w-[1px] h-6 bg-slate-200 dark:bg-slate-800 mx-0.5"></div>
 
         {/* AVATAR POPOVER SYSTEM */}
         <div className="relative" ref={dropdownRef}>
           <button
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            className={`w-10 h-10 rounded-full text-white font-bold flex items-center justify-center shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 overflow-hidden ${
-              user?.role === "ParkingStaff" ? "bg-indigo-600 hover:bg-indigo-700" : "bg-blue-600 hover:bg-blue-700"
-            } ${isDropdownOpen ? "ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-slate-900" : ""}`}>
+            className={`w-10 h-10 rounded-full text-white font-bold flex items-center justify-center shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 overflow-hidden ${user?.role === "ParkingStaff" ? "bg-indigo-600 hover:bg-indigo-700" : "bg-blue-600 hover:bg-blue-700"
+              } ${isDropdownOpen ? "ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-slate-900" : ""}`}>
             {userAvatar ? (
               <img src={isGoogleAccount ? userAvatar : `${getBackendRootUrl()}${userAvatar}`} alt="User Avatar" className="w-full h-full object-cover" />
             ) : (
@@ -185,16 +176,15 @@ export default function Header({ title, isSidebarCollapsed, setIsSidebarCollapse
                 <p className="text-sm font-black text-slate-900 dark:text-white truncate leading-tight">{user?.full_name || "Guest User"}</p>
                 <div className="mt-1.5">
                   <span
-                    className={`text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider ${
-                      user?.role === "ParkingStaff"
-                        ? "bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400"
-                        : "bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400"
-                    }`}>
+                    className={`text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider ${user?.role === "ParkingStaff"
+                      ? "bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400"
+                      : "bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400"
+                      }`}>
                     {user?.role === "SystemAdmin" ? (language === "en" ? "System Admin" : "Quản trị viên") :
-                     user?.role === "ParkingManager" ? (language === "en" ? "Facility Manager" : "Quản lý Bãi xe") :
-                     user?.role === "ParkingStaff" ? (language === "en" ? "Gate Staff" : "Nhân viên Cổng") :
-                     user?.role === "ParkingUser" ? (language === "en" ? "User" : "Khách hàng") :
-                     (user?.role || (language === "en" ? "Guest" : "Khách"))}
+                      user?.role === "ParkingManager" ? (language === "en" ? "Facility Manager" : "Quản lý Bãi xe") :
+                        user?.role === "ParkingStaff" ? (language === "en" ? "Gate Staff" : "Nhân viên Cổng") :
+                          user?.role === "ParkingUser" ? (language === "en" ? "User" : "Khách hàng") :
+                            (user?.role || (language === "en" ? "Guest" : "Khách"))}
                   </span>
                 </div>
               </div>
@@ -208,8 +198,8 @@ export default function Header({ title, isSidebarCollapsed, setIsSidebarCollapse
                   {language === "en" ? "Profile Settings" : "Cài đặt hồ sơ"}
                 </button>
 
-                {/* 🚀 ĐÃ SỬA: Đổi điều kiện kiểm tra sang biến logic cục bộ isGoogleAccount */}
-                {!isGoogleAccount && (
+                {/* 🚀 ĐÃ SỬA: Đổi điều kiện kiểm tra sang biến logic cục bộ isGoogleAccount và loại bỏ SystemAdmin */}
+                {!isGoogleAccount && user?.role !== "SystemAdmin" && (
                   <button
                     type="button"
                     onClick={() => {
