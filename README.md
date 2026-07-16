@@ -1,9 +1,10 @@
 # eParking Management System
 > **eParking Management System** - Hệ thống quản lý bãi gửi xe thông minh và tự động hóa.
+> Link live demo: https://eparking-v1.vercel.app/
 
 ---
 
-## 🚀 Tính năng nổi bật (Features)
+##  Tính năng nổi bật (Features)
 
 Hệ thống eParking hỗ trợ đầy đủ các nghiệp vụ quản lý bãi xe từ cấp độ hệ thống đến khách hàng vãng lai với các tính năng chính:
 
@@ -26,126 +27,15 @@ Hệ thống eParking hỗ trợ đầy đủ các nghiệp vụ quản lý bãi
 
 ---
 
-## 🛠️ Công nghệ sử dụng (Tech Stack)
+##  Công nghệ sử dụng (Tech Stack)
 
 *   **Ngôn ngữ lập trình:** C# (.NET 8.0/9.0), JavaScript (React ES6+), Python 3.9+
 *   **Backend:** ASP.NET Core Web API, Entity Framework Core, JWT Bearer Authentication, MailKit, PayOS SDK (VietQR Gateway)
 *   **Frontend:** React (Vite), Tailwind CSS (Aesthetics UI), Lucide React (Icons), Axios, React Router DOM
 *   **Module AI (ANPR):** OpenCV, YOLOv8 (Ultralytics), EasyOCR, PyTorch, SORT Tracker (Object tracking)
-*   **Cơ sở dữ liệu:** MySQL Server (hoặc MariaDB)
+*   **Cơ sở dữ liệu:** MySQL Server 
 *   **Công cụ phát triển & Triển khai:** Docker & Docker Compose, Swagger (OpenAPI Document), Git
 
 ---
 
-## 📁 Cấu trúc thư mục (Project Structure)
 
-Dưới đây là cấu trúc thư mục rút gọn của dự án:
-
-```
-parking-management-system/
-├── backend/                   # Source code Backend (ASP.NET Core Web API)
-│   ├── README.md              # Tài liệu hướng dẫn riêng của backend
-│   └── ParkingManagement/     # Project ASP.NET Core chính
-│       ├── Controllers/       # APIs xử lý nghiệp vụ (Auth, Parking, Booking, Incidents,...)
-│       ├── DTOs/              # Data Transfer Objects trao đổi dữ liệu
-│       ├── Data/              # Lớp AppDbContext kết nối cơ sở dữ liệu MySQL
-│       ├── Extensions/        # Phương thức mở rộng cấu hình JWT, DI Service
-│       ├── Middlewares/       # Bộ lọc IP (IpFilter), Xử lý lỗi tập trung (Global Exception)
-│       ├── Models/            # Lớp thực thực Entity Framework (User, Slot, Payment, Booking,...)
-│       ├── Repositories/      # Lớp tương tác CSDL trực tiếp (Data Access Layer)
-│       ├── Services/          # Lớp logic nghiệp vụ chính (Business Logic Layer)
-│       ├── Program.cs         # Cấu hình khởi tạo và định tuyến của Server Web API
-│       └── appsettings.json   # Cấu hình môi trường mặc định của ứng dụng
-├── frontend/                  # Source code Frontend (React + Vite + Tailwind CSS)
-│   ├── public/                # Tài nguyên tĩnh công khai (Ảnh, Icons, Logo)
-│   └── src/                   # Source code React chính
-│       ├── assets/            # CSS và hình ảnh dùng chung
-│       ├── components/        # Components tái sử dụng (Header, Sidebar, Modals,...)
-│       ├── context/           # React Context (Quản lý Auth, Language, Theme,...)
-│       ├── layouts/           # Giao diện khung định tuyến (Admin, Manager, Staff, User Layout)
-│       ├── pages/             # Trang giao diện theo phân quyền của user
-│       │   ├── admin/         # Quản trị viên (Users, Logs, Dashboard,...)
-│       │   ├── manager/       # Quản lý (Slots, Pricing, IncidentManager,...)
-│       │   ├── staff/         # Nhân viên (Gate In/Out, Reconciliation, Incidents,...)
-│       │   └── user/          # Khách hàng (Dashboard, Bookings, QuickPay, Issues,...)
-│       ├── utils/             # Trình gọi API Axios cấu hình sẵn, định dạng dữ liệu
-│       └── App.jsx            # Điều phối định tuyến ứng dụng chính
-├── python-ai/                 # Module AI Nhận diện biển số xe tự động (ANPR)
-│   ├── main.py                # Script chạy phát hiện, theo vết và đọc biển số từ luồng video
-│   ├── util.py                # Hàm phụ trợ (xử lý EasyOCR, lọc nhiễu văn bản biển số)
-│   ├── models/                # Thư mục lưu trữ file weights của YOLOv8 (.pt)
-│   └── requirements.txt       # Danh sách thư viện Python cần cài đặt
-├── docker-compose.yml         # File Docker Compose khởi chạy toàn bộ dịch vụ
-├── Dockerfile                 # Cấu hình đóng gói Docker cho backend
-└── README.md                  # Tài liệu tổng quan dự án (File này)
-```
-
----
-
-## ⚙️ Cài đặt & Chạy thử (Installation & Setup)
-
-### Yêu cầu hệ thống (Prerequisites)
-
-*   **Hệ điều hành:** Windows 10/11, macOS, hoặc Linux
-*   **Công cụ bắt buộc:**
-    *   [.NET SDK 8.0+](https://dotnet.microsoft.com/download/dotnet/8.0)
-    *   [Node.js v18.0+](https://nodejs.org/) (khuyên dùng bản LTS)
-    *   [MySQL Server 8.0+](https://dev.mysql.com/downloads/installer/) hoặc Docker Desktop
-    *   [Python 3.9+](https://www.python.org/downloads/) (cho module AI)
-
----
-
-### Các bước cài đặt
-
-#### 1. Clone repository
-```bash
-git clone <repository-url>
-cd parking-management-system
-```
-
-#### 2. Cấu hình CSDL & Khởi chạy Backend
-1. Di chuyển vào thư mục backend:
-   ```bash
-   cd backend/ParkingManagement
-   ```
-2. Tạo tệp `.env` dựa trên `.env.example` và cấu hình các biến môi trường phù hợp (địa chỉ DB, thông tin xác thực Mail, khóa bảo mật PayOS, JWT Secret).
-3. Chạy cập nhật database bằng EF Migrations:
-   ```bash
-   dotnet ef database update
-   ```
-4. Khởi chạy dự án:
-   ```bash
-   dotnet run
-   ```
-   *Mặc định, Swagger API sẽ mở tại địa chỉ `http://localhost:5292/swagger/index.html` hoặc `https://localhost:7292/swagger/index.html`.*
-
-#### 3. Khởi chạy Frontend (React Web App)
-1. Di chuyển vào thư mục frontend:
-   ```bash
-   cd ../../frontend
-   ```
-2. Cài đặt các gói phụ thuộc:
-   ```bash
-   npm install
-   ```
-3. Tạo tệp `.env` và cấu hình URL API Backend (ví dụ: `VITE_API_BASE_URL=http://localhost:5292/api/v1`).
-4. Khởi chạy ứng dụng trong môi trường phát triển:
-   ```bash
-   npm run dev
-   ```
-   *Ứng dụng web sẽ được chạy tại cổng mặc định `http://localhost:5173`.*
-
-#### 4. Khởi chạy Module AI (ANPR) (Tùy chọn)
-1. Di chuyển vào thư mục AI:
-   ```bash
-   cd ../python-ai
-   ```
-2. Cài đặt các thư viện cần thiết:
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. Đảm bảo bạn đã đặt tệp mô hình YOLOv8 phát hiện phương tiện và biển số vào thư mục `models/`.
-4. Chạy script để thử nghiệm xử lý nhận diện:
-   ```bash
-   python main.py
-   ```
