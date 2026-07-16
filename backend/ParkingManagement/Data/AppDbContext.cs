@@ -753,7 +753,7 @@ public partial class AppDbContext : DbContext
                 .HasMaxLength(100);
 
             entity.Property(e => e.AttachmentUrl)
-                .HasColumnName("ATTACHMENTURL")
+                .HasColumnName("ATTACHMENT_URL")
                 .HasMaxLength(255);
         });
 
