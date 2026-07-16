@@ -34,6 +34,7 @@ namespace ParkingManagement.DTOs.Feedback
         public DateTime CreatedAt { get; set; }
         public DateTime? ResolvedAt { get; set; }
         public string? ResolvedBy { get; set; }
+        public string? ResolvedByName { get; set; }
         public string? ResponseNote { get; set; }
         public string? CustomerPhone { get; set; }
         public string? CustomerEmail { get; set; }
