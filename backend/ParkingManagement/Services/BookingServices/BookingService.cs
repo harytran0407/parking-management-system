@@ -108,6 +108,14 @@ public class BookingService : IBookingService
 
     public async Task<BookingResponse> CreateBookingAsync(string userId, CreateBookingRequest request)
     {
+        var user = await _context.Users.FindAsync(userId)
+            ?? throw new UnauthorizedAccessException("Không tìm thấy người dùng.");
+
+        if (string.IsNullOrWhiteSpace(user.Phone))
+        {
+            throw new InvalidOperationException("PHONE_REQUIRED");
+        }
+
         await AutoCancelExpiredBookingsAsync();
         var vnNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, _vnTz);
         var checkTime = vnNow.AddHours(-24);
@@ -632,6 +640,11 @@ public class BookingService : IBookingService
         {
             foreach (var b in expiredBookings)
             {
+                if (b.Status == "PENDING")
+                {
+                    b.Notes = "unpaid";
+                }
+
                 // Mark all expired bookings as CANCELLED instead of deleting,
                 // to avoid FK constraint violation when payments are linked to the booking.
                 b.Status = "CANCELLED";

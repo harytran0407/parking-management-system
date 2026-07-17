@@ -429,6 +429,10 @@ namespace ParkingManagement.Repositories
             {
                 foreach (var b in expiredBookings)
                 {
+                    if (b.Status == "PENDING")
+                    {
+                        b.Notes = "unpaid";
+                    }
                     b.Status = "CANCELLED";
                 }
                 await _context.SaveChangesAsync();
@@ -460,6 +464,10 @@ namespace ParkingManagement.Repositories
             {
                 foreach (var b in expiredBookings)
                 {
+                    if (b.Status == "PENDING")
+                    {
+                        b.Notes = "unpaid";
+                    }
                     b.Status = "CANCELLED";
                 }
                 await _context.SaveChangesAsync();
@@ -501,7 +509,7 @@ namespace ParkingManagement.Repositories
                 .FirstOrDefaultAsync(s => s.BookingId == bookingId && s.Status == "ACTIVE");
         }
 
-        public async Task MarkSessionPaidAsync(ParkingSession session, decimal fee)
+        public async Task MarkSessionPaidAsync(ParkingSession session, decimal fee, DateTime? timePaidUntil)
         {
             var payment = new Payment
             {
@@ -519,7 +527,8 @@ namespace ParkingManagement.Repositories
             };
 
             session.PaymentStatus = "PAID";
-            session.TotalFee = fee;
+            session.TimePaidUntil = timePaidUntil;
+            session.TotalFee = (session.Payments.Where(p => p.Status == "SUCCESS").Sum(p => p.AmountPaid)) + fee;
 
             await _context.Payments.AddAsync(payment);
             _context.ParkingSessions.Update(session);

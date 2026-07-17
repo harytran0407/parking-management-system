@@ -114,7 +114,7 @@ export default function MyBookings() {
             startTime: b.expected_arrival,
             endTime: b.expired_at,
             totalPrice: b.estimated_fee || b.deposit_paid || defaultPrice,
-            depositPaid: b.deposit_paid || defaultPrice,
+            depositPaid: (b.status?.toLowerCase() === "cancelled" && (b.notes || "").toLowerCase() === "unpaid") ? 0 : (b.deposit_paid || defaultPrice),
             earlyFee: b.early_fee || 0,
             penaltyFee: b.penalty_fee || 0,
             actualCheckIn: b.actual_check_in || null,
@@ -123,6 +123,7 @@ export default function MyBookings() {
             isLocked: b.is_locked,
             bookingTime: b.booking_time,
             paymentMethod: b.payment_method || null,
+            notes: b.notes || "",
           };
         });
         setBookings(list);
@@ -195,32 +196,9 @@ export default function MyBookings() {
 
   const isCurrentlyLocked = (booking) => {
     if (booking.isLocked === false) return false;
-    if (booking.isLocked === true) return true;
-
-    // If null/undefined (default), auto-unlock 5 minutes before expiration
-    if (!booking.endTime) return true;
-    const endTime = new Date(booking.endTime).getTime();
-    const unlockTime = endTime - 5 * 60 * 1000;
-    return currentTime < unlockTime;
+    return true;
   };
 
-  const getCountdownText = (booking) => {
-    if (!booking.endTime) return "00:00:00";
-    const endTime = new Date(booking.endTime).getTime();
-    const unlockTime = endTime - 5 * 60 * 1000;
-    const diff = unlockTime - currentTime;
-
-    if (diff <= 0) {
-      return "00:00:00";
-    }
-
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
-    const pad = (num) => String(num).padStart(2, "0");
-    return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
-  };
 
   const getOverdueDuration = (booking) => {
     if (!booking.endTime) return "";
@@ -575,11 +553,10 @@ export default function MyBookings() {
                 key={tab.id}
                 type="button"
                 onClick={() => setStatusFilter(tab.id)}
-                className={`py-3 px-1 border-b-2 font-bold text-xs sm:text-sm transition-all focus:outline-none whitespace-nowrap ${
-                  isActive
+                className={`py-3 px-1 border-b-2 font-bold text-xs sm:text-sm transition-all focus:outline-none whitespace-nowrap ${isActive
                     ? "border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400"
                     : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
-                }`}
+                  }`}
               >
                 {language === "en" ? tab.labelEn : tab.labelVi}
               </button>
@@ -1042,270 +1019,323 @@ export default function MyBookings() {
                 </div>
               </div>
             )}
-            {activeModal === "receipt" && selectedBooking && (
-              <div className="w-full">
-                {/* Green header banner */}
-                <div className="bg-gradient-to-r from-emerald-500 to-emerald-700 px-6 py-7 text-center text-white relative">
-                  <button onClick={closeModal} className="absolute top-3 right-3 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 p-1.5 rounded-full transition-all">
-                    <X size={15} />
-                  </button>
-                  <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <CheckCircle2 size={26} className="text-white" />
-                  </div>
-                  <h3 className="font-extrabold text-base leading-tight">
-                    {selectedBooking.status === "completed"
-                      ? (language === "en" ? "Parking Completed" : "Hoàn Tất Đỗ Xe")
-                      : selectedBooking.status === "active"
-                        ? (language === "en" ? "Currently Parked" : "Đang Đỗ Xe")
-                        : selectedBooking.status === "confirmed"
-                          ? (language === "en" ? "Booking Confirmed" : "Đặt Chỗ Thành Công")
-                          : (language === "en" ? "Booking Cancelled" : "Đã Hủy Đặt Chỗ")}
-                  </h3>
-
-                </div>
-
-                {/* Receipt body */}
-                <div className="p-6 space-y-5 overflow-y-auto max-h-[60vh] custom-scrollbar">
-                  {/* Big paid amount / unpaid notice */}
-                  <div className="text-center space-y-2">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                      {language === "en" ? "TOTAL AMOUNT PAID" : "TỔNG SỐ TIỀN ĐÃ THANH TOÁN"}
-                    </p>
-                    <h2 className="text-3xl font-black text-slate-900 dark:text-white font-sans">
-                      {selectedBooking.depositPaid.toLocaleString()} VNĐ
-                    </h2>
+            {activeModal === "receipt" && selectedBooking && (() => {
+              const isUnpaidCancelled = selectedBooking.status === "cancelled" && selectedBooking.notes === "unpaid";
+              return (
+                <div className="w-full">
+                  {/* Header banner */}
+                  <div className={`px-6 py-7 text-center text-white relative ${isUnpaidCancelled
+                      ? "bg-gradient-to-r from-slate-900 via-slate-800 to-black"
+                      : "bg-gradient-to-r from-emerald-500 to-emerald-700"
+                    }`}>
+                    <button onClick={closeModal} className="absolute top-3 right-3 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 p-1.5 rounded-full transition-all">
+                      <X size={15} />
+                    </button>
+                    <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3">
+                      {isUnpaidCancelled ? (
+                        <AlertTriangle size={26} className="text-red-550" />
+                      ) : (
+                        <CheckCircle2 size={26} className="text-white" />
+                      )}
+                    </div>
+                    <h3 className="font-extrabold text-base leading-tight">
+                      {isUnpaidCancelled
+                        ? (language === "en" ? "Unpaid & Cancelled" : "Chưa thanh toán & Đã hủy")
+                        : selectedBooking.status === "completed"
+                          ? (language === "en" ? "Parking Completed" : "Hoàn Tất Đỗ Xe")
+                          : selectedBooking.status === "active"
+                            ? (language === "en" ? "Currently Parked" : "Đang Đỗ Xe")
+                            : selectedBooking.status === "confirmed"
+                              ? (language === "en" ? "Booking Confirmed" : "Đặt Chỗ Thành Công")
+                              : (language === "en" ? "Booking Cancelled" : "Đã Hủy Đặt Chỗ")}
+                    </h3>
                   </div>
 
-                  <hr className="border-dashed border-slate-200 dark:border-slate-700" />
+                  {/* Receipt body */}
+                  <div className="p-6 space-y-5 overflow-y-auto max-h-[60vh] custom-scrollbar">
+                    {/* Big paid amount / unpaid notice */}
+                    <div className="text-center space-y-2">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                        {isUnpaidCancelled
+                          ? (language === "en" ? "PAYMENT STATUS" : "TRẠNG THÁI THANH TOÁN")
+                          : (language === "en" ? "TOTAL AMOUNT PAID" : "TỔNG SỐ TIỀN ĐÃ THANH TOÁN")}
+                      </p>
+                      <h2 className={`text-3xl font-black font-sans ${isUnpaidCancelled ? "text-red-650 dark:text-red-400" : "text-slate-900 dark:text-white"}`}>
+                        {isUnpaidCancelled
+                          ? (language === "en" ? "UNPAID" : "CHƯA THANH TOÁN")
+                          : `${selectedBooking.depositPaid.toLocaleString()} VNĐ`}
+                      </h2>
+                      {isUnpaidCancelled && (
+                        <p className="text-xs font-semibold text-slate-500 mt-1">
+                          {language === "en"
+                            ? "This booking was cancelled before payment was completed."
+                            : "Đặt chỗ này đã bị hủy trước khi hoàn tất thanh toán."}
+                        </p>
+                      )}
+                    </div>
 
-                  {/* Scheduled times & Duration */}
-                  <div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">
-                      {language === "en" ? "SCHEDULE DETAILS" : "CHI TIẾT LỊCH HẸN"}
-                    </p>
-                    <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2 text-xs">
-                      <div className="flex justify-between">
-                        <span className="text-slate-400">{language === "en" ? "Arrival Time:" : "Giờ vào dự kiến:"}</span>
-                        <span className="font-bold text-slate-800 dark:text-slate-200">{formatFullDateTime(selectedBooking.startTime)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-400">{language === "en" ? "Departure Time:" : "Giờ ra dự kiến:"}</span>
-                        <span className="font-bold text-slate-800 dark:text-slate-200">{formatFullDateTime(selectedBooking.endTime)}</span>
-                      </div>
-                      <div className="flex justify-between border-t border-slate-200 dark:border-slate-800 pt-1.5 mt-1.5">
-                        <span className="text-slate-400">{language === "en" ? "Duration:" : "Thời gian đỗ:"}</span>
-                        <span className="font-extrabold text-emerald-600 dark:text-emerald-400">
-                          {calculateDuration(selectedBooking.startTime, selectedBooking.endTime)}
-                        </span>
+                    <hr className="border-dashed border-slate-200 dark:border-slate-700" />
+
+                    {/* Scheduled times & Duration */}
+                    <div>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">
+                        {language === "en" ? "SCHEDULE DETAILS" : "CHI TIẾT LỊCH HẸN"}
+                      </p>
+                      <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2 text-xs">
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">{language === "en" ? "Arrival Time:" : "Giờ vào dự kiến:"}</span>
+                          <span className="font-bold text-slate-800 dark:text-slate-200">{formatFullDateTime(selectedBooking.startTime)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">{language === "en" ? "Departure Time:" : "Giờ ra dự kiến:"}</span>
+                          <span className="font-bold text-slate-800 dark:text-slate-200">{formatFullDateTime(selectedBooking.endTime)}</span>
+                        </div>
+                        <div className="flex justify-between border-t border-slate-200 dark:border-slate-800 pt-1.5 mt-1.5">
+                          <span className="text-slate-400">{language === "en" ? "Duration:" : "Thời gian đỗ:"}</span>
+                          <span className="font-extrabold text-emerald-600 dark:text-emerald-400">
+                            {calculateDuration(selectedBooking.startTime, selectedBooking.endTime)}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Vehicle info */}
-                  <div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">
-                      {language === "en" ? "VEHICLE INFORMATION" : "THÔNG TIN PHƯƠNG TIỆN"}
-                    </p>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-800">
-                        <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mb-1">
-                          {language === "en" ? "License Plate" : "Biển số xe"}
-                        </p>
-                        <p className="font-black text-slate-900 dark:text-white tracking-wider text-sm">
-                          {selectedBooking.plate_number}
-                        </p>
-                      </div>
-                      <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-800">
-                        <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mb-1">
-                          {language === "en" ? "Vehicle Type" : "Loại phương tiện"}
-                        </p>
-                        <p className="font-bold text-slate-800 dark:text-slate-200 text-sm">
-                          {selectedBooking.vehicleType === "car"
-                            ? (language === "en" ? "Car" : "Xe Ô tô")
-                            : (language === "en" ? "Motorbike" : "Xe máy")}
-                        </p>
+                    {/* Vehicle info */}
+                    <div>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">
+                        {language === "en" ? "VEHICLE INFORMATION" : "THÔNG TIN PHƯƠNG TIỆN"}
+                      </p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-800">
+                          <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mb-1">
+                            {language === "en" ? "License Plate" : "Biển số xe"}
+                          </p>
+                          <p className="font-black text-slate-900 dark:text-white tracking-wider text-sm">
+                            {selectedBooking.plate_number}
+                          </p>
+                        </div>
+                        <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-800">
+                          <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mb-1">
+                            {language === "en" ? "Vehicle Type" : "Loại phương tiện"}
+                          </p>
+                          <p className="font-bold text-slate-800 dark:text-slate-200 text-sm">
+                            {selectedBooking.vehicleType === "car"
+                              ? (language === "en" ? "Car" : "Xe Ô tô")
+                              : (language === "en" ? "Motorbike" : "Xe máy")}
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Fee breakdown */}
-                  {(() => {
-                    const isCompleted = selectedBooking.status === "completed";
-                    const reservationFee = isCompleted
-                      ? Math.max(0, selectedBooking.depositPaid - (selectedBooking.earlyFee || 0) - (selectedBooking.penaltyFee || 0))
-                      : selectedBooking.depositPaid;
-                    const earlyFee = selectedBooking.earlyFee || 0;
-                    const penaltyFee = selectedBooking.penaltyFee || 0;
-                    const totalCost = reservationFee + earlyFee + penaltyFee;
-                    const totalPaid = isCompleted ? totalCost : selectedBooking.depositPaid;
-                    const amountDue = isCompleted ? 0 : (earlyFee + penaltyFee);
-                    const feeMethod = selectedBooking.paymentMethod || "Paid";
+                    {/* Fee breakdown */}
+                    {(() => {
+                      const isCompleted = selectedBooking.status === "completed";
+                      const reservationFee = isCompleted
+                        ? Math.max(0, selectedBooking.depositPaid - (selectedBooking.earlyFee || 0) - (selectedBooking.penaltyFee || 0))
+                        : selectedBooking.depositPaid;
+                      const earlyFee = selectedBooking.earlyFee || 0;
+                      const penaltyFee = selectedBooking.penaltyFee || 0;
+                      const totalCost = reservationFee + earlyFee + penaltyFee;
+                      const totalPaid = isUnpaidCancelled ? 0 : (isCompleted ? totalCost : selectedBooking.depositPaid);
+                      const amountDue = isCompleted ? 0 : (earlyFee + penaltyFee);
+                      const feeMethod = isUnpaidCancelled
+                        ? (language === "en" ? "Unpaid" : "Chưa thanh toán")
+                        : (selectedBooking.paymentMethod || "Paid");
 
-                    return (
-                      <div>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">
-                          {language === "en" ? "FEE DETAILS" : "CHI TIẾT PHÍ DỊCH VỤ"}
-                        </p>
-                        <div className="space-y-2 text-xs">
-                          {/* Reservation Fee */}
-                          <div className="flex justify-between">
-                            <span className="text-slate-500">
-                              {language === "en" ? "Reservation fee" : "Phí đặt chỗ cơ bản"}
-                              <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 ml-1.5 px-1.5 py-0.5 bg-emerald-50 dark:bg-emerald-950/20 rounded">
-                                {feeMethod}
-                              </span>
-                            </span>
-                            <span className="font-bold text-slate-800 dark:text-slate-200">
-                              {reservationFee.toLocaleString()} VNĐ
-                            </span>
-                          </div>
-
-                          {/* Early Arrival Fee */}
-                          {earlyFee > 0 && (
+                      return (
+                        <div>
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">
+                            {language === "en" ? "FEE DETAILS" : "CHI TIẾT PHÍ DỊCH VỤ"}
+                          </p>
+                          <div className="space-y-2 text-xs">
+                            {/* Reservation Fee */}
                             <div className="flex justify-between">
                               <span className="text-slate-500">
-                                {language === "en" ? "Early arrival fee" : "Phí đến sớm"}
-                                <span className="text-[9px] font-bold text-slate-500 ml-1.5 px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 rounded">
-                                  {language === "en" ? "Cash" : "Tiền mặt"}
+                                {language === "en" ? "Reservation fee" : "Phí đặt chỗ cơ bản"}
+                                <span className={`text-[9px] font-bold ml-1.5 px-1.5 py-0.5 rounded ${isUnpaidCancelled
+                                    ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20"
+                                    : "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20"
+                                  }`}>
+                                  {feeMethod}
                                 </span>
                               </span>
                               <span className="font-bold text-slate-800 dark:text-slate-200">
-                                {earlyFee.toLocaleString()} VNĐ
+                                {reservationFee.toLocaleString()} VNĐ
                               </span>
                             </div>
-                          )}
 
-                          {/* Overtime Penalty Fee */}
-                          {penaltyFee > 0 && (
-                            <div className="flex justify-between">
-                              <span className="text-red-500 font-semibold">
-                                {language === "en" ? "Overtime penalty fee" : "Phí quá hạn"}
-                                <span className="text-[9px] font-bold text-red-500 ml-1.5 px-1.5 py-0.5 bg-red-50 dark:bg-red-950/20 rounded">
-                                  {language === "en" ? "Cash" : "Tiền mặt"}
+                            {/* Early Arrival Fee */}
+                            {earlyFee > 0 && (
+                              <div className="flex justify-between">
+                                <span className="text-slate-500">
+                                  {language === "en" ? "Early arrival fee" : "Phí đến sớm"}
+                                  <span className="text-[9px] font-bold text-slate-500 ml-1.5 px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 rounded">
+                                    {language === "en" ? "Cash" : "Tiền mặt"}
+                                  </span>
                                 </span>
+                                <span className="font-bold text-slate-800 dark:text-slate-200">
+                                  {earlyFee.toLocaleString()} VNĐ
+                                </span>
+                              </div>
+                            )}
+
+                            {/* Overtime Penalty Fee */}
+                            {penaltyFee > 0 && (
+                              <div className="flex justify-between">
+                                <span className="text-red-500 font-semibold">
+                                  {language === "en" ? "Overtime penalty fee" : "Phí quá hạn"}
+                                  <span className="text-[9px] font-bold text-red-500 ml-1.5 px-1.5 py-0.5 bg-red-50 dark:bg-red-950/20 rounded">
+                                    {language === "en" ? "Cash" : "Tiền mặt"}
+                                  </span>
+                                </span>
+                                <span className="font-black text-red-500">
+                                  {penaltyFee.toLocaleString()} VNĐ
+                                </span>
+                              </div>
+                            )}
+
+                            {/* Total Cost */}
+                            <div className="flex justify-between pt-1.5 border-t border-slate-200 dark:border-slate-800">
+                              <span className="font-bold text-slate-600 dark:text-slate-400 text-sm">
+                                {language === "en" ? "TOTAL:" : "Tổng chi phí:"}
                               </span>
-                              <span className="font-black text-red-500">
-                                {penaltyFee.toLocaleString()} VNĐ
+                              <span className="font-extrabold text-slate-800 dark:text-slate-200 text-sm">
+                                {totalCost.toLocaleString()} VNĐ
                               </span>
                             </div>
-                          )}
-
-                          {/* Total Cost */}
-                          <div className="flex justify-between pt-1.5 border-t border-slate-200 dark:border-slate-800">
-                            <span className="font-bold text-slate-600 dark:text-slate-400 text-sm">
-                              {language === "en" ? "TOTAL:" : "Tổng chi phí:"}
-                            </span>
-                            <span className="font-extrabold text-slate-800 dark:text-slate-200 text-sm">
-                              {totalCost.toLocaleString()} VNĐ
-                            </span>
                           </div>
-
-
                         </div>
-                      </div>
-                    );
-                  })()}
+                      );
+                    })()}
+                    {/* PDF download */}
+                    <button
+                      onClick={() => {
+                        try {
+                          const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a5" });
+                          const isUnpaidCancelled = selectedBooking.status === "cancelled" && selectedBooking.notes === "unpaid";
 
-                  {/* PDF download */}
-                  <button
-                    onClick={() => {
-                      try {
-                        const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a5" });
-                        // Header bar (Green theme)
-                        doc.setFillColor(16, 124, 65); doc.rect(0, 0, 148, 35, "F");
-                        doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(13);
-                        const headerTitle = selectedBooking.status === "completed" ? "BOOKING RECEIPT" : selectedBooking.status === "active" ? "PARKING RECEIPT" : "BOOKING RECEIPT";
-                        doc.text(headerTitle, 74, 14, { align: "center" });
-                        doc.setFont("helvetica", "normal"); doc.setFontSize(8);
-                        doc.text("BOOKING ID: " + selectedBooking.id, 74, 23, { align: "center" });
+                          // Header bar
+                          if (isUnpaidCancelled) {
+                            doc.setFillColor(30, 30, 30);
+                          } else {
+                            doc.setFillColor(16, 124, 65);
+                          }
+                          doc.rect(0, 0, 148, 35, "F");
+                          doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(13);
+                          const headerTitle = isUnpaidCancelled
+                            ? (language === "en" ? "UNPAID & CANCELLED" : "CHƯA THANH TOÁN & ĐÃ HỦY")
+                            : selectedBooking.status === "completed" ? "PARKING RECEIPT" : "BOOKING RECEIPT";
+                          doc.text(headerTitle, 74, 14, { align: "center" });
+                          doc.setFont("helvetica", "normal"); doc.setFontSize(8);
+                          doc.text("BOOKING ID: " + selectedBooking.id, 74, 23, { align: "center" });
 
-                        // Total Paid Amount display at the top of PDF
-                        const isCompleted = selectedBooking.status === "completed";
-                        const reservationFee = isCompleted
-                          ? Math.max(0, selectedBooking.depositPaid - (selectedBooking.earlyFee || 0) - (selectedBooking.penaltyFee || 0))
-                          : selectedBooking.depositPaid;
-                        const earlyFee = selectedBooking.earlyFee || 0;
-                        const penaltyFee = selectedBooking.penaltyFee || 0;
-                        const totalCost = reservationFee + earlyFee + penaltyFee;
-                        const totalPaid = isCompleted ? totalCost : selectedBooking.depositPaid;
-                        const amountDue = isCompleted ? 0 : (earlyFee + penaltyFee);
+                          // Total Paid Amount display at the top of PDF
+                          const isCompleted = selectedBooking.status === "completed";
+                          const reservationFee = isCompleted
+                            ? Math.max(0, selectedBooking.depositPaid - (selectedBooking.earlyFee || 0) - (selectedBooking.penaltyFee || 0))
+                            : selectedBooking.depositPaid;
+                          const earlyFee = selectedBooking.earlyFee || 0;
+                          const penaltyFee = selectedBooking.penaltyFee || 0;
+                          const totalCost = reservationFee + earlyFee + penaltyFee;
+                          const totalPaid = isUnpaidCancelled ? 0 : (isCompleted ? totalCost : selectedBooking.depositPaid);
 
-                        doc.setTextColor(60, 60, 60); doc.setFontSize(8);
-                        doc.text("TOTAL AMOUNT PAID", 74, 45, { align: "center" });
-                        doc.setTextColor(16, 124, 65); doc.setFont("helvetica", "bold"); doc.setFontSize(18);
-                        doc.text(totalPaid.toLocaleString() + " VND", 74, 56, { align: "center" });
+                          doc.setTextColor(60, 60, 60); doc.setFontSize(8);
+                          doc.text(isUnpaidCancelled ? "PAYMENT STATUS" : "TOTAL AMOUNT PAID", 74, 45, { align: "center" });
 
-                        // Divider line
-                        doc.setDrawColor(220, 220, 220); doc.line(12, 65, 136, 65);
+                          if (isUnpaidCancelled) {
+                            doc.setTextColor(200, 50, 50); doc.setFont("helvetica", "bold"); doc.setFontSize(16);
+                            doc.text(language === "en" ? "UNPAID" : "CHƯA THANH TOÁN", 74, 56, { align: "center" });
+                          } else {
+                            doc.setTextColor(16, 124, 65); doc.setFont("helvetica", "bold"); doc.setFontSize(18);
+                            doc.text(totalPaid.toLocaleString() + " VND", 74, 56, { align: "center" });
+                          }
 
-                        // Schedule Details
-                        doc.setTextColor(16, 124, 65); doc.setFont("helvetica", "bold"); doc.setFontSize(9);
-                        doc.text("SCHEDULE DETAILS", 12, 72);
-                        doc.setTextColor(80, 80, 80); doc.setFont("helvetica", "normal"); doc.setFontSize(8);
-                        doc.text("Arrival Time:", 12, 78); doc.setFont("helvetica", "bold"); doc.text(formatFullDateTime(selectedBooking.startTime), 40, 78);
-                        doc.setFont("helvetica", "normal"); doc.text("Departure Time:", 12, 84); doc.setFont("helvetica", "bold"); doc.text(formatFullDateTime(selectedBooking.endTime), 40, 84);
-                        doc.setFont("helvetica", "normal"); doc.text("Duration:", 12, 90); doc.setFont("helvetica", "bold"); doc.text(calculateDuration(selectedBooking.startTime, selectedBooking.endTime), 40, 90);
+                          // Divider line
+                          doc.setDrawColor(220, 220, 220); doc.line(12, 65, 136, 65);
 
-                        // Divider line
-                        doc.line(12, 96, 136, 96);
+                          // Schedule Details
+                          if (isUnpaidCancelled) {
+                            doc.setTextColor(50, 50, 50);
+                          } else {
+                            doc.setTextColor(16, 124, 65);
+                          }
+                          doc.setFont("helvetica", "bold"); doc.setFontSize(9);
+                          doc.text("SCHEDULE DETAILS", 12, 72);
+                          doc.setTextColor(80, 80, 80); doc.setFont("helvetica", "normal"); doc.setFontSize(8);
+                          doc.text("Arrival Time:", 12, 78); doc.setFont("helvetica", "bold"); doc.text(formatFullDateTime(selectedBooking.startTime), 40, 78);
+                          doc.setFont("helvetica", "normal"); doc.text("Departure Time:", 12, 84); doc.setFont("helvetica", "bold"); doc.text(formatFullDateTime(selectedBooking.endTime), 40, 84);
+                          doc.setFont("helvetica", "normal"); doc.text("Duration:", 12, 90); doc.setFont("helvetica", "bold"); doc.text(calculateDuration(selectedBooking.startTime, selectedBooking.endTime), 40, 90);
 
-                        // Vehicle section
-                        doc.setTextColor(16, 124, 65); doc.setFont("helvetica", "bold"); doc.setFontSize(9);
-                        doc.text("VEHICLE INFORMATION", 12, 103);
-                        doc.setTextColor(80, 80, 80); doc.setFont("helvetica", "normal"); doc.setFontSize(8);
-                        doc.text("License Plate:", 12, 109); doc.setFont("helvetica", "bold"); doc.text(selectedBooking.plate_number, 40, 109);
-                        doc.setFont("helvetica", "normal"); doc.text("Vehicle Type:", 12, 115); doc.setFont("helvetica", "bold"); doc.text(selectedBooking.vehicleType === "car" ? "Car" : "Motorbike", 40, 115);
+                          // Divider line
+                          doc.line(12, 96, 136, 96);
 
-                        // Divider line
-                        doc.line(12, 121, 136, 121);
+                          // Vehicle section
+                          if (isUnpaidCancelled) {
+                            doc.setTextColor(50, 50, 50);
+                          } else {
+                            doc.setTextColor(16, 124, 65);
+                          }
+                          doc.setFont("helvetica", "bold"); doc.setFontSize(9);
+                          doc.text("VEHICLE INFORMATION", 12, 103);
+                          doc.setTextColor(80, 80, 80); doc.setFont("helvetica", "normal"); doc.setFontSize(8);
+                          doc.text("License Plate:", 12, 109); doc.setFont("helvetica", "bold"); doc.text(selectedBooking.plate_number, 40, 109);
+                          doc.setFont("helvetica", "normal"); doc.text("Vehicle Type:", 12, 115); doc.setFont("helvetica", "bold"); doc.text(selectedBooking.vehicleType === "car" ? "Car" : "Motorbike", 40, 115);
 
-                        // Fee section
-                        doc.setTextColor(16, 124, 65); doc.setFont("helvetica", "bold"); doc.setFontSize(9);
-                        doc.text("FEE DETAILS", 12, 128);
-                        doc.setTextColor(80, 80, 80); doc.setFont("helvetica", "normal"); doc.setFontSize(8);
+                          // Divider line
+                          doc.line(12, 121, 136, 121);
 
-                        let feeMethod = selectedBooking.paymentMethod || "Paid";
-                        doc.text(`Reservation fee (${feeMethod}):`, 12, 135);
-                        doc.text(reservationFee.toLocaleString() + " VND", 136, 135, { align: "right" });
+                          // Fee section
+                          if (isUnpaidCancelled) {
+                            doc.setTextColor(50, 50, 50);
+                          } else {
+                            doc.setTextColor(16, 124, 65);
+                          }
+                          doc.setFont("helvetica", "bold"); doc.setFontSize(9);
+                          doc.text("FEE DETAILS", 12, 128);
+                          doc.setTextColor(80, 80, 80); doc.setFont("helvetica", "normal"); doc.setFontSize(8);
 
-                        let nextY = 141;
-                        if (earlyFee > 0) {
-                          doc.text("Early arrival fee (Cash):", 12, nextY);
-                          doc.text(earlyFee.toLocaleString() + " VND", 136, nextY, { align: "right" });
-                          nextY += 6;
-                        }
-                        if (penaltyFee > 0) {
-                          doc.setTextColor(200, 50, 50);
-                          doc.text("Overtime penalty fee (Cash):", 12, nextY);
-                          doc.text(penaltyFee.toLocaleString() + " VND", 136, nextY, { align: "right" });
-                          doc.setTextColor(80, 80, 80);
-                          nextY += 6;
-                        }
+                          let feeMethod = isUnpaidCancelled
+                            ? (language === "en" ? "Unpaid" : "Chưa thanh toán")
+                            : (selectedBooking.paymentMethod || "Paid");
+                          doc.text(`Reservation fee (${feeMethod}):`, 12, 135);
+                          doc.text(reservationFee.toLocaleString() + " VND", 136, 135, { align: "right" });
 
-                        // Divider line
-                        doc.line(12, nextY, 136, nextY);
+                          let nextY = 141;
+                          if (earlyFee > 0) {
+                            doc.text("Early arrival fee (Cash):", 12, nextY);
+                            doc.text(earlyFee.toLocaleString() + " VND", 136, nextY, { align: "right" });
+                            nextY += 6;
+                          }
+                          if (penaltyFee > 0) {
+                            doc.setTextColor(200, 50, 50);
+                            doc.text("Overtime penalty fee (Cash):", 12, nextY);
+                            doc.text(penaltyFee.toLocaleString() + " VND", 136, nextY, { align: "right" });
+                            doc.setTextColor(80, 80, 80);
+                            nextY += 6;
+                          }
 
-                        // Total cost
-                        doc.setFont("helvetica", "bold"); doc.setTextColor(40, 40, 40);
-                        doc.text("TOTAL:", 12, nextY + 7);
-                        doc.text(totalCost.toLocaleString() + " VND", 136, nextY + 7, { align: "right" });
+                          // Divider line
+                          doc.line(12, nextY, 136, nextY);
 
+                          // Total cost
+                          doc.setFont("helvetica", "bold"); doc.setTextColor(40, 40, 40);
+                          doc.text("TOTAL:", 12, nextY + 7);
+                          doc.text(totalCost.toLocaleString() + " VND", 136, nextY + 7, { align: "right" });
 
-
-                        // Footer
-                        doc.setTextColor(150, 150, 150); doc.setFont("helvetica", "italic"); doc.setFontSize(7);
-                        doc.text("Thank you for using eParking! We look forward to serving you again.", 74, 195, { align: "center" });
-                        doc.save("receipt-" + selectedBooking.id + ".pdf");
-                      } catch (e) { alert("Could not generate PDF."); }
-                    }}
-                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3 rounded-xl text-xs flex items-center justify-center gap-2 shadow-md transition active:scale-[0.98]"
-                  >
-                    <Download size={15} />
-                    {language === "en" ? "Download Receipt" : "Tải hóa đơn"}
-                  </button>
+                          // Footer
+                          doc.setTextColor(150, 150, 150); doc.setFont("helvetica", "italic"); doc.setFontSize(7);
+                          doc.text(isUnpaidCancelled ? (language === "en" ? "This reservation was cancelled." : "Đặt chỗ này đã bị hủy.") : "Thank you for using eParking! We look forward to serving you again.", 74, 195, { align: "center" });
+                          doc.save("receipt-" + selectedBooking.id + ".pdf");
+                        } catch (e) { alert("Could not generate PDF."); }
+                      }}
+                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3 rounded-xl text-xs flex items-center justify-center gap-2 shadow-md transition active:scale-[0.98]"
+                    >
+                      <Download size={15} />
+                      {language === "en" ? "Download Receipt" : "Tải hóa đơn"}
+                    </button>
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* ===== Modal: Booking Details (Staff-style) ===== */}
             {activeModal === "details" && selectedBooking && (
@@ -1438,6 +1468,7 @@ export default function MyBookings() {
                           {/* Fee breakdown */}
                           {(() => {
                             const isCompleted = selectedBooking.status === "completed";
+                            const isUnpaidCancelled = selectedBooking.status === "cancelled" && selectedBooking.notes === "unpaid";
                             const reservationFee = isCompleted
                               ? Math.max(0, selectedBooking.depositPaid - (selectedBooking.earlyFee || 0) - (selectedBooking.penaltyFee || 0))
                               : selectedBooking.depositPaid;
@@ -1445,8 +1476,10 @@ export default function MyBookings() {
                             const penaltyFee = selectedBooking.penaltyFee || 0;
                             const totalCost = reservationFee + earlyFee + penaltyFee;
                             const amountDue = isCompleted ? 0 : (earlyFee + penaltyFee);
-                            const totalPaid = isCompleted ? totalCost : selectedBooking.depositPaid;
-                            const payMethod = selectedBooking.paymentMethod || "Paid";
+                            const totalPaid = isUnpaidCancelled ? 0 : (isCompleted ? totalCost : selectedBooking.depositPaid);
+                            const payMethod = isUnpaidCancelled
+                              ? (language === "en" ? "Unpaid" : "Chưa thanh toán")
+                              : (selectedBooking.paymentMethod || "Paid");
 
                             return (
                               <div className="pt-2 border-t border-slate-200 dark:border-slate-800 space-y-2">
@@ -1454,7 +1487,10 @@ export default function MyBookings() {
                                 <div className="flex justify-between items-center text-xs">
                                   <span className="text-slate-400">
                                     {language === "en" ? "Reservation fee:" : "Phí đặt cọc:"}
-                                    <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 ml-1.5 px-1.5 py-0.5 bg-emerald-50 dark:bg-emerald-950/20 rounded">
+                                    <span className={`text-[9px] font-bold ml-1.5 px-1.5 py-0.5 rounded ${isUnpaidCancelled
+                                        ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20"
+                                        : "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20"
+                                      }`}>
                                       {payMethod}
                                     </span>
                                   </span>
@@ -1474,11 +1510,11 @@ export default function MyBookings() {
                                   </div>
                                 )}
 
-                                {/* Overdue Penalty Fee */}
+                                {/* Overtime Penalty Fee */}
                                 {penaltyFee > 0 && (
                                   <div className="flex justify-between items-center text-xs">
                                     <span className="text-slate-400">
-                                      {language === "en" ? "Overdue Penalty fee:" : "Phí phạt quá giờ:"}
+                                      {language === "en" ? "Overtime Penalty fee:" : "Phí phạt quá giờ:"}
                                       <span className="text-[9px] font-bold text-slate-500 ml-1.5 px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 rounded">
                                         {language === "en" ? "Cash" : "Tiền mặt"}
                                       </span>
@@ -1502,7 +1538,7 @@ export default function MyBookings() {
                                   <span className="font-bold text-slate-800 dark:text-white">
                                     {language === "en" ? "Total paid:" : "Tổng đã thanh toán:"}
                                   </span>
-                                  <span className="font-extrabold text-emerald-600 dark:text-emerald-400 ">
+                                  <span className={`font-extrabold ${isUnpaidCancelled ? "text-red-500" : "text-emerald-600 dark:text-emerald-400"}`}>
                                     {totalPaid.toLocaleString()}đ
                                   </span>
                                 </div>
@@ -1552,31 +1588,9 @@ export default function MyBookings() {
                         </p>
                         <p className="text-[11px] text-slate-500 dark:text-slate-400">
                           {isCurrentlyLocked(selectedBooking)
-                            ? (language === "en" ? "Auto-unlocks 5 min before your checkout time." : "Tự động mở khóa 5 phút trước giờ checkout.")
-                            : (language === "en" ? "Your vehicle can exit freely." : "Xe có thể ra khỏi bãi tự do.")}
+                            ? (language === "en" ? "For your security, the vehicle is locked. Please unlock it manually before checkout." : "Để đảm bảo an toàn, xe của bạn đang được khóa. Vui lòng mở khóa thủ công trước khi ra bãi.")
+                            : (language === "en" ? "Your vehicle is unlocked and can exit freely." : "Xe đã được mở khóa và có thể ra khỏi bãi tự do.")}
                         </p>
-                        {/* Countdown timer: shown as long as active booking has not reached auto-unlock time */}
-                        {selectedBooking.endTime && (() => {
-                          const endMs = new Date(selectedBooking.endTime).getTime();
-                          const unlockMs = endMs - 5 * 60 * 1000;
-                          const diff = unlockMs - currentTime;
-                          if (diff <= 0) return null;
-                          const hh = Math.floor(diff / 3600000);
-                          const mm = Math.floor((diff % 3600000) / 60000);
-                          const ss = Math.floor((diff % 60000) / 1000);
-                          const pad = (n) => String(n).padStart(2, "0");
-                          return (
-                            <div className="mt-2 inline-flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/40 px-3 py-1.5 rounded-lg">
-                              <Clock size={12} className="text-slate-500 shrink-0" />
-                              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">
-                                {language === "en" ? "Remaining time" : "Thời gian còn lại"}
-                              </span>
-                              <span className="text-sm font-black text-slate-600 dark:text-slate-400 font-sans tabular-nums">
-                                {`${pad(hh)}:${pad(mm)}:${pad(ss)}`}
-                              </span>
-                            </div>
-                          );
-                        })()}
                       </div>
 
 

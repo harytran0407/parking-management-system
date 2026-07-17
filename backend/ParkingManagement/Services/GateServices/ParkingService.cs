@@ -356,17 +356,9 @@ namespace ParkingManagement.Services
             }
 
             // Check Smart Lock status:
-            // - If IsLocked is null (default), auto-unlock 5 minutes before ExpiredAt.
-            // - If IsLocked is explicitly true, the user manually locked it. Respect it and keep it locked forever (until manual unlock).
-            // - If IsLocked is false, it is unlocked.
+            // - If IsLocked is null (default) or explicitly true, the vehicle is locked.
+            // - If IsLocked is false, it is unlocked (manually unlocked by the user).
             bool isLocked = session.IsLocked ?? true;
-            if (session.IsLocked == null && isLocked && session.Booking != null && session.Booking.ExpiredAt.HasValue)
-            {
-                if (VnNow >= session.Booking.ExpiredAt.Value.AddMinutes(-5))
-                {
-                    isLocked = false;
-                }
-            }
 
             if (isLocked)
             {
@@ -757,7 +749,7 @@ namespace ParkingManagement.Services
             }
             else
             {
-                await _parkingRepository.MarkSessionPaidAsync(session, currentFee);
+                await _parkingRepository.MarkSessionPaidAsync(session, currentFee, VnNow.AddMinutes(15));
                 return new
                 {
                     success = true,

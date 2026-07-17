@@ -5,6 +5,7 @@ import cv2
 import numpy as np
 import base64
 import re
+import torch
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from ultralytics import YOLO
@@ -17,7 +18,8 @@ from util import get_car, read_license_plate, USING_PADDLE, reader, preprocess_l
 # ══════════════════════════════════════════════════════════════════════════
 parser = argparse.ArgumentParser()
 parser.add_argument('--port', type=int, default=5001, help='Port chạy Flask AI Service')
-parser.add_argument('--device', type=str, default='cpu', help='Thiết bị chạy mô hình: cpu hoặc cuda')
+default_device = 'cuda' if torch.cuda.is_available() else 'cpu'
+parser.add_argument('--device', type=str, default=default_device, help='Thiết bị chạy mô hình: cpu hoặc cuda')
 parser.add_argument('--vehicle_weight', type=str, default='./models/yolov8n.pt', help='Mô hình nhận diện xe')
 parser.add_argument('--plate_weight', type=str, default='./models/license_plate_detector.pt', help='Mô hình nhận diện biển số')
 args = parser.parse_args()
@@ -27,8 +29,8 @@ YOLO_VEHICLE_MODEL = args.vehicle_weight
 LP_DETECTOR_MODEL  = args.plate_weight
 FLASK_PORT         = args.port
 
-VEHICLE_CLASSES     = [2, 3, 5, 7]  # COCO: car, motorbike, bus, truck
-VEHICLE_CLASS_NAMES = {2: 'Car', 3: 'Motorbike', 5: 'Bus', 7: 'Truck'}
+VEHICLE_CLASSES     = [2, 3]  # COCO: car, motorbike
+VEHICLE_CLASS_NAMES = {2: 'Car', 3: 'Motorbike'}
 
 # ══════════════════════════════════════════════════════════════════════════
 # 2. Khởi tạo & Tải mô hình AI lên bộ nhớ
@@ -67,8 +69,8 @@ def optimize_lp_image(crop_img):
     clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
     enhanced = clahe.apply(gray)
     
-    # Bước D: Khử nhiễu chuẩn nhẹ để giữ lại nét chữ mảnh (h=5 thay vì h=10)
-    denoised = cv2.fastNlMeansDenoising(enhanced, None, 5, 7, 21)
+    # Bước D: Khử nhiễu chuẩn nhẹ để giữ lại nét chữ mảnh (sử dụng GaussianBlur nhanh hơn nhiều)
+    denoised = cv2.GaussianBlur(enhanced, (3, 3), 0)
     
     # Chuyển ngược lại dạng 3 kênh màu cho OCR đầu vào
     final_img = cv2.cvtColor(denoised, cv2.COLOR_GRAY2BGR)
@@ -516,7 +518,7 @@ def recognize_uploaded_image():
             best_vehicle = detected_vehicles[0]
             best_vehicle_box = best_vehicle[:4] # [x1, y1, x2, y2]
             vehicle_type_name = best_vehicle[5]
-            vehicle_type_id = 2 if vehicle_type_name.lower() in ['car', 'bus', 'truck'] else 1
+            vehicle_type_id = 2 if vehicle_type_name.lower() == 'car' else 1
 
         # ── Bước 3: Định vị vùng chứa biển số thông minh ──
         lp_crop = None

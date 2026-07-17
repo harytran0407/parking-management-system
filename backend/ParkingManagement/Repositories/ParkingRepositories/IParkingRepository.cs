@@ -145,7 +145,7 @@ namespace ParkingManagement.Repositories
         /// <summary>
         /// Đánh dấu phiên đỗ xe đã thanh toán (QuickPay): tạo bản ghi Payment hợp lệ và cập nhật PaymentStatus trên session.
         /// </summary>
-        Task MarkSessionPaidAsync(ParkingSession session, decimal fee);
+        Task MarkSessionPaidAsync(ParkingSession session, decimal fee, DateTime? timePaidUntil);
 
         Task CreatePaymentAsync(Payment payment);
 

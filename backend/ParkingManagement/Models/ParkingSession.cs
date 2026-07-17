@@ -53,6 +53,8 @@ public partial class ParkingSession
 
     public string? TicketCode { get; set; }
 
+    public DateTime? TimePaidUntil { get; set; }
+
     public virtual Booking? Booking { get; set; }
 
     public virtual ICollection<IncidentLog> IncidentLogs { get; set; } = new List<IncidentLog>();

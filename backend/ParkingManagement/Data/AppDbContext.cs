@@ -337,6 +337,10 @@ public partial class AppDbContext : DbContext
                 .HasMaxLength(20)
                 .HasColumnName("TICKET_CODE");
 
+            entity.Property(e => e.TimePaidUntil)
+                .HasColumnType("datetime")
+                .HasColumnName("TIME_PAID_UNTIL");
+
             entity.Property(e => e.IsLocked)
                 .HasColumnName("IS_LOCKED")
                 .HasColumnType("tinyint(1)");

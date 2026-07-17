@@ -64,8 +64,23 @@ public class BookingController : ControllerBase
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
             ?? throw new UnauthorizedAccessException("Invalid token");
 
-        var data = await _service.CreateBookingAsync(userId, request);
-        return StatusCode(201, new { success = true, message = "Booking created successfully.", data });
+        try
+        {
+            var data = await _service.CreateBookingAsync(userId, request);
+            return StatusCode(201, new { success = true, message = "Booking created successfully.", data });
+        }
+        catch (InvalidOperationException ex) when (ex.Message == "PHONE_REQUIRED")
+        {
+            return BadRequest(new { success = false, error_code = "PHONE_REQUIRED", message = "Số điện thoại là bắt buộc để thực hiện đặt chỗ." });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
     }
 
     // GET /api/v1/bookings/my
