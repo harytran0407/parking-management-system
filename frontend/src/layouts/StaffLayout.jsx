@@ -9,7 +9,6 @@ import CheckOutPage from "../pages/staff/CheckOutPage";
 import HistoryPage from "../pages/staff/HistoryPage";
 import IncidentHandlingPage from '../pages/staff/IncidentHandling';
 import SlotGateManagementPage from '../pages/staff/SlotGateManagement';
-import SessionLookupPage from '../pages/staff/SessionLookupPage';
 import BookingReconciliationPage from '../pages/staff/BookingReconciliationPage';
 import { useLanguage } from '../hooks/useLanguage';
 
@@ -45,11 +44,6 @@ export default function StaffLayout() {
       icon: <Map size={20} />,
     },
     {
-      path: "/staff/session-lookup",
-      label: language === 'en' ? "Session Lookup" : "Tra cứu phiên xe",
-      icon: <ScanSearch size={20} />,
-    },
-    {
       path: "/staff/booking-reconciliation",
       label: "Booking Record",
       icon: <CalendarCheck size={20} />,
@@ -80,7 +74,6 @@ export default function StaffLayout() {
             <Route path="/history" element={<HistoryPage />} />
             <Route path="/incidents" element={<IncidentHandlingPage />} />
             <Route path="/slots" element={<SlotGateManagementPage />} />
-            <Route path="/session-lookup" element={<SessionLookupPage />} />
             <Route path="/booking-reconciliation" element={<BookingReconciliationPage />} />
             <Route path="profile" element={<Profile />} />
 

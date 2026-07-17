@@ -316,7 +316,8 @@ namespace ParkingManagement.Services
             await _parkingRepository.SaveChangesWithTransactionAsync(async () =>
             {
                 UpdateSessionForCheckOut(session, checkOutDto, staffId, checkOutTime, durationMinutes, finalFee);
-                session.TicketCode = null;
+                // Preserve ticket code in session history after check-out
+                // session.TicketCode = null;
                 await _parkingRepository.UpdateSessionAsync(session);
 
                 if (session.ZoneId.HasValue)
@@ -1127,12 +1128,13 @@ namespace ParkingManagement.Services
                 CheckOutTime = s.CheckOutTime,
                 TotalFee = s.TotalFee ?? 0,
                 PaymentStatus = s.Status == "ACTIVE" ? "PARKING" : (s.PaymentStatus ?? "COMPLETED"),
-                StaffCheckIn = s.StaffInId ?? "System",
-                StaffCheckOut = s.StaffOutId,
+                StaffCheckIn = s.StaffIn != null ? (s.StaffIn.FullName ?? s.StaffIn.Username) : (s.StaffInId ?? "System"),
+                StaffCheckOut = s.StaffOut != null ? (s.StaffOut.FullName ?? s.StaffOut.Username) : s.StaffOutId,
                 
                 Status = s.Status?.ToUpper() ?? (s.CheckOutTime.HasValue ? "COMPLETED" : "ACTIVE"),
                 ImageUrlIn = s.ImageUrlIn,
-                ImageUrlOut = s.ImageUrlOut
+                ImageUrlOut = s.ImageUrlOut,
+                TicketCode = s.TicketCode
             }).ToList();
         
             return new PagedHistoryResponseDto
@@ -1357,7 +1359,8 @@ namespace ParkingManagement.Services
                     ImageUrlOut = session.ImageUrlOut,
                     CustomerName = customerName,
                     CustomerEmail = customerEmail,
-                    CustomerPhone = customerPhone
+                    CustomerPhone = customerPhone,
+                    TicketCode = session.TicketCode
                 }
             };
         }

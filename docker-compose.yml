@@ -18,6 +18,8 @@ services:
 
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    volumes:
+      - ./backend/ParkingManagement/wwwroot/uploads:/app/wwwroot/uploads
     restart: unless-stopped
 
   frontend:

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import api from "../../utils/api";
 import axios from "axios";
@@ -42,6 +43,7 @@ const t = {
         btnConfirm: "Xác nhận",
         btnCancel: "Hủy",
         btnNextScan: "Quét tiếp",
+        btnReportWrongPlate: "Sai biển số? ",
         systemReady: "Hệ thống sẵn sàng",
         noPlateDetected: "Không phát hiện biển số",
         earlyCheckInTitle: "Cảnh báo đến sớm",
@@ -85,6 +87,7 @@ const t = {
         btnConfirm: "Confirm",
         btnCancel: "Cancel",
         btnNextScan: "Next Scan",
+        btnReportWrongPlate: "Plate mismatch? ",
         systemReady: "System Ready",
         noPlateDetected: "No Plate Detected",
         earlyCheckInTitle: "Early Check-in Warning",
@@ -110,6 +113,7 @@ const t = {
 
 export default function CheckInPage() {
     const { language } = useLanguage();
+    const navigate = useNavigate();
     const fileInputRef = useRef(null);
     const [capturedImage, setCapturedImage] = useState(null);
     const [croppedImage, setCroppedImage] = useState(null);
@@ -120,6 +124,8 @@ export default function CheckInPage() {
 
     const [isLoading, setIsLoading] = useState(false);
     const [isDragOver, setIsDragOver] = useState(false);
+    const [scanStatus, setScanStatus] = useState("idle");
+    const [showStatusOverlay, setShowStatusOverlay] = useState(false);
 
     const [isLightboxOpen, setIsLightboxOpen] = useState(false);
     const [earlyCheckInWarning, setEarlyCheckInWarning] = useState(null);
@@ -192,6 +198,8 @@ export default function CheckInPage() {
         }
 
         setIsLoading(true);
+        setScanStatus("idle");
+        setShowStatusOverlay(false);
         toast.dismiss();
         setScanResult(null);
         setCapturedImage(imageSrc);
@@ -218,6 +226,9 @@ export default function CheckInPage() {
                 setScanResult(null);
                 toast.error(t[language].toastDuplicatePlate.replace("{plate}", aiPlate));
                 setIsLoading(false);
+                setScanStatus("error");
+                setShowStatusOverlay(true);
+                setTimeout(() => setShowStatusOverlay(false), 2500);
                 return;
             }
 
@@ -251,6 +262,9 @@ export default function CheckInPage() {
                         vehicleModel: vehicleTypes.find(v => v.id === parseInt(aiVehicleType))?.name || t[language].vehicleLabel,
                         checkInTime: formatDateTime(sessionData.check_in_time || new Date(), language)
                     });
+                    setScanStatus("success");
+                    setShowStatusOverlay(true);
+                    setTimeout(() => setShowStatusOverlay(false), 2000);
                 } else {
                     throw new Error(t[language].toastBackendError);
                 }
@@ -262,6 +276,9 @@ export default function CheckInPage() {
                         message: errorMsg,
                         bodyData: bodyData
                     });
+                    setScanStatus("success");
+                    setShowStatusOverlay(true);
+                    setTimeout(() => setShowStatusOverlay(false), 2000);
                     return;
                 }
                 throw error;
@@ -271,6 +288,9 @@ export default function CheckInPage() {
             console.error("Pipeline Error:", error);
             const errorMsg = error.message || error.response?.data?.message || t[language].toastProcessingWorkflowFailed;
             toast.error(errorMsg);
+            setScanStatus("error");
+            setShowStatusOverlay(true);
+            setTimeout(() => setShowStatusOverlay(false), 2500);
         } finally {
             setIsLoading(false);
         }
@@ -305,12 +325,17 @@ export default function CheckInPage() {
         if (!plateNumber || isLoading) return;
 
         setIsLoading(true);
+        setScanStatus("idle");
+        setShowStatusOverlay(false);
         toast.dismiss();
 
         const isDuplicate = await checkIsPlateDuplicate(plateNumber);
         if (isDuplicate) {
             toast.error(t[language].toastDuplicatePlateManual.replace("{plate}", plateNumber));
             setIsLoading(false);
+            setScanStatus("error");
+            setShowStatusOverlay(true);
+            setTimeout(() => setShowStatusOverlay(false), 2500);
             return;
         }
 
@@ -350,6 +375,9 @@ export default function CheckInPage() {
                         vehicleModel: vehicleTypes.find(v => v.id === selectedVehicleType)?.name || t[language].vehicleLabel,
                         checkInTime: formatDateTime(data.check_in_time || new Date(), language)
                     });
+                    setScanStatus("success");
+                    setShowStatusOverlay(true);
+                    setTimeout(() => setShowStatusOverlay(false), 2000);
                 }
             } catch (error) {
                 const errorCode = error.error_code || error.response?.data?.error_code;
@@ -359,6 +387,9 @@ export default function CheckInPage() {
                         message: errorMsg,
                         bodyData: bodyData
                     });
+                    setScanStatus("success");
+                    setShowStatusOverlay(true);
+                    setTimeout(() => setShowStatusOverlay(false), 2000);
                     return;
                 }
                 throw error;
@@ -366,6 +397,9 @@ export default function CheckInPage() {
         } catch (error) {
             const errorMsg = error.message || error.response?.data?.message || t[language].toastManualCheckInFailed;
             toast.error(errorMsg);
+            setScanStatus("error");
+            setShowStatusOverlay(true);
+            setTimeout(() => setShowStatusOverlay(false), 2500);
         } finally {
             setIsLoading(false);
         }
@@ -375,6 +409,8 @@ export default function CheckInPage() {
         if (!targetPlate || targetPlate.trim() === "" || isLoading) return;
 
         setIsLoading(true);
+        setScanStatus("idle");
+        setShowStatusOverlay(false);
         toast.dismiss();
         const formattedPlate = targetPlate.toUpperCase().trim();
 
@@ -384,6 +420,9 @@ export default function CheckInPage() {
                 setScanResult(null);
                 toast.error(t[language].toastDuplicatePlateManual.replace("{plate}", formattedPlate));
                 setIsLoading(false);
+                setScanStatus("error");
+                setShowStatusOverlay(true);
+                setTimeout(() => setShowStatusOverlay(false), 2500);
                 return;
             }
 
@@ -394,9 +433,15 @@ export default function CheckInPage() {
                 vehicleModel: vehicleTypes.find(v => v.id === selectedVehicleType)?.name || t[language].vehicleLabel,
                 vehicleTypeId: selectedVehicleType
             });
+            setScanStatus("success");
+            setShowStatusOverlay(true);
+            setTimeout(() => setShowStatusOverlay(false), 2000);
 
         } catch (error) {
             toast.error(t[language].toastPrepareManualError);
+            setScanStatus("error");
+            setShowStatusOverlay(true);
+            setTimeout(() => setShowStatusOverlay(false), 2500);
         } finally {
             setIsLoading(false);
         }
@@ -408,6 +453,8 @@ export default function CheckInPage() {
         setPlateNumber("");
         setCapturedImage(null);
         setCroppedImage(null);
+        setScanStatus("idle");
+        setShowStatusOverlay(false);
         toast.dismiss();
     };
 
@@ -481,7 +528,13 @@ export default function CheckInPage() {
                         onClick={() => fileInputRef.current?.click()}
                         className={`relative border-2 border-dashed flex-1 min-h-[220px] sm:min-h-[300px] lg:min-h-0 flex flex-col items-center justify-center overflow-hidden cursor-pointer transition-all duration-200 rounded-md ${isDragOver
                             ? "border-blue-500 bg-blue-50/20 dark:bg-blue-950/20"
-                            : "border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-900"
+                            : isLoading
+                                ? "border-blue-500 bg-blue-50/5 dark:bg-blue-950/5 shadow-md shadow-blue-500/10"
+                                : scanStatus === "success"
+                                    ? "border-emerald-500 bg-emerald-50/5 dark:bg-emerald-950/5 shadow-md shadow-emerald-500/10"
+                                    : scanStatus === "error"
+                                        ? "border-rose-500 bg-rose-50/5 dark:bg-rose-950/5 shadow-md shadow-rose-500/10"
+                                        : "border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-900"
                             }`}
                     >
                         <input
@@ -523,6 +576,8 @@ export default function CheckInPage() {
                                             setCroppedImage(null);
                                             setScanResult(null);
                                             setPlateNumber("");
+                                            setScanStatus("idle");
+                                            setShowStatusOverlay(false);
                                         }}
                                         className="bg-red-600 hover:bg-red-500 text-white font-bold text-xs px-3 py-1.5 rounded shadow flex items-center gap-1"
                                     >
@@ -544,6 +599,49 @@ export default function CheckInPage() {
                                         {language === "vi" ? "hoặc click để chọn tệp tin" : "or click to browse file"}
                                     </p>
                                 </div>
+                            </div>
+                        )}
+
+                        {/* Status overlays */}
+                        {isLoading && (
+                            <div className="absolute inset-0 bg-slate-900/70 dark:bg-slate-950/80 backdrop-blur-sm z-30 flex flex-col items-center justify-center text-white transition-opacity duration-200">
+                                <RefreshCw className="w-10 h-10 text-blue-500 animate-spin mb-3" />
+                                <p className="text-sm font-bold tracking-wide">
+                                    {language === "vi" ? "Đang xử lý hình ảnh..." : "Processing image..."}
+                                </p>
+                                <p className="text-xs text-slate-400 mt-1">
+                                    {language === "vi" ? "Nhận diện biển số & loại xe..." : "Recognizing plate & vehicle type..."}
+                                </p>
+                            </div>
+                        )}
+
+                        {scanStatus === "success" && showStatusOverlay && (
+                            <div className="absolute inset-0 bg-emerald-950/85 dark:bg-emerald-950/90 backdrop-blur-[1px] z-30 flex flex-col items-center justify-center text-emerald-400 transition-opacity duration-200">
+                                <div className="w-14 h-14 bg-emerald-500 text-white rounded-full flex items-center justify-center mb-3 shadow-lg shadow-emerald-500/30 animate-bounce">
+                                    <CheckCircle2 size={32} />
+                                </div>
+                                <p className="text-sm font-black uppercase tracking-wider text-emerald-400">
+                                    {language === "vi" ? "Xử lý thành công!" : "Success!"}
+                                </p>
+                                {plateNumber && (
+                                    <p className="text-xs text-emerald-200 mt-1 font-mono font-bold tracking-widest bg-emerald-900/50 px-2 py-0.5 rounded">
+                                        {plateNumber}
+                                    </p>
+                                )}
+                            </div>
+                        )}
+
+                        {scanStatus === "error" && showStatusOverlay && (
+                            <div className="absolute inset-0 bg-rose-950/85 dark:bg-rose-950/90 backdrop-blur-[1px] z-30 flex flex-col items-center justify-center text-rose-400 transition-opacity duration-200">
+                                <div className="w-14 h-14 bg-rose-600 text-white rounded-full flex items-center justify-center mb-3 shadow-lg shadow-rose-600/30 animate-pulse">
+                                    <X size={32} />
+                                </div>
+                                <p className="text-sm font-black uppercase tracking-wider text-rose-400">
+                                    {language === "vi" ? "Xử lý thất bại" : "Failed"}
+                                </p>
+                                <p className="text-xs text-rose-300 mt-1 text-center px-4 max-w-[250px]">
+                                    {language === "vi" ? "Không thể xử lý xe. Vui lòng thử lại!" : "Unable to process. Please try again!"}
+                                </p>
                             </div>
                         )}
                     </div>
@@ -603,7 +701,7 @@ export default function CheckInPage() {
                                         <img
                                             src={croppedImage || capturedImage || "https://placehold.co/600x400/0f172a/64748b?text=Snapshot+Inbound"}
                                             alt="Captured Gate Target Area"
-                                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 opacity-90 dark:opacity-80"
+                                            className="w-full h-auto max-h-[130px] object-contain transition-transform duration-300 group-hover:scale-105 opacity-90 dark:opacity-80"
                                         />
                                         <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 via-transparent to-transparent pointer-events-none" />
                                         <div className="absolute bottom-2 right-2 bg-white/90 dark:bg-slate-900/90 rounded-md p-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -721,12 +819,26 @@ export default function CheckInPage() {
                                 )}
 
                                 {scanResult.type === "EntryConfirmed" && (
-                                    <button
-                                        onClick={resetTerminal}
-                                        className="w-full bg-blue-600 dark:bg-blue-600 hover:bg-blue-500 dark:hover:bg-blue-500 text-white py-2.5 rounded-md text-xs font-black uppercase tracking-wider transition-all"
-                                    >
-                                        {t[language].btnNextScan} <span className="font-sans font-normal opacity-80 text-[10px] ml-1">[Enter]</span>
-                                    </button>
+                                    <div className="flex flex-col gap-2">
+                                        <button
+                                            onClick={resetTerminal}
+                                            className="w-full bg-blue-600 dark:bg-blue-600 hover:bg-blue-500 dark:hover:bg-blue-500 text-white py-2.5 rounded-md text-xs font-black uppercase tracking-wider transition-all"
+                                        >
+                                            {t[language].btnNextScan} <span className="font-sans font-normal opacity-80 text-[10px] ml-1">[Enter]</span>
+                                        </button>
+                                        <div className="flex justify-end pt-0.5">
+                                            <button
+                                                onClick={() => {
+                                                    navigate("/staff/incidents", {
+                                                        state: { wrongPlate: scanResult.plate }
+                                                    });
+                                                }}
+                                                className="text-rose-600 dark:text-rose-400 hover:text-rose-500 dark:hover:text-rose-350 text-sm italic font-bold tracking-wide transition-all flex items-center gap-1 hover:underline"
+                                            >
+                                                {t[language].btnReportWrongPlate}
+                                            </button>
+                                        </div>
+                                    </div>
                                 )}
                             </>
                         ) : (

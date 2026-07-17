@@ -16,5 +16,6 @@ namespace ParkingManagement.DTOs
         public string Status { get; set; } = null!;
         public string? ImageUrlIn { get; set; }
         public string? ImageUrlOut { get; set; }
+        public string? TicketCode { get; set; }
     }
 }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import {
     FileQuestion, ScanFace, Clock, ClipboardList,
     Search, CarFront, Sliders, Trash2, Info,
@@ -188,6 +189,7 @@ const t = {
 
 export default function StaffIncidentHandling() {
     const { language } = useLanguage();
+    const location = useLocation();
     const [activeTab, setActiveTab] = useState("LOST_TICKET");
 
     const [searchQuery, setSearchQuery] = useState("");
@@ -284,6 +286,26 @@ export default function StaffIncidentHandling() {
         return baseUrl.replace("/api/v1", "");
     };
 
+    const getFullImageUrl = (url) => {
+        if (!url) return "";
+        let cleanUrl = url.replace(/\\/g, "/");
+        if (cleanUrl.startsWith("data:") || cleanUrl.startsWith("http:") || cleanUrl.startsWith("https:")) {
+            return cleanUrl;
+        }
+
+        // Trích xuất đường dẫn tương đối nếu chứa thư mục uploads vật lý
+        const uploadsIndex = cleanUrl.indexOf("uploads/");
+        if (uploadsIndex !== -1) {
+            cleanUrl = "/" + cleanUrl.substring(uploadsIndex);
+        }
+
+        const backendUrl = getBackendRootUrl();
+        if (cleanUrl.startsWith("/")) {
+            return `${backendUrl}${cleanUrl}`;
+        }
+        return `${backendUrl}/${cleanUrl}`;
+    };
+
     const fetchUserIncidents = async (status = userStatusFilter, search = userSearchQuery) => {
         setUserIncidentsLoading(true);
         try {
@@ -315,6 +337,44 @@ export default function StaffIncidentHandling() {
             fetchUserIncidents(userStatusFilter, userSearchQuery);
         }
     }, [activeTab, userStatusFilter]);
+
+    useEffect(() => {
+        if (location.state && location.state.wrongPlate) {
+            const wrongPlate = location.state.wrongPlate;
+            setActiveTab("OCR_MISMATCH");
+            setSearchQuery(wrongPlate);
+
+            const autoSearch = async () => {
+                setIsSearching(true);
+                setReportData(null);
+                setFoundSession(null);
+                setAssociatedSlot(null);
+
+                try {
+                    const res = await api.get(`/parking/sessions/active/${wrongPlate}`);
+                    if (res.data?.success && res.data?.data) {
+                        const session = res.data.data.session || res.data.data;
+                        const slotInfo = res.data.data.slot || session.slot || null;
+
+                        setFoundSession(session);
+                        setAssociatedSlot(slotInfo);
+                        setFormValues(prev => ({
+                            ...prev,
+                            correctedPlate: session.license_plate_in || wrongPlate
+                        }));
+                        toast.success(t[language].toastSessionFound);
+                    } else {
+                        toast.error(t[language].toastNoSessionPlate);
+                    }
+                } catch (err) {
+                    toast.error(err?.message || err?.response?.data?.message || t[language].toastSearchFailed);
+                } finally {
+                    setIsSearching(false);
+                }
+            };
+            autoSearch();
+        }
+    }, [location.state, language]);
 
     const handleResolveUserIncident = async (e) => {
         e.preventDefault();
@@ -473,14 +533,14 @@ export default function StaffIncidentHandling() {
                     <div
                         onClick={() => {
                             if (foundSession && foundSession.image_url_in) {
-                                setLightboxImage(`${getBackendRootUrl()}${foundSession.image_url_in}`);
+                                setLightboxImage(getFullImageUrl(foundSession.image_url_in));
                             }
                         }}
-                        className="bg-slate-100 dark:bg-slate-950 h-32 border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm dark:shadow-md relative group cursor-zoom-in rounded-md transition-colors duration-200"
+                        className="bg-slate-100 dark:bg-slate-950 h-[130px] xl:h-[160px] 2xl:h-[200px] border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm dark:shadow-md relative group cursor-zoom-in rounded-md transition-colors duration-200"
                         title="Click to zoom check-in snapshot"
                     >
                         <img
-                            src={foundSession.image_url_in ? `${getBackendRootUrl()}${foundSession.image_url_in}` : "https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?q=80&w=600"}
+                            src={foundSession.image_url_in ? getFullImageUrl(foundSession.image_url_in) : "https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?q=80&w=600"}
                             alt="Gate Entry"
                             onError={(e) => { e.target.onerror = null; e.target.src = "https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?q=80&w=600"; }}
                             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 opacity-90 dark:opacity-80"
@@ -663,7 +723,7 @@ export default function StaffIncidentHandling() {
                                                     {incident.created_at ? new Date(incident.created_at).toLocaleString(language === "vi" ? "vi-VN" : "en-US") : ""}
                                                 </span>
                                             </div>
- 
+
                                             <div className="flex items-center gap-2 mb-2">
                                                 <div className="w-6 h-6 rounded-full overflow-hidden bg-blue-150 text-blue-650 font-bold flex items-center justify-center text-[10px] uppercase border border-blue-200 dark:border-slate-750">
                                                     <span>{incident.full_name ? incident.full_name.charAt(0) : "U"}</span>
@@ -672,7 +732,7 @@ export default function StaffIncidentHandling() {
                                                     {incident.full_name || t[language].systemUser}
                                                 </span>
                                             </div>
- 
+
                                             {subject && (
                                                 <div className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                                                     {subject}
@@ -1001,8 +1061,8 @@ export default function StaffIncidentHandling() {
                     <div className="absolute top-5 right-5 text-slate-500 hover:text-slate-200 dark:text-slate-400 dark:hover:text-white bg-white/10 dark:bg-slate-900/60 p-2 rounded-full border border-slate-300 dark:border-slate-800 transition-colors">
                         <X size={20} />
                     </div>
-                    <div className="relative max-w-4xl max-h-[85vh] rounded-md overflow-hidden border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-                        <img src={lightboxImage} alt="High Resolution Audit" className="w-full h-auto max-h-[85vh] object-contain" />
+                    <div className="relative w-full max-w-[95vw] md:max-w-6xl max-h-[92vh] rounded-md overflow-hidden border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                        <img src={lightboxImage} alt="High Resolution Audit" className="w-full h-auto max-h-[85vh] md:max-h-[88vh] object-contain" />
                         <div className="absolute bottom-0 inset-x-0 bg-slate-900/90 dark:bg-slate-950/80 p-3 text-center border-t border-slate-200 dark:border-slate-800 backdrop-blur-sm">
                             <p className="font-mono font-bold tracking-widest text-sm text-yellow-500 dark:text-yellow-400">
                                 {foundSession?.license_plate_in || "No Plate Info"}

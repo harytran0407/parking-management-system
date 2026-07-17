@@ -2,9 +2,11 @@ import React, { useState, useEffect } from "react";
 import api from "../../utils/api";
 import {
     Sliders, Calendar, RefreshCcw, Info,
-    Search, ChevronLeft, ChevronRight, Trash2, Download
+    Search, ChevronLeft, ChevronRight, Trash2, Download,
+    X, Maximize2, Car, Hash, User, Clock, MapPin, Copy
 } from "lucide-react";
 import { useLanguage } from "../../hooks/useLanguage";
+import { toast } from "sonner";
 
 const t = {
     vi: {
@@ -72,6 +74,62 @@ export default function HistoryPage() {
     const [activities, setActivities] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [errorMessage, setErrorMessage] = useState("");
+
+    const [selectedSession, setSelectedSession] = useState(null);
+    const [lightboxImage, setLightboxImage] = useState(null);
+
+    const getBackendRootUrl = () => {
+        const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+        return baseUrl.replace("/api/v1", "");
+    };
+
+    const getFullImageUrl = (url) => {
+        if (!url) return "";
+        let cleanUrl = url.replace(/\\/g, "/");
+        if (cleanUrl.startsWith("data:") || cleanUrl.startsWith("http:") || cleanUrl.startsWith("https:")) {
+            return cleanUrl;
+        }
+
+        // Trích xuất đường dẫn tương đối nếu chứa thư mục uploads vật lý
+        const uploadsIndex = cleanUrl.indexOf("uploads/");
+        if (uploadsIndex !== -1) {
+            cleanUrl = "/" + cleanUrl.substring(uploadsIndex);
+        }
+
+        const backendUrl = getBackendRootUrl();
+        if (cleanUrl.startsWith("/")) {
+            return `${backendUrl}${cleanUrl}`;
+        }
+        return `${backendUrl}/${cleanUrl}`;
+    };
+
+    const getDurationMinutes = (checkIn, checkOut) => {
+        if (!checkIn) return 0;
+        const start = new Date(checkIn);
+        const end = checkOut ? new Date(checkOut) : new Date();
+        const diffMs = end.getTime() - start.getTime();
+        return Math.max(0, Math.floor(diffMs / 60000));
+    };
+
+    const formatDuration = (totalMinutes) => {
+        if (totalMinutes === undefined || totalMinutes === null) return "0 " + (language === "vi" ? "phút" : "mins");
+        const days = Math.floor(totalMinutes / 1440);
+        const hours = Math.floor((totalMinutes % 1440) / 60);
+        const minutes = totalMinutes % 60;
+
+        let parts = [];
+        if (language === "vi") {
+            if (days > 0) parts.push(`${days} ngày`);
+            if (hours > 0 || days > 0) parts.push(`${hours} giờ`);
+            if (minutes > 0 || (days === 0 && hours === 0)) parts.push(`${minutes} phút`);
+            return parts.join(" ");
+        } else {
+            if (days > 0) parts.push(`${days} day${days > 1 ? "s" : ""}`);
+            if (hours > 0 || days > 0) parts.push(`${hours} hr${hours > 1 ? "s" : ""}`);
+            if (minutes > 0 || (days === 0 && hours === 0)) parts.push(`${minutes} min${minutes > 1 ? "s" : ""}`);
+            return parts.join(" ");
+        }
+    };
 
     // Số lượng xe đang đỗ thực tế
     const [currentlyParkedCount, setCurrentlyParkedCount] = useState(0);
@@ -378,14 +436,15 @@ export default function HistoryPage() {
                                 <th className="pb-3 font-semibold">{t[language].headerCheckIn}</th>
                                 <th className="pb-3 font-semibold">{t[language].headerCheckOut}</th>
                                 <th className="pb-3 font-semibold">{t[language].headerStatus}</th>
-                                <th className="pb-3 font-semibold text-right pr-2">{t[language].headerFee}</th>
+                                <th className="pb-3 font-semibold text-right">{t[language].headerFee}</th>
+                                <th className="pb-3 font-semibold text-right pr-2 w-24"></th>
                             </tr>
                         </thead>
 
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-semibold text-slate-700 dark:text-slate-300">
                             {isLoading ? (
                                 <tr>
-                                    <td colSpan="7" className="text-center py-20 text-slate-450 dark:text-slate-500 font-semibold">
+                                    <td colSpan="8" className="text-center py-20 text-slate-450 dark:text-slate-500 font-semibold">
                                         <div className="flex flex-col items-center justify-center gap-2">
                                             <RefreshCcw size={20} className="animate-spin text-blue-500" />
                                             <span>{t[language].loading}</span>
@@ -394,18 +453,18 @@ export default function HistoryPage() {
                                 </tr>
                             ) : activities.length === 0 ? (
                                 <tr>
-                                    <td colSpan="7" className="text-center py-20 text-slate-450 dark:text-slate-500 italic font-semibold text-xs">
+                                    <td colSpan="8" className="text-center py-20 text-slate-450 dark:text-slate-500 italic font-semibold text-xs">
                                         {t[language].noData}
                                     </td>
                                 </tr>
                             ) : (
                                 activities.map((log, index) => (
-                                    <tr key={index} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800/60 transition-all duration-150 group cursor-default">
+                                    <tr key={index} onClick={() => setSelectedSession(log)} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800/60 transition-all duration-150 group cursor-pointer">
                                         <td className="py-3.5 pl-2 font-sans font-extrabold text-xs tracking-wider text-slate-900 dark:text-white text-sm tracking-wide">
-                                            {log.licensePlateIn || log.license_plate || "—"}
+                                            {log.licensePlateIn || log.licensePlate || log.license_plate || "—"}
                                         </td>
                                         <td className="py-3.5 font-sans text-xs font-semibold tracking-wide">
-                                            {String(log.vehicleTypeId || log.vehicle_type) === "2" ? t[language].car : t[language].motorbike}
+                                            {String(log.vehicleTypeId || log.vehicleType || log.vehicle_type) === "2" ? t[language].car : t[language].motorbike}
                                         </td>
                                         <td className="py-3.5 font-sans font-bold text-xs tracking-wider text-amber-700 dark:text-amber-500 font-bold text-sm group-hover:translate-x-0.5 transition-transform origin-left">
                                             {log.zoneName || log.zone_name || "—"}
@@ -418,7 +477,7 @@ export default function HistoryPage() {
                                         </td>
                                         <td className="py-3.5">
                                             <span className={`inline-flex text-[9px] px-2 py-0.5 rounded font-bold uppercase tracking-wider border transition-all ${log.status?.toUpperCase() === "COMPLETED"
-                                                ? "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-450 border-emerald-200 dark:border-emerald-900/30"
+                                                ? "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-455 border-emerald-200 dark:border-emerald-900/30"
                                                 : log.status?.toUpperCase() === "ACTIVE"
                                                     ? "bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-900/30"
                                                     : log.status?.toUpperCase() === "LOST_TICKET" || log.status?.toUpperCase() === "LOST-TICKET"
@@ -434,9 +493,20 @@ export default function HistoryPage() {
                                                             : log.status || t[language].statusUnknown}
                                             </span>
                                         </td>
-                                        <td className="py-3.5 text-right pr-2 font-sans font-extrabold text-xs text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-all">
+                                        <td className="py-3.5 text-right font-sans font-extrabold text-xs text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-all">
                                             {log.totalFee !== undefined && log.totalFee !== null ? `${log.totalFee.toLocaleString()} VND` :
                                                 log.total_fee !== undefined && log.total_fee !== null ? `${log.total_fee.toLocaleString()} VND` : "0 VND"}
+                                        </td>
+                                        <td className="py-3.5 text-right pr-2">
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setSelectedSession(log);
+                                                }}
+                                                className="px-2.5 py-1 text-[11px] font-bold text-blue-600 hover:text-white border border-blue-200 hover:bg-blue-600 dark:border-blue-900/50 dark:hover:bg-blue-900 rounded transition-all shadow-xs"
+                                            >
+                                                {language === "vi" ? "Chi tiết" : "Details"}
+                                            </button>
                                         </td>
                                     </tr>
                                 ))
@@ -457,13 +527,13 @@ export default function HistoryPage() {
                             </div>
                         ) : (
                             activities.map((log, index) => (
-                                <div key={index} className="bg-slate-55/50 dark:bg-slate-800/20 border border-slate-150 dark:border-slate-800/80 rounded-md p-4 flex flex-col gap-3 shadow-sm hover:border-slate-200 dark:hover:border-slate-700 transition-all duration-200">
+                                <div key={index} onClick={() => setSelectedSession(log)} className="bg-slate-55/50 dark:bg-slate-800/20 border border-slate-150 dark:border-slate-800/80 rounded-md p-4 flex flex-col gap-3 shadow-sm hover:border-slate-200 dark:hover:border-slate-700 cursor-pointer transition-all duration-200">
                                     <div className="flex justify-between items-center pb-2 border-b border-slate-100 dark:border-slate-800/40">
                                         <span className="px-2.5 py-1 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 font-sans font-extrabold text-xs tracking-wider shadow-sm">
-                                            {log.licensePlateIn || log.license_plate || "—"}
+                                            {log.licensePlateIn || log.licensePlate || log.license_plate || "—"}
                                         </span>
                                         <span className={`inline-flex items-center gap-1.5 text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider border ${log.status?.toUpperCase() === "COMPLETED"
-                                            ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-450 border-emerald-200 dark:border-emerald-900/30"
+                                            ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-455 border-emerald-200 dark:border-emerald-900/30"
                                             : log.status?.toUpperCase() === "ACTIVE"
                                                 ? "bg-blue-50 text-blue-700 dark:bg-blue-950/20 dark:text-blue-450 border-blue-200 dark:border-blue-900/30"
                                                 : log.status?.toUpperCase() === "LOST_TICKET" || log.status?.toUpperCase() === "LOST-TICKET"
@@ -485,14 +555,14 @@ export default function HistoryPage() {
                                                         : log.status || t[language].statusUnknown}
                                         </span>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-y-2 text-xs font-medium">
+                                    <div className="grid grid-cols-2 gap-y-2 text-xs font-medium" onClick={(e) => e.stopPropagation()}>
                                         <div>
                                             <div className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 tracking-wide mb-0.5">{t[language].headerType}</div>
-                                            <span className={`inline-flex px-1.5 py-0.2 rounded text-[10px] font-bold ${String(log.vehicleTypeId || log.vehicle_type) === "2"
+                                            <span className={`inline-flex px-1.5 py-0.2 rounded text-[10px] font-bold ${String(log.vehicleTypeId || log.vehicleType || log.vehicle_type) === "2"
                                                 ? "bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400 border border-blue-150/40"
                                                 : "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-405 border border-emerald-150/40"
                                                 }`}>
-                                                {String(log.vehicleTypeId || log.vehicle_type) === "2" ? t[language].car : t[language].motorbike}
+                                                {String(log.vehicleTypeId || log.vehicleType || log.vehicle_type) === "2" ? t[language].car : t[language].motorbike}
                                             </span>
                                         </div>
                                         <div>
@@ -515,11 +585,22 @@ export default function HistoryPage() {
                                         </div>
                                     </div>
                                     <div className="flex justify-between items-center pt-2.5 border-t border-slate-100 dark:border-slate-800/40">
-                                        <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 tracking-wide">{t[language].headerFee}</span>
-                                        <span className="font-sans font-extrabold text-slate-900 dark:text-white text-sm">
-                                            {log.totalFee !== undefined && log.totalFee !== null ? `${log.totalFee.toLocaleString()} VND` :
-                                                log.total_fee !== undefined && log.total_fee !== null ? `${log.total_fee.toLocaleString()} VND` : "0 VND"}
-                                        </span>
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 tracking-wide mb-0.5">{t[language].headerFee}</span>
+                                            <span className="font-sans font-extrabold text-slate-900 dark:text-white text-sm">
+                                                {log.totalFee !== undefined && log.totalFee !== null ? `${log.totalFee.toLocaleString()} VND` :
+                                                    log.total_fee !== undefined && log.total_fee !== null ? `${log.total_fee.toLocaleString()} VND` : "0 VND"}
+                                            </span>
+                                        </div>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setSelectedSession(log);
+                                            }}
+                                            className="px-3.5 py-1.5 text-xs font-bold text-blue-600 hover:text-white border border-blue-200 hover:bg-blue-600 rounded-md transition-all dark:border-blue-900/50 dark:hover:bg-blue-900 shadow-xs"
+                                        >
+                                            {language === "vi" ? "Chi tiết" : "Details"}
+                                        </button>
                                     </div>
                                 </div>
                             ))
@@ -585,6 +666,223 @@ export default function HistoryPage() {
                 </div>
 
             </div>
+
+            {/* selectedSession Details Modal */}
+            {selectedSession && (
+                <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-40 flex items-center justify-center p-4 animate-fadeIn">
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg max-w-4xl w-full p-5 xl:p-6 shadow-2xl flex flex-col max-h-[90vh] overflow-hidden scaleUp transform transition-all duration-300" onClick={(e) => e.stopPropagation()}>
+                        {/* Header */}
+                        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 mb-4 shrink-0">
+                            <h3 className="text-sm font-black uppercase tracking-wider text-slate-800 dark:text-white flex items-center gap-2">
+                                <Info size={16} className="text-blue-500" />
+                                {language === "vi" ? "Chi tiết phiên đỗ xe" : "Parking Session Details"}
+                            </h3>
+                            <button
+                                onClick={() => setSelectedSession(null)}
+                                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 bg-slate-50 dark:bg-slate-800 p-1.5 rounded-full border border-slate-200 dark:border-slate-700 transition-colors"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 overflow-y-auto pr-1 space-y-4 class-scroll-em-di">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                {/* Left column: Details Info table */}
+                                <div className="space-y-3">
+                                    <div className="bg-slate-55/60 dark:bg-slate-950 p-4 rounded-md border border-slate-250 dark:border-slate-800 text-xs font-semibold space-y-2.5">
+                                        <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800/60 pb-1.5">
+                                            <span className="text-slate-400">{t[language].headerPlate}</span>
+                                            <span className="text-slate-900 dark:text-white font-black text-xs tracking-wide">
+                                                {selectedSession.licensePlateIn || selectedSession.licensePlate || selectedSession.license_plate || "—"}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800/60 pb-1.5">
+                                            <span className="text-slate-400">{language === "vi" ? "Mã vé xe" : "Ticket Code"}</span>
+                                            <span className="text-slate-900 dark:text-white font-black text-xs tracking-wide flex items-center gap-1.5">
+                                                <span>{selectedSession.ticketCode || selectedSession.ticket_code || "—"}</span>
+                                                {(selectedSession.ticketCode || selectedSession.ticket_code) && (
+                                                    <button
+                                                        onClick={() => {
+                                                            navigator.clipboard.writeText(selectedSession.ticketCode || selectedSession.ticket_code);
+                                                            toast.success(language === "vi" ? "Đã sao chép mã vé!" : "Ticket code copied!");
+                                                        }}
+                                                        className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-blue-500 transition-colors flex items-center justify-center cursor-pointer"
+                                                        title={language === "vi" ? "Sao chép" : "Copy"}
+                                                    >
+                                                        <Copy size={13} />
+                                                    </button>
+                                                )}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800/60 pb-1.5">
+                                            <span className="text-slate-400">{t[language].headerType}</span>
+                                            <span className="text-slate-900 dark:text-white font-bold text-xs">
+                                                {String(selectedSession.vehicleTypeId || selectedSession.vehicleType || selectedSession.vehicle_type) === "2" ? t[language].car : t[language].motorbike}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800/60 pb-1.5">
+                                            <span className="text-slate-400">{language === "vi" ? "Vị trí ô đỗ / Phân khu" : "Slot / Zone"}</span>
+                                            <span className="text-amber-700 dark:text-amber-500 font-extrabold uppercase text-xs">
+                                                {selectedSession.zoneName || selectedSession.zone_name || "—"}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800/60 pb-1.5">
+                                            <span className="text-slate-400">{t[language].headerCheckIn}</span>
+                                            <span className="text-slate-900 dark:text-white font-bold text-xs">
+                                                {selectedSession.checkInTime || selectedSession.check_in_time ? new Date(selectedSession.checkInTime || selectedSession.check_in_time).toLocaleString(language === "vi" ? "vi-VN" : "en-US") : "—"}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800/60 pb-1.5">
+                                            <span className="text-slate-400">{t[language].headerCheckOut}</span>
+                                            <span className="text-slate-900 dark:text-white font-bold text-xs">
+                                                {selectedSession.checkOutTime || selectedSession.check_out_time
+                                                    ? new Date(selectedSession.checkOutTime || selectedSession.check_out_time).toLocaleString(language === "vi" ? "vi-VN" : "en-US")
+                                                    : (language === "vi" ? "Xe đang trong bãi" : "")}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800/60 pb-1.5">
+                                            <span className="text-slate-400">{language === "vi" ? "Thời lượng đỗ" : "Duration"}</span>
+                                            <span className="text-slate-900 dark:text-white font-bold text-xs">
+                                                {formatDuration(getDurationMinutes(selectedSession.checkInTime || selectedSession.check_in_time, selectedSession.checkOutTime || selectedSession.check_out_time))}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800/60 pb-1.5">
+                                            <span className="text-slate-400">{language === "vi" ? "Nhân viên check-in" : "Check-in Staff"}</span>
+                                            <span className="text-slate-900 dark:text-white font-bold text-xs">
+                                                {selectedSession.staffCheckIn || selectedSession.staff_check_in || "system"}
+                                            </span>
+                                        </div>
+                                        {selectedSession.status?.toUpperCase() === "COMPLETED" && (
+                                            <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800/60 pb-1.5">
+                                                <span className="text-slate-400">{language === "vi" ? "Nhân viên check-out" : "Check-out Staff"}</span>
+                                                <span className="text-slate-900 dark:text-white font-bold text-xs">
+                                                    {selectedSession.staffCheckOut || selectedSession.staff_check_out || "system"}
+                                                </span>
+                                            </div>
+                                        )}
+                                        <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800/60 pb-1.5">
+                                            <span className="text-slate-400">{t[language].headerStatus}</span>
+                                            <span className={`text-[10px] px-2 py-0.5 rounded font-black uppercase tracking-wider ${selectedSession.status?.toUpperCase() === "COMPLETED"
+                                                ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-450"
+                                                : selectedSession.status?.toUpperCase() === "ACTIVE"
+                                                    ? "bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-400"
+                                                    : "bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-400"
+                                                }`}>
+                                                {selectedSession.status?.toUpperCase() === "COMPLETED"
+                                                    ? t[language].statusCompleted
+                                                    : selectedSession.status?.toUpperCase() === "ACTIVE"
+                                                        ? t[language].statusActive
+                                                        : selectedSession.status || t[language].statusUnknown}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between items-center pt-1">
+                                            <span className="text-slate-400 uppercase">{language === "vi" ? "Tổng tiền thanh toán" : "Total Fee"}</span>
+                                            <span className="text-base font-black text-slate-900 dark:white">
+                                                {selectedSession.totalFee !== undefined && selectedSession.totalFee !== null ? `${selectedSession.totalFee.toLocaleString()} VND` :
+                                                    selectedSession.total_fee !== undefined && selectedSession.total_fee !== null ? `${selectedSession.total_fee.toLocaleString()} VND` : "0 VND"}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Right column: Image snap comparision */}
+                                <div className="space-y-4">
+                                    {/* Check-in photo */}
+                                    <div className="space-y-1.5">
+                                        <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider flex items-center gap-1.5">
+                                            <Car size={13} />
+                                            {language === "vi" ? "Ảnh check-in " : "Check-in Image"}
+                                        </span>
+                                        {selectedSession.imageUrlIn || selectedSession.image_url_in || selectedSession.ImageUrlIn ? (
+                                            <div
+                                                onClick={() => {
+                                                    const imgIn = selectedSession.imageUrlIn || selectedSession.image_url_in || selectedSession.ImageUrlIn
+                                                    if (imgIn) {
+                                                        setLightboxImage(getFullImageUrl(imgIn));
+                                                    }
+                                                }}
+                                                className="bg-slate-100 dark:bg-slate-950 flex items-center justify-center border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm dark:shadow-md relative group cursor-zoom-in rounded-md transition-colors duration-200 h-auto"
+                                                title="Click to zoom check-in image"
+                                            >
+                                                <img
+                                                    src={(selectedSession.imageUrlIn || selectedSession.image_url_in || selectedSession.ImageUrlIn) ? getFullImageUrl(selectedSession.imageUrlIn || selectedSession.image_url_in || selectedSession.ImageUrlIn) : "https://placehold.co/600x400/0f172a/64748b?text=No+Checkin+Image"}
+                                                    alt="Check-in snapshot"
+                                                    className="w-full h-auto max-h-[130px] object-contain transition-transform duration-300 group-hover:scale-105 opacity-90 dark:opacity-80"
+                                                />
+                                                <div className="absolute bottom-2 right-2 bg-white/90 dark:bg-slate-900/90 rounded p-1 text-slate-700 dark:text-slate-200 opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm border border-slate-200 dark:border-slate-700">
+                                                    <Maximize2 size={10} />
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="bg-slate-50 dark:bg-slate-950/60 rounded-md border border-slate-250 dark:border-slate-800 h-[130px] flex flex-col items-center justify-center text-center p-3 text-slate-450 dark:text-slate-505 font-bold tracking-wide">
+                                                <span className="text-[11px] text-slate-400">
+                                                    {language === "vi" ? "No image" : "No image"}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Check-out photo */}
+                                    <div className="space-y-1.5">
+                                        <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider flex items-center gap-1.5">
+                                            <Car size={13} />
+                                            {language === "vi" ? "Ảnh check-out" : "Check-out Image"}
+                                        </span>
+                                        {selectedSession.status?.toUpperCase() === "COMPLETED" && (selectedSession.imageUrlOut || selectedSession.image_url_out || selectedSession.ImageUrlOut) ? (
+                                            <div
+                                                onClick={() => {
+                                                    const imgOut = selectedSession.imageUrlOut || selectedSession.image_url_out || selectedSession.ImageUrlOut;
+                                                    if (imgOut) {
+                                                        setLightboxImage(getFullImageUrl(imgOut));
+                                                    }
+                                                }}
+                                                className="bg-slate-100 dark:bg-slate-950 flex items-center justify-center border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm dark:shadow-md relative group cursor-zoom-in rounded-md transition-colors duration-200 h-auto"
+                                                title="Click to zoom check-out image"
+                                            >
+                                                <img
+                                                    src={getFullImageUrl(selectedSession.imageUrlOut || selectedSession.image_url_out || selectedSession.ImageUrlOut)}
+                                                    alt="Check-out snapshot"
+                                                    className="w-full h-auto max-h-[130px] object-contain transition-transform duration-300 group-hover:scale-105 opacity-90 dark:opacity-80"
+                                                />
+                                                <div className="absolute bottom-2 right-2 bg-white/90 dark:bg-slate-900/90 rounded p-1 text-slate-700 dark:text-slate-200 opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm border border-slate-200 dark:border-slate-700">
+                                                    <Maximize2 size={10} />
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="bg-slate-50 dark:bg-slate-950/60 rounded-md border border-slate-250 dark:border-slate-800 h-[130px] flex flex-col items-center justify-center text-center p-3 text-slate-450 dark:text-slate-505 font-bold tracking-wide">
+                                                <span className="text-[11px] text-slate-400">
+                                                    {language === "vi" ? "No image" : "No image"}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* LIGHTBOX ZOOM PREVIEW */}
+            {lightboxImage && (
+                <div
+                    className="fixed inset-0 bg-slate-950/80 dark:bg-slate-950/90 backdrop-blur-md z-50 flex flex-col items-center justify-center p-4 cursor-zoom-out animate-fadeIn"
+                    onClick={() => setLightboxImage(null)}
+                >
+                    <div className="absolute top-5 right-5 text-slate-500 hover:text-slate-200 dark:text-slate-400 dark:hover:text-white bg-white/10 dark:bg-slate-900/60 p-2 rounded-full border border-slate-300 dark:border-slate-800 transition-colors">
+                        <X size={20} />
+                    </div>
+                    <div className="relative w-full max-w-[95vw] md:max-w-6xl max-h-[92vh] rounded-md overflow-hidden border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                        <img src={lightboxImage} alt="High Resolution Audit" className="w-full h-auto max-h-[85vh] md:max-h-[88vh] object-contain" />
+                        <div className="absolute bottom-0 inset-x-0 bg-slate-900/90 dark:bg-slate-950/80 p-3 text-center border-t border-slate-200 dark:border-slate-800 backdrop-blur-sm">
+                            <p className="font-mono font-bold tracking-widest text-sm text-yellow-500 dark:text-yellow-400">
+                                {selectedSession?.licensePlateIn || selectedSession?.licensePlate || selectedSession?.license_plate || "No Plate Info"}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
