@@ -39,6 +39,8 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<RoleAuditLog> RoleAuditLogs { get; set; }
 
+    public virtual DbSet<UserBanLog> UserBanLogs { get; set; }
+
     public virtual DbSet<VehicleType> VehicleTypes { get; set; }
 
     public virtual DbSet<SlotStatusLog> SlotStatusLogs { get; set; }
@@ -759,6 +761,48 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.AttachmentUrl)
                 .HasColumnName("ATTACHMENT_URL")
                 .HasMaxLength(255);
+        });
+
+        modelBuilder.Entity<UserBanLog>(entity =>
+        {
+            entity.ToTable("USER_BAN_LOG");
+            entity.HasKey(e => e.LogId);
+            entity.Property(e => e.LogId).HasColumnName("LOG_ID");
+
+            entity.Property(e => e.TargetUserId)
+                .HasColumnName("TARGET_USER_ID")
+                .IsRequired()
+                .HasMaxLength(36);
+
+            entity.Property(e => e.Action)
+                .HasColumnName("ACTION")
+                .IsRequired()
+                .HasMaxLength(20);
+
+            entity.Property(e => e.Reason)
+                .HasColumnName("REASON")
+                .HasColumnType("text")
+                .IsRequired();
+
+            entity.Property(e => e.ActionBy)
+                .HasColumnName("ACTION_BY")
+                .IsRequired()
+                .HasMaxLength(36);
+
+            entity.Property(e => e.CreatedAt)
+                .HasColumnName("CREATED_AT")
+                .HasColumnType("datetime")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+            entity.HasOne(d => d.TargetUser)
+                .WithMany()
+                .HasForeignKey(d => d.TargetUserId)
+                .HasConstraintName("FK_BAN_USER");
+
+            entity.HasOne(d => d.ActionByUser)
+                .WithMany()
+                .HasForeignKey(d => d.ActionBy)
+                .HasConstraintName("FK_BAN_ADMIN");
         });
 
         var dateTimeConverter = new Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<DateTime, DateTime>(
