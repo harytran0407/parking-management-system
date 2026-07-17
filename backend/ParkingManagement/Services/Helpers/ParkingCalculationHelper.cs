@@ -105,36 +105,43 @@ namespace ParkingManagement.Services.Helpers
             if (totalMinutes <= 0) return 0;
 
             decimal basePrice = policy?.BasePrice ?? (policy?.VehicleTypeId == 1 ? 5000m : 15000m);
-            int baseHours = policy?.BaseHours ?? 4;
+            int baseHours = policy?.BaseHours ?? 2;
             decimal subsequentRate = policy?.SubsequentRate ?? 2000m;
             int subsequentHours = policy?.SubsequentHours ?? 1;
             decimal dailyMaxPrice = policy?.DailyMaxPrice ?? 50000m;
 
-            int fullDays = totalMinutes / 1440;
-            int remainingMinutes = totalMinutes % 1440;
-
-            decimal remainingPrice = 0;
-            if (remainingMinutes > 0)
+            if (totalMinutes <= 1440)
             {
-                if (remainingMinutes <= baseHours * 60)
+                if (totalMinutes <= baseHours * 60)
                 {
-                    remainingPrice = basePrice;
+                    return basePrice;
                 }
                 else
                 {
-                    int subsequentMinutes = remainingMinutes - (baseHours * 60);
-                    double subsequentBlockMinutes = subsequentHours * 60.0;
-                    int subsequentBlocks = (int)Math.Ceiling(subsequentMinutes / subsequentBlockMinutes);
-                    remainingPrice = basePrice + (subsequentBlocks * subsequentRate);
-                }
-
-                if (remainingPrice > dailyMaxPrice)
-                {
-                    remainingPrice = dailyMaxPrice;
+                    int extraMinutes = totalMinutes - (baseHours * 60);
+                    int subsequentBlocks = (int)Math.Ceiling(extraMinutes / (subsequentHours * 60.0));
+                    decimal fee = basePrice + (subsequentBlocks * subsequentRate);
+                    return fee > dailyMaxPrice ? dailyMaxPrice : fee;
                 }
             }
+            else
+            {
+                int fullDays = totalMinutes / 1440;
+                int remainingMinutes = totalMinutes % 1440;
 
-            return (fullDays * dailyMaxPrice) + remainingPrice;
+                decimal remainingPrice = 0;
+                if (remainingMinutes > 0)
+                {
+                    int subsequentBlocks = (int)Math.Ceiling(remainingMinutes / (subsequentHours * 60.0));
+                    remainingPrice = subsequentBlocks * subsequentRate;
+                    if (remainingPrice > dailyMaxPrice)
+                    {
+                        remainingPrice = dailyMaxPrice;
+                    }
+                }
+
+                return (fullDays * dailyMaxPrice) + remainingPrice;
+            }
         }
 
         /// <summary>
@@ -292,5 +299,122 @@ namespace ParkingManagement.Services.Helpers
             var details = CalculateBookingFeeDetails(checkInTime, checkOutTime, booking, policy, operatingHours);
             return details.TotalFee;
         }
+
+        public static QuickPayCalculationResult CalculateQuickPay(
+            DateTime currentTime,
+            DateTime? checkInTime,
+            DateTime? dbTimePaidUntil,
+            decimal totalAmountPaid,
+            PricingPolicy? policy)
+        {
+            var result = new QuickPayCalculationResult();
+            var timeIn = checkInTime ?? currentTime;
+
+            if (dbTimePaidUntil.HasValue && currentTime <= dbTimePaidUntil.Value)
+            {
+                result.Status = "PAID";
+                result.AmountDue = 0;
+                result.Message = "Bạn có thể lấy xe ra trước " + dbTimePaidUntil.Value.ToString("HH:mm dd/MM/yyyy");
+                result.TimePaidUntil = dbTimePaidUntil.Value;
+                return result;
+            }
+
+            // Nếu (Current_Time > Time_Paid_Until) hoặc chưa thanh toán lần nào
+            var duration = currentTime - timeIn;
+            int totalMinutes = (int)Math.Ceiling(duration.TotalMinutes);
+            if (totalMinutes < 0) totalMinutes = 0;
+
+            decimal calculateTotalFee = 0;
+            int roundedMinutes = 0;
+            decimal tran24h = policy?.DailyMaxPrice ?? (policy?.VehicleTypeId == 1 ? 50000m : 150000m);
+
+            if (totalMinutes <= 5) // Grace period
+            {
+                calculateTotalFee = 0;
+                roundedMinutes = 5;
+            }
+            else if (totalMinutes <= 1440)
+            {
+                int baseHours = policy?.BaseHours ?? 2;
+                int subsequentHours = policy?.SubsequentHours ?? 1;
+                decimal basePrice = policy?.BasePrice ?? (policy?.VehicleTypeId == 1 ? 5000m : 15000m);
+                decimal subsequentRate = policy?.SubsequentRate ?? 2000m;
+
+                if (totalMinutes <= baseHours * 60)
+                {
+                    calculateTotalFee = basePrice;
+                    roundedMinutes = baseHours * 60;
+                }
+                else
+                {
+                    int extraMinutes = totalMinutes - (baseHours * 60);
+                    int subsequentBlocks = (int)Math.Ceiling(extraMinutes / (subsequentHours * 60.0));
+                    calculateTotalFee = basePrice + (subsequentBlocks * subsequentRate);
+                    roundedMinutes = baseHours * 60 + subsequentBlocks * subsequentHours * 60;
+                }
+
+                if (calculateTotalFee > tran24h)
+                {
+                    calculateTotalFee = tran24h;
+                    roundedMinutes = 1440; // Capped to 24h
+                }
+            }
+            else
+            {
+                int fullDays = totalMinutes / 1440;
+                int remainingMinutes = totalMinutes % 1440;
+
+                decimal remainingPrice = 0;
+                int roundedRemainingMinutes = 0;
+
+                if (remainingMinutes > 0)
+                {
+                    int subsequentHours = policy?.SubsequentHours ?? 1;
+                    decimal subsequentRate = policy?.SubsequentRate ?? 2000m;
+
+                    int subsequentBlocks = (int)Math.Ceiling(remainingMinutes / (subsequentHours * 60.0));
+                    remainingPrice = subsequentBlocks * subsequentRate;
+                    roundedRemainingMinutes = subsequentBlocks * subsequentHours * 60;
+
+                    if (remainingPrice > tran24h)
+                    {
+                        remainingPrice = tran24h;
+                        roundedRemainingMinutes = 1440; // Capped to 24h
+                    }
+                }
+
+                calculateTotalFee = (fullDays * tran24h) + remainingPrice;
+                roundedMinutes = (fullDays * 1440) + roundedRemainingMinutes;
+            }
+
+            DateTime calculatedTimePaidUntil = timeIn.AddMinutes(roundedMinutes);
+
+            decimal amountDue = calculateTotalFee - totalAmountPaid;
+            if (amountDue < 0) amountDue = 0;
+
+            result.AmountDue = amountDue;
+            result.TimePaidUntil = calculatedTimePaidUntil;
+
+            if (amountDue > 0)
+            {
+                result.Status = "PENDING";
+                result.Message = "Vui lòng thanh toán thêm để gia hạn thời gian đỗ xe";
+            }
+            else
+            {
+                result.Status = "PAID";
+                result.Message = "Bạn có thể lấy xe ra trước " + calculatedTimePaidUntil.ToString("HH:mm dd/MM/yyyy");
+            }
+
+            return result;
+        }
+    }
+
+    public class QuickPayCalculationResult
+    {
+        public string Status { get; set; } = "PENDING";
+        public decimal AmountDue { get; set; }
+        public string Message { get; set; } = string.Empty;
+        public DateTime? TimePaidUntil { get; set; }
     }
 }

@@ -42,7 +42,7 @@ const t = {
         motorbike: "Motorbike",
         car: "Car",
         allStatuses: "All Statuses",
-        statusActive: "Active",
+        statusActive: "Parking",
         statusCompleted: "Completed",
         statusLostTicket: "Lost Ticket",
         statusUnknown: "Unknown",

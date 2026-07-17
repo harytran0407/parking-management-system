@@ -36,7 +36,9 @@ try:
 except Exception as e:
     print(f"[WARN] Không thể tải PaddleOCR ONNX ({e}). Fallback sử dụng EasyOCR.")
     import easyocr
-    reader = easyocr.Reader(['en'], gpu=False)
+    import torch
+    use_gpu = torch.cuda.is_available()
+    reader = easyocr.Reader(['en'], gpu=use_gpu)
     USING_PADDLE = False
 
 
@@ -49,7 +51,7 @@ def preprocess_license_plate(crop: np.ndarray) -> list[np.ndarray]:
         scale = 64 / h
         gray = cv2.resize(gray, (int(w * scale), 64), interpolation=cv2.INTER_CUBIC)
     
-    denoised = cv2.fastNlMeansDenoising(gray, h=10)
+    denoised = cv2.GaussianBlur(gray, (3, 3), 0)
     clahe     = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
     clahe_img = clahe.apply(denoised)
     
@@ -106,6 +108,9 @@ def read_license_plate(crop: np.ndarray) -> tuple[str | None, float | None]:
             if combined and avg_score > best_score:
                 best_text  = combined
                 best_score = avg_score
+                # Early exit if we have a very clear reading (reduce redundant OCR runs)
+                if best_score >= 0.85 and len(best_text) >= 6:
+                    break
         except Exception:
             continue
 

@@ -19,6 +19,7 @@ import {
   History,
   CalendarDays,
   QrCode,
+  Phone,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import api from "../../utils/api";
@@ -30,7 +31,7 @@ const fmtVND = (val) => (val != null ? val.toLocaleString("vi-VN") : "0");
 export default function BookSlot() {
   const navigate = useNavigate();
   const { language } = useLanguage();
-  const { user } = useAuth();
+  const { user, updateUser, updateProfileApi } = useAuth();
   const userId = user?.user_id || user?.userId || "";
 
   // Vehicle selection state: null, 'car', or 'motorbike'
@@ -42,6 +43,12 @@ export default function BookSlot() {
   const [bookingError, setBookingError] = useState("");
   const [processingPayment, setProcessingPayment] = useState(false);
   const [showSuccessDelay, setShowSuccessDelay] = useState(false);
+
+  // Phone prompting state
+  const [showPhoneModal, setShowPhoneModal] = useState(false);
+  const [newPhone, setNewPhone] = useState("");
+  const [phoneError, setPhoneError] = useState("");
+  const [submittingPhone, setSubmittingPhone] = useState(false);
 
   // Form State
   const [licensePlate, setLicensePlate] = useState("");
@@ -542,6 +549,15 @@ export default function BookSlot() {
       setSubmitAttempted(true);
       return;
     }
+
+    // Check if user has phone number. If not, prompt to fill it.
+    if (!user?.phone || user.phone.trim() === "") {
+      setNewPhone("");
+      setPhoneError("");
+      setShowPhoneModal(true);
+      return;
+    }
+
     await handleCreateBookingAndGoToPayment();
   };
 
@@ -568,6 +584,14 @@ export default function BookSlot() {
       }
     } catch (error) {
       console.error("Lỗi tạo booking:", error);
+
+      if (error.response?.data?.error_code === "PHONE_REQUIRED") {
+        setNewPhone("");
+        setPhoneError("");
+        setShowPhoneModal(true);
+        return;
+      }
+
       let msg = "";
       if (error.response?.data?.errors) {
         const errObj = error.response.data.errors;
@@ -1552,6 +1576,135 @@ export default function BookSlot() {
         )}
 
       </div>
+
+      {/* Modal yêu cầu nhập số điện thoại */}
+      {showPhoneModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 w-full max-w-md animate-scale-in text-left">
+            <div className="flex justify-between items-center mb-4">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="text-blue-500 w-6 h-6 animate-pulse" />
+                <h3 className="text-lg font-black text-slate-900 dark:text-white">
+                  {language === "en" ? "Update Phone Number" : "Cập nhật số điện thoại"}
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowPhoneModal(false)}
+                className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-400 dark:text-slate-500 hover:text-slate-600 transition"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold mb-4 leading-relaxed">
+              {language === "en"
+                ? "Your account currently does not have a phone number. Please update your phone number to complete booking."
+                : "Tài khoản của bạn chưa có số điện thoại. Vui lòng bổ sung số điện thoại để thực hiện đặt chỗ."}
+            </p>
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const phoneTrimmed = newPhone.trim();
+
+                // Validate format: must start with 03, 05, 07, 08, or 09 and contain exactly 10 digits
+                if (!/^(03|05|07|08|09)\d{8}$/.test(phoneTrimmed)) {
+                  setPhoneError(
+                    language === "en"
+                      ? "Invalid Vietnamese phone number format."
+                      : "Số điện thoại không đúng định dạng Việt Nam."
+                  );
+                  return;
+                }
+
+                setPhoneError("");
+                setSubmittingPhone(true);
+
+                try {
+                  const response = await updateProfileApi({
+                    full_name: user?.full_name || user?.fullName || "",
+                    phone: phoneTrimmed
+                  });
+
+                  if (response && response.success) {
+                    // Update global state
+                    updateUser({
+                      ...user,
+                      phone: phoneTrimmed,
+                      full_name: user?.full_name || user?.fullName || ""
+                    });
+
+                    setShowPhoneModal(false);
+                    // Automatically trigger the booking creation flow again
+                    await handleCreateBookingAndGoToPayment();
+                  } else {
+                    setPhoneError(
+                      response?.message ||
+                      (language === "en" ? "Failed to save phone number." : "Không thể lưu số điện thoại.")
+                    );
+                  }
+                } catch (err) {
+                  console.error("Lỗi cập nhật SĐT:", err);
+                  setPhoneError(
+                    err?.message ||
+                    (language === "en"
+                      ? "Phone number is already taken by another account or invalid."
+                      : "Số điện thoại đã được sử dụng bởi tài khoản khác hoặc không hợp lệ.")
+                  );
+                } finally {
+                  setSubmittingPhone(false);
+                }
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <label className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-2 flex items-center gap-1.5">
+                  <Phone size={14} />
+                  {language === "en" ? "Phone Number" : "Số điện thoại"}
+                </label>
+                <input
+                  type="text"
+                  value={newPhone}
+                  onChange={(e) => {
+                    setNewPhone(e.target.value);
+                    if (phoneError) setPhoneError("");
+                  }}
+                  placeholder={language === "en" ? "e.g. 0912345678" : "Ví dụ: 0912345678"}
+                  className="w-full rounded-lg px-4 py-2.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/40 border bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700/60 text-slate-800 dark:text-white"
+                  required
+                  disabled={submittingPhone}
+                  autoFocus
+                />
+                {phoneError && (
+                  <p className="text-[11px] font-bold text-rose-500 mt-2 flex items-center gap-1">
+                    <AlertTriangle size={12} />
+                    {phoneError}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex gap-3 justify-end pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowPhoneModal(false)}
+                  disabled={submittingPhone}
+                  className="px-4 py-2 text-xs font-bold text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition"
+                >
+                  {language === "en" ? "Cancel" : "Hủy"}
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingPhone}
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs rounded-lg shadow-md hover:shadow-blue-500/20 transition flex items-center gap-1.5"
+                >
+                  {submittingPhone && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
+                  {language === "en" ? "Save & Continue" : "Lưu & Tiếp tục"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

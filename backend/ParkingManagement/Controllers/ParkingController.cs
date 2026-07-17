@@ -179,7 +179,7 @@ namespace ParkingManagement.Controllers
                 {
                     success = false,
                     error_code = "VEHICLE_IS_LOCKED",
-                    message = "Phương tiện đang được khóa bảo vệ bởi Smart Lock. Vui lòng mở khóa trên ứng dụng hoặc đợi đến 5 phút trước khi hết giờ booking để tự động mở khóa."
+                    message = "Phương tiện đang được khóa bảo vệ bởi Smart Lock. Vui lòng mở khóa trên ứng dụng để thực hiện check-out."
                 });
             }
             catch (InvalidOperationException ex) when (ex.Message == "VEHICLE_NOT_FOUND_IN_PARKING")
