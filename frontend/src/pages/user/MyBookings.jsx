@@ -554,8 +554,8 @@ export default function MyBookings() {
                 type="button"
                 onClick={() => setStatusFilter(tab.id)}
                 className={`py-3 px-1 border-b-2 font-bold text-xs sm:text-sm transition-all focus:outline-none whitespace-nowrap ${isActive
-                    ? "border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400"
-                    : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                  ? "border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400"
+                  : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
                   }`}
               >
                 {language === "en" ? tab.labelEn : tab.labelVi}
@@ -1025,8 +1025,8 @@ export default function MyBookings() {
                 <div className="w-full">
                   {/* Header banner */}
                   <div className={`px-6 py-7 text-center text-white relative ${isUnpaidCancelled
-                      ? "bg-gradient-to-r from-slate-900 via-slate-800 to-black"
-                      : "bg-gradient-to-r from-emerald-500 to-emerald-700"
+                    ? "bg-gradient-to-r from-slate-900 via-slate-800 to-black"
+                    : "bg-gradient-to-r from-emerald-500 to-emerald-700"
                     }`}>
                     <button onClick={closeModal} className="absolute top-3 right-3 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 p-1.5 rounded-full transition-all">
                       <X size={15} />
@@ -1152,8 +1152,8 @@ export default function MyBookings() {
                               <span className="text-slate-500">
                                 {language === "en" ? "Reservation fee" : "Phí đặt chỗ cơ bản"}
                                 <span className={`text-[9px] font-bold ml-1.5 px-1.5 py-0.5 rounded ${isUnpaidCancelled
-                                    ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20"
-                                    : "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20"
+                                  ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20"
+                                  : "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20"
                                   }`}>
                                   {feeMethod}
                                 </span>
@@ -1488,8 +1488,8 @@ export default function MyBookings() {
                                   <span className="text-slate-400">
                                     {language === "en" ? "Reservation fee:" : "Phí đặt cọc:"}
                                     <span className={`text-[9px] font-bold ml-1.5 px-1.5 py-0.5 rounded ${isUnpaidCancelled
-                                        ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20"
-                                        : "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20"
+                                      ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20"
+                                      : "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20"
                                       }`}>
                                       {payMethod}
                                     </span>

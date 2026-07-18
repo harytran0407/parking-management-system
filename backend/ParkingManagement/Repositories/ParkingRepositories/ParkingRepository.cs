@@ -360,6 +360,8 @@ namespace ParkingManagement.Repositories
         
             var query = _context.ParkingSessions
                 .Include(s => s.Zone)
+                .Include(s => s.StaffIn)
+                .Include(s => s.StaffOut)
                 .AsQueryable();
         
             if (!string.IsNullOrWhiteSpace(licensePlate))

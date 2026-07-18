@@ -34,5 +34,6 @@ namespace ParkingManagement.DTOs
         public string? CustomerPhone { get; set; }
         public DateTime? TimePaidUntil { get; set; }
         public string? Message { get; set; }
+        public string? TicketCode { get; set; }
     }
 }
