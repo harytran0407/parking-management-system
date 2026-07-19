@@ -323,10 +323,36 @@ namespace ParkingManagement.Controllers
                 return BadRequest(new { success = false, message = "SystemAdmin status is fixed and cannot be modified" });
 
             var validStatuses = new[] { "ACTIVE", "INACTIVE", "BANNED" };
-            if (!validStatuses.Contains(dto.Status.ToUpper()))
+            var newStatus = dto.Status.ToUpper();
+            if (!validStatuses.Contains(newStatus))
                 return BadRequest(new { success = false, message = "Invalid status. Must be ACTIVE, INACTIVE, or BANNED" });
 
-            user.Status = dto.Status.ToUpper();
+            if (newStatus == "BANNED" && user.Status != "BANNED")
+            {
+                var adminId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+                              ?? User.FindFirst("sub")?.Value 
+                              ?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+
+                if (string.IsNullOrEmpty(adminId))
+                {
+                    // Fallback to a system admin if possible
+                    var systemAdmin = await _context.Users.Where(u => u.RoleId == 1).Select(u => u.UserId).FirstOrDefaultAsync();
+                    adminId = systemAdmin ?? "usr_260601085134364"; 
+                }
+
+                var banLog = new UserBanLog
+                {
+                    TargetUserId = userId,
+                    ActionBy = adminId,
+                    Action = "BANNED",
+                    Reason = string.IsNullOrWhiteSpace(dto.Reason) ? "Violated terms and policies." : dto.Reason,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                _context.UserBanLogs.Add(banLog);
+            }
+
+            user.Status = newStatus;
             await _context.SaveChangesAsync();
 
             return Ok(new { success = true, message = "User status updated successfully" });
@@ -371,16 +397,33 @@ namespace ParkingManagement.Controllers
         // 7. GET ROLE AUDIT LOGS
         // ==========================================
         [HttpGet("role-audit-logs")]
-        public async Task<IActionResult> AdminGetRoleAuditLogs()
+        public async Task<IActionResult> AdminGetRoleAuditLogs(
+            [FromQuery] int? limit = null,
+            [FromQuery] int page = 1,
+            [FromQuery] int page_size = 20)
         {
             var roleNames = await _context.Roles
                 .ToDictionaryAsync(r => r.RoleId, r => r.RoleName);
 
-            var dbLogs = await _context.RoleAuditLogs
+            var query = _context.RoleAuditLogs
                 .Include(l => l.Admin)
                 .Include(l => l.TargetUser)
                 .OrderByDescending(l => l.ChangedAt)
-                .ToListAsync();
+                .AsQueryable();
+
+            var totalItems = await query.CountAsync();
+            var totalPages = (int)Math.Ceiling(totalItems / (double)page_size);
+
+            if (limit.HasValue && limit.Value > 0)
+            {
+                query = query.Take(limit.Value);
+            }
+            else
+            {
+                query = query.Skip((page - 1) * page_size).Take(page_size);
+            }
+
+            var dbLogs = await query.ToListAsync();
 
             var logs = dbLogs.Select(l => new
             {
@@ -396,8 +439,78 @@ namespace ParkingManagement.Controllers
                 changedAt = l.ChangedAt
             }).ToList();
 
-            return Ok(new { success = true, data = logs });
+            if (limit.HasValue && limit.Value > 0)
+            {
+                return Ok(new { success = true, data = logs });
+            }
+
+            return Ok(new
+            {
+                success = true,
+                data = new
+                {
+                    items = logs,
+                    pagination = new
+                    {
+                        page = page,
+                        page_size = page_size,
+                        total_items = totalItems,
+                        total_pages = totalPages
+                    }
+                }
+            });
         }
+
+        // ==========================================
+        // 7.1 GET USER BAN LOGS
+        // ==========================================
+        [HttpGet("user-ban-logs")]
+        public async Task<IActionResult> GetUserBanLogs(
+            [FromQuery] int page = 1,
+            [FromQuery] int page_size = 20)
+        {
+            var query = _context.UserBanLogs
+                .Include(l => l.TargetUser)
+                .Include(l => l.ActionByUser)
+                .AsQueryable();
+
+            var totalItems = await query.CountAsync();
+            var totalPages = (int)Math.Ceiling(totalItems / (double)page_size);
+
+            var dbLogs = await query
+                .OrderByDescending(l => l.CreatedAt)
+                .Skip((page - 1) * page_size)
+                .Take(page_size)
+                .ToListAsync();
+
+            var logs = dbLogs.Select(l => new
+            {
+                logId = l.LogId,
+                userId = l.TargetUserId,
+                fullName = l.TargetUser != null ? l.TargetUser.FullName : null,
+                actionBy = l.ActionByUser != null ? (l.ActionByUser.FullName ?? l.ActionByUser.Username) : l.ActionBy,
+                action = l.Action,
+                reason = l.Reason,
+                createdAt = l.CreatedAt
+            }).ToList();
+
+            return Ok(new
+            {
+                success = true,
+                data = new
+                {
+                    items = logs,
+                    pagination = new
+                    {
+                        page = page,
+                        page_size = page_size,
+                        total_items = totalItems,
+                        total_pages = totalPages
+                    }
+                }
+            });
+        }
+
 
         // ==========================================
         // 8. SYSTEM CONFIGURATION: XEM THÔNG SỐ CỦA CẤU HÌNH
