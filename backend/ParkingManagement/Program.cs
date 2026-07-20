@@ -193,7 +193,7 @@ app.UseExceptionHandler(errApp => errApp.Run(async ctx =>
         KeyNotFoundException => (404, ex.Message),
         InvalidOperationException => (422, ex.Message),
         ArgumentException => (400, ex.Message),
-        _ => (500, "An unexpected error occurred")
+        _ => (500, ex != null ? $"An unexpected error occurred: {ex.Message}" : "An unexpected error occurred")
     };
     ctx.Response.StatusCode = status;
     ctx.Response.ContentType = "application/json";
