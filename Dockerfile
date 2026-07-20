@@ -25,5 +25,8 @@ COPY --from=publish /app/publish .
 # Expose cổng 8080 (Cổng mặc định cho ASP.NET Core 8.0 trong Docker)
 EXPOSE 8080
 ENV ASPNETCORE_URLS=http://+:8080
+# Ngăn chặn lỗi inotify trên các dịch vụ cloud/docker hosting như Render
+ENV ASPNETCORE_hostBuilder__reloadConfigOnChange=false
+ENV DOTNET_USE_POLLING_FILE_WATCHER=true
 
 ENTRYPOINT ["dotnet", "ParkingManagement.dll"]

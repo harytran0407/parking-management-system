@@ -12,6 +12,10 @@ using ParkingManagement.Models;
 using ParkingManagement.Services.SystemConfigServices;
 using ParkingManagement.Middlewares;
 
+// ── Prevent inotify limit crash on container platforms like Render ─────────────
+Environment.SetEnvironmentVariable("ASPNETCORE_hostBuilder__reloadConfigOnChange", "false");
+Environment.SetEnvironmentVariable("DOTNET_USE_POLLING_FILE_WATCHER", "true");
+
 // ── .ENV Reader ───────────────────────────────────────────────────────────────
 DotNetEnv.Env.Load();
 
