@@ -1,12 +1,11 @@
 import { Routes, Route } from 'react-router-dom'
 import { useState } from 'react'
-import { Users, Terminal, Settings, BarChart3 } from 'lucide-react'
+import { Users, Terminal, BarChart3 } from 'lucide-react'
 import Sidebar from '../components/Sidebar'
 import Header from '../components/Header'
 import AdminDashboard from '../pages/admin/Dashboard'
 import AdminUsers from '../pages/admin/Users'
 import AdminLogs from '../pages/admin/Logs'
-import AdminSettings from '../pages/admin/Settings'
 import Profile from '../pages/user/Profile'
 import { useLanguage } from '../hooks/useLanguage'
 
@@ -17,7 +16,6 @@ export default function AdminLayout() {
     { path: '/admin', label: language === 'en' ? 'Dashboard' : 'Bảng điều khiển', icon: <BarChart3 size={20} /> },
     { path: '/admin/users', label: language === 'en' ? 'Users' : 'Tài khoản', icon: <Users size={20} /> },
     { path: '/admin/logs', label: language === 'en' ? 'System Logs' : 'Nhật ký phân quyền', icon: <Terminal size={20} /> },
-    { path: '/admin/settings', label: language === 'en' ? 'Settings' : 'Cấu hình hệ thống', icon: <Settings size={20} /> },
   ]
 
   return (
@@ -38,7 +36,6 @@ export default function AdminLayout() {
             <Route path="/" element={<AdminDashboard />} />
             <Route path="/users" element={<AdminUsers />} />
             <Route path="/logs" element={<AdminLogs />} />
-            <Route path="/settings" element={<AdminSettings />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/*" element={<AdminDashboard />} />
           </Routes>
