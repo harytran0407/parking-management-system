@@ -168,8 +168,9 @@ function ZoneHeaderCard({ zone, onEdit, onDelete }) {
   const { language } = useLanguage();
   const {
     zoneId, zoneName, capacity, occupiedCount, bookedCount,
-    maintenanceCount, isAggregate, floorNumber
+    maintenanceCount, isAggregate, floorNumber, zoneStatus
   } = zone;
+  const isZoneUnderMaintenance = zoneStatus === "MAINTENANCE";
 
   const computedAvailable = Math.max(0, capacity - occupiedCount - bookedCount - maintenanceCount);
   const totalCalculated = computedAvailable + occupiedCount + bookedCount + maintenanceCount;
@@ -189,6 +190,12 @@ function ZoneHeaderCard({ zone, onEdit, onDelete }) {
           {!isAggregate && zoneName && (
             <span className="text-xs font-semibold px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-100 dark:border-slate-700 rounded-full">
               {zoneName}
+            </span>
+          )}
+          {!isAggregate && isZoneUnderMaintenance && (
+            <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 bg-slate-500/10 text-slate-500 dark:text-slate-400 border border-slate-400/30 rounded-full uppercase">
+              <Wrench size={10} />
+              {t[language].maintenance}
             </span>
           )}
         </div>
@@ -1121,6 +1128,7 @@ export default function ManagerSlots() {
       bookedCount: bkd,
       maintenanceCount: mnt,
       vehicleTypeName: z.vehicle_type_name ?? z.vehicleTypeName ?? "—",
+      zoneStatus: z.status ?? "ACTIVE",
     };
   };
 
