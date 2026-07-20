@@ -10,8 +10,8 @@ services:
       - ./backend/ParkingManagement/.env
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      # Kết nối trực tiếp tới cơ sở dữ liệu MySQL trên máy thật (Host) qua IP mặc định của Docker Desktop
-      - DB_SERVER=192.168.65.254
+      # Kết nối trực tiếp tới cơ sở dữ liệu MySQL trên máy thật (Host) qua DNS host.docker.internal
+      - DB_SERVER=host.docker.internal
 
       - DB_PORT=3306
       - DB_PASSWORD=123456;AllowPublicKeyRetrieval=True;SslMode=None

@@ -856,7 +856,7 @@ export default function UserDashboard() {
             /* Empty state */
             <div className="bg-gradient-to-br from-[#1e3a8a] to-[#1d4ed8] rounded-[20px] py-8 px-6 text-center shadow-xl shadow-blue-500/20 relative overflow-hidden">
               <div className="absolute -top-[30px] -right-[30px] w-[120px] h-[120px] rounded-full border-[1.5px] border-white/10" />
-              <div className="w-13 h-13 rounded-2xl mx-auto mb-4 bg-white/15 flex items-center justify-center border-[1.5px] border-white/20 relative z-10">
+              <div className="w-13 h-13 rounded-2xl mx-auto mb-4  flex items-center justify-center relative z-10">
                 <CalendarCheck size={24} color="rgba(255,255,255,0.85)" />
               </div>
               <p className="text-[13px] font-bold text-white/85 mb-1.5 relative z-10">
