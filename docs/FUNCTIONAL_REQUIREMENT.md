@@ -55,7 +55,7 @@
 
 | Mã | Tên chức năng | Mô tả | Vai trò | Ưu tiên |
 |---|---|---|---|---|
-| FR-FB-01 | Gửi phản hồi | Người dùng điền form: họ tên, CCCD, tiêu đề, nội dung vấn đề (mất thẻ, sai phí, slot bị chiếm, khó tìm xe…). | User | Trung bình |
+| FR-FB-01 | Gửi phản hồi | Người dùng điền form: họ tên, tiêu đề, nội dung phản hồi, số điện thoại, email, số sao đánh giá (1-5), và ảnh đính kèm. | User | Trung bình |
 | FR-FB-02 | Xem và xử lý phản hồi | Manager xem danh sách phản hồi, cập nhật trạng thái xử lý. | Manager | Trung bình |
 
 ## Module MANAGEMENT – Quản lý

@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import {
   Grid, RefreshCw, Settings, Sliders, BatteryCharging, Accessibility,
   Car, Layers, Activity, ParkingSquare, Wrench, CheckCircle2,
-  Calendar, ChevronLeft, ChevronRight, ArrowLeft
+  Calendar, ChevronLeft, ChevronRight, ArrowLeft, Trash2
 } from "lucide-react";
 import { useLanguage } from "../../hooks/useLanguage";
 

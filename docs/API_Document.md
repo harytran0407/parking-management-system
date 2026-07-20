@@ -1026,7 +1026,7 @@ Authorization: Bearer JWT_ACCESS_TOKEN
 ```
 
 > `payment_type` tương ứng `PAYMENT.PAYMENT_TYPE ENUM('SESSION','MONTHLY_PASS','BOOKING','INCIDENT')`  
-> `payment_method` tương ứng `PAYMENT.PAYMENT_METHOD ENUM('CASH','VNPAY','SUBSCRIPTION')`
+> `payment_method` tương ứng `PAYMENT.PAYMENT_METHOD ENUM('CASH','VNPAY','SUBSCRIPTION','PAYOS')`
 
 **Supported Payment Methods**
 
@@ -1035,6 +1035,7 @@ Authorization: Bearer JWT_ACCESS_TOKEN
 | `CASH` | Tiền mặt tại quầy (chỉ nhân viên) |
 | `VNPAY` | VNPay QR Code / thẻ ngân hàng |
 | `SUBSCRIPTION` | Trừ từ thẻ tháng |
+| `PAYOS` | Cổng thanh toán trực tuyến PayOS |
 
 **Success Response (200 OK)**
 ```json
@@ -1114,7 +1115,7 @@ Authorization: Bearer JWT_ACCESS_TOKEN
 }
 ```
 
-> `PAYMENT`: `PAYMENT_TYPE`, `AMOUNT_DUE`, `AMOUNT_PAID`, `CHANGE_DUE`, `PAYMENT_METHOD`, `STATUS ENUM('SUCCESS','FAILED')`, `TRANSACTION_ID`, `RECEIPT_URL`
+> `PAYMENT`: `PAYMENT_TYPE`, `AMOUNT_DUE`, `AMOUNT_PAID`, `CHANGE_DUE`, `PAYMENT_METHOD`, `STATUS ENUM('SUCCESS','FAILED','PENDING')`, `TRANSACTION_ID`, `RECEIPT_URL`
 
 ---
 

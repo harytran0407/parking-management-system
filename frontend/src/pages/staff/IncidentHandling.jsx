@@ -505,27 +505,27 @@ export default function StaffIncidentHandling() {
                     <div className="text-[11px] font-bold text-slate-400 flex items-center gap-1"><Clock size={12} /> {t[language].currentSystemData}</div>
                     <div className="bg-slate-50 dark:bg-slate-800 p-3 rounded-md text-xs font-semibold space-y-1.5 border border-slate-200 dark:border-slate-700">
                         {associatedSlot?.slot_name && (
-                            <div className="flex justify-between"><span className="text-slate-400">{t[language].parkingSlotLabel}</span><span className="font-mono text-emerald-700 dark:text-emerald-400 font-black">{associatedSlot.slot_name}</span></div>
+                            <div className="flex justify-between"><span className="text-slate-400">{t[language].parkingSlotLabel}</span><span className="font-sans text-emerald-700 dark:text-emerald-400 font-black">{associatedSlot.slot_name}</span></div>
                         )}
                         {foundSession.zone_name && (
                             <div className="flex justify-between">
                                 <span className="text-slate-400">{t[language].zoneLabel}</span>
-                                <span className="font-mono text-slate-900 dark:text-white rounded font-black uppercase">{foundSession.zone_name}</span></div>
+                                <span className="font-sans text-slate-900 dark:text-white rounded font-black uppercase">{foundSession.zone_name}</span></div>
                         )}
                         <div className="flex justify-between">
                             <span className="text-slate-400">{t[language].licensePlate}</span>
-                            <span className="font-mono text-slate-900 dark:text-white rounded font-black">{foundSession.license_plate_in}</span>
+                            <span className="font-sans text-slate-900 dark:text-white rounded font-black">{foundSession.license_plate_in}</span>
                         </div>
                         <div className="flex justify-between">
                             <span className="text-slate-400">{t[language].checkInTimeLabel}</span>
-                            <span className="font-mono text-slate-900 dark:text-white rounded font-black">
+                            <span className="font-sans text-slate-900 dark:text-white rounded font-black">
                                 {foundSession.check_in_time
                                     ? new Date(foundSession.check_in_time).toLocaleString(language === "vi" ? "vi-VN" : "en-US")
                                     : "--:--:-- --/--/----"}
                             </span>
                         </div>
-                        <div className="flex justify-between"><span className="text-slate-400">{t[language].durationLabel}</span><span className="font-mono text-slate-900 dark:text-white rounded font-black">{foundSession.duration_minutes} {t[language].mins}</span></div>
-                        <div className="flex justify-between"><span className="text-slate-400">{t[language].currentFeeLabel}</span><span className="font-mono text-amber-600 dark:text-amber-500 rounded font-black">{(foundSession.current_fee || 0).toLocaleString()} VND</span></div>
+                        <div className="flex justify-between"><span className="text-slate-400">{t[language].durationLabel}</span><span className="font-sans text-slate-900 dark:text-white rounded font-black">{foundSession.duration_minutes} {t[language].mins}</span></div>
+                        <div className="flex justify-between"><span className="text-slate-400">{t[language].currentFeeLabel}</span><span className="font-sans text-amber-600 dark:text-amber-500 rounded font-black">{(foundSession.current_fee || 0).toLocaleString()} VND</span></div>
                     </div>
                 </div>
                 <div className="space-y-2">
@@ -567,12 +567,12 @@ export default function StaffIncidentHandling() {
 
                     <div className="space-y-2">
                         <div className="flex justify-between"><span className="text-slate-400">{t[language].typeLabel}</span><span className="font-bold text-slate-900 bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded text-[10px] dark:text-white">{type}</span></div>
-                        <div className="flex justify-between"><span className="text-slate-400">{t[language].timeLabel}</span><span className="font-mono text-slate-900 dark:text-white">{timestamp}</span></div>
+                        <div className="flex justify-between"><span className="text-slate-400">{t[language].timeLabel}</span><span className="font-sans text-slate-900 dark:text-white">{timestamp}</span></div>
 
                         {type === "LOST_TICKET" && (
                             <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700 space-y-1.5">
-                                <div className="flex justify-between"><span>{t[language].licensePlate}:</span><span className="font-mono font-black text-slate-900 dark:text-white">{changes.license_plate}</span></div>
-                                <div className="flex justify-between text-[11px] text-slate-500 dark:text-slate-400"><span>{t[language].parkingFeeLabel}</span><span>{(payload.breakdown?.actual_parking_fee || payload.parking_fee || 15000).toLocaleString()} VND</span></div>
+                                <div className="flex justify-between"><span>{t[language].licensePlate}:</span><span className="font-sans font-black text-slate-900 dark:text-white">{changes.license_plate}</span></div>
+                                <div className="flex justify-between text-[11px] text-slate-500 dark:text-slate-400"><span>{t[language].parkingFeeLabel}</span><span>{(payload.breakdown?.actual_parking_fee || payload.parking_fee || 0).toLocaleString()} VND</span></div>
                                 <div className="flex justify-between text-[11px] text-slate-500 dark:text-slate-400"><span>{t[language].penaltyFineLabel}</span><span>{(payload.breakdown?.handling_fee || payload.penalty_fee || 50000).toLocaleString()} VND</span></div>
                                 <div className="border-t pt-1.5 border-slate-200 dark:border-slate-700 flex justify-between items-center text-sm font-black text-slate-900 dark:text-white">
                                     <span>{t[language].totalDue}</span>
@@ -587,11 +587,11 @@ export default function StaffIncidentHandling() {
                                 <div className="grid grid-cols-2 gap-2 bg-white dark:bg-slate-900 p-2 rounded border border-slate-100 dark:border-slate-700 text-center">
                                     <div>
                                         <div className="text-[10px] text-slate-400">{t[language].wrongOcrLabel}</div>
-                                        <div className="font-mono font-bold line-through text-red-500">{changes.original_license_plate || "N/A"}</div>
+                                        <div className="font-sans font-bold line-through text-red-500">{changes.original_license_plate || "N/A"}</div>
                                     </div>
                                     <div className="border-l border-slate-100 dark:border-slate-700">
                                         <div className="text-[10px] text-slate-400">{t[language].correctedToLabel}</div>
-                                        <div className="font-mono font-black text-emerald-600 dark:text-emerald-400">{changes.corrected_license_plate}</div>
+                                        <div className="font-sans font-black text-emerald-600 dark:text-emerald-400">{changes.corrected_license_plate}</div>
                                     </div>
                                 </div>
                             </div>
@@ -717,9 +717,9 @@ export default function StaffIncidentHandling() {
                                                         }`}>
                                                         {incident.status === "OPEN" ? t[language].statusOpen : t[language].statusResolved}
                                                     </span>
-                                                    <span className="text-[10px] font-bold text-slate-400 font-mono">#{incident.feedback_id}</span>
+                                                    <span className="text-[10px] font-bold text-slate-400 font-sans">#{incident.feedback_id}</span>
                                                 </div>
-                                                <span className="text-[10px] text-slate-400 font-mono">
+                                                <span className="text-[10px] text-slate-400 font-sans">
                                                     {incident.created_at ? new Date(incident.created_at).toLocaleString(language === "vi" ? "vi-VN" : "en-US") : ""}
                                                 </span>
                                             </div>
@@ -780,7 +780,7 @@ export default function StaffIncidentHandling() {
                                     {selectedIncident.customer_phone ? (
                                         <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50/40 dark:bg-emerald-950/10 rounded border border-emerald-100/60 dark:border-emerald-900/20 text-emerald-800 dark:text-emerald-400">
                                             <Phone size={12} className="text-emerald-500" />
-                                            <span className="font-mono text-xs">{selectedIncident.customer_phone}</span>
+                                            <span className="font-sans text-xs">{selectedIncident.customer_phone}</span>
                                         </div>
                                     ) : (
                                         <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 dark:bg-slate-800/50 rounded border border-slate-200/50 dark:border-slate-800 text-slate-400">
@@ -887,7 +887,7 @@ export default function StaffIncidentHandling() {
                                                             {feedback || t[language].resolvedNoFeedback}
                                                         </p>
                                                         {selectedIncident.resolved_by && (
-                                                            <div className="text-[9px] font-mono text-slate-400 dark:text-slate-505 border-t border-slate-150 dark:border-slate-800/80 pt-1.5 flex justify-between">
+                                                            <div className="text-[9px] font-sans text-slate-400 dark:text-slate-505 border-t border-slate-150 dark:border-slate-800/80 pt-1.5 flex justify-between">
                                                                 <span>By: {selectedIncident.resolved_by}</span>
                                                                 <span>{selectedIncident.resolved_at ? new Date(selectedIncident.resolved_at).toLocaleString(language === "vi" ? "vi-VN" : "en-US") : ""}</span>
                                                             </div>
@@ -978,7 +978,7 @@ export default function StaffIncidentHandling() {
                                             <input
                                                 type="text" required disabled={!foundSession}
                                                 value={formValues.lostPlate} onChange={e => handleInputChange("lostPlate", e.target.value)}
-                                                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-mono font-black text-sm uppercase rounded-md px-3 py-2 outline-none focus:bg-white dark:focus:bg-slate-900 transition-all disabled:opacity-50"
+                                                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-sans font-black text-sm uppercase rounded-md px-3 py-2 outline-none focus:bg-white dark:focus:bg-slate-900 transition-all disabled:opacity-50"
                                             />
                                         </div>
                                         <div className="space-y-1.5">
@@ -1064,7 +1064,7 @@ export default function StaffIncidentHandling() {
                     <div className="relative w-full max-w-[95vw] md:max-w-6xl max-h-[92vh] rounded-md overflow-hidden border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl" onClick={(e) => e.stopPropagation()}>
                         <img src={lightboxImage} alt="High Resolution Audit" className="w-full h-auto max-h-[85vh] md:max-h-[88vh] object-contain" />
                         <div className="absolute bottom-0 inset-x-0 bg-slate-900/90 dark:bg-slate-950/80 p-3 text-center border-t border-slate-200 dark:border-slate-800 backdrop-blur-sm">
-                            <p className="font-mono font-bold tracking-widest text-sm text-yellow-500 dark:text-yellow-400">
+                            <p className="font-sans font-bold tracking-widest text-sm text-yellow-500 dark:text-yellow-400">
                                 {foundSession?.license_plate_in || "No Plate Info"}
                             </p>
                         </div>

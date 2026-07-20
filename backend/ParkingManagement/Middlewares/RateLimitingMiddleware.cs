@@ -30,6 +30,11 @@ namespace ParkingManagement.Middlewares
             _options = options.Value ?? new RateLimitingOptions();
         }
 
+        private class RateLimitCounter
+        {
+            public int Count { get; set; }
+        }
+
         public async Task InvokeAsync(HttpContext context)
         {
             if (context.User.Identity?.IsAuthenticated == true)
@@ -46,19 +51,17 @@ namespace ParkingManagement.Middlewares
             var ip = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
             var key = $"rl_{ip}";
 
-            var count = _cache.GetOrCreate<int>(key, entry =>
+            var counter = _cache.GetOrCreate(key, entry =>
             {
                 entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(_options.WindowSeconds);
-                return 0;
-            });
+                return new RateLimitCounter { Count = 0 };
+            }) ?? new RateLimitCounter { Count = 0 };
 
-            // increment and set back
-            count++;
-            _cache.Set(key, count, TimeSpan.FromSeconds(_options.WindowSeconds));
+            counter.Count++;
 
-            if (count > _options.Limit)
+            if (counter.Count > _options.Limit)
             {
-                _logger.LogWarning("Rate limit exceeded for IP {Ip}: {Count}/{Limit}", ip, count, _options.Limit);
+                _logger.LogWarning("Rate limit exceeded for IP {Ip}: {Count}/{Limit}", ip, counter.Count, _options.Limit);
                 context.Response.StatusCode = 429;
                 context.Response.ContentType = "application/json";
                 context.Response.Headers["Retry-After"] = _options.WindowSeconds.ToString();
