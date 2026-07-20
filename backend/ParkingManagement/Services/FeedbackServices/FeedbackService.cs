@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Org.BouncyCastle.Asn1.Ocsp;
 using ParkingManagement.Data;
 using ParkingManagement.DTOs.Feedback;
@@ -35,9 +35,12 @@ namespace ParkingManagement.Services.FeedbackServices
                 await _context.SaveChangesAsync();
                 return true;
             }
-            catch
+            catch (Exception ex)
             {
-                return false;
+                Console.WriteLine("\n🚨 ======= [SubmitFeedbackAsync Exception] =======");
+                Console.WriteLine(ex.ToString());
+                Console.WriteLine("============================================\n");
+                throw;
             }
         }
 
