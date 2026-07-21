@@ -294,7 +294,7 @@ export default function AdminUsers() {
 
     // Same validation rules as the public user registration form (Register.jsx)
     const nameRegex = /^[a-zA-ZÀ-ỹ\s]{2,100}$/;
-    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9-]{2,}\.[a-zA-Z0-9-]{2,}(\.[a-zA-Z]{2,})?$/;
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@(gmail\.com)$/i;
     const phoneRegex = /^0[3|5|7|8|9][0-9]{8}$/;
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 
@@ -305,7 +305,7 @@ export default function AdminUsers() {
         : "Họ và tên phải từ 2–100 ký tự và chỉ chứa chữ cái.";
     }
     if (!emailRegex.test(newEmail)) {
-      errors.email = language === "en" ? "Invalid email address." : "Địa chỉ email không hợp lệ.";
+      errors.email = language === "en" ? 'Invalid email address (xxxxxxgmail.com).' : 'Địa chỉ email không hợp lệ (xxxxxxgmail.com).';
     }
     if (!phoneRegex.test(newPhone)) {
       errors.phone = language === "en"
@@ -876,7 +876,7 @@ export default function AdminUsers() {
               </div>
             )}
 
-            <form onSubmit={handleAddUserSubmit} className="space-y-4">
+            <form onSubmit={handleAddUserSubmit} noValidate className="space-y-4">
               <div>
                 <label className="block text-slate-400 dark:text-slate-500 mb-1 uppercase text-[10px] font-bold tracking-wider">
                   {language === "en" ? "Full Name" : "Họ và Tên"}
