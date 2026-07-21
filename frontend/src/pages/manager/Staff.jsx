@@ -137,7 +137,7 @@ export default function ManagerStaff() {
 
     // Validation patterns
     const nameRegex = /^[a-zA-ZÀ-ỹ\s]{2,100}$/;
-    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9-]{2,}\.[a-zA-Z0-9-]{2,}(\.[a-zA-Z]{2,})?$/;
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@(gmail\.com)$/i;
     const phoneRegex = /^0[3|5|7|8|9][0-9]{8}$/;
     const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 
@@ -147,7 +147,7 @@ export default function ManagerStaff() {
     }
 
     if (!emailRegex.test(addForm.email)) {
-      errors.email = language === 'en' ? 'Invalid email address.' : 'Địa chỉ email không hợp lệ.'
+      errors.email = language === 'en' ? 'Invalid email address (xxxxxxgmail.com).' : 'Địa chỉ email không hợp lệ (xxxxxxgmail.com).'
     }
 
     if (!phoneRegex.test(addForm.phoneNumber)) {
@@ -223,7 +223,7 @@ export default function ManagerStaff() {
 
     // Validation patterns
     const nameRegex = /^[a-zA-ZÀ-ỹ\s]{2,100}$/;
-    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9-]{2,}\.[a-zA-Z0-9-]{2,}(\.[a-zA-Z]{2,})?$/;
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@(gmail\.com|hotmail\.com|outlook\.com|yahoo\.com)$/i;
     const phoneRegex = /^0[3|5|7|8|9][0-9]{8}$/;
 
     const errors = {}
@@ -232,7 +232,7 @@ export default function ManagerStaff() {
     }
 
     if (!emailRegex.test(editForm.email)) {
-      errors.email = language === 'en' ? 'Invalid email address.' : 'Địa chỉ email không hợp lệ.'
+      errors.email = language === 'en' ? 'Invalid email address (only gmail.com, hotmail.com, outlook.com, or yahoo.com are accepted).' : 'Địa chỉ email không hợp lệ (chỉ chấp nhận gmail.com, hotmail.com, outlook.com hoặc yahoo.com).'
     }
 
     if (!phoneRegex.test(editForm.phone)) {
@@ -549,7 +549,7 @@ export default function ManagerStaff() {
               </div>
             </div>
 
-            <form onSubmit={handleAddSubmit} className="space-y-4">
+            <form onSubmit={handleAddSubmit} noValidate className="space-y-4">
               <div>
                 <label className="label">{language === 'en' ? 'Full Name *' : 'Họ và tên *'}</label>
                 <input
@@ -715,7 +715,7 @@ export default function ManagerStaff() {
               </div>
             </div>
 
-            <form onSubmit={handleEditSubmit} className="space-y-4">
+            <form onSubmit={handleEditSubmit} noValidate className="space-y-4">
               <div>
                 <label className="label">{language === 'en' ? 'Full Name *' : 'Họ và tên *'}</label>
                 <input
