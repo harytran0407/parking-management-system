@@ -370,40 +370,40 @@ namespace ParkingManagement.Repositories
         {
             if (page < 1) page = 1;
             if (pageSize <= 0) pageSize = 15;
-        
+
             var query = _context.ParkingSessions
                 .Include(s => s.Zone)
                 .Include(s => s.StaffIn)
                 .Include(s => s.StaffOut)
                 .AsQueryable();
-        
+
             if (!string.IsNullOrWhiteSpace(licensePlate))
             {
                 var cleanedPlate = licensePlate.Trim();
                 query = query.Where(s => s.LicensePlateIn.Contains(cleanedPlate) ||
                                      (s.LicensePlateOut != null && s.LicensePlateOut.Contains(cleanedPlate)));
             }
-        
+
             if (fromDate.HasValue)
             {
                 query = query.Where(s => s.CheckInTime >= fromDate.Value);
             }
-        
+
             if (toDate.HasValue)
             {
                 var endOfToDate = toDate.Value.Date.AddDays(1).AddTicks(-1);
                 query = query.Where(s => s.CheckInTime <= endOfToDate);
             }
-        
+
             if (!string.IsNullOrWhiteSpace(vehicleType) && int.TryParse(vehicleType, out int vehicleTypeId))
             {
                 query = query.Where(s => s.VehicleTypeId == vehicleTypeId);
             }
-        
+
             if (!string.IsNullOrWhiteSpace(status))
             {
                 string searchStatus = status.Trim().ToUpper();
-                
+
                 if (searchStatus == "LOST_TICKET")
                 {
                     query = query.Where(s => s.Status != null && s.Status.ToUpper() == "LOST_TICKET");
@@ -427,14 +427,14 @@ namespace ParkingManagement.Repositories
             }
         
             int totalCount = await query.CountAsync();
-        
+
             var items = await query
                 .OrderByDescending(s => s.CheckOutTime ?? s.CheckInTime)
-                .ThenByDescending(s => s.SessionId) 
+                .ThenByDescending(s => s.SessionId)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
-        
+
             return (items, totalCount);
         }
 
@@ -464,7 +464,7 @@ namespace ParkingManagement.Repositories
                 }
                 await _context.SaveChangesAsync();
             }
-        
+
             return await _context.Bookings
                 .Include(b => b.Zone)
                 .Include(b => b.VehicleType)
@@ -499,10 +499,10 @@ namespace ParkingManagement.Repositories
                 }
                 await _context.SaveChangesAsync();
             }
-        
+
             return await _context.Bookings
                 .AnyAsync(b => b.LicensePlate.Replace("-", "").Replace(".", "").Replace(" ", "").ToUpper() == cleanInputPlate
-                          && b.Status == "CONFIRMED" 
+                          && b.Status == "CONFIRMED"
                           && b.ExpectedArrival.AddHours(-12) <= currentTime
                           && b.ExpectedArrival.AddMinutes(30) >= currentTime);
         }
@@ -570,10 +570,13 @@ namespace ParkingManagement.Repositories
 
         public async Task<List<ZoneRealtimeStatsDto>> GetZoneRealtimeStatsAsync()
         {
+            // Lưu ý: không lọc theo Status == "ACTIVE" nữa — nếu không, khi Manager
+            // chuyển trạng thái của Zone sang MAINTENANCE, toàn bộ zone (và các slot
+            // bên trong) sẽ biến mất khỏi giao diện dù dữ liệu vẫn còn trong DB,
+            // khiến Manager không còn cách nào để chuyển trạng thái ngược lại.
             var zones = await _context.FloorZones
                 .Include(z => z.VehicleType)
                 .Include(z => z.ParkingSlots)
-                .Where(z => z.Status == "ACTIVE")
                 .ToListAsync();
 
             // Số xe đang đỗ thực tế theo từng zone (ACTIVE sessions có ZoneId hoặc gián tiếp qua Slot)

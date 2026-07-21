@@ -48,6 +48,7 @@ export default function AdminUsers() {
   const [newRole, setNewRole] = useState("ParkingStaff");
   const [formError, setFormError] = useState("");
   const [formSuccess, setFormSuccess] = useState("");
+  const [addFieldErrors, setAddFieldErrors] = useState({});
 
   // Edit Role state
   const [targetRoleId, setTargetRoleId] = useState("");
@@ -284,9 +285,42 @@ export default function AdminUsers() {
     e.preventDefault();
     setFormError("");
     setFormSuccess("");
+    setAddFieldErrors({});
 
     if (!newFullName || !newEmail || !newPhone || !newPassword) {
       setFormError(language === "en" ? "Please fill out all required fields." : "Vui lòng điền đầy đủ các thông tin bắt buộc.");
+      return;
+    }
+
+    // Same validation rules as the public user registration form (Register.jsx)
+    const nameRegex = /^[a-zA-ZÀ-ỹ\s]{2,100}$/;
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9-]{2,}\.[a-zA-Z0-9-]{2,}(\.[a-zA-Z]{2,})?$/;
+    const phoneRegex = /^0[3|5|7|8|9][0-9]{8}$/;
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+
+    const errors = {};
+    if (!nameRegex.test(newFullName)) {
+      errors.fullName = language === "en"
+        ? "Full name must be 2–100 characters and contain only letters."
+        : "Họ và tên phải từ 2–100 ký tự và chỉ chứa chữ cái.";
+    }
+    if (!emailRegex.test(newEmail)) {
+      errors.email = language === "en" ? "Invalid email address." : "Địa chỉ email không hợp lệ.";
+    }
+    if (!phoneRegex.test(newPhone)) {
+      errors.phone = language === "en"
+        ? "Invalid phone number (must start with 0 and have 10 digits, e.g. 0901234567)."
+        : "Số điện thoại không hợp lệ (phải bắt đầu bằng số 0 và có 10 chữ số, ví dụ: 0901234567).";
+    }
+    if (!passwordRegex.test(newPassword)) {
+      errors.password = language === "en"
+        ? "Password must be 8+ characters, with uppercase, lowercase, numbers, and special characters."
+        : "Mật khẩu phải từ 8 ký tự trở lên, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt.";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setAddFieldErrors(errors);
+      setFormError(language === "en" ? "Please fix the highlighted fields." : "Vui lòng kiểm tra lại các trường được đánh dấu.");
       return;
     }
 
@@ -315,6 +349,7 @@ export default function AdminUsers() {
       setNewEmail("");
       setNewPhone("");
       setNewPassword("");
+      setAddFieldErrors({});
 
       setTimeout(() => {
         setIsAddModalOpen(false);
@@ -812,10 +847,10 @@ export default function AdminUsers() {
       {/* POPUP MODAL 2: CREATE STAFF / ADMIN ACCOUNT */}
       {isAddModalOpen && createPortal(
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-sm" onClick={() => setIsAddModalOpen(false)} />
+          <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-sm" onClick={() => { setIsAddModalOpen(false); setAddFieldErrors({}); setFormError(""); }} />
           <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-xl z-10 text-slate-700 dark:text-slate-300">
             <button
-              onClick={() => setIsAddModalOpen(false)}
+              onClick={() => { setIsAddModalOpen(false); setAddFieldErrors({}); setFormError(""); }}
               className="absolute top-4 right-4 text-slate-400 hover:text-slate-655"
             >
               <X size={16} />
@@ -850,10 +885,11 @@ export default function AdminUsers() {
                   type="text"
                   required
                   value={newFullName}
-                  onChange={(e) => setNewFullName(e.target.value)}
+                  onChange={(e) => { setNewFullName(e.target.value); setAddFieldErrors((prev) => ({ ...prev, fullName: "" })); }}
                   placeholder="e.g. Nguyen Hoang Nam"
-                  className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/10 text-xs"
+                  className={`w-full p-2.5 bg-slate-50 dark:bg-slate-800 border rounded-xl text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/10 text-xs ${addFieldErrors.fullName ? "border-red-500 focus:ring-red-500/10" : "border-slate-200 dark:border-slate-700"}`}
                 />
+                {addFieldErrors.fullName && <p className="text-red-500 text-[10px] mt-1 font-semibold">{addFieldErrors.fullName}</p>}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -865,10 +901,11 @@ export default function AdminUsers() {
                     type="email"
                     required
                     value={newEmail}
-                    onChange={(e) => setNewEmail(e.target.value)}
+                    onChange={(e) => { setNewEmail(e.target.value); setAddFieldErrors((prev) => ({ ...prev, email: "" })); }}
                     placeholder="name@eparking.vn"
-                    className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/10 text-xs"
+                    className={`w-full p-2.5 bg-slate-50 dark:bg-slate-800 border rounded-xl text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/10 text-xs ${addFieldErrors.email ? "border-red-500 focus:ring-red-500/10" : "border-slate-200 dark:border-slate-700"}`}
                   />
+                  {addFieldErrors.email && <p className="text-red-500 text-[10px] mt-1 font-semibold">{addFieldErrors.email}</p>}
                 </div>
 
                 <div>
@@ -879,10 +916,11 @@ export default function AdminUsers() {
                     type="text"
                     required
                     value={newPhone}
-                    onChange={(e) => setNewPhone(e.target.value)}
+                    onChange={(e) => { setNewPhone(e.target.value); setAddFieldErrors((prev) => ({ ...prev, phone: "" })); }}
                     placeholder="090XXXXXXX"
-                    className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/10 text-xs"
+                    className={`w-full p-2.5 bg-slate-50 dark:bg-slate-800 border rounded-xl text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/10 text-xs ${addFieldErrors.phone ? "border-red-500 focus:ring-red-500/10" : "border-slate-200 dark:border-slate-700"}`}
                   />
+                  {addFieldErrors.phone && <p className="text-red-500 text-[10px] mt-1 font-semibold">{addFieldErrors.phone}</p>}
                 </div>
               </div>
 
@@ -895,10 +933,18 @@ export default function AdminUsers() {
                     type="password"
                     required
                     value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
+                    onChange={(e) => { setNewPassword(e.target.value); setAddFieldErrors((prev) => ({ ...prev, password: "" })); }}
                     placeholder="••••••••"
-                    className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/10 text-xs"
+                    className={`w-full p-2.5 bg-slate-50 dark:bg-slate-800 border rounded-xl text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/10 text-xs ${addFieldErrors.password ? "border-red-500 focus:ring-red-500/10" : "border-slate-200 dark:border-slate-700"}`}
                   />
+                  {addFieldErrors.password && <p className="text-red-500 text-[10px] mt-1 font-semibold">{addFieldErrors.password}</p>}
+                  {!addFieldErrors.password && (
+                    <p className="text-slate-400 dark:text-slate-500 text-[9px] mt-1">
+                      {language === "en"
+                        ? "8+ chars incl. uppercase, lowercase, number & special character (@$!%*?&)."
+                        : "8+ ký tự gồm chữ hoa, chữ thường, số và ký tự đặc biệt (@$!%*?&)."}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-slate-400 dark:text-slate-500 mb-1 uppercase text-[10px] font-bold tracking-wider">

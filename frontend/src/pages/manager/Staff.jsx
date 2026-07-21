@@ -137,7 +137,7 @@ export default function ManagerStaff() {
 
     // Validation patterns
     const nameRegex = /^[a-zA-ZÀ-ỹ\s]{2,100}$/;
-    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9-]{2,}\.[a-zA-Z0-9-]{2,}(\.[a-zA-Z]{2,})?$/;
     const phoneRegex = /^0[3|5|7|8|9][0-9]{8}$/;
     const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 
@@ -223,7 +223,7 @@ export default function ManagerStaff() {
 
     // Validation patterns
     const nameRegex = /^[a-zA-ZÀ-ỹ\s]{2,100}$/;
-    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9-]{2,}\.[a-zA-Z0-9-]{2,}(\.[a-zA-Z]{2,})?$/;
     const phoneRegex = /^0[3|5|7|8|9][0-9]{8}$/;
 
     const errors = {}

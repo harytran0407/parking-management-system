@@ -53,5 +53,6 @@ namespace ParkingManagement.DTOs
         public int OccupiedCount { get; set; }    // Số xe đang thực sự đỗ trong zone (ACTIVE sessions)
         public int MaintenanceCount { get; set; } // Số slot đang bảo trì trong zone
         public string VehicleTypeName { get; set; } = string.Empty;
+        public string Status { get; set; } = "ACTIVE"; // Trạng thái của Zone (ACTIVE / MAINTENANCE)
     }
 }
