@@ -116,7 +116,7 @@ namespace ParkingManagement.Repositories
         /// <summary>
         /// Lấy lịch sử gửi xe của một phương tiện dựa trên biển số xe, khoảng thời gian và loại phương tiện, đồng thời hỗ trợ phân trang kết quả trả về.
         /// </summary>
-        Task<(List<ParkingSession> Items, int TotalCount)> GetParkingHistoryAsync(string? licensePlate, DateTime? fromDate, DateTime? toDate, string? vehicleType, string? status, int page, int pageSize);
+        Task<(List<ParkingSession> Items, int TotalCount)> GetParkingHistoryAsync(string? licensePlate, DateTime? fromDate, DateTime? toDate, string? vehicleType, string? status, int page, int pageSize, bool? over3Days = null, bool? overtime = null);
 
         // ==========================================
         // Booking Services 
@@ -153,5 +153,25 @@ namespace ParkingManagement.Repositories
         /// Lấy thống kê số lượng xe đang giữ chỗ (Booked) và sức chứa thực tế theo thời gian thực của các Zone đang hoạt động.
         /// </summary>
         Task<List<ZoneRealtimeStatsDto>> GetZoneRealtimeStatsAsync();
+
+        /// <summary>
+        /// Tìm slot đầu tiên AVAILABLE trong Zone và đổi trạng thái sang RESERVED khi tạo booking.
+        /// </summary>
+        Task ReserveFirstAvailableSlotInZoneAsync(int zoneId);
+
+        /// <summary>
+        /// Tìm slot RESERVED cũ nhất trong Zone và giải phóng về AVAILABLE khi booking bị hủy / hết hạn.
+        /// </summary>
+        Task ReleaseOldestReservedSlotInZoneAsync(int zoneId);
+
+        /// <summary>
+        /// Tìm slot đầu tiên còn trạng thái AVAILABLE trong Zone và đổi trạng thái sang OCCUPIED.
+        /// </summary>
+        Task OccupyFirstAvailableSlotInZoneAsync(int zoneId);
+
+        /// <summary>
+        /// Tìm slot đang OCCUPIED sớm nhất trong Zone và đổi trạng thái về AVAILABLE khi xe check-out.
+        /// </summary>
+        Task ReleaseOldestOccupiedSlotInZoneAsync(int zoneId);
     }
 }

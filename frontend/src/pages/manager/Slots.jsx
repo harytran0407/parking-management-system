@@ -479,6 +479,21 @@ export default function ManagerSlots() {
     capacity: "10",
     vehicleTypeId: "1"
   });
+  const [isNewFloor, setIsNewFloor] = useState(false);
+  const [customFloorNumber, setCustomFloorNumber] = useState("");
+
+  const openCreateModal = () => {
+    const firstFloor = floorsData[0]?.floorNumber?.toString() || "1";
+    setCreateForm({
+      zoneName: "",
+      floorNumber: firstFloor,
+      capacity: "10",
+      vehicleTypeId: "1"
+    });
+    setIsNewFloor(false);
+    setCustomFloorNumber("");
+    setIsCreateOpen(true);
+  };
 
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editForm, setEditForm] = useState({
@@ -527,52 +542,14 @@ export default function ManagerSlots() {
     return Object.values(map).sort((a, b) => a.floorNumber - b.floorNumber);
   }, [zoneStats]);
 
-  // ── Virtual Slot Mapping ───────────────────────────────────────────────
+  // ── Slot Mapping ──────────────────────────────────────────────────────────
+  // Slots now have their real status stored in DB (AVAILABLE / OCCUPIED / MAINTENANCE)
+  // so we read them directly instead of overriding based on zone counters.
   const mappedSlots = useMemo(() => {
-    // Sắp xếp slotsData theo slot_id trước khi nhóm theo zone để có thứ tự bảng chữ cái/số nhất quán
-    const sortedSlotsData = [...slotsData].sort((a, b) =>
-      (a.slot_id ?? "").localeCompare(b.slot_id ?? "", undefined, { numeric: true, sensitivity: 'base' })
+    return [...slotsData].sort((a, b) =>
+      (a.slot_name ?? a.slot_id ?? "").localeCompare(b.slot_name ?? b.slot_id ?? "", undefined, { numeric: true, sensitivity: 'base' })
     );
-
-    const slotsByZone = {};
-    sortedSlotsData.forEach(slot => {
-      const zName = slot.zone || "N/A";
-      if (!slotsByZone[zName]) {
-        slotsByZone[zName] = [];
-      }
-      slotsByZone[zName].push({ ...slot });
-    });
-
-    Object.keys(slotsByZone).forEach(zName => {
-      const zoneStat = zoneStats.find(z => (z.zone_name ?? z.zoneName) === zName);
-      if (!zoneStat) return;
-
-      const occupiedCount = zoneStat.occupied_count ?? zoneStat.occupiedCount ?? 0;
-      const bookedCount = zoneStat.booked_count ?? zoneStat.bookedCount ?? 0;
-
-      let occupiedAssigned = 0;
-      let bookedAssigned = 0;
-
-      const availableSlots = slotsByZone[zName].filter(s => s.status === "AVAILABLE");
-
-      availableSlots.forEach(slot => {
-        if (occupiedAssigned < occupiedCount) {
-          slot.status = "OCCUPIED";
-          occupiedAssigned++;
-        } else if (bookedAssigned < bookedCount) {
-          slot.status = "RESERVED";
-          bookedAssigned++;
-        }
-      });
-    });
-
-    // Trả về danh sách đã được sắp xếp để giao diện hiển thị đúng thứ tự
-    return sortedSlotsData.map(slot => {
-      const zoneGroup = slotsByZone[slot.zone || "N/A"] || [];
-      const found = zoneGroup.find(s => s.slot_id === slot.slot_id);
-      return found || slot;
-    });
-  }, [slotsData, zoneStats]);
+  }, [slotsData]);
 
   const filteredMappedSlots = useMemo(() => {
     if (!selectedStatus) return mappedSlots;
@@ -704,9 +681,7 @@ export default function ManagerSlots() {
           floor: selectedFloor || undefined,
           zone: selectedZone || undefined,
           vehicle_type_id: selectedVehicleType ? Number(selectedVehicleType) : undefined,
-          status: (selectedStatus === "OCCUPIED" || selectedStatus === "RESERVED")
-            ? "AVAILABLE"
-            : (selectedStatus || undefined),
+          status: selectedStatus || undefined,
           page: currentPage,
           page_size: pageSize,
         },
@@ -864,6 +839,12 @@ export default function ManagerSlots() {
       return;
     }
 
+    const finalFloorNumber = isNewFloor ? parseInt(customFloorNumber) : parseInt(createForm.floorNumber);
+    if (!finalFloorNumber || isNaN(finalFloorNumber)) {
+      toast.error(language === "en" ? "Invalid floor number" : "Số tầng không hợp lệ");
+      return;
+    }
+
     setFormSubmitting(true);
     try {
       const fullZoneName = `Zone ${createForm.zoneName.trim()} - ${createForm.vehicleTypeId === "1"
@@ -873,7 +854,7 @@ export default function ManagerSlots() {
 
       const response = await api.post("/parking/floors", {
         zone_name: fullZoneName,
-        floor_number: parseInt(createForm.floorNumber),
+        floor_number: finalFloorNumber,
         capacity: parseInt(createForm.capacity),
         vehicle_type_id: parseInt(createForm.vehicleTypeId)
       });
@@ -881,12 +862,15 @@ export default function ManagerSlots() {
       if (response.data && response.data.success) {
         toast.success(language === "en" ? "Floor zone created successfully" : "Tạo phân khu thành công");
         setIsCreateOpen(false);
+        const firstFloor = floorsData[0]?.floorNumber?.toString() || "1";
         setCreateForm({
           zoneName: "",
-          floorNumber: "1",
+          floorNumber: firstFloor,
           capacity: "10",
           vehicleTypeId: "1"
         });
+        setIsNewFloor(false);
+        setCustomFloorNumber("");
         await fetchZoneStats();
         await fetchSlots();
       }
@@ -1140,7 +1124,7 @@ export default function ManagerSlots() {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-4 border-b border-slate-200 dark:border-slate-800 gap-4">
 
             <button
-              onClick={() => setIsCreateOpen(true)}
+              onClick={openCreateModal}
               className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-bold text-xs shadow-sm transition-all cursor-pointer"
             >
               <Plus size={14} />
@@ -1186,7 +1170,7 @@ export default function ManagerSlots() {
 
             </div>
             <button
-              onClick={() => setIsCreateOpen(true)}
+              onClick={openCreateModal}
               className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-bold text-xs shadow-sm transition-all cursor-pointer"
             >
               <Plus size={14} />
@@ -1656,15 +1640,46 @@ export default function ManagerSlots() {
               <div>
                 <label className="block text-xs font-bold text-slate-400 uppercase mb-1">{t[language].floorLabel}</label>
                 <select
-                  value={createForm.floorNumber}
-                  onChange={(e) => setCreateForm({ ...createForm, floorNumber: e.target.value })}
+                  value={isNewFloor ? "new" : createForm.floorNumber}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === "new") {
+                      setIsNewFloor(true);
+                      setCreateForm({ ...createForm, floorNumber: "" });
+                    } else {
+                      setIsNewFloor(false);
+                      setCreateForm({ ...createForm, floorNumber: val });
+                    }
+                  }}
                   className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 text-sm outline-none cursor-pointer"
                 >
-                  <option value="1">1</option>
-                  <option value="2">2</option>
-                  <option value="3">3</option>
+                  {floorsData.map((f) => (
+                    <option key={f.floorNumber} value={f.floorNumber}>
+                      {language === "en" ? `Floor ${f.floorNumber}` : `Tầng ${f.floorNumber}`}
+                    </option>
+                  ))}
+                  <option value="new">
+                    {language === "en" ? "+ Add new floor..." : "+ Thêm tầng mới..."}
+                  </option>
                 </select>
               </div>
+
+              {isNewFloor && (
+                <div className="animate-in fade-in duration-200">
+                  <label className="block text-xs font-bold text-slate-400 uppercase mb-1">
+                    {language === "en" ? "New Floor Number" : "Số tầng mới"}
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min="1"
+                    placeholder={language === "en" ? "e.g. 4" : "vd: 4"}
+                    value={customFloorNumber}
+                    onChange={(e) => setCustomFloorNumber(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 text-sm outline-none"
+                  />
+                </div>
+              )}
 
               <div>
                 <label className="block text-xs font-bold text-slate-400 uppercase mb-1">{t[language].zoneName}</label>

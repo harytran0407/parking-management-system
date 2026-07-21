@@ -35,5 +35,6 @@ namespace ParkingManagement.DTOs
         public DateTime? TimePaidUntil { get; set; }
         public string? Message { get; set; }
         public string? TicketCode { get; set; }
+        public bool IsLocked { get; set; }
     }
 }

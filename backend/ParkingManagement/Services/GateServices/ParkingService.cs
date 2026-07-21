@@ -102,6 +102,8 @@ namespace ParkingManagement.Services
             await _parkingRepository.SaveChangesWithTransactionAsync(async () =>
             {
                 await _parkingRepository.DecrementZoneCapacityAsync(zone.ZoneId);
+                // Đánh dấu slot đầu tiên khả dụng trong zone là OCCUPIED
+                await _parkingRepository.OccupyFirstAvailableSlotInZoneAsync(zone.ZoneId);
 
                 var session = new ParkingSession
                 {
@@ -188,9 +190,13 @@ namespace ParkingManagement.Services
                     if (booking.ZoneId.HasValue)
                     {
                         await _parkingRepository.IncrementZoneCapacityAsync(booking.ZoneId.Value);
+                        // Giải phóng slot ở zone cũ
+                        await _parkingRepository.ReleaseOldestOccupiedSlotInZoneAsync(booking.ZoneId.Value);
                     }
                 }
                 // If usingBookedZone is true, we DO NOT decrement capacity again to avoid double-decrement!
+                // Đánh dấu slot đầu tiên khả dụng trong zone là OCCUPIED
+                await _parkingRepository.OccupyFirstAvailableSlotInZoneAsync(zone.ZoneId);
         
                 var session = new ParkingSession
                 {
@@ -323,6 +329,8 @@ namespace ParkingManagement.Services
                 if (session.ZoneId.HasValue)
                 {
                     await _parkingRepository.IncrementZoneCapacityAsync(session.ZoneId.Value);
+                    // Giải phóng slot cũ nhất đang OCCUPIED trong zone
+                    await _parkingRepository.ReleaseOldestOccupiedSlotInZoneAsync(session.ZoneId.Value);
                 }
 
                 if (finalFee > 0)
@@ -443,6 +451,8 @@ namespace ParkingManagement.Services
                 if (session.ZoneId.HasValue)
                 {
                     await _parkingRepository.IncrementZoneCapacityAsync(session.ZoneId.Value);
+                    // Giải phóng slot cũ nhất đang OCCUPIED trong zone
+                    await _parkingRepository.ReleaseOldestOccupiedSlotInZoneAsync(session.ZoneId.Value);
                 }
 
                 if (totalExtraFee > 0)
@@ -911,11 +921,14 @@ namespace ParkingManagement.Services
                 
                 if (isUpdated)
                 {
-                    if (upperStatus == "MAINTENANCE" && oldStatus == "AVAILABLE")
+                    bool oldIsAvailable = (oldStatus == "AVAILABLE");
+                    bool newIsAvailable = (upperStatus == "AVAILABLE");
+
+                    if (oldIsAvailable && !newIsAvailable)
                     {
                         await _parkingRepository.DecrementZoneCapacityAsync(slot.ZoneId);
                     }
-                    else if (upperStatus == "AVAILABLE" && oldStatus == "MAINTENANCE")
+                    else if (!oldIsAvailable && newIsAvailable)
                     {
                         await _parkingRepository.IncrementZoneCapacityAsync(slot.ZoneId);
                     }
@@ -1108,13 +1121,15 @@ namespace ParkingManagement.Services
         public async Task<PagedHistoryResponseDto> GetParkingHistoryAsync(ParkingHistoryFilterDto filter)
         {
             var (items, totalCount) = await _parkingRepository.GetParkingHistoryAsync(
-        filter.LicensePlate,
-        filter.FromDate,
-        filter.ToDate,
-        filter.VehicleType,
-        filter.Status,
-        filter.Page,
-        filter.PageSize
+                filter.LicensePlate,
+                filter.FromDate,
+                filter.ToDate,
+                filter.VehicleType,
+                filter.Status,
+                filter.Page,
+                filter.PageSize,
+                filter.Over3Days,
+                filter.Overtime
             );
         
             var historyItems = items.Select(s => new ParkingHistoryItemDto
@@ -1360,7 +1375,8 @@ namespace ParkingManagement.Services
                     CustomerName = customerName,
                     CustomerEmail = customerEmail,
                     CustomerPhone = customerPhone,
-                    TicketCode = session.TicketCode
+                    TicketCode = session.TicketCode,
+                    IsLocked = session.IsLocked ?? true
                 }
             };
         }

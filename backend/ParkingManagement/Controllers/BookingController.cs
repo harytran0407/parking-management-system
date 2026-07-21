@@ -180,7 +180,8 @@ public class BookingController : ControllerBase
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
                 ?? throw new UnauthorizedAccessException("Invalid token");
 
-            var success = await _service.UnlockBookingAsync(bookingId, userId);
+            bool isStaff = User.IsInRole("ParkingStaff") || User.IsInRole("ParkingManager");
+            var success = await _service.UnlockBookingAsync(bookingId, userId, isStaff);
             if (success)
             {
                 return Ok(new { success = true, message = "Xe đã được mở khóa thành công." });
@@ -205,7 +206,8 @@ public class BookingController : ControllerBase
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
                 ?? throw new UnauthorizedAccessException("Invalid token");
 
-            var success = await _service.LockBookingAsync(bookingId, userId);
+            bool isStaff = User.IsInRole("ParkingStaff") || User.IsInRole("ParkingManager");
+            var success = await _service.LockBookingAsync(bookingId, userId, isStaff);
             if (success)
             {
                 return Ok(new { success = true, message = "Xe đã được khóa thành công." });

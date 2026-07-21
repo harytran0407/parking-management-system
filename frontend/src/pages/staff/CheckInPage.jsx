@@ -833,7 +833,7 @@ export default function CheckInPage() {
                                                         state: { wrongPlate: scanResult.plate }
                                                     });
                                                 }}
-                                                className="text-rose-600 dark:text-rose-400 hover:text-rose-500 dark:hover:text-rose-350 text-sm italic font-bold tracking-wide transition-all flex items-center gap-1 hover:underline"
+                                                className="text-slate-800 dark:text-slate-200 hover:text-rose-500 dark:hover:text-rose-350 text-sm  font-bold tracking-wide transition-all flex items-center gap-1 hover:underline"
                                             >
                                                 {t[language].btnReportWrongPlate}
                                             </button>

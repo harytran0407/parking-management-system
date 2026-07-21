@@ -29,6 +29,7 @@ const t = {
         headerCheckIn: "Thời gian vào",
         headerCheckOut: "Thời gian ra",
         headerStatus: "Trạng thái",
+        headerDuration: "Thời lượng",
         headerFee: "Tổng phí",
         loading: "Đang tải lịch sử đỗ xe...",
         noData: "Không tìm thấy lịch sử hoạt động hoặc không có dữ liệu khớp với bộ lọc.",
@@ -57,6 +58,7 @@ const t = {
         headerCheckIn: "Check-in Time",
         headerCheckOut: "Check-out Time",
         headerStatus: "Status",
+        headerDuration: "Duration",
         headerFee: "Total Fee",
         loading: "Loading parking history...",
         noData: "No activity history found or no data matches the selected filters.",
@@ -77,6 +79,15 @@ export default function HistoryPage() {
 
     const [selectedSession, setSelectedSession] = useState(null);
     const [lightboxImage, setLightboxImage] = useState(null);
+    const [activeTab, setActiveTab] = useState("all"); // "all" | "over3days"
+
+    const handleTabChange = (tab) => {
+        setActiveTab(tab);
+        setCurrentPage(1);
+        if (tab === "over3days") {
+            setFilterStatus("");
+        }
+    };
 
     const getBackendRootUrl = () => {
         const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
@@ -160,7 +171,6 @@ export default function HistoryPage() {
         }
     };
 
-    // Hàm gọi API lấy dữ liệu lịch sử chuẩn theo cấu trúc backend thực tế
     const fetchHistoryData = async (pageNumber = currentPage) => {
         setIsLoading(true);
         setErrorMessage("");
@@ -168,11 +178,12 @@ export default function HistoryPage() {
             const params = {
                 licensePlate: filterPlate.trim() || undefined,
                 vehicleType: filterVehicleType || undefined,
-                status: filterStatus || undefined,
+                status: activeTab === "over3days" ? "ACTIVE" : (filterStatus || undefined),
                 fromDate: filterFromDate || undefined,
                 toDate: filterToDate || undefined,
                 page: pageNumber,
-                pageSize: pageSize
+                pageSize: pageSize,
+                over3Days: activeTab === "over3days" ? true : undefined
             };
 
             const response = await api.get(`/parking/history`, { params });
@@ -218,7 +229,7 @@ export default function HistoryPage() {
         }, 300);
 
         return () => clearTimeout(delayDebounceFn);
-    }, [currentPage, filterPlate, filterVehicleType, filterStatus, filterFromDate, filterToDate]);
+    }, [currentPage, filterPlate, filterVehicleType, filterStatus, filterFromDate, filterToDate, activeTab]);
 
     // ĐÃ THÊM: Hàm điều hướng bộ lọc tổng hợp khớp chính xác với UI JSX của bạn
     const handleFilterChange = (filterType, value) => {
@@ -262,11 +273,12 @@ export default function HistoryPage() {
             const params = {
                 licensePlate: filterPlate.trim() || undefined,
                 vehicleType: filterVehicleType || undefined,
-                status: filterStatus || undefined,
+                status: activeTab === "over3days" ? "ACTIVE" : (filterStatus || undefined),
                 fromDate: filterFromDate || undefined,
                 toDate: filterToDate || undefined,
                 page: 1,
-                pageSize: 1000000 // Tải toàn bộ số bản ghi khớp bộ lọc để xuất
+                pageSize: 1000000, // Tải toàn bộ số bản ghi khớp bộ lọc để xuất
+                over3Days: activeTab === "over3days" ? true : undefined
             };
 
             const response = await api.get(`/parking/history`, { params });
@@ -342,6 +354,30 @@ export default function HistoryPage() {
     return (
         <div className="w-full text-slate-900 dark:text-slate-100 h-full flex flex-col gap-5 overflow-hidden font-sans">
 
+            {/* TABS SELECTOR */}
+            <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg w-fit shrink-0">
+                <button
+                    onClick={() => handleTabChange("all")}
+                    className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${
+                        activeTab === "all"
+                            ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm"
+                            : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+                    }`}
+                >
+                    {language === "vi" ? "Lịch sử đỗ xe" : "Parking History"}
+                </button>
+                <button
+                    onClick={() => handleTabChange("over3days")}
+                    className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${
+                        activeTab === "over3days"
+                            ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm"
+                            : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+                    }`}
+                >
+                    {language === "vi" ? "Đỗ quá 3 ngày" : "Over 3 Days"}
+                </button>
+            </div>
+
             {/* FILTER CONTROLS BAR */}
             <div className="flex flex-wrap items-center gap-2 bg-white dark:bg-slate-900 p-3 md:p-4 rounded-md border border-slate-200 dark:border-slate-800 shadow-sm shrink-0">
                 <div className="flex items-center gap-2 text-base font-bold text-slate-900 dark:text-white mr-2 shrink-0">
@@ -371,15 +407,17 @@ export default function HistoryPage() {
                 </select>
 
                 {/* Lọc trạng thái */}
-                <select
-                    value={filterStatus}
-                    onChange={(e) => handleFilterChange("status", e.target.value)}
-                    className="flex-1 sm:flex-none px-3 py-2 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white rounded-lg outline-none cursor-pointer focus:bg-white dark:focus:bg-slate-900 transition-all">
-                    <option value="">{t[language].allStatuses}</option>
-                    <option value="ACTIVE">{t[language].statusActive}</option>
-                    <option value="COMPLETED">{t[language].statusCompleted}</option>
-                    <option value="LOST-TICKET">{t[language].statusLostTicket}</option>
-                </select>
+                {activeTab !== "over3days" && (
+                    <select
+                        value={filterStatus}
+                        onChange={(e) => handleFilterChange("status", e.target.value)}
+                        className="flex-1 sm:flex-none px-3 py-2 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white rounded-lg outline-none cursor-pointer focus:bg-white dark:focus:bg-slate-900 transition-all">
+                        <option value="">{t[language].allStatuses}</option>
+                        <option value="ACTIVE">{t[language].statusActive}</option>
+                        <option value="COMPLETED">{t[language].statusCompleted}</option>
+                        <option value="LOST-TICKET">{t[language].statusLostTicket}</option>
+                    </select>
+                )}
 
                 {/* Từ ngày */}
                 <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-900 dark:text-white flex-1 sm:flex-none">
@@ -435,7 +473,7 @@ export default function HistoryPage() {
                                 <th className="pb-3 font-semibold">{t[language].headerZone}</th>
                                 <th className="pb-3 font-semibold">{t[language].headerCheckIn}</th>
                                 <th className="pb-3 font-semibold">{t[language].headerCheckOut}</th>
-                                <th className="pb-3 font-semibold">{t[language].headerStatus}</th>
+                                <th className="pb-3 font-semibold">{t[language].headerDuration}</th>
                                 <th className="pb-3 font-semibold text-right">{t[language].headerFee}</th>
                                 <th className="pb-3 font-semibold text-right pr-2 w-24"></th>
                             </tr>
@@ -475,23 +513,8 @@ export default function HistoryPage() {
                                         <td className="text-slate-800 dark:text-slate-200 font-semibold text-xs">
                                             {log.checkOutTime || log.check_out_time ? new Date(log.checkOutTime || log.check_out_time).toLocaleString(language === "vi" ? "vi-VN" : "en-US") : "—"}
                                         </td>
-                                        <td className="py-3.5">
-                                            <span className={`inline-flex text-[9px] px-2 py-0.5 rounded font-bold uppercase tracking-wider border transition-all ${log.status?.toUpperCase() === "COMPLETED"
-                                                ? "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-455 border-emerald-200 dark:border-emerald-900/30"
-                                                : log.status?.toUpperCase() === "ACTIVE"
-                                                    ? "bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-900/30"
-                                                    : log.status?.toUpperCase() === "LOST_TICKET" || log.status?.toUpperCase() === "LOST-TICKET"
-                                                        ? "bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400 border-red-200 dark:border-red-900/30"
-                                                        : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700"
-                                                }`}>
-                                                {log.status?.toUpperCase() === "COMPLETED"
-                                                    ? t[language].statusCompleted
-                                                    : log.status?.toUpperCase() === "ACTIVE"
-                                                        ? t[language].statusActive
-                                                        : log.status?.toUpperCase() === "LOST_TICKET" || log.status?.toUpperCase() === "LOST-TICKET"
-                                                            ? t[language].statusLostTicket
-                                                            : log.status || t[language].statusUnknown}
-                                            </span>
+                                        <td className="py-3.5 text-slate-800 dark:text-slate-200 font-semibold text-xs">
+                                            {formatDuration(getDurationMinutes(log.checkInTime || log.check_in_time, log.checkOutTime || log.check_out_time))}
                                         </td>
                                         <td className="py-3.5 text-right font-sans font-extrabold text-xs text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-all">
                                             {log.totalFee !== undefined && log.totalFee !== null ? `${log.totalFee.toLocaleString()} VND` :
@@ -829,7 +852,7 @@ export default function HistoryPage() {
                                             <Car size={13} />
                                             {language === "vi" ? "Ảnh check-out" : "Check-out Image"}
                                         </span>
-                                        {selectedSession.status?.toUpperCase() === "COMPLETED" && (selectedSession.imageUrlOut || selectedSession.image_url_out || selectedSession.ImageUrlOut) ? (
+                                        {(selectedSession.status?.toUpperCase() === "COMPLETED" || selectedSession.status?.toUpperCase() === "LOST_TICKET") && (selectedSession.imageUrlOut || selectedSession.image_url_out || selectedSession.ImageUrlOut) ? (
                                             <div
                                                 onClick={() => {
                                                     const imgOut = selectedSession.imageUrlOut || selectedSession.image_url_out || selectedSession.ImageUrlOut;

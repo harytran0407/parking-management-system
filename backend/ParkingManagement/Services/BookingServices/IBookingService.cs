@@ -29,9 +29,9 @@ public interface IBookingService
 
     Task<BookingResponse> GetBookingByIdAsync(string bookingId, string userId);
 
-    Task<bool> UnlockBookingAsync(string bookingId, string userId);
+    Task<bool> UnlockBookingAsync(string bookingId, string userId, bool isStaff = false);
 
-    Task<bool> LockBookingAsync(string bookingId, string userId);
+    Task<bool> LockBookingAsync(string bookingId, string userId, bool isStaff = false);
 
     Task<BookingCapacityStatusResponse> GetBookingCapacityStatusAsync(int vehicleTypeId);
 

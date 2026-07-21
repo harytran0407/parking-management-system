@@ -63,58 +63,6 @@ export default function AdminUsers() {
   const [userToToggleStatus, setUserToToggleStatus] = useState(null);
   const [togglingStatus, setTogglingStatus] = useState(false);
 
-  // Initial mockup to populate immediately if backend table is empty or server offline
-  const mockUsers = [
-    {
-      userId: "usr_2606071000",
-      username: "admin_pms",
-      fullName: "System Administrator",
-      email: "admin@eparking.vn",
-      phone: "0901234567",
-      role: "SystemAdmin",
-      roleId: 1,
-      status: "ACTIVE",
-      lastLogin: "2026-06-07T03:30:00Z",
-      createdAt: "2026-05-01T00:00:00Z",
-    },
-    {
-      userId: "usr_2606071001",
-      username: "mgr_phamviet",
-      fullName: "Pham Viet",
-      email: "viet.pham@eparking.vn",
-      phone: "0907654321",
-      role: "ParkingManager",
-      roleId: 2,
-      status: "ACTIVE",
-      lastLogin: "2026-06-07T02:15:00Z",
-      createdAt: "2026-05-10T08:00:00Z",
-    },
-    {
-      userId: "usr_2606071002",
-      username: "staff_nguyenvan",
-      fullName: "Nguyen Van Gate Staff",
-      email: "van.nguyen@eparking.vn",
-      phone: "0911223344",
-      role: "ParkingStaff",
-      roleId: 3,
-      status: "ACTIVE",
-      lastLogin: "2026-06-07T04:00:00Z",
-      createdAt: "2026-05-15T09:30:00Z",
-    },
-    {
-      userId: "usr_2606071003",
-      username: "driver_bka",
-      fullName: "BKA Driver Client",
-      email: "driver.bka@gmail.com",
-      phone: "0988776655",
-      role: "ParkingUser",
-      roleId: 4,
-      status: "BANNED",
-      lastLogin: "2026-06-05T12:00:00Z",
-      createdAt: "2026-05-20T10:45:00Z",
-    },
-  ];
-
   const fetchUsers = async () => {
     try {
       setLoading(true);
@@ -143,15 +91,15 @@ export default function AdminUsers() {
           setTotalItems(0);
         }
       } else {
-        setUsersList(mockUsers);
+        setUsersList([]);
         setTotalPages(1);
-        setTotalItems(mockUsers.length);
+        setTotalItems(0);
       }
     } catch (err) {
-      console.warn("[Admin Users Fetch Fallback]: Using pre-populated SaaS users database.");
-      setUsersList(mockUsers);
+      console.error("Failed to fetch users from server:", err);
+      setUsersList([]);
       setTotalPages(1);
-      setTotalItems(mockUsers.length);
+      setTotalItems(0);
     } finally {
       setLoading(false);
     }
@@ -204,7 +152,7 @@ export default function AdminUsers() {
           prev.map((u) => ((u.user_id || u.userId) === uId ? { ...u, status: newStatus } : u))
         );
         if (language === "en") {
-          toast.success(`User "${uName}" is now ${newStatus === "ACTIVE" ? "active" : "suspended"}.`);
+          toast.success(`User "${uName}" is now ${newStatus === "ACTIVE" ? "active" : "banned"}.`);
         } else {
           toast.success(`Người dùng "${uName}" hiện đã ${newStatus === "ACTIVE" ? "hoạt động" : "bị khóa"}.`);
         }
@@ -444,11 +392,11 @@ export default function AdminUsers() {
       case "SystemAdmin":
         return language === "en" ? "System Admin" : "Quản trị viên";
       case "ParkingManager":
-        return language === "en" ? "Facility Manager" : "Quản lý Bãi xe";
+        return language === "en" ? "Manager" : "Quản lý";
       case "ParkingStaff":
-        return language === "en" ? "Gate Staff" : "Nhân viên Cổng";
+        return language === "en" ? "Staff" : "Nhân viên";
       case "ParkingUser":
-        return language === "en" ? "Customer Driver" : "Khách hàng";
+        return language === "en" ? "User" : "Khách hàng";
       default:
         return role;
     }
@@ -662,7 +610,7 @@ export default function AdminUsers() {
                               <strong className="block text-sm font-bold text-slate-900 dark:text-white leading-tight">
                                 {uFullName || (language === "en" ? "Unconfigured Profile" : "Hồ sơ Chưa cấu hình")}
                               </strong>
-                              <span className="text-xs text-slate-400 dark:text-slate-500 font-semibold font-mono mt-0.5 block">
+                              <span className="text-xs text-slate-400 dark:text-slate-500 font-semibold font-sans mt-0.5 block">
                                 @{user.username}
                               </span>
                             </div>
@@ -677,7 +625,7 @@ export default function AdminUsers() {
                           </div>
                           <div className="flex items-center gap-2">
                             <Phone size={14} className="text-slate-400 shrink-0" />
-                            <span className="font-mono">{user.phone || (language === "en" ? "No Phone" : "Không có SĐT")}</span>
+                            <span className="font-sans">{user.phone || (language === "en" ? "No Phone" : "Không có SĐT")}</span>
                           </div>
                         </td>
 
@@ -734,15 +682,14 @@ export default function AdminUsers() {
                                 {/* Action 2: Change Status (Ban/Activate) */}
                                 <button
                                   onClick={() => handleToggleStatus(user)}
-                                  className={`p-1.5 rounded-lg transition-all active:scale-95 ${
-                                    user.status === "BANNED"
-                                      ? "text-emerald-600 hover:text-emerald-500 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/20"
-                                      : "text-amber-600 hover:text-amber-500 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-955/20"
-                                  }`}
+                                  className={`p-1.5 rounded-lg transition-all active:scale-95 ${user.status === "BANNED"
+                                    ? "text-emerald-600 hover:text-emerald-500 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/20"
+                                    : "text-amber-600 hover:text-amber-500 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-955/20"
+                                    }`}
                                   title={
                                     user.status === "BANNED"
                                       ? (language === "en" ? "Activate User" : "Kích hoạt người dùng")
-                                      : (language === "en" ? "Suspend User" : "Khóa người dùng")
+                                      : (language === "en" ? "Ban User" : "Khóa người dùng")
                                   }
                                 >
                                   {user.status === "BANNED" ? <UserCheck size={15} /> : <Ban size={15} />}
@@ -817,8 +764,8 @@ export default function AdminUsers() {
                     key={p}
                     onClick={() => setCurrentPage(p)}
                     className={`w-8 h-8 rounded-lg text-xs font-bold transition-all flex items-center justify-center ${currentPage === p
-                        ? "bg-blue-600 text-white shadow-md shadow-blue-500/10"
-                        : "border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
+                      ? "bg-blue-600 text-white shadow-md shadow-blue-500/10"
+                      : "border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
                       }`}
                   >
                     {p}
@@ -1071,7 +1018,7 @@ export default function AdminUsers() {
                   {language === "en"
                     ? "Warning: You are about to permanently delete the user account for "
                     : "Cảnh báo: Bạn sắp sửa xóa vĩnh viễn tài khoản người dùng cho "}
-                  <span className="font-mono text-slate-900 dark:text-white bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-red-200 dark:border-red-900">
+                  <span className="font-sans text-slate-900 dark:text-white bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-red-200 dark:border-red-900">
                     @{userToDelete.username}
                   </span>{" "}
                   ({userToDelete.fullName || userToDelete.full_name || (language === "en" ? "Unconfigured Name" : "Tên chưa thiết lập")}).
@@ -1145,11 +1092,10 @@ export default function AdminUsers() {
             </button>
 
             <div className="flex items-center gap-3 mb-4 pb-2 border-b border-slate-100 dark:border-slate-800">
-              <div className={`p-2.5 rounded-xl ${
-                userToToggleStatus.status === "ACTIVE"
-                  ? "bg-amber-50 dark:bg-amber-955/20 text-amber-600 dark:text-amber-400"
-                  : "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400"
-              }`}>
+              <div className={`p-2.5 rounded-xl ${userToToggleStatus.status === "ACTIVE"
+                ? "bg-red-50 dark:bg-red-955/20 text-red-600 dark:text-red-400"
+                : "bg-green-50 dark:bg-green-950/20 text-green-600 dark:text-green-400"
+                }`}>
                 {userToToggleStatus.status === "ACTIVE" ? (
                   <Ban size={20} className="animate-pulse" />
                 ) : (
@@ -1159,7 +1105,7 @@ export default function AdminUsers() {
               <div>
                 <h3 className="text-sm font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">
                   {userToToggleStatus.status === "ACTIVE"
-                    ? (language === "en" ? "Suspend User Account" : "Khóa tài khoản người dùng")
+                    ? (language === "en" ? "Ban User Account" : "Khóa tài khoản người dùng")
                     : (language === "en" ? "Activate User Account" : "Kích hoạt tài khoản người dùng")}
                 </h3>
                 <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider mt-0.5">
@@ -1169,25 +1115,24 @@ export default function AdminUsers() {
             </div>
 
             <div className="space-y-4">
-              <div className={`border p-3.5 rounded-xl ${
-                userToToggleStatus.status === "ACTIVE"
-                  ? "bg-amber-50/50 dark:bg-amber-955/10 border-amber-100 dark:border-amber-900/40 text-amber-700 dark:text-amber-400"
-                  : "bg-emerald-50/50 dark:bg-emerald-950/10 border-emerald-100 dark:border-emerald-900/40 text-emerald-750 dark:text-emerald-400"
-              }`}>
+              <div className={`border p-3.5 rounded-xl ${userToToggleStatus.status === "ACTIVE"
+                ? "bg-red-50/50 dark:bg-red-955/10 border-red-100 dark:border-red-900/40 text-red-700 dark:text-red-400"
+                : "bg-green-50/50 dark:bg-green-950/10 border-green-100 dark:border-green-900/40 text-green-750 dark:text-green-400"
+                }`}>
                 <p className="text-xs leading-relaxed font-semibold">
                   {userToToggleStatus.status === "ACTIVE" ? (
                     language === "en"
-                      ? "Are you sure you want to suspend this account? The user will be blocked from logging into the platform and all operations immediately."
+                      ? "Are you sure you want to ban this account? The user will be blocked from logging into the platform and all operations immediately."
                       : "Bạn có chắc chắn muốn khóa tài khoản này? Người dùng sẽ không thể đăng nhập vào hệ thống và mọi hoạt động sẽ bị đình chỉ ngay lập tức."
                   ) : (
                     language === "en"
-                      ? "Are you sure you want to reactivate this account? The user will regain standard access to log in and operate."
-                      : "Bạn có chắc chắn muốn kích hoạt lại tài khoản này? Người dùng sẽ lấy lại quyền đăng nhập và hoạt động bình thường."
+                      ? "Are you sure you want to unban this account? The user will regain standard access to log in and operate."
+                      : "Bạn có chắc chắn muốn mở khóa tài khoản này? Người dùng sẽ lấy lại quyền đăng nhập và hoạt động bình thường."
                   )}
                 </p>
                 <div className="mt-2.5 flex items-center gap-2">
                   <span className="text-xs text-slate-550 dark:text-slate-400">Target User:</span>
-                  <span className="font-mono text-xs font-bold text-slate-900 dark:text-white bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700">
+                  <span className="font-sans text-xs font-bold text-slate-900 dark:text-white ">
                     @{userToToggleStatus.username}
                   </span>
                 </div>
@@ -1209,11 +1154,10 @@ export default function AdminUsers() {
                   type="button"
                   disabled={togglingStatus}
                   onClick={handleConfirmToggleStatus}
-                  className={`flex-1 px-4 py-2.5 text-white text-xs font-bold rounded-xl shadow-md transition-all hover:scale-[1.01] active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 ${
-                    userToToggleStatus.status === "ACTIVE"
-                      ? "bg-amber-600 hover:bg-amber-500"
-                      : "bg-emerald-600 hover:bg-emerald-500"
-                  }`}
+                  className={`flex-1 px-4 py-2.5 text-white text-xs font-bold rounded-xl shadow-md transition-all hover:scale-[1.01] active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 ${userToToggleStatus.status === "ACTIVE"
+                    ? "bg-red-600 hover:bg-red-500"
+                    : "bg-green-600 hover:bg-green-500"
+                    }`}
                 >
                   {togglingStatus ? (
                     <>
@@ -1225,7 +1169,7 @@ export default function AdminUsers() {
                       {userToToggleStatus.status === "ACTIVE" ? (
                         <>
                           <Ban size={14} />
-                          {language === "en" ? "Confirm Suspend" : "Xác nhận Khóa"}
+                          {language === "en" ? "Confirm Ban" : "Xác nhận Khóa"}
                         </>
                       ) : (
                         <>

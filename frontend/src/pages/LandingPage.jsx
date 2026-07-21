@@ -67,7 +67,7 @@ const STEPS = [
   {
     n: "3",
     title: "Pay Deposit",
-    desc: "Pay the deposit via VNPAY. Your spot is reserved the moment payment is confirmed.",
+    desc: "Pay the deposit via PayOS. Your spot is reserved the moment payment is confirmed.",
   },
   {
     n: "4",
@@ -78,7 +78,7 @@ const STEPS = [
 
 const TRUST_ITEMS = [
   "Automatic check-in via license plate recognition camera",
-  "Secure payment through VNPAY",
+  "Secure payment through PayOS",
   "24/7 continuous support",
 ];
 
@@ -691,7 +691,7 @@ export default function LandingPage() {
           <div>
             <h4 style={{ fontSize: 12, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 18 }}>Services</h4>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {["Advance Booking", "Car Parking", "Motorbike Parking", "VNPAY Payment", "Remote Vehicle Lock"].map(l => (
+              {["Advance Booking", "Car Parking", "Motorbike Parking", "PayOS Payment", "Remote Vehicle Lock"].map(l => (
                 <a key={l} href="#" style={{ fontSize: 13, color: "#64748b", textDecoration: "none" }}>{l}</a>
               ))}
             </div>

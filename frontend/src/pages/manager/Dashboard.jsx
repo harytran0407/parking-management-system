@@ -110,15 +110,7 @@ function LineAreaChart({
         </div>
       </div>
 
-      {/* Estimated-data warning */}
-      {warning && (
-        <div className="flex items-center gap-1.5 bg-amber-50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/40 text-amber-700 dark:text-amber-400 text-[10px] font-semibold px-2.5 py-1.5 rounded-lg">
-          <AlertTriangle size={11} />
-          {language === "en"
-            ? "Estimated values — actual hourly revenue requires backend support."
-            : "Giá trị ước tính — doanh thu theo giờ thực cần backend hỗ trợ."}
-        </div>
-      )}
+
 
       <div
         className="relative w-full select-none"
@@ -334,34 +326,7 @@ function DonutChart({ slices }) {
   );
 }
 
-// ─── Demo data ────────────────────────────────────────────────────────────────
 
-const DEMO_DATA = {
-  period: "day",
-  from: new Date().toISOString().slice(0, 10),
-  to: new Date().toISOString().slice(0, 10),
-  vehicle_count: { total_check_ins: 148, total_check_outs: 112, currently_parked: 36 },
-  revenue: {
-    total: 5850000,
-    by_payment_method: { CASH: 1150000, VNPAY: 2700000, PAYOS: 2000000 },
-  },
-  occupancy: { total_slots: 450, occupied_slots: 268, occupancy_rate_percent: 59.6 },
-  peak_hours: [
-    { hour: 7, check_ins: 12 },
-    { hour: 8, check_ins: 28 },
-    { hour: 9, check_ins: 22 },
-    { hour: 11, check_ins: 10 },
-    { hour: 12, check_ins: 15 },
-    { hour: 13, check_ins: 8 },
-    { hour: 17, check_ins: 32 },
-    { hour: 18, check_ins: 25 },
-    { hour: 19, check_ins: 14 },
-  ],
-  breakdown_by_vehicle_type: [
-    { vehicle_type_id: 1, vehicle_type_name: "Car", check_ins: 58, revenue: 3480000 },
-    { vehicle_type_id: 2, vehicle_type_name: "Motorbike", check_ins: 90, revenue: 2370000 },
-  ],
-};
 
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 
@@ -369,7 +334,7 @@ export default function ManagerDashboard() {
   const { language } = useLanguage();
 
   const periods = [
-    { key: "day", labelEn: "Today", labelVi: "Hôm nay" },
+    { key: "day", labelEn: "By day", labelVi: "Theo ngày" },
     { key: "week", labelEn: "Last 7 days", labelVi: "7 ngày qua" },
     { key: "month", labelEn: "Last 30 days", labelVi: "30 ngày qua" },
     { key: "custom", labelEn: "Custom range", labelVi: "Tùy chọn" },
@@ -381,21 +346,18 @@ export default function ManagerDashboard() {
   const [loading, setLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
   const [error, setError] = useState("");
-  const [isDemoMode, setIsDemoMode] = useState(false);
   const [data, setData] = useState(null);
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
 
   const fetchDashboardData = async () => {
-    if (isDemoMode) {
-      setData({ ...DEMO_DATA, period });
-      return;
-    }
     try {
       setLoading(true);
       setError("");
       const params = { period };
-      if (period === "custom") {
+      if (period === "day") {
+        params.start_date = startDate;
+      } else if (period === "custom") {
         if (!startDate || !endDate) {
           setError(
             language === "en"
@@ -421,11 +383,9 @@ export default function ManagerDashboard() {
       console.error("[ManagerDashboard] API error:", err);
       setError(
         language === "en"
-          ? "Could not connect to backend — switched to demo mode."
-          : "Không kết nối được backend — đã chuyển sang chế độ mô phỏng."
+          ? "Could not connect to backend."
+          : "Không kết nối được backend."
       );
-      setIsDemoMode(true);
-      setData({ ...DEMO_DATA, period });
     } finally {
       setLoading(false);
     }
@@ -434,30 +394,17 @@ export default function ManagerDashboard() {
   useEffect(() => {
     fetchDashboardData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [period, isDemoMode]);
+  }, [period]);
 
   // ── Export ─────────────────────────────────────────────────────────────────
 
   const handleExportCsv = async () => {
     try {
       setExportLoading(true);
-      if (isDemoMode) {
-        const header =
-          "Period,From,To,Check-ins,Check-outs,Currently Parked,Total Revenue,Occupancy Rate\n";
-        const row = `${data.period},${data.from},${data.to},${data.vehicle_count.total_check_ins},${data.vehicle_count.total_check_outs},${data.vehicle_count.currently_parked},${data.revenue.total},${data.occupancy.occupancy_rate_percent}%\n`;
-        const blob = new Blob([header + row], { type: "text/csv;charset=utf-8;" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `demo_report_${period}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        return;
-      }
       const params = { period };
-      if (period === "custom") {
+      if (period === "day") {
+        params.start_date = startDate;
+      } else if (period === "custom") {
         params.start_date = startDate;
         params.end_date = endDate;
       }
@@ -528,59 +475,7 @@ export default function ManagerDashboard() {
   return (
     <div className="space-y-5 animate-slide-in font-sans pb-10">
 
-      {/* ── HEADER ── */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-xl font-black text-slate-800 dark:text-white tracking-tight">
-              {language === "en" ? "Dashboard overview" : "Tổng quan báo cáo"}
-            </h2>
-            {isDemoMode && (
-              <span className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-900/50 animate-pulse">
-                {language === "en" ? "DEMO" : "MÔ PHỎNG"}
-              </span>
-            )}
-          </div>
-          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-            {language === "en"
-              ? "Monitor occupancy, vehicle activity, and bookings in real time."
-              : "Theo dõi mật độ đỗ xe, hoạt động phương tiện và đặt chỗ theo thời gian thực."}
-          </p>
-        </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            onClick={() => setIsDemoMode((d) => !d)}
-            className={`text-[11px] font-extrabold px-3 py-2 rounded-xl transition border flex items-center gap-1.5 shadow-xs ${isDemoMode
-              ? "bg-amber-500 hover:bg-amber-600 border-amber-600 text-white"
-              : "bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300"
-              }`}
-          >
-            <Sparkles size={13} />
-            {isDemoMode
-              ? (language === "en" ? "Exit demo" : "Thoát mô phỏng")
-              : (language === "en" ? "Show demo data" : "Dữ liệu mô phỏng")}
-          </button>
-
-          <button
-            onClick={fetchDashboardData}
-            disabled={loading}
-            title={language === "en" ? "Refresh" : "Làm mới"}
-            className="p-2 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xs transition disabled:opacity-50"
-          >
-            <RefreshCw size={15} className={loading ? "animate-spin" : ""} />
-          </button>
-
-          <button
-            onClick={handleExportCsv}
-            disabled={exportLoading || !data}
-            className="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 text-white text-[11px] font-black px-4 py-2 rounded-xl shadow-xs transition flex items-center gap-2"
-          >
-            {exportLoading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
-            {language === "en" ? "Export CSV" : "Xuất CSV"}
-          </button>
-        </div>
-      </div>
 
       {/* ── ERROR BANNER ── */}
       {error && (
@@ -607,34 +502,51 @@ export default function ManagerDashboard() {
           ))}
         </div>
 
-        {period === "custom" && (
+        {(period === "day" || period === "custom") && (
           <form
             onSubmit={(e) => { e.preventDefault(); fetchDashboardData(); }}
             className="flex flex-wrap items-end gap-3 w-full md:w-auto"
           >
-            {[
-              { label: language === "en" ? "Start date" : "Ngày bắt đầu", value: startDate, set: setStartDate },
-              { label: language === "en" ? "End date" : "Ngày kết thúc", value: endDate, set: setEndDate },
-            ].map(({ label, value, set }) => (
-              <div key={label} className="space-y-1">
-                <span className="block text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                  {label}
+            {period === "day" ? (
+              <div className="space-y-1">
+                <span className="block text-[9px] font-bold text-slate-400 dark:text-slate-505 uppercase tracking-widest">
+                  {language === "en" ? "Select date" : "Chọn ngày"}
                 </span>
                 <div className="relative">
                   <Calendar size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type="date"
-                    value={value}
-                    onChange={(e) => set(e.target.value)}
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
                     className="pl-8 pr-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-white focus:outline-none focus:border-blue-500"
                   />
                 </div>
               </div>
-            ))}
+            ) : (
+              [
+                { label: language === "en" ? "Start date" : "Ngày bắt đầu", value: startDate, set: setStartDate },
+                { label: language === "en" ? "End date" : "Ngày kết thúc", value: endDate, set: setEndDate },
+              ].map(({ label, value, set }) => (
+                <div key={label} className="space-y-1">
+                  <span className="block text-[9px] font-bold text-slate-400 dark:text-slate-505 uppercase tracking-widest">
+                    {label}
+                  </span>
+                  <div className="relative">
+                    <Calendar size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="date"
+                      value={value}
+                      onChange={(e) => set(e.target.value)}
+                      className="pl-8 pr-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-white focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+              ))
+            )}
             <button
               type="submit"
               disabled={loading}
-              className="bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400 text-xs font-bold px-4 py-2 h-[34px] rounded-xl border border-blue-100 dark:border-blue-900/60 transition"
+              className="bg-blue-50 hover:bg-blue-100 dark:bg-blue-955/20 text-blue-600 dark:text-blue-400 text-xs font-bold px-4 py-2 h-[34px] rounded-xl border border-blue-100 dark:border-blue-900/60 transition"
             >
               {language === "en" ? "Apply" : "Áp dụng"}
             </button>
@@ -717,7 +629,7 @@ export default function ManagerDashboard() {
             <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-between">
               <div className="space-y-1">
                 <span className="block text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">
-                  {language === "en" ? "Total booking" : "Tổng đặt chỗ"}
+                  {language === "en" ? "Total revenue" : "Tổng doanh thu"}
                 </span>
                 <span className="block text-xl font-black text-slate-800 dark:text-white">
                   {formatCurrency(data.revenue.total)}
@@ -833,7 +745,7 @@ export default function ManagerDashboard() {
                             color: "bg-blue-500",
                           },
                           {
-                            label: language === "en" ? "Booking share" : "Tỉ lệ đặt chỗ",
+                            label: language === "en" ? "Revenue" : "Doanh thu",
                             pct: revPct,
                             color: "bg-emerald-500",
                           },
@@ -866,7 +778,7 @@ export default function ManagerDashboard() {
                 </span>
                 <span className="flex items-center gap-1.5">
                   <span className="w-2.5 h-2.5 rounded bg-emerald-500 inline-block" />
-                  {language === "en" ? "Booking" : "Đặt chỗ"}
+                  {language === "en" ? "Revenue" : "Doanh thu"}
                 </span>
               </div>
             </div>
@@ -876,11 +788,11 @@ export default function ManagerDashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 items-stretch">
             <div className="lg:col-span-3">
               <LineAreaChart
-                title={language === "en" ? "Hourly bookings" : "Đặt chỗ theo giờ"}
+                title={language === "en" ? "Hourly revenue" : "Doanh thu theo giờ"}
                 subtitle={
                   language === "en"
-                    ? "Bookings generated each hour from parking fees."
-                    : "Lượt đặt chỗ phát sinh mỗi giờ từ phí đỗ xe."
+                    ? "Revenue generated each hour from parking fees."
+                    : "Doanh thu phát sinh mỗi giờ từ phí đỗ xe."
                 }
                 dataPoints={normalizedHours}
                 getValue={(p) => Math.round(p.check_ins * avgRevenuePerCheckIn)}
@@ -904,8 +816,8 @@ export default function ManagerDashboard() {
                   </h3>
                   <p className="text-[10px] text-slate-400 mt-0.5">
                     {language === "en"
-                      ? "Bookings split by payment method."
-                      : "Phân bổ đặt chỗ theo hình thức thanh toán."}
+                      ? "Revenue split by payment method."
+                      : "Phân bổ doanh thu theo hình thức thanh toán."}
                   </p>
                 </div>
                 <div className="p-2 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 rounded-xl">
@@ -987,15 +899,29 @@ export default function ManagerDashboard() {
           <p className="text-sm text-slate-500 dark:text-slate-400 font-semibold">
             {language === "en" ? "No data available." : "Chưa có dữ liệu."}
           </p>
-          <button
-            onClick={() => setIsDemoMode(true)}
-            className="mx-auto text-xs bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded-xl flex items-center gap-2 transition"
-          >
-            <Sparkles size={13} />
-            {language === "en" ? "Load demo data" : "Tải dữ liệu mô phỏng"}
-          </button>
         </div>
       )}
+
+      {/* ── BOTTOM ACTIONS ── */}
+      <div className="flex justify-end gap-3 pt-6 border-t border-slate-200 dark:border-slate-800 mt-6">
+        <button
+          onClick={fetchDashboardData}
+          disabled={loading}
+          className="px-4 py-2 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xs transition disabled:opacity-50 flex items-center gap-2 text-xs font-bold"
+        >
+          <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+          <span>{language === "en" ? "Refresh" : "Làm mới"}</span>
+        </button>
+
+        <button
+          onClick={handleExportCsv}
+          disabled={exportLoading || !data}
+          className="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 text-white text-[11px] font-black px-4 py-2 rounded-xl shadow-xs transition flex items-center gap-2"
+        >
+          {exportLoading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+          {language === "en" ? "Export CSV" : "Xuất CSV"}
+        </button>
+      </div>
     </div>
   );
 }

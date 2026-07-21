@@ -18,23 +18,12 @@ import api from "../../utils/api";
 
 export default function AdminSettings() {
   const { language } = useLanguage();
-  const [activeTab, setActiveTab] = useState("parking"); // "parking" | "bookings" | "hardware" | "database"
+  const [activeTab, setActiveTab] = useState("hardware"); // "hardware" | "database"
   const [loading, setLoading] = useState(false);
   const [backupLoading, setBackupLoading] = useState(false);
   const [testBarrierLoading, setTestBarrierLoading] = useState(false);
 
-  // 1. General Parking Rules States
-  const [lostTicketFee, setLostTicketFee] = useState("50000"); // VND
-  const [overtimePenaltyRate, setOvertimePenaltyRate] = useState("10000"); // VND per hour
-  const [maxSpeedLimit, setMaxSpeedLimit] = useState("5"); // km/h
-  const [is247, setIs247] = useState(true);
-
-  // 2. Booking Rules States
-  const [holdWindow, setHoldWindow] = useState("15"); // minutes
-  const [minBookingDuration, setMinBookingDuration] = useState("60"); // minutes
-  const [advanceBookingLimitDays, setAdvanceBookingLimitDays] = useState("7"); // days
-
-  // 3. Gate & Hardware Settings States
+  // 1. Gate & Hardware Settings States
   const [autoLPR, setAutoLPR] = useState(true); // License Plate Recognition
   const [autoBarrierOpen, setAutoBarrierOpen] = useState(true); // Open gate automatically on valid ocr
   const [ocrSensitivity, setOcrSensitivity] = useState("HIGH"); // HIGH | MEDIUM | LOW
@@ -49,27 +38,6 @@ export default function AdminSettings() {
           list.forEach((s) => {
             const val = s.setting_value;
             switch (s.setting_key) {
-              case "lostTicketFee":
-                setLostTicketFee(val);
-                break;
-              case "overtimePenaltyRate":
-                setOvertimePenaltyRate(val);
-                break;
-              case "maxSpeedLimit":
-                setMaxSpeedLimit(val);
-                break;
-              case "is247":
-                setIs247(val === "true");
-                break;
-              case "holdWindow":
-                setHoldWindow(val);
-                break;
-              case "minBookingDuration":
-                setMinBookingDuration(val);
-                break;
-              case "advanceBookingLimitDays":
-                setAdvanceBookingLimitDays(val);
-                break;
               case "autoLPR":
                 setAutoLPR(val === "true");
                 break;
@@ -96,13 +64,6 @@ export default function AdminSettings() {
     setLoading(true);
     try {
       const payload = {
-        lostTicketFee: lostTicketFee.toString(),
-        overtimePenaltyRate: overtimePenaltyRate.toString(),
-        maxSpeedLimit: maxSpeedLimit.toString(),
-        is247: is247.toString(),
-        holdWindow: holdWindow.toString(),
-        minBookingDuration: minBookingDuration.toString(),
-        advanceBookingLimitDays: advanceBookingLimitDays.toString(),
         autoLPR: autoLPR.toString(),
         autoBarrierOpen: autoBarrierOpen.toString(),
         ocrSensitivity: ocrSensitivity.toString(),
@@ -126,8 +87,8 @@ export default function AdminSettings() {
     setBackupLoading(true);
     setTimeout(() => {
       setBackupLoading(false);
-      
-      const dummySql = `-- eParking Database Backup\n-- Created: ${new Date().toLocaleString()}\n-- Version: 1.0.0\n\nUPDATE SystemSettings SET LostTicketFee = ${lostTicketFee}, HoldWindow = ${holdWindow};\n`;
+
+      const dummySql = `-- eParking Database Backup\n-- Created: ${new Date().toLocaleString()}\n-- Version: 1.0.0\n\nUPDATE SystemSettings SET OCR_Sensitivity = '${ocrSensitivity}';\n`;
       const blob = new Blob([dummySql], { type: "text/plain;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -136,7 +97,7 @@ export default function AdminSettings() {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
+
       toast.success(language === "en" ? "Database file downloaded!" : "Tải xuống bản sao lưu SQL thành công!");
     }, 1200);
   };
@@ -189,20 +150,10 @@ export default function AdminSettings() {
         </button>
       </div>
 
-      {/* FOUR TAB BUTTON BAR */}
+      {/* TWO TAB BUTTON BAR */}
       <div className="bg-white dark:bg-slate-900 p-4 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
         <div className="flex bg-slate-100 dark:bg-slate-850 p-1 rounded-xl w-full md:w-auto overflow-x-auto">
           {[
-            {
-              id: "parking",
-              label: language === "en" ? "Prices & Rules" : "Giá & Nội Quy",
-              icon: <Sliders size={14} />
-            },
-            {
-              id: "bookings",
-              label: language === "en" ? "Booking Rules" : "Quy Tắc Đặt Chỗ",
-              icon: <Clock size={14} />
-            },
             {
               id: "hardware",
               label: language === "en" ? "Gates & Camera" : "Cổng & Camera",
@@ -218,10 +169,9 @@ export default function AdminSettings() {
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`flex-1 md:flex-none px-4 py-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-2 whitespace-nowrap
-                ${
-                  activeTab === tab.id
-                    ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-white shadow-sm"
-                    : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                ${activeTab === tab.id
+                  ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-white shadow-sm"
+                  : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
                 }`}
             >
               {tab.icon}
@@ -234,197 +184,6 @@ export default function AdminSettings() {
       {/* SETTINGS CARD FORM */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm p-6 max-w-2xl">
         <form onSubmit={handleSaveSettings} className="space-y-6 text-xs font-bold text-slate-700 dark:text-slate-350">
-          
-          {/* TAB 1: PARKING OPERATIONS RULES */}
-          {activeTab === "parking" && (
-            <div className="space-y-4">
-              <h3 className="text-sm font-black text-slate-800 dark:text-white mb-2 uppercase tracking-wide flex items-center gap-2">
-                <Sliders size={16} className="text-blue-500" />
-                {language === "en" ? "Prices & Rules" : "Giá & Nội Quy"}
-              </h3>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Lost Ticket Fee */}
-                <div>
-                  <label className="block text-slate-450 dark:text-slate-500 mb-1.5 uppercase text-[10px] flex items-center gap-1">
-                    {language === "en" ? "Lost Ticket Fee (VND)" : "Phí Mất Thẻ/Vé (VND)"}
-                    <HelpCircle
-                      size={12}
-                      className="cursor-help"
-                      title={
-                        language === "en"
-                          ? "Money charged when a customer loses their paper parking ticket."
-                          : "Số tiền phạt thu khi khách hàng làm mất thẻ hoặc hóa đơn giấy gửi xe."
-                      }
-                    />
-                  </label>
-                  <input
-                    type="number"
-                    value={lostTicketFee}
-                    onChange={(e) => setLostTicketFee(e.target.value)}
-                    className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-white focus:outline-none"
-                  />
-                  <span className="text-[10px] text-slate-400 font-medium block mt-1 font-mono">
-                    {language === "en" ? "Fee" : "Cước phạt"}: {formatCurrency(lostTicketFee)}
-                  </span>
-                </div>
-
-                {/* Overtime Penalty Surcharge */}
-                <div>
-                  <label className="block text-slate-450 dark:text-slate-500 mb-1.5 uppercase text-[10px] flex items-center gap-1">
-                    {language === "en" ? "Late Fee (VND / Hour)" : "Phí Đỗ Quá Giờ (VND / Giờ)"}
-                    <HelpCircle
-                      size={12}
-                      className="cursor-help"
-                      title={
-                        language === "en"
-                          ? "Extra money charged per hour when a customer leaves late."
-                          : "Tiền phạt tính thêm mỗi giờ khi khách hàng đỗ quá thời gian đặt chỗ."
-                      }
-                    />
-                  </label>
-                  <input
-                    type="number"
-                    value={overtimePenaltyRate}
-                    onChange={(e) => setOvertimePenaltyRate(e.target.value)}
-                    className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-white focus:outline-none"
-                  />
-                  <span className="text-[10px] text-slate-400 font-medium block mt-1 font-mono">
-                    {language === "en" ? "Fee" : "Cước"}: {formatCurrency(overtimePenaltyRate)} / hour
-                  </span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Speed Limit */}
-                <div>
-                  <label className="block text-slate-450 dark:text-slate-500 mb-1.5 uppercase text-[10px] flex items-center gap-1">
-                    {language === "en" ? "Max Speed Limit (km/h)" : "Tốc Độ Tối Đa (km/h)"}
-                    <HelpCircle
-                      size={12}
-                      className="cursor-help"
-                      title={
-                        language === "en"
-                          ? "Speed limit for cars inside the parking lot."
-                          : "Giới hạn tốc độ khuyến nghị trong khuôn viên bãi đỗ vì an toàn."
-                      }
-                    />
-                  </label>
-                  <input
-                    type="number"
-                    value={maxSpeedLimit}
-                    onChange={(e) => setMaxSpeedLimit(e.target.value)}
-                    className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-white focus:outline-none"
-                  />
-                </div>
-
-                {/* 24/7 Hours Switch */}
-                <div className="flex flex-col justify-end pb-3">
-                  <label className="flex items-center gap-2.5 cursor-pointer text-slate-700 dark:text-slate-350">
-                    <input
-                      type="checkbox"
-                      checked={is247}
-                      onChange={(e) => setIs247(e.target.checked)}
-                      className="w-4 h-4 text-blue-600 rounded bg-slate-100 border-slate-300 focus:ring-blue-500 focus:ring-2 dark:bg-slate-800 dark:border-slate-700"
-                    />
-                    <span>{language === "en" ? "Open 24/7" : "Hoạt Động 24/7"}</span>
-                  </label>
-                  <span className="text-[10px] text-slate-400 font-medium block mt-1">
-                    {language === "en"
-                      ? "If turned off, the parking lot closes at 23:00 (11 PM)."
-                      : "Nếu tắt, bãi xe sẽ đóng cổng và không nhận xe mới sau 23:00."}
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 2: BOOKING RULES */}
-          {activeTab === "bookings" && (
-            <div className="space-y-4">
-              <h3 className="text-sm font-black text-slate-800 dark:text-white mb-2 uppercase tracking-wide flex items-center gap-2">
-                <Clock size={16} className="text-blue-500" />
-                {language === "en" ? "Booking Rules" : "Quy Tắc Đặt Chỗ"}
-              </h3>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Booking Hold Window */}
-                <div>
-                  <label className="block text-slate-450 dark:text-slate-500 mb-1.5 uppercase text-[10px] flex items-center gap-1">
-                    {language === "en" ? "Hold Time (Minutes)" : "Thời Gian Giữ Chỗ (Phút)"}
-                    <HelpCircle
-                      size={12}
-                      className="cursor-help"
-                      title={
-                        language === "en"
-                          ? "How many minutes to keep the space open before canceling if the car is late."
-                          : "Thời gian giữ chỗ trống trước khi tự động hủy nếu xe chưa check-in bãi."
-                      }
-                    />
-                  </label>
-                  <input
-                    type="number"
-                    value={holdWindow}
-                    onChange={(e) => setHoldWindow(e.target.value)}
-                    className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-white focus:outline-none"
-                  />
-                  <span className="text-[10px] text-slate-400 font-medium block mt-1">
-                    {language === "en" ? "Default" : "Mặc định"}: 15 minutes.
-                  </span>
-                </div>
-
-                {/* Minimum booking duration */}
-                <div>
-                  <label className="block text-slate-450 dark:text-slate-500 mb-1.5 uppercase text-[10px] flex items-center gap-1">
-                    {language === "en" ? "Min Booking Time (Minutes)" : "Thời Gian Đặt Tối Thiểu (Phút)"}
-                    <HelpCircle
-                      size={12}
-                      className="cursor-help"
-                      title={
-                        language === "en"
-                          ? "Shortest time a customer can book (default: 60 minutes)."
-                          : "Thời gian đặt đỗ xe tối thiểu khi người dùng đặt chỗ qua ứng dụng."
-                      }
-                    />
-                  </label>
-                  <input
-                    type="number"
-                    value={minBookingDuration}
-                    onChange={(e) => setMinBookingDuration(e.target.value)}
-                    className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-white focus:outline-none"
-                  />
-                  <span className="text-[10px] text-slate-400 font-medium block mt-1">
-                    {language === "en" ? "Default" : "Mặc định"}: 60 minutes (1 hour).
-                  </span>
-                </div>
-              </div>
-
-              {/* Advance Booking Limit */}
-              <div>
-                <label className="block text-slate-450 dark:text-slate-500 mb-1.5 uppercase text-[10px] flex items-center gap-1">
-                  {language === "en" ? "Book Ahead Limit (Days)" : "Giới Hạn Đặt Trước (Ngày)"}
-                  <HelpCircle
-                    size={12}
-                    className="cursor-help"
-                    title={
-                      language === "en"
-                        ? "How many days in advance a customer can book a slot (default: 7 days)."
-                        : "Thời hạn tối đa mà khách hàng có thể lên lịch đặt chỗ trước."
-                    }
-                  />
-                </label>
-                <input
-                  type="number"
-                  value={advanceBookingLimitDays}
-                  onChange={(e) => setAdvanceBookingLimitDays(e.target.value)}
-                  className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-white focus:outline-none"
-                />
-                <span className="text-[10px] text-slate-400 font-medium block mt-1">
-                  {language === "en" ? "Default" : "Mặc định"}: 7 days ahead.
-                </span>
-              </div>
-            </div>
-          )}
 
           {/* TAB 3: GATE CONTROL & HARDWARE */}
           {activeTab === "hardware" && (

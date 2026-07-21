@@ -21,7 +21,6 @@ export default function AdminDashboard() {
   const { language } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [isDemoMode, setIsDemoMode] = useState(false);
   const [totalUsers, setTotalUsers] = useState(0);
   const [systemHealth, setSystemHealth] = useState(null);
   const [latestLogs, setLatestLogs] = useState([]);
@@ -49,27 +48,6 @@ export default function AdminDashboard() {
   };
 
   const fetchDashboardData = async () => {
-    if (isDemoMode) {
-      setTotalUsers(42);
-      setSystemHealth({
-        dbStatus: "ONLINE",
-        vnpayStatus: "ONLINE",
-        apiStatus: "ONLINE",
-        apiLatencyMs: 15,
-        errorCount24H: 0,
-        warningCount24H: 1
-      });
-      setLatestLogs([
-        { logId: 1, logLevel: "INFO", message: "System configuration setting 'is247' updated to 'true'.", source: "Settings", createdAt: new Date(Date.now() - 2 * 60 * 1000).toISOString() },
-        { logId: 2, logLevel: "INFO", message: "User 'manager_pms' granted 'ParkingManager' role.", source: "RoleAuth", createdAt: new Date(Date.now() - 5 * 60 * 1000).toISOString() },
-        { logId: 3, logLevel: "INFO", message: "Database health check connection returned success.", source: "Database", createdAt: new Date(Date.now() - 12 * 60 * 1000).toISOString() },
-        { logId: 4, logLevel: "WARNING", message: "VNPay API response latency higher than average (230ms).", source: "PaymentGate", createdAt: new Date(Date.now() - 25 * 60 * 1000).toISOString() },
-        { logId: 5, logLevel: "INFO", message: "Admin 'system_admin' updated global setting 'base_fare_multiplier'.", source: "Settings", createdAt: new Date(Date.now() - 45 * 60 * 1000).toISOString() },
-        { logId: 6, logLevel: "INFO", message: "Cleaned up obsolete token audit records successfully.", source: "CronJob", createdAt: new Date(Date.now() - 90 * 60 * 1000).toISOString() }
-      ]);
-      return;
-    }
-
     try {
       setLoading(true);
       setError("");
@@ -87,12 +65,17 @@ export default function AdminDashboard() {
         console.warn("[Admin Dashboard Health Fetch Failed]:", healthErr);
         setSystemHealth({
           dbStatus: "OFFLINE",
-          vnpayStatus: "CONFIG_REQUIRED",
+          payosStatus: "CONFIG_REQUIRED",
           apiStatus: "ONLINE",
           apiLatencyMs: 999,
           errorCount24H: 0,
           warningCount24H: 0
         });
+        setError(
+          language === "en"
+            ? "Cannot connect to server. Please verify system environment settings."
+            : "Không thể kết nối đến máy chủ. Vui lòng xác thực lại cấu hình hệ thống."
+        );
       }
 
       // 2. Fetch latest 10 system logs
@@ -109,10 +92,9 @@ export default function AdminDashboard() {
       console.error("[Admin Dashboard API Error]:", err);
       setError(
         language === "en"
-          ? "Cannot connect to server. Switched to Demo Mode for presentation."
-          : "Không thể kết nối đến máy chủ. Đã tự động chuyển sang Chế độ Demo minh họa."
+          ? "Cannot connect to server. Please try again."
+          : "Không thể kết nối đến máy chủ. Vui lòng thử lại."
       );
-      setIsDemoMode(true);
     } finally {
       setLoading(false);
     }
@@ -120,60 +102,39 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     fetchDashboardData();
-  }, [isDemoMode]);
+  }, []);
 
   return (
     <div className="space-y-6 animate-slide-in font-sans pb-10">
       {/* 1. TOP HEADER & TELEMETRY ACTIONS BAR */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
         <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">
-              {language === "en" ? "System Telemetry & Health" : "Giám Sát & Điều Hành Hệ Thống"}
-            </h2>
-            {isDemoMode && (
-              <span className="bg-amber-100 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-900/40 animate-pulse">
-                {language === "en" ? "DEMO MODE" : "DỮ LIỆU MINH HỌA (DEMO)"}
-              </span>
-            )}
-          </div>
-          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+          <h2 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">
+            {language === "en" ? "System Status Overview" : "Trạng Thái Hệ Thống"}
+          </h2>
+          <p className="text-xs text-slate-400 dark:text-slate-505 mt-1">
             {language === "en"
-              ? "Monitor API latency, database health, integrations, and live security audit logs."
-              : "Trung tâm quản trị hạ tầng phần mềm, kết nối cơ sở dữ liệu, cổng thanh toán và lịch sử nhật ký hệ thống."}
+              ? "Check server status, database connections, payment gateways, and system activity logs."
+              : "Theo dõi trạng thái máy chủ, kết nối cơ sở dữ liệu, cổng thanh toán và lịch sử hoạt động hệ thống."}
           </p>
         </div>
 
         {/* Global Toolbar */}
         <div className="flex flex-wrap items-center gap-2">
           <button
-            onClick={() => setIsDemoMode(!isDemoMode)}
-            className={`text-xs font-bold px-3 py-2 rounded-xl transition border flex items-center gap-1.5 shadow-sm
-              ${
-                isDemoMode
-                  ? "bg-amber-500 hover:bg-amber-600 border-amber-600 text-white"
-                  : "bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border-slate-200 dark:border-slate-700 text-slate-750 dark:text-slate-300"
-              }`}
-          >
-            <Sparkles size={14} />
-            {language === "en"
-              ? (isDemoMode ? "Exit Demo" : "Show Demo Data")
-              : (isDemoMode ? "Tắt dữ liệu Demo" : "Bật dữ liệu Demo")}
-          </button>
-
-          <button
             onClick={fetchDashboardData}
             disabled={loading}
-            className="p-2.5 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm transition disabled:opacity-50"
+            className="p-2.5 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm transition disabled:opacity-50 flex items-center gap-2 text-xs font-bold"
           >
-            <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
+            <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+            <span>{language === "en" ? "Refresh" : "Tải lại"}</span>
           </button>
         </div>
       </div>
 
       {/* ERROR ALERT DISPLAY */}
       {error && (
-        <div className="p-3.5 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 text-red-650 dark:text-red-450 text-xs font-semibold rounded-xl flex items-center gap-2">
+        <div className="p-3.5 bg-red-50 dark:bg-red-955/20 border border-red-200 dark:border-red-900/40 text-red-655 dark:text-red-455 text-xs font-semibold rounded-xl flex items-center gap-2">
           <AlertCircle size={16} className="shrink-0" />
           <span>{error}</span>
         </div>
@@ -183,7 +144,7 @@ export default function AdminDashboard() {
         <div className="h-64 flex flex-col justify-center items-center gap-3">
           <Loader2 size={32} className="animate-spin text-blue-600" />
           <p className="text-xs text-slate-400">
-            {language === "en" ? "Gathering system health parameters..." : "Đang kết nối tới máy chủ giám sát..."}
+            {language === "en" ? "Gathering system status details..." : "Đang kiểm tra kết nối hệ thống..."}
           </p>
         </div>
       ) : (
@@ -193,12 +154,12 @@ export default function AdminDashboard() {
             {/* Server Status Card */}
             <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="p-3 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-450 rounded-xl">
+                <div className="p-3 bg-emerald-50 dark:bg-emerald-955/30 text-emerald-600 dark:text-emerald-450 rounded-xl">
                   <Server size={20} />
                 </div>
                 <div>
                   <span className="block text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">
-                    {language === "en" ? "API GATEWAY STATUS" : "TRẠNG THÁI SERVER"}
+                    {language === "en" ? "SERVER STATUS" : "TRẠNG THÁI MÁY CHỦ"}
                   </span>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -206,8 +167,8 @@ export default function AdminDashboard() {
                       ONLINE
                     </span>
                   </div>
-                  <span className="text-[10px] text-slate-450 dark:text-slate-500 block">
-                    Latency: {systemHealth?.apiLatencyMs || 12}ms
+                  <span className="text-[10px] text-slate-455 dark:text-slate-500 block font-medium">
+                    {language === "en" ? `Response time: ${systemHealth?.apiLatencyMs || 12}ms` : `Thời gian phản hồi: ${systemHealth?.apiLatencyMs || 12}ms`}
                   </span>
                 </div>
               </div>
@@ -216,21 +177,19 @@ export default function AdminDashboard() {
             {/* Database Status Card */}
             <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className={`p-3 rounded-xl ${
-                  systemHealth?.dbStatus === "ONLINE"
-                    ? "bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-450"
+                <div className={`p-3 rounded-xl ${systemHealth?.dbStatus === "ONLINE"
+                    ? "bg-blue-50 dark:bg-blue-955/30 text-blue-600 dark:text-blue-450"
                     : "bg-red-50 dark:bg-red-955/20 text-red-650 dark:text-red-400"
-                }`}>
+                  }`}>
                   <Database size={20} />
                 </div>
                 <div>
                   <span className="block text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">
-                    {language === "en" ? "DATABASE CONNECTIVITY" : "KẾT NỐI DATABASE"}
+                    {language === "en" ? "DATABASE CONNECTION" : "KẾT NỐI CƠ SỞ DỮ LIỆU"}
                   </span>
                   <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className={`w-2 h-2 rounded-full ${
-                      systemHealth?.dbStatus === "ONLINE" ? "bg-blue-500 animate-pulse" : "bg-red-500"
-                    }`} />
+                    <span className={`w-2 h-2 rounded-full ${systemHealth?.dbStatus === "ONLINE" ? "bg-blue-500 animate-pulse" : "bg-red-500"
+                      }`} />
                     <span className="text-sm font-black text-slate-850 dark:text-white">
                       {systemHealth?.dbStatus || "ONLINE"}
                     </span>
@@ -244,32 +203,30 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            {/* VNPay Gateway Status Card */}
+            {/* PayOS Gateway Status Card */}
             <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className={`p-3 rounded-xl ${
-                  systemHealth?.vnpayStatus === "ONLINE"
-                    ? "bg-purple-50 dark:bg-purple-950/30 text-purple-600 dark:text-purple-450"
-                    : "bg-amber-50 dark:bg-amber-955/20 text-amber-650 dark:text-amber-450"
-                }`}>
+                <div className={`p-3 rounded-xl ${systemHealth?.payosStatus === "ONLINE"
+                    ? "bg-purple-50 dark:bg-purple-955/30 text-purple-600 dark:text-purple-455"
+                    : "bg-amber-50 dark:bg-amber-955/20 text-amber-655 dark:text-amber-450"
+                  }`}>
                   <CreditCard size={20} />
                 </div>
                 <div>
                   <span className="block text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">
-                    VNPAY GATEWAY
+                    {language === "en" ? "PAYOS GATEWAY" : "CỔNG THANH TOÁN PAYOS"}
                   </span>
                   <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className={`w-2 h-2 rounded-full ${
-                      systemHealth?.vnpayStatus === "ONLINE" ? "bg-purple-500 animate-pulse" : "bg-amber-550"
-                    }`} />
+                    <span className={`w-2 h-2 rounded-full ${systemHealth?.payosStatus === "ONLINE" ? "bg-purple-500 animate-pulse" : "bg-amber-550"
+                      }`} />
                     <span className="text-sm font-black text-slate-850 dark:text-white">
-                      {systemHealth?.vnpayStatus === "ONLINE" ? "ONLINE" : (language === "en" ? "NOT CONFIG" : "CHƯA CẤU HÌNH")}
+                      {systemHealth?.payosStatus === "ONLINE" ? "ONLINE" : (language === "en" ? "NOT CONFIG" : "CHƯA CẤU HÌNH")}
                     </span>
                   </div>
-                  <span className="text-[10px] text-slate-450 dark:text-slate-500 block">
-                    {systemHealth?.vnpayStatus === "ONLINE"
-                      ? (language === "en" ? "API key synchronized" : "Đã đồng bộ API key")
-                      : (language === "en" ? "Check settings page" : "Cần cấu hình cấu hình")}
+                  <span className="text-[10px] text-slate-455 dark:text-slate-500 block font-medium">
+                    {systemHealth?.payosStatus === "ONLINE"
+                      ? (language === "en" ? "API keys connected" : "Đã kết nối thành công")
+                      : (language === "en" ? "Credentials missing" : "Cần cấu hình API Key")}
                   </span>
                 </div>
               </div>
@@ -278,26 +235,25 @@ export default function AdminDashboard() {
             {/* Warning / Error Counter Card */}
             <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className={`p-3 rounded-xl ${
-                  (systemHealth?.errorCount24H || 0) > 0
-                    ? "bg-red-50 dark:bg-red-950/30 text-red-650 dark:text-red-400"
+                <div className={`p-3 rounded-xl ${(systemHealth?.errorCount24H || 0) > 0
+                    ? "bg-red-50 dark:bg-red-955/30 text-red-650 dark:text-red-400"
                     : (systemHealth?.warningCount24H || 0) > 0
-                      ? "bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400"
-                      : "bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400"
-                }`}>
+                      ? "bg-amber-50 dark:bg-amber-955/30 text-amber-600 dark:text-amber-400"
+                      : "bg-blue-50 dark:bg-blue-955/30 text-blue-600 dark:text-blue-400"
+                  }`}>
                   <Activity size={20} />
                 </div>
                 <div>
                   <span className="block text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">
-                    {language === "en" ? "TELEMETRY ALERTS (24H)" : "CẢNH BÁO HỆ THỐNG (24H)"}
+                    {language === "en" ? "SYSTEM WARNINGS (24H)" : "CẢNH BÁO HỆ THỐNG (24H)"}
                   </span>
                   <div className="flex items-center gap-2 mt-0.5">
                     <span className="text-sm font-black text-slate-805 dark:text-white flex items-center gap-1">
-                      {systemHealth?.errorCount24H || 0} <span className="text-[10px] font-semibold text-red-500 uppercase">Errors</span>
+                      {systemHealth?.errorCount24H || 0} <span className="text-[10px] font-semibold text-red-500 uppercase font-sans">Errors</span>
                     </span>
                     <span className="text-slate-350 dark:text-slate-750">|</span>
-                    <span className="text-sm font-black text-slate-805 dark:text-white flex items-center gap-1">
-                      {systemHealth?.warningCount24H || 0} <span className="text-[10px] font-semibold text-amber-500 uppercase">Warns</span>
+                    <span className="text-sm font-black text-slate-855 dark:text-white flex items-center gap-1">
+                      {systemHealth?.warningCount24H || 0} <span className="text-[10px] font-semibold text-amber-500 uppercase font-sans">Warns</span>
                     </span>
                   </div>
                   <span className="text-[10px] text-slate-450 dark:text-slate-500 block">
@@ -316,21 +272,20 @@ export default function AdminDashboard() {
 
           {/* 3. MAIN DASHBOARD CONTENT: LIVE SYSTEM ACTIVITY & QUICK CONFIGS */}
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-stretch">
-            
             {/* Column A: System Activity Terminal logs (Span 3) */}
-            <div className="bg-slate-900 border border-slate-800 text-slate-100 p-5 rounded-2xl shadow-xl lg:col-span-3 flex flex-col justify-between min-h-[420px]">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-slate-800 dark:text-slate-100 p-5 rounded-2xl shadow-sm lg:col-span-3 flex flex-col justify-between min-h-[420px]">
               <div>
-                <div className="flex justify-between items-center mb-4 pb-4 border-b border-slate-800">
+                <div className="flex justify-between items-center mb-4 pb-4 border-b border-slate-100 dark:border-slate-800">
                   <div className="flex items-center gap-2.5">
-                    <Terminal size={18} className="text-blue-450 shrink-0" />
+                    <Terminal size={18} className="text-blue-500 shrink-0" />
                     <div>
-                      <h3 className="text-sm font-bold tracking-wide uppercase text-slate-300">
-                        {language === "en" ? "Live System Audit Trail" : "Nhật Ký Hoạt Động Thời Gian Thực"}
+                      <h3 className="text-sm font-bold tracking-wide uppercase text-slate-800 dark:text-slate-300">
+                        {language === "en" ? "System Activity Log" : "Nhật Ký Hoạt Động Hệ Thống"}
                       </h3>
-                      <span className="text-[10px] text-slate-500 font-medium mt-0.5 block">
+                      <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium mt-0.5 block">
                         {language === "en"
-                          ? "Real-time records of role auditing logs, settings modifications, and errors."
-                          : "Theo dõi các cập nhật bảo mật, thay đổi phân quyền và sự kiện hệ thống."}
+                          ? "Real-time history of user permissions, system changes, and error records."
+                          : "Lịch sử phân quyền người dùng, thay đổi cài đặt và sự cố thời gian thực."}
                       </span>
                     </div>
                   </div>
@@ -342,7 +297,7 @@ export default function AdminDashboard() {
 
                 <div className="space-y-2.5 font-mono text-xs">
                   {latestLogs.length === 0 ? (
-                    <div className="h-60 flex flex-col justify-center items-center text-slate-500">
+                    <div className="h-60 flex flex-col justify-center items-center text-slate-400">
                       <Terminal size={24} className="stroke-1 mb-2" />
                       <span className="text-[11px]">{language === "en" ? "No recent activity found." : "Không có hoạt động nào được ghi nhận gần đây."}</span>
                     </div>
@@ -351,27 +306,27 @@ export default function AdminDashboard() {
                       const currentLogLevel = log.log_level || log.logLevel || "INFO";
                       const currentLogId = log.log_id || log.logId;
                       const currentCreatedAt = log.created_at || log.createdAt;
-                      let levelColor = "bg-blue-950/40 text-blue-400 border-blue-900/40";
+                      let levelColor = "bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-900/40";
                       if (currentLogLevel === "ERROR") {
-                        levelColor = "bg-red-950/40 text-red-400 border-red-900/40 animate-pulse";
+                        levelColor = "bg-red-50 dark:bg-red-955/20 text-red-600 dark:text-red-400 border-red-100 dark:border-red-900/40 animate-pulse";
                       } else if (currentLogLevel === "WARNING") {
-                        levelColor = "bg-amber-955/20 text-amber-400 border-amber-900/40";
+                        levelColor = "bg-amber-50 dark:bg-amber-955/20 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-900/40";
                       }
                       
                       return (
                         <div
                           key={currentLogId}
-                          className="p-2.5 bg-slate-950/60 rounded-xl border border-slate-800/80 flex items-start gap-2.5 hover:border-slate-700/60 transition-all duration-150"
+                          className="p-2.5 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800/80 flex items-start gap-2.5 hover:border-slate-200 dark:hover:border-slate-700/60 transition-all duration-150"
                         >
                           <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase border shrink-0 ${levelColor}`}>
                             {currentLogLevel}
                           </span>
                           <div className="min-w-0 flex-1">
-                            <p className="text-slate-300 leading-relaxed text-[11px] break-words">
-                              <span className="text-blue-500 font-bold mr-1.5">[{log.source || "System"}]</span>
+                            <p className="text-slate-705 dark:text-slate-300 leading-relaxed text-[11px] break-words">
+                              <span className="text-blue-600 dark:text-blue-400 font-bold mr-1.5">[{log.source || "System"}]</span>
                               {log.message}
                             </p>
-                            <span className="text-[9px] text-slate-655 block mt-1 font-sans">
+                            <span className="text-[9px] text-slate-400 dark:text-slate-500 block mt-1 font-sans">
                               {getRelativeTimeString(currentCreatedAt)}
                             </span>
                           </div>
@@ -382,7 +337,7 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              <div className="mt-4 pt-3 border-t border-slate-800 flex justify-between items-center text-[10px] text-slate-500 font-mono">
+              <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center text-[10px] text-slate-400 dark:text-slate-505 font-mono">
                 <span>SYSTEM CONSOLE v1.0.0</span>
                 <span>UTC+7 REGION</span>
               </div>
@@ -394,15 +349,15 @@ export default function AdminDashboard() {
                 <div className="flex justify-between items-center pb-2">
                   <div>
                     <h3 className="text-sm font-extrabold text-slate-800 dark:text-white uppercase tracking-wider">
-                      {language === "en" ? "System Parameters" : "Tham Số Hệ Thống"}
+                      {language === "en" ? "System Information" : "Thông Tin Vận Hành"}
                     </h3>
-                    <span className="text-[10px] text-slate-450 dark:text-slate-500 font-medium mt-0.5 block">
+                    <span className="text-[10px] text-slate-450 dark:text-slate-550 font-medium mt-0.5 block">
                       {language === "en"
                         ? "Overview of registered users and general system metadata."
-                        : "Thống kê tài khoản đăng ký và thông tin máy chủ trung tâm."}
+                        : "Tổng quan về số lượng tài khoản và thông tin vận hành."}
                     </span>
                   </div>
-                  <div className="p-1.5 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 rounded-lg">
+                  <div className="p-1.5 bg-blue-50 dark:bg-blue-955/40 text-blue-600 dark:text-blue-400 rounded-lg">
                     <Settings size={16} />
                   </div>
                 </div>
@@ -415,13 +370,13 @@ export default function AdminDashboard() {
                         <Users size={16} />
                       </div>
                       <div>
-                        <span className="text-xs font-bold text-slate-850 dark:text-white block">
-                          {language === "en" ? "Registered Accounts" : "Tài Khoản Đăng Ký"}
+                        <span className="text-xs font-bold text-slate-855 dark:text-white block">
+                          {language === "en" ? "Registered Accounts" : "Tài Khoản Thành Viên"}
                         </span>
-                        <span className="text-[10px] text-slate-400 font-medium block">
+                        <span className="text-[10px] text-slate-450 dark:text-slate-500 font-medium block font-sans">
                           {language === "en"
-                            ? "System admins, managers, and staff"
-                            : "Bao gồm cả Admin, Staff, Quản lý..."}
+                            ? "All users, managers, and staff"
+                            : "Quản trị viên, quản lý và nhân viên"}
                         </span>
                       </div>
                     </div>
@@ -440,7 +395,7 @@ export default function AdminDashboard() {
                     </div>
                     <div className="flex justify-between items-center">
                       <span>{language === "en" ? "API Endpoint" : "Cổng kết nối API"}</span>
-                      <span className="text-[10px] font-mono font-bold text-slate-700 dark:text-slate-300">
+                      <span className="text-[10px] font-sans font-bold text-slate-700 dark:text-slate-300">
                         v1.0.0 (v1)
                       </span>
                     </div>

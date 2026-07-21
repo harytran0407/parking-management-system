@@ -1,9 +1,8 @@
 import { Routes, Route } from 'react-router-dom'
 import { useState } from 'react'
-import { Users, Terminal, BarChart3 } from 'lucide-react'
+import { Users, Terminal, Settings } from 'lucide-react'
 import Sidebar from '../components/Sidebar'
 import Header from '../components/Header'
-import AdminDashboard from '../pages/admin/Dashboard'
 import AdminUsers from '../pages/admin/Users'
 import AdminLogs from '../pages/admin/Logs'
 import Profile from '../pages/user/Profile'
@@ -13,8 +12,7 @@ export default function AdminLayout() {
   const { language } = useLanguage();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const navigationItems = [
-    { path: '/admin', label: language === 'en' ? 'Dashboard' : 'Bảng điều khiển', icon: <BarChart3 size={20} /> },
-    { path: '/admin/users', label: language === 'en' ? 'Users' : 'Tài khoản', icon: <Users size={20} /> },
+    { path: '/admin', label: language === 'en' ? 'Users' : 'Tài khoản', icon: <Users size={20} /> },
     { path: '/admin/logs', label: language === 'en' ? 'System Logs' : 'Nhật ký phân quyền', icon: <Terminal size={20} /> },
   ]
 
@@ -33,11 +31,10 @@ export default function AdminLayout() {
         />
         <main className="page-content flex-1 flex flex-col min-h-0 bg-slate-50 dark:bg-slate-950 p-4 md:p-6 overflow-auto transition-colors duration-300">
           <Routes>
-            <Route path="/" element={<AdminDashboard />} />
-            <Route path="/users" element={<AdminUsers />} />
+            <Route path="/" element={<AdminUsers />} />
             <Route path="/logs" element={<AdminLogs />} />
             <Route path="/profile" element={<Profile />} />
-            <Route path="/*" element={<AdminDashboard />} />
+            <Route path="/*" element={<AdminUsers />} />
           </Routes>
         </main>
       </div>

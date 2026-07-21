@@ -403,9 +403,7 @@ export default function ManagerPricing() {
                 <h3 className="text-sm font-bold text-slate-800 dark:text-white">
                   {language === 'en' ? 'Pricing Schedules & Adjustment History' : 'Lịch trình điều chỉnh & Lịch sử giá vé'}
                 </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  {language === 'en' ? 'All historical records and future pricing updates.' : 'Danh sách toàn bộ các mức giá trong quá khứ và lịch trình tăng giảm phí đã lên lịch.'}
-                </p>
+
               </div>
             </div>
 
@@ -421,14 +419,14 @@ export default function ManagerPricing() {
                 <table className="w-full border-collapse">
                   <thead>
                     <tr>
-                      <th className="table-header">{language === 'en' ? 'Vehicle Type' : 'Loại xe'}</th>
-                      <th className="table-header">{language === 'en' ? 'Base Rate' : 'Giá vào cổng'}</th>
-                      <th className="table-header">{language === 'en' ? 'Subsequent Rate' : 'Giá block sau'}</th>
-                      <th className="table-header">{language === 'en' ? 'Daily Max' : 'Giá trần 24h'}</th>
-                      <th className="table-header">{language === 'en' ? 'Lost Card Penalty' : 'Phí mất thẻ'}</th>
-                      <th className="table-header">{language === 'en' ? 'Effective Date' : 'Ngày hiệu lực'}</th>
-                      <th className="table-header">{language === 'en' ? 'Status' : 'Trạng thái'}</th>
-                      <th className="table-header text-right">{language === 'en' ? 'Actions' : 'Thao tác'}</th>
+                      <th className="table-header text-xs">{language === 'en' ? 'Vehicle Type' : 'Loại xe'}</th>
+                      <th className="table-header text-xs">{language === 'en' ? 'Base Rate' : 'Giá vào cổng'}</th>
+                      <th className="table-header text-xs">{language === 'en' ? 'Subsequent Rate' : 'Giá block sau'}</th>
+                      <th className="table-header text-xs">{language === 'en' ? 'Daily Max' : 'Giá trần 24h'}</th>
+                      <th className="table-header text-xs">{language === 'en' ? 'Lost Card Penalty' : 'Phí mất thẻ'}</th>
+                      <th className="table-header text-xs">{language === 'en' ? 'Effective Date' : 'Ngày hiệu lực'}</th>
+                      <th className="table-header text-xs">{language === 'en' ? 'Status' : 'Trạng thái'}</th>
+                      <th className="table-header text-right text-xs">{language === 'en' ? 'Actions' : 'Thao tác'}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -448,21 +446,21 @@ export default function ManagerPricing() {
                                 <div className={`p-1.5 rounded-lg ${isCar ? 'text-blue-500 bg-blue-50 dark:bg-blue-950/40' : 'text-amber-500 bg-amber-50 dark:bg-amber-950/40'}`}>
                                   {isCar ? <Car size={14} /> : <Bike size={14} />}
                                 </div>
-                                <span className="font-bold text-slate-800 dark:text-slate-200">
+                                <span className="font-semibold text-xs text-slate-800 dark:text-slate-200">
                                   {policy.vehicle_type_name || `Type ${policy.vehicle_type_id}`}
                                 </span>
                               </div>
                             </td>
-                            <td className="table-cell font-semibold font-sans text-slate-700 dark:text-slate-300">
+                            <td className="table-cell font-semibold font-sans text-xs text-slate-700 dark:text-slate-300">
                               {parseFloat(policy.base_price).toLocaleString()} ₫ ({policy.base_hours}h)
                             </td>
-                            <td className="table-cell font-semibold font-sans text-slate-700 dark:text-slate-300">
+                            <td className="table-cell font-semibold font-sans text-xs text-slate-700 dark:text-slate-300">
                               +{parseFloat(policy.subsequent_rate).toLocaleString()} ₫ ({policy.subsequent_hours}h)
                             </td>
-                            <td className="table-cell font-semibold font-sans text-slate-700 dark:text-slate-300">
+                            <td className="table-cell font-semibold font-sans text-xs text-slate-700 dark:text-slate-300">
                               {parseFloat(policy.daily_max_price).toLocaleString()} ₫
                             </td>
-                            <td className="table-cell font-semibold font-sans text-slate-700 dark:text-slate-300">
+                            <td className="table-cell font-semibold font-sans text-xs text-slate-700 dark:text-slate-300">
                               {parseFloat(policy.handling_fee || 0).toLocaleString()} ₫
                             </td>
                             <td className="table-cell font-semibold font-sans text-xs text-slate-500 dark:text-slate-400">

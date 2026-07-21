@@ -601,7 +601,7 @@ public partial class AppDbContext : DbContext
 
         modelBuilder.Entity<SlotStatusLog>(entity =>
         {
-            entity.ToTable("SLOT_STATUS_LOGS");
+            entity.ToTable("slot_status_logs");
             entity.HasKey(e => e.LogId);
             entity.Property(e => e.LogId).HasColumnName("log_id").HasMaxLength(50);
             entity.Property(e => e.SlotId).HasColumnName("slot_id").HasMaxLength(50);
@@ -615,7 +615,7 @@ public partial class AppDbContext : DbContext
 
         modelBuilder.Entity<RoleAuditLog>(entity =>
         {
-            entity.ToTable("ROLE_AUDIT_LOG");
+            entity.ToTable("role_audit_log");
             entity.HasKey(e => e.RoleLogId);
             entity.Property(e => e.RoleLogId).HasColumnName("ROLE_LOG_ID");
             entity.Property(e => e.AdminId)
@@ -650,7 +650,7 @@ public partial class AppDbContext : DbContext
 
         modelBuilder.Entity<SystemSetting>(entity =>
         {
-            entity.ToTable("SYSTEM_SETTING");
+            entity.ToTable("system_setting");
             entity.HasKey(e => e.SettingId);
 
             entity.Property(e => e.SettingId).HasColumnName("SETTING_ID");
@@ -677,7 +677,7 @@ public partial class AppDbContext : DbContext
 
         modelBuilder.Entity<SystemLog>(entity =>
         {
-            entity.ToTable("SYSTEM_LOGS");
+            entity.ToTable("system_logs");
             entity.HasKey(e => e.LogId);
             entity.Property(e => e.LogId).HasColumnName("LOG_ID");
             entity.Property(e => e.LogLevel)
@@ -701,7 +701,7 @@ public partial class AppDbContext : DbContext
 
         modelBuilder.Entity<Feedback>(entity =>
         {
-            entity.ToTable("FEEDBACK");
+            entity.ToTable("feedback");
             entity.HasKey(e => e.FeedbackId);
 
             entity.Property(e => e.FeedbackId)
@@ -765,7 +765,7 @@ public partial class AppDbContext : DbContext
 
         modelBuilder.Entity<UserBanLog>(entity =>
         {
-            entity.ToTable("USER_BAN_LOG");
+            entity.ToTable("user_ban_log");
             entity.HasKey(e => e.LogId);
             entity.Property(e => e.LogId).HasColumnName("LOG_ID");
 
