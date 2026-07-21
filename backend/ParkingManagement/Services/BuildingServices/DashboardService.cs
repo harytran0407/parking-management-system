@@ -140,12 +140,21 @@ public class DashboardService : IDashboardService
 
         return filter.Period.ToLower() switch
         {
-            "day" => (today, today.AddDays(1).AddSeconds(-1)),
+            "day" => string.IsNullOrEmpty(filter.StartDate) 
+                ? (today, today.AddDays(1).AddSeconds(-1)) 
+                : ParseSingleDay(filter.StartDate),
             "week" => (today.AddDays(-(int)today.DayOfWeek), today.AddDays(7 - (int)today.DayOfWeek).AddSeconds(-1)),
             "month" => (new DateTime(today.Year, today.Month, 1), new DateTime(today.Year, today.Month, 1).AddMonths(1).AddSeconds(-1)),
             "custom" => ParseCustomRange(filter),
             _ => (today, today.AddDays(1).AddSeconds(-1))
         };
+    }
+
+    private static (DateTime from, DateTime to) ParseSingleDay(string dateStr)
+    {
+        if (!DateTime.TryParse(dateStr, out var date))
+            throw new ArgumentException("Invalid date format (YYYY-MM-DD)");
+        return (date.Date, date.Date.AddDays(1).AddSeconds(-1));
     }
 
     private static (DateTime from, DateTime to) ParseCustomRange(DashboardFilterRequest filter)

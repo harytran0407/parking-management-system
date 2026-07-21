@@ -36,7 +36,7 @@ export default function Header({ title, isSidebarCollapsed, setIsSidebarCollapse
       "/staff": "Dashboard",
       "/staff/slots": "Slots and Gate Management",
       "/staff/history": "Parking History",
-      "/admin": "Admin Dashboard",
+      "/admin": "User Accounts & Roles",
       "/admin/users": "User Accounts & Roles",
       "/admin/logs": "Role Audit Logs",
       "/admin/settings": "System Settings",
@@ -60,7 +60,7 @@ export default function Header({ title, isSidebarCollapsed, setIsSidebarCollapse
       "/staff": "Bảng điều khiển",
       "/staff/slots": "Giám sát ô đỗ",
       "/staff/history": "Lịch sử đỗ xe",
-      "/admin": "Bảng điều khiển Admin",
+      "/admin": "Quản lý tài khoản",
       "/admin/users": "Quản lý tài khoản",
       "/admin/logs": "Nhật ký phân quyền",
       "/admin/settings": "Cấu hình hệ thống",
@@ -84,12 +84,12 @@ export default function Header({ title, isSidebarCollapsed, setIsSidebarCollapse
   // ==========================================
   const getFallbackTitle = () => {
     if (language === "en") {
-      if (user?.role === "SystemAdmin") return "System Admin Dashboard";
+      if (user?.role === "SystemAdmin") return "User Accounts & Roles";
       if (user?.role === "ParkingStaff") return "Operator Dashboard";
       if (user?.role === "ParkingManager") return "Manager Dashboard";
       return "Driver Dashboard";
     } else {
-      if (user?.role === "SystemAdmin") return "Bảng điều khiển Admin";
+      if (user?.role === "SystemAdmin") return "Quản lý tài khoản";
       if (user?.role === "ParkingStaff") return "Bảng điều khiển nhân viên";
       if (user?.role === "ParkingManager") return "Bảng điều khiển Quản lý";
       return "Bảng điều khiển Khách hàng";

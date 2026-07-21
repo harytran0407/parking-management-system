@@ -54,16 +54,48 @@ public class FloorAllocationRepository : IFloorAllocationRepository
            .AnyAsync(b => b.ZoneId == zoneId &&
                             (b.Status == "CONFIRMED" || b.Status == "PENDING"));
 
+    private async Task SyncBuildingStatsAsync(string buildingId)
+    {
+        var building = await _db.ParkingBuildings.FirstOrDefaultAsync(b => b.BuildingId == buildingId);
+        if (building == null) return;
+
+        int activeFloors = await _db.FloorZones
+            .Where(z => z.BuildingId == buildingId)
+            .Select(z => z.FloorNumber)
+            .Distinct()
+            .CountAsync();
+
+        int totalSlots = await _db.FloorZones
+            .Where(z => z.BuildingId == buildingId)
+            .SumAsync(z => z.Capacity);
+
+        if (building.TotalFloors != activeFloors || building.TotalSlots != totalSlots)
+        {
+            building.TotalFloors = activeFloors;
+            building.TotalSlots = totalSlots;
+            _db.ParkingBuildings.Update(building);
+            await _db.SaveChangesAsync();
+        }
+    }
+
     public async Task UpdateAsync(FloorZone zone)
     {
         _db.FloorZones.Update(zone);
         await _db.SaveChangesAsync();
+        if (!string.IsNullOrEmpty(zone.BuildingId))
+        {
+            await SyncBuildingStatsAsync(zone.BuildingId);
+        }
     }
 
     public async Task<FloorZone> CreateAsync(FloorZone zone)
     {
         _db.FloorZones.Add(zone);
         await _db.SaveChangesAsync();
+        if (!string.IsNullOrEmpty(zone.BuildingId))
+        {
+            await SyncBuildingStatsAsync(zone.BuildingId);
+        }
         return zone;
     }
     public Task<bool> FloorNumberExistsAsync(string buildingId, int floorNumber, string zoneName) =>
@@ -71,6 +103,8 @@ public class FloorAllocationRepository : IFloorAllocationRepository
 
     public async Task DeleteZoneAsync(FloorZone zoneId)
     {
+        string? buildingId = zoneId.BuildingId;
+
         // Nullify ZoneId reference in bookings
         var bookings = await _db.Bookings.Where(b => b.ZoneId == zoneId.ZoneId).ToListAsync();
         foreach (var b in bookings)
@@ -99,6 +133,11 @@ public class FloorAllocationRepository : IFloorAllocationRepository
  
         _db.FloorZones.Remove(zoneId);
         await _db.SaveChangesAsync();
+
+        if (!string.IsNullOrEmpty(buildingId))
+        {
+            await SyncBuildingStatsAsync(buildingId);
+        }
     }
 
     public async Task SyncZoneSlotsAsync(int zoneId, int targetCapacity)

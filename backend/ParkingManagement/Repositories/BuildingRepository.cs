@@ -22,8 +22,31 @@ public class BuildingRepository : IBuildingRepository
         _db = db;
     }
 
-    public Task<ParkingBuilding?> GetByIdAsync(string buildingId) =>
-        _db.ParkingBuildings.FirstOrDefaultAsync(b => b.BuildingId == buildingId);
+    public async Task<ParkingBuilding?> GetByIdAsync(string buildingId)
+    {
+        var building = await _db.ParkingBuildings.FirstOrDefaultAsync(b => b.BuildingId == buildingId);
+        if (building == null) return null;
+
+        int activeFloors = await _db.FloorZones
+            .Where(z => z.BuildingId == buildingId)
+            .Select(z => z.FloorNumber)
+            .Distinct()
+            .CountAsync();
+
+        int totalSlots = await _db.FloorZones
+            .Where(z => z.BuildingId == buildingId)
+            .SumAsync(z => z.Capacity);
+
+        if (building.TotalFloors != activeFloors || building.TotalSlots != totalSlots)
+        {
+            building.TotalFloors = activeFloors;
+            building.TotalSlots = totalSlots;
+            _db.ParkingBuildings.Update(building);
+            await _db.SaveChangesAsync();
+        }
+
+        return building;
+    }
 
     public async Task<(int occupied, int available)> GetOccupancyAsync(string buildingId)
     {

@@ -21,18 +21,18 @@ export default function ManagerLayout() {
     { path: '/manager/building', label: language === 'en' ? 'Building Info' : 'Thông tin Tòa nhà', icon: <Building2 size={20} /> },
     { path: '/manager/pricing', label: language === 'en' ? 'Pricing' : 'Cấu hình giá', icon: <DollarSign size={20} /> },
     { path: '/manager/staff', label: language === 'en' ? 'Staff Management' : 'Quản lý nhân viên', icon: <Users size={20} /> },
-    { path: '/manager/issues', label: language === 'en' ? 'Issues' : 'Sự cố phản hồi', icon: <AlertCircle size={20} />},
+    { path: '/manager/issues', label: language === 'en' ? 'Issues' : 'Sự cố phản hồi', icon: <AlertCircle size={20} /> },
   ]
 
   return (
     <div className="main-container flex h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white transition-colors duration-300">
-      <Sidebar 
-        navigationItems={navigationItems} 
+      <Sidebar
+        navigationItems={navigationItems}
         isCollapsed={isSidebarCollapsed}
         setIsCollapsed={setIsSidebarCollapsed}
       />
       <div className="content-wrapper flex-1 flex flex-col overflow-hidden">
-        <Header 
+        <Header
           isSidebarCollapsed={isSidebarCollapsed}
           setIsSidebarCollapsed={setIsSidebarCollapsed}
         />

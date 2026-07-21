@@ -587,11 +587,19 @@ namespace ParkingManagement.Controllers
             bool dbConnected = false;
             try
             {
-                dbConnected = await _context.Database.CanConnectAsync();
+                await _context.Database.ExecuteSqlRawAsync("SELECT 1");
+                dbConnected = true;
             }
             catch
             {
-                dbConnected = false;
+                try
+                {
+                    dbConnected = await _context.Database.CanConnectAsync();
+                }
+                catch
+                {
+                    dbConnected = false;
+                }
             }
 
             var since24H = DateTime.UtcNow.AddDays(-1);
@@ -600,9 +608,13 @@ namespace ParkingManagement.Controllers
             int warningCount = await _context.SystemLogs
                 .CountAsync(l => l.LogLevel == "WARNING" && l.CreatedAt >= since24H);
 
-            var vnpayKeyCount = await _context.SystemSettings
-                .CountAsync(s => s.SettingKey.ToLower().Contains("vnpay") || s.SettingKey == "holdWindow");
-            string vnpayStatus = dbConnected && vnpayKeyCount > 0 ? "ONLINE" : "CONFIG_REQUIRED";
+            var payOsClientId = Environment.GetEnvironmentVariable("PAYOS_CLIENT_ID");
+            var payOsApiKey = Environment.GetEnvironmentVariable("PAYOS_API_KEY");
+            var payOsChecksumKey = Environment.GetEnvironmentVariable("PAYOS_CHECKSUM_KEY");
+            bool payosConfigured = !string.IsNullOrEmpty(payOsClientId) && 
+                                   !string.IsNullOrEmpty(payOsApiKey) && 
+                                   !string.IsNullOrEmpty(payOsChecksumKey);
+            string payosStatus = payosConfigured ? "ONLINE" : "CONFIG_REQUIRED";
 
             int totalUsers = await _context.Users.CountAsync();
 
@@ -612,7 +624,8 @@ namespace ParkingManagement.Controllers
                 data = new
                 {
                     dbStatus = dbConnected ? "ONLINE" : "OFFLINE",
-                    vnpayStatus = vnpayStatus,
+                    vnpayStatus = payosStatus,
+                    payosStatus = payosStatus,
                     apiStatus = "ONLINE",
                     apiLatencyMs = 12,
                     errorCount24H = errorCount,

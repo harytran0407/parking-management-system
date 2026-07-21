@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import {
     FileQuestion, ScanFace, Clock, ClipboardList,
     Search, CarFront, Sliders, Trash2, Info,
     Star, Paperclip, AlertCircle, CheckCircle, Phone, Mail, Ticket, CarFrontIcon, MessageSquare,
-    X, Maximize2
+    X, Maximize2, Upload
 } from 'lucide-react';
 import { toast } from "sonner";
 import api from "../../utils/api";
@@ -199,6 +199,10 @@ export default function StaffIncidentHandling() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [reportData, setReportData] = useState(null);
     const [lightboxImage, setLightboxImage] = useState(null);
+    const [proofUrl, setProofUrl] = useState("");
+    const [localPreviewUrl, setLocalPreviewUrl] = useState("");
+    const [uploadingProof, setUploadingProof] = useState(false);
+    const fileInputRef = useRef(null);
 
     const [formValues, setFormValues] = useState({
         lostPlate: "",
@@ -226,11 +230,58 @@ export default function StaffIncidentHandling() {
         setFormValues(prev => ({ ...prev, [key]: value }));
     };
 
+    const handleProofUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const allowedTypes = ["image/jpeg", "image/jpg", "image/png"];
+        if (!allowedTypes.includes(file.type)) {
+            toast.error(language === "vi" ? "Định dạng file không hợp lệ. Chỉ hỗ trợ JPG, JPEG, PNG." : "Invalid file type. Only JPG, JPEG, PNG are supported.");
+            return;
+        }
+
+        if (file.size > 5 * 1024 * 1024) {
+            toast.error(language === "vi" ? "Kích thước file không được vượt quá 5MB." : "File size cannot exceed 5MB.");
+            return;
+        }
+
+        // Set local preview instantly
+        const localUrl = URL.createObjectURL(file);
+        setLocalPreviewUrl(localUrl);
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        try {
+            setUploadingProof(true);
+            const res = await api.post("/staff/upload-proof", formData, {
+                headers: {
+                    "Content-Type": "multipart/form-data"
+                }
+            });
+            if (res.data?.success && res.data?.data?.url) {
+                setProofUrl(res.data.data.url);
+                toast.success(language === "vi" ? "Tải ảnh lên thành công!" : "Image uploaded successfully!");
+            } else {
+                toast.error(res.data?.message || "Upload failed");
+                setLocalPreviewUrl("");
+            }
+        } catch (err) {
+            toast.error(err?.message || err?.response?.data?.message || "Upload failed");
+            setLocalPreviewUrl("");
+        } finally {
+            setUploadingProof(false);
+        }
+    };
+
     const resetWorkspace = () => {
         setReportData(null);
         setFoundSession(null);
         setAssociatedSlot(null);
         setSearchQuery("");
+        setProofUrl("");
+        setLocalPreviewUrl("");
+        setUploadingProof(false);
         setFormValues({
             lostPlate: "", lostReason: "",
             correctedPlate: "", mismatchReason: ""
@@ -459,6 +510,7 @@ export default function StaffIncidentHandling() {
                     session_id: foundSession?.session_id || "sess_unknown",
                     license_plate: formValues.lostPlate.toUpperCase(),
                     lost_reason: formValues.lostReason || t[language].lostReasonDefault,
+                    proof_image_url: proofUrl || undefined
                 }
             },
             OCR_MISMATCH: {
@@ -988,6 +1040,80 @@ export default function StaffIncidentHandling() {
                                                 value={formValues.lostReason} onChange={e => handleInputChange("lostReason", e.target.value)}
                                                 className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-semibold rounded-md px-3 py-2 outline-none focus:bg-white dark:focus:bg-slate-900 transition-all resize-none disabled:opacity-50"
                                             />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="font-bold text-slate-400 uppercase tracking-wide">
+                                                {language === "vi" ? "Ảnh minh chứng (Giấy tờ xe / Chủ xe)" : "Proof Image (Vehicle Documents / Owner)"}
+                                            </label>
+
+                                            {/* Hidden file input */}
+                                            <input
+                                                type="file"
+                                                ref={fileInputRef}
+                                                accept="image/*"
+                                                onChange={handleProofUpload}
+                                                className="hidden"
+                                                disabled={!foundSession || uploadingProof}
+                                            />
+
+                                            {/* Custom Dropzone / Upload Box */}
+                                            {!localPreviewUrl ? (
+                                                <div
+                                                    onClick={() => {
+                                                        if (foundSession && !uploadingProof) {
+                                                            fileInputRef.current?.click();
+                                                        }
+                                                    }}
+                                                    className={`border-2 border-dashed border-slate-350 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-400 rounded-lg p-5 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all bg-slate-50/50 dark:bg-slate-800/20 active:scale-[0.98] ${!foundSession ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}`}
+                                                >
+                                                    <Upload size={24} className="text-slate-400 dark:text-slate-550" />
+                                                    <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 text-center">
+                                                        {language === "vi" ? "Nhấn vào đây để chọn hoặc kéo thả ảnh minh chứng" : "Click to select or drag & drop proof image"}
+                                                    </span>
+                                                    <span className="text-[9px] text-slate-400 dark:text-slate-500">
+                                                        PNG, JPG, JPEG (Max 5MB)
+                                                    </span>
+                                                </div>
+                                            ) : (
+                                                <div className="relative w-full max-w-sm h-48 rounded-lg border border-slate-200 dark:border-slate-800 overflow-hidden bg-slate-100 dark:bg-slate-950 flex items-center justify-center shadow-inner group">
+                                                    <img src={localPreviewUrl} alt="Proof Upload Preview" className="w-full h-full object-contain" />
+
+                                                    {/* Uploading Status Overlay */}
+                                                    {uploadingProof && (
+                                                        <div className="absolute inset-0 bg-slate-950/60 flex flex-col items-center justify-center gap-2">
+                                                            <div className="w-6 h-6 border-2 border-t-blue-500 border-slate-600 rounded-full animate-spin"></div>
+                                                            <span className="text-[10px] text-white font-bold animate-pulse">
+                                                                {language === "vi" ? "Đang tải ảnh lên..." : "Uploading image..."}
+                                                            </span>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Success Overlay on hover (if not uploading) */}
+                                                    {!uploadingProof && (
+                                                        <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => fileInputRef.current?.click()}
+                                                                className="p-2 bg-blue-600 hover:bg-blue-500 text-white rounded-full transition-all shadow-md transform hover:scale-105"
+                                                                title={language === "vi" ? "Thay đổi ảnh" : "Change image"}
+                                                            >
+                                                                <Upload size={14} />
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setProofUrl("");
+                                                                    setLocalPreviewUrl("");
+                                                                }}
+                                                                className="p-2 bg-red-600 hover:bg-red-500 text-white rounded-full transition-all shadow-md transform hover:scale-105"
+                                                                title={language === "vi" ? "Xóa ảnh" : "Delete image"}
+                                                            >
+                                                                <Trash2 size={14} />
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 )}

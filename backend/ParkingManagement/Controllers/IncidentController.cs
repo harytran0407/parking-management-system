@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using ParkingManagement.Data;
 using ParkingManagement.Models;
+using System.IO;
 
 namespace ParkingManagement.Controllers
 {
@@ -235,6 +236,47 @@ namespace ParkingManagement.Controllers
                     resolved_at = log.ResolvedAt
                 }
             });
+        }
+
+        /// <summary>
+        /// POST: api/v1/staff/upload-proof
+        /// Tải lên ảnh minh chứng giải quyết mất thẻ
+        /// </summary>
+        [HttpPost("upload-proof")]
+        public async Task<IActionResult> UploadProof(IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+            {
+                return BadRequest(new { success = false, message = "Không nhận được file tải lên." });
+            }
+
+            var extension = Path.GetExtension(file.FileName).ToLower();
+            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png" };
+            if (!allowedExtensions.Contains(extension))
+            {
+                return BadRequest(new { success = false, message = "Định dạng file không hợp lệ. Chỉ hỗ trợ JPG, JPEG, PNG." });
+            }
+
+            if (file.Length > 5 * 1024 * 1024)
+            {
+                return BadRequest(new { success = false, message = "Kích thước tệp vượt quá giới hạn 5MB." });
+            }
+
+            var uploadFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "incidents");
+            if (!Directory.Exists(uploadFolder))
+            {
+                Directory.CreateDirectory(uploadFolder);
+            }
+
+            var fileName = Guid.NewGuid().ToString() + extension;
+            var filePath = Path.Combine(uploadFolder, fileName);
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            var fileUrl = $"/uploads/incidents/{fileName}";
+            return Ok(new { success = true, data = new { url = fileUrl }, message = "Tải ảnh lên thành công." });
         }
     }
 

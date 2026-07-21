@@ -60,7 +60,17 @@ namespace ParkingManagement.Controllers
                     customer_email = i.CustomerEmail,
                     payment_id = i.PaymentId,
                     resolved_by = i.ResolvedBy,
-                    resolved_at = i.ResolvedAt
+                    resolved_at = i.ResolvedAt,
+                    license_plate_in = i.Session != null ? i.Session.LicensePlateIn : null,
+                    license_plate_out = i.Session != null ? i.Session.LicensePlateOut : null,
+                    image_url_in = i.Session != null ? i.Session.ImageUrlIn : null,
+                    image_url_out = i.Session != null ? i.Session.ImageUrlOut : null,
+                    total_fee = i.Session != null ? i.Session.TotalFee : null,
+                    check_in_time = i.Session != null ? i.Session.CheckInTime : null,
+                    check_out_time = i.Session != null ? i.Session.CheckOutTime : null,
+                    duration_minutes = i.Session != null ? i.Session.DurationMinutes : null,
+                    slot_name = i.Session != null && i.Session.Slot != null ? i.Session.Slot.SlotName : (i.Session != null ? i.Session.SlotId : null),
+                    zone_name = i.Session != null && i.Session.Zone != null ? i.Session.Zone.ZoneName : null
                 })
                 .ToListAsync();
 

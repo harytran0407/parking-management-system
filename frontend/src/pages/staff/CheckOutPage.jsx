@@ -5,7 +5,8 @@ import axios from "axios";
 import {
     Camera, CarFront, Search, MapPin, CheckCircle2, RefreshCw,
     VideoOff, Ban, ParkingSquare, Hash, Clock, Calendar,
-    Video, X, Maximize2, DollarSign, Ticket, Upload
+    Video, X, Maximize2, DollarSign, Ticket, Upload,
+    Lock, Unlock, User, Mail, Phone, Info
 } from "lucide-react";
 import { useLanguage } from "../../hooks/useLanguage";
 
@@ -23,7 +24,7 @@ const getFullImageUrl = (url) => {
     if (cleanUrl.startsWith("data:") || cleanUrl.startsWith("http:") || cleanUrl.startsWith("https:")) {
         return cleanUrl;
     }
-    
+
     // Trích xuất đường dẫn tương đối nếu chứa thư mục uploads vật lý
     const uploadsIndex = cleanUrl.indexOf("uploads/");
     if (uploadsIndex !== -1) {
@@ -42,7 +43,7 @@ const formatDuration = (totalMinutes, language = "vi") => {
     const days = Math.floor(totalMinutes / 1440);
     const hours = Math.floor((totalMinutes % 1440) / 60);
     const minutes = totalMinutes % 60;
-    
+
     let parts = [];
     if (language === "vi") {
         if (days > 0) parts.push(`${days} ngày`);
@@ -110,7 +111,21 @@ const t = {
         toastCheckoutFailed: "Không thể hoàn thành cho xe ra. Máy chủ trả về trạng thái chưa hoàn tất.",
         toastBackendRejected: "Yêu cầu cho xe ra bị từ chối bởi máy chủ.",
         floorLabel: "Tầng",
-        vehicleLabel: "Phương tiện"
+        vehicleLabel: "Phương tiện",
+        btnShowBookingDetails: "Đối chiếu & Mở khóa",
+        bookingModalTitle: "Đối chiếu thông tin đặt chỗ",
+        customerNameLabel: "Họ và tên khách hàng",
+        customerPhoneLabel: "Số điện thoại",
+        customerEmailLabel: "Email liên hệ",
+        lockStatusLabel: "Trạng thái khóa xe",
+        statusLocked: "Đang khóa bảo vệ (LOCKED)",
+        statusUnlocked: "Đã mở khóa (UNLOCKED)",
+        btnUnlockVehicle: "Mở khóa xe",
+        toastUnlockSuccess: "Đã mở khóa xe thành công!",
+        toastUnlockFailed: "Không thể mở khóa xe. Vui lòng kiểm tra lại.",
+        btnLockVehicle: "Khóa xe",
+        toastLockSuccess: "Đã khóa xe thành công!",
+        toastLockFailed: "Không thể khóa xe. Vui lòng kiểm tra lại."
     },
     en: {
         cameraHeader: "Check-Out Camera",
@@ -163,7 +178,21 @@ const t = {
         toastCheckoutFailed: "Unable to complete vehicle exit. Server returned uncompleted status.",
         toastBackendRejected: "Backend validation rejected this checkout request.",
         floorLabel: "Floor",
-        vehicleLabel: "Vehicle"
+        vehicleLabel: "Vehicle",
+        btnShowBookingDetails: "Booking Information",
+        bookingModalTitle: "Booking Information",
+        customerNameLabel: "Customer Name",
+        customerPhoneLabel: "Phone Number",
+        customerEmailLabel: "Email Address",
+        lockStatusLabel: "Vehicle Lock Status",
+        statusLocked: "Locked",
+        statusUnlocked: "Unlocked",
+        btnUnlockVehicle: "Unlock Vehicle",
+        toastUnlockSuccess: "Vehicle unlocked successfully!",
+        toastUnlockFailed: "Failed to unlock vehicle. Please try again.",
+        btnLockVehicle: "Lock Vehicle",
+        toastLockSuccess: "Vehicle locked successfully!",
+        toastLockFailed: "Failed to lock vehicle. Please try again."
     }
 };
 
@@ -190,6 +219,7 @@ export default function CheckOutPage() {
     const [isPlateMatched, setIsPlateMatched] = useState(false);
 
     const [activeBookingId, setActiveBookingId] = useState(null);
+    const [showBookingModal, setShowBookingModal] = useState(false);
     const isTicketMissing = pendingCameraPlate && !activeBookingId && !ticketCodeInput;
 
     const vehicleTypes = [
@@ -515,6 +545,50 @@ export default function CheckOutPage() {
         }
     };
 
+    const handleUnlockBooking = async () => {
+        if (!activeBookingId || isLoading) return;
+
+        setIsLoading(true);
+        toast.dismiss();
+
+        try {
+            const response = await api.put(`/bookings/${activeBookingId}/unlock`);
+            if (response.status === 200 || response.data?.success === true) {
+                toast.success(t[language].toastUnlockSuccess);
+                setSession(prev => prev ? { ...prev, is_locked: false, isLocked: false } : prev);
+            } else {
+                throw new Error(response.data?.message || t[language].toastUnlockFailed);
+            }
+        } catch (error) {
+            const backendMessage = error.response?.data?.message || error.response?.data?.Message || error.message || error;
+            toast.error(typeof backendMessage === "string" ? backendMessage : t[language].toastUnlockFailed);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleLockBooking = async () => {
+        if (!activeBookingId || isLoading) return;
+
+        setIsLoading(true);
+        toast.dismiss();
+
+        try {
+            const response = await api.put(`/bookings/${activeBookingId}/lock`);
+            if (response.status === 200 || response.data?.success === true) {
+                toast.success(t[language].toastLockSuccess);
+                setSession(prev => prev ? { ...prev, is_locked: true, isLocked: true } : prev);
+            } else {
+                throw new Error(response.data?.message || t[language].toastLockFailed);
+            }
+        } catch (error) {
+            const backendMessage = error.response?.data?.message || error.response?.data?.Message || error.message || error;
+            toast.error(typeof backendMessage === "string" ? backendMessage : t[language].toastLockFailed);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const resetTerminal = (keepSuccessToast = false) => {
         setManualInput("");
         setTicketCodeInput("");
@@ -614,17 +688,16 @@ export default function CheckOutPage() {
                             }
                         }}
                         onClick={() => fileInputRef.current?.click()}
-                        className={`relative border-2 border-dashed flex-1 min-h-[220px] sm:min-h-[300px] lg:min-h-0 flex flex-col items-center justify-center overflow-hidden cursor-pointer transition-all duration-200 rounded-md ${
-                            isDragOver
-                                ? "border-blue-500 bg-blue-50/20 dark:bg-blue-950/20"
-                                : isLoading
+                        className={`relative border-2 border-dashed flex-1 min-h-[220px] sm:min-h-[300px] lg:min-h-0 flex flex-col items-center justify-center overflow-hidden cursor-pointer transition-all duration-200 rounded-md ${isDragOver
+                            ? "border-blue-500 bg-blue-50/20 dark:bg-blue-950/20"
+                            : isLoading
                                 ? "border-blue-500 bg-blue-50/5 dark:bg-blue-950/5 shadow-md shadow-blue-500/10"
                                 : scanStatus === "success"
-                                ? "border-emerald-500 bg-emerald-50/5 dark:bg-emerald-950/5 shadow-md shadow-emerald-500/10"
-                                : scanStatus === "error"
-                                ? "border-rose-500 bg-rose-50/5 dark:bg-rose-950/5 shadow-md shadow-rose-500/10"
-                                : "border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-900"
-                        }`}
+                                    ? "border-emerald-500 bg-emerald-50/5 dark:bg-emerald-950/5 shadow-md shadow-emerald-500/10"
+                                    : scanStatus === "error"
+                                        ? "border-rose-500 bg-rose-50/5 dark:bg-rose-950/5 shadow-md shadow-rose-500/10"
+                                        : "border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-900"
+                            }`}
                     >
                         <input
                             type="file"
@@ -925,6 +998,32 @@ export default function CheckOutPage() {
                                             </div>
                                         </div>
                                     </div>
+
+                                    {/* SMART LOCK & BOOKING INFO BUTTON */}
+                                    {activeBookingId && session && (
+                                        <div className={`mt-3 p-3 rounded-md border flex items-center justify-between transition-all duration-200 ${(session.is_locked !== undefined ? session.is_locked : session.isLocked)
+                                            ? "bg-red-100 dark:bg-red-950/20 border-red-200 dark:border-red-900/50 text-red-900 dark:text-red-200"
+                                            : "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/50 text-emerald-900 dark:text-emerald-200"
+                                            }`}>
+                                            <div className="flex items-center gap-2">
+                                                {(session.is_locked !== undefined ? session.is_locked : session.isLocked) ? (
+                                                    <Lock size={15} className="text-red-500 animate-pulse" />
+                                                ) : (
+                                                    <Unlock size={15} className="text-emerald-500" />
+                                                )}
+                                                <span className="text-xs font-bold uppercase tracking-wide">
+                                                    {(session.is_locked !== undefined ? session.is_locked : session.isLocked) ? t[language].statusLocked : t[language].statusUnlocked}
+                                                </span>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowBookingModal(true)}
+                                                className="text-xs font-black text-slate-800 hover:underline dark:text-white  px-3 py-1.5 transition-all active:scale-95"
+                                            >
+                                                {t[language].btnShowBookingDetails}
+                                            </button>
+                                        </div>
+                                    )}
                                 </>
                             ) : (
                                 /* IDLE EMPTY PLACEHOLDER */
@@ -999,6 +1098,128 @@ export default function CheckOutPage() {
                         <img src={lightboxImage} alt="High Resolution Audit" className="w-full h-auto max-h-[85vh] md:max-h-[88vh] object-contain" />
                         <div className="absolute bottom-0 inset-x-0 bg-slate-900/90 dark:bg-slate-950/80 p-3 text-center border-t border-slate-200 dark:border-slate-800 backdrop-blur-sm">
                             <p className="font-sans font-bold tracking-widest text-sm text-yellow-500 dark:text-yellow-400">{plateNumber || t[language].noPlateDetected}</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* BOOKING DETAILS & UNLOCK MODAL */}
+            {showBookingModal && session && (
+                <div
+                    className="fixed inset-0 bg-slate-950/70 dark:bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+                    onClick={() => setShowBookingModal(false)}
+                >
+                    <div
+                        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg w-full max-w-lg shadow-2xl p-6 relative overflow-hidden transition-colors duration-200"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Header */}
+                        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 mb-4">
+                            <div className="flex items-center gap-2">
+                                <Info className="text-blue-500" size={18} />
+                                <h3 className="text-sm font-black uppercase tracking-wide text-slate-800 dark:text-slate-100">
+                                    {t[language].bookingModalTitle}
+                                </h3>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setShowBookingModal(false)}
+                                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-full transition-colors"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        {/* Content */}
+                        <div className="space-y-4">
+
+
+                            {/* User details */}
+                            <div className="space-y-3 bg-slate-50 dark:bg-slate-950 p-4 rounded-md border border-slate-100 dark:border-slate-850">
+                                <div className="flex items-center gap-3">
+                                    <User size={16} className="text-slate-400 shrink-0" />
+                                    <div>
+                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide block">
+                                            {t[language].customerNameLabel}
+                                        </span>
+                                        <span className="text-sm font-bold text-slate-800 dark:text-slate-100">
+                                            {session.customer_name || session.customerName || "N/A"}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-3 border-t border-slate-200/50 dark:border-slate-800/60 pt-2.5">
+                                    <Phone size={16} className="text-slate-400 shrink-0" />
+                                    <div>
+                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide block">
+                                            {t[language].customerPhoneLabel}
+                                        </span>
+                                        <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                                            {session.customer_phone || session.customerPhone || "N/A"}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-3 border-t border-slate-200/50 dark:border-slate-800/60 pt-2.5">
+                                    <Mail size={16} className="text-slate-400 shrink-0" />
+                                    <div>
+                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide block">
+                                            {t[language].customerEmailLabel}
+                                        </span>
+                                        <span className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate block max-w-[280px]">
+                                            {session.customer_email || session.customerEmail || "N/A"}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Lock Status & Action */}
+                            <div className="flex flex-col items-stretch gap-3">
+                                <div className="flex justify-between items-center text-xs px-1">
+                                    <span className="font-bold text-slate-400 uppercase tracking-wide">
+                                        {t[language].lockStatusLabel}
+                                    </span>
+                                    <div className="flex items-center gap-1.5 font-bold">
+                                        {(session.is_locked !== undefined ? session.is_locked : session.isLocked) ? (
+                                            <>
+                                                <Lock size={13} className="text-red-500 animate-pulse" />
+                                                <span className="text-red-600 dark:text-red-400">
+                                                    {t[language].statusLocked}
+                                                </span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Unlock size={13} className="text-emerald-500" />
+                                                <span className="text-emerald-600 dark:text-emerald-400">
+                                                    {t[language].statusUnlocked}
+                                                </span>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {(session.is_locked !== undefined ? session.is_locked : session.isLocked) ? (
+                                    <button
+                                        type="button"
+                                        onClick={handleUnlockBooking}
+                                        disabled={isLoading}
+                                        className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs py-3 rounded-md shadow-md uppercase tracking-wider flex items-center justify-center gap-2 transition-all active:scale-98"
+                                    >
+                                        <Unlock size={14} />
+                                        {t[language].btnUnlockVehicle}
+                                    </button>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        onClick={handleLockBooking}
+                                        disabled={isLoading}
+                                        className="w-full bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs py-3 rounded-md shadow-md uppercase tracking-wider flex items-center justify-center gap-2 transition-all active:scale-98"
+                                    >
+                                        <Lock size={14} />
+                                        {t[language].btnLockVehicle}
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>

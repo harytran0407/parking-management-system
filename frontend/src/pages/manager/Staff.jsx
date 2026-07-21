@@ -515,7 +515,7 @@ export default function ManagerStaff() {
               setAddErrors({})
               setIsAddModalOpen(true)
             }}
-            className="btn-primary flex items-center gap-2 shadow-lg hover:shadow-blue-500/25 transition-all duration-300"
+            className="btn-primary flex text-sm items-center gap-2 shadow-lg hover:shadow-blue-500/25 transition-all duration-300"
           >
             <UserPlus size={18} />
             {language === 'en' ? 'Add Parking Staff' : 'Thêm nhân viên'}

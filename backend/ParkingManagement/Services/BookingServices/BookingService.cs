@@ -244,6 +244,8 @@ public class BookingService : IBookingService
 
             // ── Trừ 1 slot trong AvailableCapacity của zone để tránh overbook ──
             await _parkingRepo.DecrementZoneCapacityAsync(availableZone.ZoneId);
+            // Đánh dấu slot đầu tiên còn trống trong zone là RESERVED
+            await _parkingRepo.ReserveFirstAvailableSlotInZoneAsync(availableZone.ZoneId);
 
             await transaction.CommitAsync();
 
@@ -323,7 +325,11 @@ public class BookingService : IBookingService
                         .FirstOrDefaultAsync();
 
                 if (zoneToRestore != null)
+                {
                     await _parkingRepo.IncrementZoneCapacityAsync(zoneToRestore.ZoneId);
+                    // Giải phóng slot RESERVED trong zone khi huỷ booking
+                    await _parkingRepo.ReleaseOldestReservedSlotInZoneAsync(zoneToRestore.ZoneId);
+                }
 
                 await transaction.CommitAsync();
 
@@ -366,7 +372,11 @@ public class BookingService : IBookingService
                         .FirstOrDefaultAsync();
 
                 if (zoneToRestore != null)
+                {
                     await _parkingRepo.IncrementZoneCapacityAsync(zoneToRestore.ZoneId);
+                    // Giải phóng slot RESERVED trong zone khi huỷ booking
+                    await _parkingRepo.ReleaseOldestReservedSlotInZoneAsync(zoneToRestore.ZoneId);
+                }
 
                 await transaction.CommitAsync();
 
@@ -532,11 +542,18 @@ public class BookingService : IBookingService
         return await MapToBookingResponseAsync(booking);
     }
 
-    public async Task<bool> UnlockBookingAsync(string bookingId, string userId)
+    public async Task<bool> UnlockBookingAsync(string bookingId, string userId, bool isStaff = false)
     {
-        var session = await _context.ParkingSessions
+        var query = _context.ParkingSessions
             .Include(s => s.Booking)
-            .FirstOrDefaultAsync(s => s.BookingId == bookingId && s.Status == "ACTIVE" && s.Booking!.VehicleUserId == userId);
+            .Where(s => s.BookingId == bookingId && s.Status == "ACTIVE");
+
+        if (!isStaff)
+        {
+            query = query.Where(s => s.Booking!.VehicleUserId == userId);
+        }
+
+        var session = await query.FirstOrDefaultAsync();
 
         if (session == null)
             return false;
@@ -546,11 +563,18 @@ public class BookingService : IBookingService
         return true;
     }
 
-    public async Task<bool> LockBookingAsync(string bookingId, string userId)
+    public async Task<bool> LockBookingAsync(string bookingId, string userId, bool isStaff = false)
     {
-        var session = await _context.ParkingSessions
+        var query = _context.ParkingSessions
             .Include(s => s.Booking)
-            .FirstOrDefaultAsync(s => s.BookingId == bookingId && s.Status == "ACTIVE" && s.Booking!.VehicleUserId == userId);
+            .Where(s => s.BookingId == bookingId && s.Status == "ACTIVE");
+
+        if (!isStaff)
+        {
+            query = query.Where(s => s.Booking!.VehicleUserId == userId);
+        }
+
+        var session = await query.FirstOrDefaultAsync();
 
         if (session == null)
             return false;
@@ -658,7 +682,11 @@ public class BookingService : IBookingService
                         .FirstOrDefaultAsync();
 
                 if (zoneToRestore != null)
+                {
                     await _parkingRepo.IncrementZoneCapacityAsync(zoneToRestore.ZoneId);
+                    // Giải phóng slot RESERVED trong zone khi booking hết hạn tự động
+                    await _parkingRepo.ReleaseOldestReservedSlotInZoneAsync(zoneToRestore.ZoneId);
+                }
             }
             await _context.SaveChangesAsync();
         }

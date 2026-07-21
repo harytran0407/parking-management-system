@@ -193,7 +193,7 @@ export default function ManagerBuilding() {
         {buildingData?.current_occupancy && (
           <div className="card">
             <h3 className="subsection-title">
-              {language === 'en' ? 'Real-Time Occupancy Rate' : 'Tỉ lệ lấp đầy thời gian thực'}
+              {language === 'en' ? 'Occupancy Rate' : 'Tỉ lệ lấp đầy'}
             </h3>
 
             <div className="space-y-4">

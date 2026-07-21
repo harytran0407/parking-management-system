@@ -18,6 +18,8 @@ namespace ParkingManagement.DTOs
 
         [JsonPropertyName("customer_phone")]
         public string? CustomerPhone { get; set; }
-
+        
+        [JsonPropertyName("proof_image_url")]
+        public string? ProofImageUrl { get; set; }
     }
 }

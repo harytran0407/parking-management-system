@@ -79,10 +79,44 @@ public class SlotManagementRepository : ISlotManagementRepository
         _db.ParkingSessions
            .FirstOrDefaultAsync(s => s.SlotId == slotId && s.Status == "ACTIVE");
 
+    private async Task SyncBuildingStatsAsync(string buildingId)
+    {
+        var building = await _db.ParkingBuildings.FirstOrDefaultAsync(b => b.BuildingId == buildingId);
+        if (building == null) return;
+
+        int activeFloors = await _db.FloorZones
+            .Where(z => z.BuildingId == buildingId)
+            .Select(z => z.FloorNumber)
+            .Distinct()
+            .CountAsync();
+
+        int totalSlots = await _db.FloorZones
+            .Where(z => z.BuildingId == buildingId)
+            .SumAsync(z => z.Capacity);
+
+        if (building.TotalFloors != activeFloors || building.TotalSlots != totalSlots)
+        {
+            building.TotalFloors = activeFloors;
+            building.TotalSlots = totalSlots;
+            _db.ParkingBuildings.Update(building);
+            await _db.SaveChangesAsync();
+        }
+    }
+
     public async Task AddSlotsAsync(List<ParkingSlot> slots)
     {
         _db.ParkingSlots.AddRange(slots);
         await _db.SaveChangesAsync();
+
+        if (slots.Any())
+        {
+            var zoneId = slots.First().ZoneId;
+            var zone = await _db.FloorZones.FirstOrDefaultAsync(z => z.ZoneId == zoneId);
+            if (zone != null && !string.IsNullOrEmpty(zone.BuildingId))
+            {
+                await SyncBuildingStatsAsync(zone.BuildingId);
+            }
+        }
     }
 
     public async Task UpdateSlotAsync(ParkingSlot slot)
@@ -100,11 +134,22 @@ public class SlotManagementRepository : ISlotManagementRepository
     public async Task DeleteSlotAsync(ParkingSlot slot)
     {
         var zone = slot.Zone;
-        if(zone!=null && zone.Capacity>0){
+        if (zone == null)
+        {
+            zone = await _db.FloorZones.FirstOrDefaultAsync(z => z.ZoneId == slot.ZoneId);
+        }
+
+        if (zone != null && zone.Capacity > 0)
+        {
             zone.Capacity--;
             zone.AvailableCapacity--;
         }
         _db.ParkingSlots.Remove(slot);
         await _db.SaveChangesAsync();
+
+        if (zone != null && !string.IsNullOrEmpty(zone.BuildingId))
+        {
+            await SyncBuildingStatsAsync(zone.BuildingId);
+        }
     }
 }

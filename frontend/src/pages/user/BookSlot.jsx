@@ -31,7 +31,7 @@ const fmtVND = (val) => (val != null ? val.toLocaleString("vi-VN") : "0");
 export default function BookSlot() {
   const navigate = useNavigate();
   const { language } = useLanguage();
-  const { user, updateUser, updateProfileApi } = useAuth();
+  const { user, updateUser, updateProfileApi, fetchProfile } = useAuth();
   const userId = user?.user_id || user?.userId || "";
 
   // Vehicle selection state: null, 'car', or 'motorbike'
@@ -550,8 +550,17 @@ export default function BookSlot() {
       return;
     }
 
+    // Fetch profile mới nhất từ server để tránh dùng data stale từ localStorage
+    let freshPhone = user?.phone;
+    try {
+      const freshProfile = await fetchProfile();
+      freshPhone = freshProfile?.phone ?? freshPhone;
+    } catch {
+      // Nếu fetch lỗi, fallback về user hiện tại
+    }
+
     // Check if user has phone number. If not, prompt to fill it.
-    if (!user?.phone || user.phone.trim() === "") {
+    if (!freshPhone || freshPhone.trim() === "") {
       setNewPhone("");
       setPhoneError("");
       setShowPhoneModal(true);

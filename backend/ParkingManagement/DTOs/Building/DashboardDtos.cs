@@ -1,4 +1,5 @@
-﻿using System.Text.Json.Serialization;
+using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace ParkingManagement.DTOs.Building;
 
@@ -7,13 +8,16 @@ namespace ParkingManagement.DTOs.Building;
 public class DashboardFilterRequest
 {
     // day / week / month / custom
+    [FromQuery(Name = "period")]
     [JsonPropertyName("period")]
     public string Period { get; set; } = "day";
 
     // dùng khi period = custom
+    [FromQuery(Name = "start_date")]
     [JsonPropertyName("start_date")]
     public string? StartDate { get; set; }
 
+    [FromQuery(Name = "end_date")]
     [JsonPropertyName("end_date")]
     public string? EndDate { get; set; }
 }

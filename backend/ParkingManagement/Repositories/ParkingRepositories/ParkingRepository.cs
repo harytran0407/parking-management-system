@@ -287,26 +287,37 @@ namespace ParkingManagement.Repositories
             var zoneIds = matchingZones.Select(z => z.ZoneId).ToList();
             var vehicleTypeIds = matchingZones.Select(z => z.VehicleTypeId).Distinct().ToList();
 
-            int totalCapacity = matchingZones.Sum(z => z.Capacity);
-            int availableCapacity = matchingZones.Sum(z => z.AvailableCapacity);
+            int totalCapacity = 0;
+            int availableCapacity = 0;
+            int occupiedCount = 0;
+            int reservedCount = 0;
+            int maintenanceCount = 0;
 
-            int occupiedCount = await _context.ParkingSessions
-                .CountAsync(s => s.Status == "ACTIVE" && (s.ZoneId.HasValue || s.SlotId != null) && 
-                                 zoneIds.Contains(s.ZoneId ?? s.Slot!.ZoneId));
-
-            int reservedCount = await _context.Bookings
-                .CountAsync(b => (b.Status == "CONFIRMED" || b.Status == "PENDING") && b.ZoneId.HasValue && 
-                                 zoneIds.Contains(b.ZoneId.Value));
-
-            var maintQuery = _context.ParkingSlots.AsQueryable();
-            if (filter.Floor.HasValue) maintQuery = maintQuery.Where(s => s.Zone.FloorNumber == filter.Floor.Value);
-            if (!string.IsNullOrWhiteSpace(filter.Zone))
+            bool hasSlots = await _context.ParkingSlots.AnyAsync(s => zoneIds.Contains(s.ZoneId));
+            if (hasSlots)
             {
-                var zoneFilter = filter.Zone.Trim();
-                maintQuery = maintQuery.Where(s => s.Zone.ZoneName == zoneFilter || s.Zone.ZoneName.StartsWith(zoneFilter + " - "));
+                var slotsQuery = _context.ParkingSlots.Where(s => zoneIds.Contains(s.ZoneId));
+                totalCapacity = await slotsQuery.CountAsync();
+                availableCapacity = await slotsQuery.CountAsync(s => s.Status == "AVAILABLE");
+                occupiedCount = await slotsQuery.CountAsync(s => s.Status == "OCCUPIED");
+                reservedCount = await slotsQuery.CountAsync(s => s.Status == "RESERVED");
+                maintenanceCount = await slotsQuery.CountAsync(s => s.Status == "MAINTENANCE");
             }
-            if (filter.VehicleTypeId.HasValue) maintQuery = maintQuery.Where(s => s.Zone.VehicleTypeId == filter.VehicleTypeId.Value);
-            int maintenanceCount = await maintQuery.CountAsync(s => s.Status == "MAINTENANCE");
+            else
+            {
+                totalCapacity = matchingZones.Sum(z => z.Capacity);
+                availableCapacity = matchingZones.Sum(z => z.AvailableCapacity);
+
+                occupiedCount = await _context.ParkingSessions
+                    .CountAsync(s => s.Status == "ACTIVE" && (s.ZoneId.HasValue || s.SlotId != null) && 
+                                     zoneIds.Contains(s.ZoneId ?? s.Slot!.ZoneId));
+
+                reservedCount = await _context.Bookings
+                    .CountAsync(b => (b.Status == "CONFIRMED" || b.Status == "PENDING") && b.ZoneId.HasValue && 
+                                     zoneIds.Contains(b.ZoneId.Value));
+                
+                maintenanceCount = 0;
+            }
 
             var statusCounts = new Dictionary<string, int>
             {
@@ -353,7 +364,9 @@ namespace ParkingManagement.Repositories
             string? vehicleType, 
             string? status, 
             int page, 
-            int pageSize)
+            int pageSize,
+            bool? over3Days = null,
+            bool? overtime = null)
         {
             if (page < 1) page = 1;
             if (pageSize <= 0) pageSize = 15;
@@ -399,6 +412,18 @@ namespace ParkingManagement.Repositories
                 {
                     query = query.Where(s => s.Status != null && s.Status.ToUpper() == searchStatus);
                 }
+            }
+
+            if (over3Days.HasValue && over3Days.Value)
+            {
+                var threeDaysAgo = ParkingCalculationHelper.VnNow.AddDays(-3);
+                query = query.Where(s => s.Status != null && s.Status.ToUpper() == "ACTIVE" && s.CheckInTime <= threeDaysAgo);
+            }
+
+            if (overtime.HasValue && overtime.Value)
+            {
+                var twentyFourHoursAgo = ParkingCalculationHelper.VnNow.AddHours(-24);
+                query = query.Where(s => s.Status != null && s.Status.ToUpper() == "ACTIVE" && s.CheckInTime <= twentyFourHoursAgo);
             }
         
             int totalCount = await query.CountAsync();
@@ -565,18 +590,112 @@ namespace ParkingManagement.Repositories
                 .Select(g => new { ZoneId = g.Key, Count = g.Count() })
                 .ToDictionaryAsync(x => x.ZoneId, x => x.Count);
 
-            return zones.Select(z => new ZoneRealtimeStatsDto
+            return zones.Select(z =>
             {
-                ZoneId = z.ZoneId,
-                ZoneName = z.ZoneName,
-                FloorNumber = z.FloorNumber,
-                Capacity = z.Capacity,
-                AvailableCapacity = z.AvailableCapacity,
-                OccupiedCount = occupiedByZone.GetValueOrDefault(z.ZoneId, 0),
-                BookedCount = bookedByZone.GetValueOrDefault(z.ZoneId, 0),
-                MaintenanceCount = z.ParkingSlots.Count(s => s.Status == "MAINTENANCE"),
-                VehicleTypeName = z.VehicleType.VehicleTypeName
+                bool hasSlots = z.ParkingSlots.Any();
+                int capacity = hasSlots ? z.ParkingSlots.Count : z.Capacity;
+                int availableCapacity = hasSlots ? z.ParkingSlots.Count(s => s.Status == "AVAILABLE") : z.AvailableCapacity;
+                int occupiedCount = hasSlots ? z.ParkingSlots.Count(s => s.Status == "OCCUPIED") : occupiedByZone.GetValueOrDefault(z.ZoneId, 0);
+                int bookedCount = hasSlots ? z.ParkingSlots.Count(s => s.Status == "RESERVED") : bookedByZone.GetValueOrDefault(z.ZoneId, 0);
+                int maintenanceCount = z.ParkingSlots.Count(s => s.Status == "MAINTENANCE");
+
+                return new ZoneRealtimeStatsDto
+                {
+                    ZoneId = z.ZoneId,
+                    ZoneName = z.ZoneName,
+                    FloorNumber = z.FloorNumber,
+                    Capacity = capacity,
+                    AvailableCapacity = availableCapacity,
+                    OccupiedCount = occupiedCount,
+                    BookedCount = bookedCount,
+                    MaintenanceCount = maintenanceCount,
+                    VehicleTypeName = z.VehicleType.VehicleTypeName
+                };
             }).ToList();
+        }
+
+        /// <summary>
+        /// Tìm slot đầu tiên AVAILABLE trong Zone (sắp xếp theo SlotName) và đánh dấu OCCUPIED.
+        /// Nếu không có slot nào khả dụng (zone chưa có slot trong DB), bỏ qua để tương thích ngược.
+        /// </summary>
+        public async Task OccupyFirstAvailableSlotInZoneAsync(int zoneId)
+        {
+            // Ưu tiên slot RESERVED trước (check-in booking), nếu không có thì lấy AVAILABLE (walk-in)
+            var targetSlotId = await _context.ParkingSlots
+                .Where(s => s.ZoneId == zoneId && (s.Status == "RESERVED" || s.Status == "AVAILABLE"))
+                .OrderBy(s => s.Status == "RESERVED" ? 0 : 1) // RESERVED ưu tiên trước
+                .ThenBy(s => s.SlotName)
+                .Select(s => s.SlotId)
+                .FirstOrDefaultAsync();
+
+            if (targetSlotId == null) return; // Không có slot trong DB — bỏ qua, tương thích ngược
+
+            await _context.ParkingSlots
+                .Where(s => s.SlotId == targetSlotId)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(x => x.Status, "OCCUPIED")
+                    .SetProperty(x => x.LastUpdated, ParkingCalculationHelper.VnNow));
+        }
+
+        /// <summary>
+        /// Tìm slot OCCUPIED đầu tiên trong Zone (sắp xếp theo LastUpdated tăng dần — slot bị chiếm lâu nhất)
+        /// và giải phóng về AVAILABLE khi xe check-out.
+        /// </summary>
+        public async Task ReleaseOldestOccupiedSlotInZoneAsync(int zoneId)
+        {
+            var targetSlotId = await _context.ParkingSlots
+                .Where(s => s.ZoneId == zoneId && s.Status == "OCCUPIED")
+                .OrderBy(s => s.LastUpdated)
+                .Select(s => s.SlotId)
+                .FirstOrDefaultAsync();
+
+            if (targetSlotId == null) return; // Không có slot OCCUPIED — bỏ qua
+
+            await _context.ParkingSlots
+                .Where(s => s.SlotId == targetSlotId)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(x => x.Status, "AVAILABLE")
+                    .SetProperty(x => x.LastUpdated, ParkingCalculationHelper.VnNow));
+        }
+
+        /// <summary>
+        /// Tìm slot đầu tiên AVAILABLE trong Zone và đánh dấu RESERVED khi tạo booking.
+        /// </summary>
+        public async Task ReserveFirstAvailableSlotInZoneAsync(int zoneId)
+        {
+            var targetSlotId = await _context.ParkingSlots
+                .Where(s => s.ZoneId == zoneId && s.Status == "AVAILABLE")
+                .OrderBy(s => s.SlotName)
+                .Select(s => s.SlotId)
+                .FirstOrDefaultAsync();
+
+            if (targetSlotId == null) return; // Không có slot trong DB — bỏ qua, tương thích ngược
+
+            await _context.ParkingSlots
+                .Where(s => s.SlotId == targetSlotId)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(x => x.Status, "RESERVED")
+                    .SetProperty(x => x.LastUpdated, ParkingCalculationHelper.VnNow));
+        }
+
+        /// <summary>
+        /// Tìm slot RESERVED cũ nhất trong Zone và giải phóng về AVAILABLE khi booking bị hủy / hết hạn.
+        /// </summary>
+        public async Task ReleaseOldestReservedSlotInZoneAsync(int zoneId)
+        {
+            var targetSlotId = await _context.ParkingSlots
+                .Where(s => s.ZoneId == zoneId && s.Status == "RESERVED")
+                .OrderBy(s => s.LastUpdated)
+                .Select(s => s.SlotId)
+                .FirstOrDefaultAsync();
+
+            if (targetSlotId == null) return; // Không có slot RESERVED — bỏ qua
+
+            await _context.ParkingSlots
+                .Where(s => s.SlotId == targetSlotId)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(x => x.Status, "AVAILABLE")
+                    .SetProperty(x => x.LastUpdated, ParkingCalculationHelper.VnNow));
         }
     }
 }

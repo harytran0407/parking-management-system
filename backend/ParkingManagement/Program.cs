@@ -34,13 +34,7 @@ var connectionString = string.IsNullOrEmpty(dbServer)
     : $"Server={dbServer};Port={dbPort};Database={dbName};User={dbUser};Password={dbPassword};";
 
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString), mysqlOptions =>
-    {
-        mysqlOptions.EnableRetryOnFailure(
-            maxRetryCount: 5,
-            maxRetryDelay: TimeSpan.FromSeconds(5),
-            errorNumbersToAdd: null);
-    })
+    options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString))
 );
 
 // ── Controllers + JSON snake_case ─────────────────────────────────────────────

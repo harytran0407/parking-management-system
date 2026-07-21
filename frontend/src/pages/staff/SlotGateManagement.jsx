@@ -302,7 +302,7 @@ function FloorOverviewCard({ floorData, onClick, language }) {
           <span className="text-sm font-extrabold text-rose-600 dark:text-rose-400">{occupiedCount}</span>
         </div>
         <div className="p-2 bg-amber-100/80 dark:bg-amber-955/10 rounded-lg">
-          <span className="text-[10px] font-bold text-amber-550 dark:text-amber-505 block mb-0.5 uppercase">{language === "en" ? "Booked" : "Đã đặt"}</span>
+          <span className="text-[10px] font-bold text-amber-550 dark:text-amber-505 block mb-0.5 uppercase">{language === "en" ? "Reserved" : "Đã đặt"}</span>
           <span className="text-sm font-extrabold text-amber-600 dark:text-amber-400">{bookedCount}</span>
         </div>
         <div className="p-2 bg-slate-100/90 dark:bg-slate-800/60 rounded-lg">
@@ -450,50 +450,14 @@ export default function SlotGateManagementPage() {
     return Object.values(map).sort((a, b) => a.floorNumber - b.floorNumber);
   }, [zoneStats]);
 
-  // ── Virtual Slot Mapping ───────────────────────────────────────────────
+  // ── Slot Mapping ──────────────────────────────────────────────────────────
+  // Slots now have their real status stored in DB (AVAILABLE / OCCUPIED / MAINTENANCE)
+  // so we read them directly instead of overriding based on zone counters.
   const mappedSlots = useMemo(() => {
-    const sortedSlotsData = [...slotsData].sort((a, b) =>
-      (a.slot_id ?? "").localeCompare(b.slot_id ?? "", undefined, { numeric: true, sensitivity: 'base' })
+    return [...slotsData].sort((a, b) =>
+      (a.slot_name ?? a.slot_id ?? "").localeCompare(b.slot_name ?? b.slot_id ?? "", undefined, { numeric: true, sensitivity: 'base' })
     );
-
-    const slotsByZone = {};
-    sortedSlotsData.forEach(slot => {
-      const zName = slot.zone || "N/A";
-      if (!slotsByZone[zName]) {
-        slotsByZone[zName] = [];
-      }
-      slotsByZone[zName].push({ ...slot });
-    });
-
-    Object.keys(slotsByZone).forEach(zName => {
-      const zoneStat = zoneStats.find(z => (z.zone_name ?? z.zoneName) === zName);
-      if (!zoneStat) return;
-
-      const occupiedCount = zoneStat.occupied_count ?? zoneStat.occupiedCount ?? 0;
-      const bookedCount = zoneStat.booked_count ?? zoneStat.bookedCount ?? 0;
-
-      let occupiedAssigned = 0;
-      let bookedAssigned = 0;
-
-      const availableSlots = slotsByZone[zName].filter(s => s.status === "AVAILABLE");
-
-      availableSlots.forEach(slot => {
-        if (occupiedAssigned < occupiedCount) {
-          slot.status = "OCCUPIED";
-          occupiedAssigned++;
-        } else if (bookedAssigned < bookedCount) {
-          slot.status = "RESERVED";
-          bookedAssigned++;
-        }
-      });
-    });
-
-    return sortedSlotsData.map(slot => {
-      const zoneGroup = slotsByZone[slot.zone || "N/A"] || [];
-      const found = zoneGroup.find(s => s.slot_id === slot.slot_id);
-      return found || slot;
-    });
-  }, [slotsData, zoneStats]);
+  }, [slotsData]);
 
   const filteredMappedSlots = useMemo(() => {
     if (!selectedStatus) return mappedSlots;
@@ -592,9 +556,7 @@ export default function SlotGateManagementPage() {
           floor: selectedFloor || undefined,
           zone: selectedZone || undefined,
           vehicle_type_id: selectedVehicleType ? Number(selectedVehicleType) : undefined,
-          status: (selectedStatus === "OCCUPIED" || selectedStatus === "RESERVED")
-            ? "AVAILABLE"
-            : (selectedStatus || undefined),
+          status: selectedStatus || undefined,
           page: currentPage,
           page_size: pageSize,
         },

@@ -27,6 +27,7 @@ namespace ParkingManagement.Services
         // XỬ LÝ MẤT THẺ 
         public async Task<LostTicketResponseDto> HandleLostTicketAsync(LostTicketRequestDto dto, string staffId, DateTime? currentTime = null)
         {
+            Console.WriteLine($"[DEBUG HandleLostTicketAsync] LicensePlate={dto.LicensePlate}, ProofImageUrl='{dto.ProofImageUrl}'");
             var activeSession = await _parkingRepository.GetActiveSessionByPlateAsync(dto.LicensePlate);
             if (activeSession == null)
             {
@@ -72,6 +73,11 @@ namespace ParkingManagement.Services
                 activeSession.TotalFee = totalCalculatedFee;
                 activeSession.CheckOutTime = checkOutTime;
                 activeSession.DurationMinutes = durationMinutes;
+
+                if (!string.IsNullOrEmpty(dto.ProofImageUrl))
+                {
+                    activeSession.ImageUrlOut = dto.ProofImageUrl;
+                }
 
                 await _parkingRepository.UpdateSessionAsync(activeSession);
 
