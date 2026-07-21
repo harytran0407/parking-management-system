@@ -309,13 +309,13 @@ namespace ParkingManagement.Repositories
                 availableCapacity = matchingZones.Sum(z => z.AvailableCapacity);
 
                 occupiedCount = await _context.ParkingSessions
-                    .CountAsync(s => s.Status == "ACTIVE" && (s.ZoneId.HasValue || s.SlotId != null) && 
+                    .CountAsync(s => s.Status == "ACTIVE" && (s.ZoneId.HasValue || s.SlotId != null) &&
                                      zoneIds.Contains(s.ZoneId ?? s.Slot!.ZoneId));
 
                 reservedCount = await _context.Bookings
-                    .CountAsync(b => (b.Status == "CONFIRMED" || b.Status == "PENDING") && b.ZoneId.HasValue && 
+                    .CountAsync(b => (b.Status == "CONFIRMED" || b.Status == "PENDING") && b.ZoneId.HasValue &&
                                      zoneIds.Contains(b.ZoneId.Value));
-                
+
                 maintenanceCount = 0;
             }
 
@@ -358,12 +358,12 @@ namespace ParkingManagement.Repositories
         }
 
         public async Task<(List<ParkingSession> Items, int TotalCount)> GetParkingHistoryAsync(
-            string? licensePlate, 
-            DateTime? fromDate, 
-            DateTime? toDate, 
-            string? vehicleType, 
-            string? status, 
-            int page, 
+            string? licensePlate,
+            DateTime? fromDate,
+            DateTime? toDate,
+            string? vehicleType,
+            string? status,
+            int page,
             int pageSize,
             bool? over3Days = null,
             bool? overtime = null)
@@ -425,7 +425,7 @@ namespace ParkingManagement.Repositories
                 var twentyFourHoursAgo = ParkingCalculationHelper.VnNow.AddHours(-24);
                 query = query.Where(s => s.Status != null && s.Status.ToUpper() == "ACTIVE" && s.CheckInTime <= twentyFourHoursAgo);
             }
-        
+
             int totalCount = await query.CountAsync();
 
             var items = await query
@@ -612,7 +612,8 @@ namespace ParkingManagement.Repositories
                     OccupiedCount = occupiedCount,
                     BookedCount = bookedCount,
                     MaintenanceCount = maintenanceCount,
-                    VehicleTypeName = z.VehicleType.VehicleTypeName
+                    VehicleTypeName = z.VehicleType.VehicleTypeName,
+                    Status = z.Status
                 };
             }).ToList();
         }

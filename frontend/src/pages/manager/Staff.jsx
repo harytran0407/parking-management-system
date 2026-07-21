@@ -223,7 +223,7 @@ export default function ManagerStaff() {
 
     // Validation patterns
     const nameRegex = /^[a-zA-ZÀ-ỹ\s]{2,100}$/;
-    const emailRegex = /^[a-zA-Z0-9._%+-]+@(gmail\.com|hotmail\.com|outlook\.com|yahoo\.com)$/i;
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@(gmail\.com)$/i;
     const phoneRegex = /^0[3|5|7|8|9][0-9]{8}$/;
 
     const errors = {}
@@ -232,7 +232,7 @@ export default function ManagerStaff() {
     }
 
     if (!emailRegex.test(editForm.email)) {
-      errors.email = language === 'en' ? 'Invalid email address (only gmail.com, hotmail.com, outlook.com, or yahoo.com are accepted).' : 'Địa chỉ email không hợp lệ (chỉ chấp nhận gmail.com, hotmail.com, outlook.com hoặc yahoo.com).'
+      errors.email = language === 'en' ? 'Invalid email address (xxxxxxgmail.com).' : 'Địa chỉ email không hợp lệ (chỉ chấp nhận xxxxxxxgmail.com).'
     }
 
     if (!phoneRegex.test(editForm.phone)) {
