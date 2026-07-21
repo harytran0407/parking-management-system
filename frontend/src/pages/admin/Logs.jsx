@@ -79,25 +79,26 @@ export default function AdminLogs() {
   };
 
   const mapBanLogToUiLog = (apiLog) => {
-    const targetName = apiLog.targetUserName || apiLog.targetUserId;
+    const targetName = apiLog.username || apiLog.user_id || apiLog.userId;
+    const actionVal = apiLog.action || "";
+    const isBan = actionVal.toUpperCase().startsWith("BAN");
     return {
-      id: `ban_log_${apiLog.logId}`,
-      timestamp: apiLog.bannedAt,
+      id: `ban_log_${apiLog.log_id || apiLog.logId}`,
+      timestamp: apiLog.created_at || apiLog.createdAt,
       level: "WARNING",
       module: "USER_BAN",
-      operator: apiLog.adminName || apiLog.adminId,
+      operator: apiLog.action_by || apiLog.actionBy,
       targetUserName: targetName,
       ipAddress: "127.0.0.1",
       message: language === "en"
-        ? `Account for ${targetName} Banned/Unbanned. Reason: ${apiLog.reason || "No reason provided"}`
-        : `Tài khoản ${targetName} đã bị Khóa/Mở khóa. Lý do: ${apiLog.reason || "Không có lý do"}`,
+        ? `Account for ${targetName} ${isBan ? "Banned" : "Unbanned"}. Reason: ${apiLog.reason || "No reason provided"}`
+        : `Tài khoản ${targetName} đã bị ${isBan ? "Khóa" : "Mở khóa"}. Lý do: ${apiLog.reason || "Không có lý do"}`,
       details: {
-        action: "USER_BAN",
-        targetUserId: apiLog.targetUserId,
+        action: actionVal,
+        targetUserId: apiLog.user_id || apiLog.userId,
         targetUserName: targetName,
-        adminId: apiLog.adminId,
-        adminName: apiLog.adminName,
-        logId: apiLog.logId,
+        adminName: apiLog.action_by || apiLog.actionBy,
+        logId: apiLog.log_id || apiLog.logId,
         reason: apiLog.reason,
       }
     };
@@ -361,27 +362,20 @@ export default function AdminLogs() {
           <button
             onClick={handleRefresh}
             disabled={isRefreshing}
-            className="flex-1 sm:flex-none p-2.5 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl transition-all flex items-center justify-center gap-1.5"
+            className="flex-1 sm:flex-none p-2.5 bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 text-black dark:text-white shadow-md rounded-xl disabled:opacity-30 disabled:cursor-not-allowed  transition-all flex items-center justify-center gap-1.5"
           >
-            <RefreshCw size={14} className={isRefreshing ? "animate-spin" : ""} />
+            <RefreshCw size={14} className={isRefreshing ? "animate-spin text-black dark:text-white" : "text-black dark:text-white"} />
             {language === "en" ? "Refresh" : "Làm Mới"}
           </button>
           <button
             onClick={handleExport}
             disabled={activeTab === "role" ? filteredLogs.length === 0 : activeTab === "ban" ? filteredBanLogs.length === 0 : filteredSystemLogs.length === 0}
-            className="flex-1 sm:flex-none p-2.5 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:hover:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/50 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl transition-all flex items-center justify-center gap-1.5"
+            className="flex-1 sm:flex-none p-2.5 bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 text-black dark:text-white shadow-md rounded-xl disabled:opacity-30 disabled:cursor-not-allowed  transition-all flex items-center justify-center gap-1.5"
           >
-            <Download size={14} className="text-emerald-500 dark:text-emerald-400" />
+            <Download size={14} className="text-black dark:text-white" />
             {language === "en" ? "Export CSV" : "Xuất File CSV"}
           </button>
-          <button
-            onClick={handleClear}
-            disabled={activeTab === "role" ? logs.length === 0 : activeTab === "ban" ? banLogs.length === 0 : systemLogs.length === 0}
-            className="flex-1 sm:flex-none p-2.5 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/50 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl transition-all flex items-center justify-center gap-1.5"
-          >
-            <Trash2 size={14} className="text-red-500 dark:text-red-400" />
-            {language === "en" ? "Clear List" : "Xóa Danh Sách"}
-          </button>
+
         </div>
       </div>
 
@@ -437,8 +431,8 @@ export default function AdminLogs() {
               activeTab === "role"
                 ? (language === "en" ? "Search operator, user..." : "Tìm người thực hiện, người bị ảnh hưởng...")
                 : activeTab === "ban"
-                ? (language === "en" ? "Search target, reason..." : "Tìm tài khoản bị ảnh hưởng, lý do...")
-                : (language === "en" ? "Search message, source..." : "Tìm nội dung, nguồn log...")
+                  ? (language === "en" ? "Search target, reason..." : "Tìm tài khoản bị ảnh hưởng, lý do...")
+                  : (language === "en" ? "Search message, source..." : "Tìm nội dung, nguồn log...")
             }
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -477,7 +471,6 @@ export default function AdminLogs() {
                   <th className="py-3 px-4">{language === "en" ? "Target User" : "Tài khoản bị ảnh hưởng"}</th>
                   <th className="py-3 px-4 text-center">{language === "en" ? "Previous Role" : "Quyền hạn cũ"}</th>
                   <th className="py-3 px-4 text-center">{language === "en" ? "New Role" : "Quyền hạn mới"}</th>
-                  <th className="py-3 px-4 text-center">{language === "en" ? "Details" : "Chi tiết"}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 text-xs font-semibold">
@@ -522,17 +515,7 @@ export default function AdminLogs() {
                             {details.newRole || "None"}
                           </span>
                         </td>
-                        <td className="py-3 px-4">
-                          <div className="flex justify-center items-center">
-                            <button
-                              onClick={() => setSelectedLog(log)}
-                              title={language === "en" ? "View Details" : "Xem chi tiết"}
-                              className="p-1.5 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
-                            >
-                              <Eye size={14} />
-                            </button>
-                          </div>
-                        </td>
+
                       </tr>
                     );
                   })
@@ -545,54 +528,57 @@ export default function AdminLogs() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50 dark:bg-slate-800/60 text-slate-550 dark:text-slate-400 text-xs font-bold uppercase tracking-wider border-b border-slate-100 dark:border-slate-800/80">
-                  <th className="py-3 px-4">{language === "en" ? "Timestamp" : "Thời gian"}</th>
-                  <th className="py-3 px-4">{language === "en" ? "Operator" : "Người thực hiện"}</th>
                   <th className="py-3 px-4">{language === "en" ? "Target User" : "Tài khoản bị ảnh hưởng"}</th>
-                  <th className="py-3 px-4">{language === "en" ? "Reason" : "Lý do khóa"}</th>
-                  <th className="py-3 px-4 text-center">{language === "en" ? "Details" : "Chi tiết"}</th>
+                  <th className="py-3 px-4">{language === "en" ? "Action" : "Hành động"}</th>
+                  <th className="py-3 px-4">{language === "en" ? "Reason" : "Lý do"}</th>
+                  <th className="py-3 px-4">{language === "en" ? "Action By" : "Người thực hiện"}</th>
+                  <th className="py-3 px-4">{language === "en" ? "Created At" : "Thời gian"}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 text-xs font-semibold">
                 {loading ? (
                   <tr>
-                    <td colSpan={5} className="py-12 text-center text-slate-455 text-xs">
+                    <td colSpan={6} className="py-12 text-center text-slate-455 text-xs">
                       <RefreshCw size={20} className="animate-spin inline-block mr-2 text-blue-500" />
                       {language === "en" ? "Loading logs..." : "Đang tải nhật ký..."}
                     </td>
                   </tr>
                 ) : filteredBanLogs.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-12 text-center text-slate-400 text-xs font-medium">
+                    <td colSpan={6} className="py-12 text-center text-slate-400 text-xs font-medium">
                       {language === "en" ? "No ban logs found." : "Không có nhật ký nào được ghi nhận."}
                     </td>
                   </tr>
                 ) : (
                   filteredBanLogs.map((log) => {
                     const details = log.details || {};
+                    const isBan = details.action?.toUpperCase().startsWith("BAN");
                     return (
                       <tr key={log.id} className="hover:bg-slate-50/40 dark:hover:bg-slate-800/20 transition-colors">
-                        <td className="py-3 px-4 text-slate-900 dark:text-slate-100 font-semibold font-sans text-xs">
-                          {formatDateTime(log.timestamp)}
-                        </td>
-                        <td className="py-3 px-4 text-slate-800 dark:text-slate-200 font-semibold">
-                          {log.operator}
-                        </td>
+                        {/* 1. Target User (TARGET_USER_ID) */}
                         <td className="py-3 px-4 text-slate-850 dark:text-white font-bold">
                           {log.targetUserName ? log.targetUserName : details.targetUserId || "-"}
                         </td>
+                        {/* 2. Action (ACTION) */}
+                        <td className="py-3 px-4 text-slate-900 dark:text-slate-100 font-bold font-sans text-xs">
+                          <span className={`inline-block px-2.5 py-0.5 rounded text-[10px] font-black tracking-wide ${isBan
+                            ? "bg-red-50 text-red-700 border border-red-200 dark:bg-red-955/20 dark:text-red-400 dark:border-red-900/30"
+                            : "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-450 dark:border-emerald-900/30"
+                            }`}>
+                            {details.action || (isBan ? "BANNED" : "UNBANNED")}
+                          </span>
+                        </td>
+                        {/* 3. Reason (REASON) */}
                         <td className="py-3 px-4 text-slate-800 dark:text-slate-300 font-medium">
                           {details.reason || (language === "en" ? "No reason specified" : "Không có lý do")}
                         </td>
-                        <td className="py-3 px-4">
-                          <div className="flex justify-center items-center">
-                            <button
-                              onClick={() => setSelectedLog(log)}
-                              title={language === "en" ? "View Details" : "Xem chi tiết"}
-                              className="p-1.5 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
-                            >
-                              <Eye size={14} />
-                            </button>
-                          </div>
+                        {/* 4. Action By (ACTION_BY) */}
+                        <td className="py-3 px-4 text-slate-800 dark:text-slate-200 font-semibold">
+                          {log.operator}
+                        </td>
+                        {/* 5. Created At (CREATED_AT) */}
+                        <td className="py-3 px-4 text-slate-900 dark:text-slate-100 font-semibold font-sans text-xs whitespace-nowrap">
+                          {formatDateTime(log.timestamp)}
                         </td>
                       </tr>
                     );
@@ -610,7 +596,6 @@ export default function AdminLogs() {
                   <th className="py-3 px-4 text-center">{language === "en" ? "Level" : "Mức độ"}</th>
                   <th className="py-3 px-4">{language === "en" ? "Source" : "Nguồn log"}</th>
                   <th className="py-3 px-4">{language === "en" ? "Message" : "Nội dung"}</th>
-                  <th className="py-3 px-4 text-center">{language === "en" ? "Details" : "Chi tiết"}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 text-xs font-semibold">
@@ -644,17 +629,7 @@ export default function AdminLogs() {
                       <td className="py-3 px-4 text-slate-800 dark:text-slate-200 font-medium max-w-lg truncate">
                         {log.message}
                       </td>
-                      <td className="py-3 px-4">
-                        <div className="flex justify-center items-center">
-                          <button
-                            onClick={() => setSelectedLog(log)}
-                            title={language === "en" ? "View Details" : "Xem chi tiết"}
-                            className="p-1.5 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
-                          >
-                            <Eye size={14} />
-                          </button>
-                        </div>
-                      </td>
+
                     </tr>
                   ))
                 )}

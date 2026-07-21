@@ -477,22 +477,21 @@ namespace ParkingManagement.Controllers
             var totalItems = await query.CountAsync();
             var totalPages = (int)Math.Ceiling(totalItems / (double)page_size);
 
-            var dbLogs = await query
+            var logs = await query
                 .OrderByDescending(l => l.CreatedAt)
                 .Skip((page - 1) * page_size)
                 .Take(page_size)
+                .Select(l => new
+                {
+                    logId = l.LogId,
+                    userId = l.TargetUserId,
+                    username = l.TargetUser != null ? l.TargetUser.Username : l.TargetUserId,
+                    actionBy = l.ActionByUser != null ? l.ActionByUser.Username : l.ActionBy,
+                    action = l.Action,
+                    reason = l.Reason,
+                    createdAt = l.CreatedAt
+                })
                 .ToListAsync();
-
-            var logs = dbLogs.Select(l => new
-            {
-                logId = l.LogId,
-                userId = l.TargetUserId,
-                fullName = l.TargetUser != null ? l.TargetUser.FullName : null,
-                actionBy = l.ActionByUser != null ? (l.ActionByUser.FullName ?? l.ActionByUser.Username) : l.ActionBy,
-                action = l.Action,
-                reason = l.Reason,
-                createdAt = l.CreatedAt
-            }).ToList();
 
             return Ok(new
             {
