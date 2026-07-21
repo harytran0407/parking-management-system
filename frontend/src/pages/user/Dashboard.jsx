@@ -149,13 +149,13 @@ export default function UserDashboard() {
         try {
           const bookingsRes = await api.get("/bookings/my");
           if (bookingsRes.data?.success && bookingsRes.data.data.length > 0) {
-            // Filter out cancelled; only keep confirmed / active / completed
-            const eligible = bookingsRes.data.data.filter((bk) => {
-              const st = (bk.status.toLowerCase() === "active" && !bk.actual_check_in)
-                ? "confirmed"
-                : bk.status.toLowerCase();
-              return st === "confirmed" || st === "active" || st === "completed";
-            });
+             // Filter out cancelled and completed; only keep confirmed / active
+             const eligible = bookingsRes.data.data.filter((bk) => {
+               const st = (bk.status.toLowerCase() === "active" && !bk.actual_check_in)
+                 ? "confirmed"
+                 : bk.status.toLowerCase();
+               return st === "confirmed" || st === "active";
+             });
 
             if (eligible.length === 0) { setRecentBooking(null); return; }
 

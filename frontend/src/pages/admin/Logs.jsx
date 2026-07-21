@@ -380,15 +380,15 @@ export default function AdminLogs() {
       </div>
 
       {/* TABS SWITCHER */}
-      <div className="flex gap-1.5 border-b border-slate-200 dark:border-slate-800 pb-2">
+      <div className="flex border-b border-slate-200 dark:border-slate-800 overflow-x-auto gap-2 md:gap-6 no-scrollbar pb-px w-full shrink-0">
         <button
           onClick={() => {
             setActiveTab("role");
             setSearch("");
           }}
-          className={`px-5 py-2.5 text-xs font-extrabold uppercase tracking-wide transition-all duration-150 border rounded-none ${activeTab === "role"
-            ? "bg-slate-700 border-slate-700 text-white dark:bg-slate-600 dark:border-slate-600 opacity-100 shadow-sm"
-            : "bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-500 opacity-50 hover:opacity-85"
+          className={`py-3 px-1 border-b-2 font-bold text-xs sm:text-sm transition-all focus:outline-none whitespace-nowrap ${activeTab === "role"
+            ? "border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400"
+            : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
             }`}
         >
           {language === "en" ? "Role Audit Logs" : "Nhật ký phân quyền"}
@@ -399,9 +399,9 @@ export default function AdminLogs() {
             setSearch("");
             setBanPage(1);
           }}
-          className={`px-5 py-2.5 text-xs font-extrabold uppercase tracking-wide transition-all duration-150 border rounded-none ${activeTab === "ban"
-            ? "bg-slate-700 border-slate-700 text-white dark:bg-slate-600 dark:border-slate-600 opacity-100 shadow-sm"
-            : "bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-500 opacity-50 hover:opacity-85"
+          className={`py-3 px-1 border-b-2 font-bold text-xs sm:text-sm transition-all focus:outline-none whitespace-nowrap ${activeTab === "ban"
+            ? "border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400"
+            : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
             }`}
         >
           {language === "en" ? "Banned Logs" : "Nhật ký khóa tài khoản"}
@@ -412,9 +412,9 @@ export default function AdminLogs() {
             setSearch("");
             setSystemPage(1);
           }}
-          className={`px-5 py-2.5 text-xs font-extrabold uppercase tracking-wide transition-all duration-150 border rounded-none ${activeTab === "system"
-            ? "bg-slate-700 border-slate-700 text-white dark:bg-slate-600 dark:border-slate-600 opacity-100 shadow-sm"
-            : "bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-500 opacity-50 hover:opacity-85"
+          className={`py-3 px-1 border-b-2 font-bold text-xs sm:text-sm transition-all focus:outline-none whitespace-nowrap ${activeTab === "system"
+            ? "border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400"
+            : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
             }`}
         >
           {language === "en" ? "System Logs" : "Nhật ký hệ thống"}

@@ -12,11 +12,11 @@ import { useLanguage } from "../../hooks/useLanguage";
 
 const t = {
     vi: {
-        tabLostTicket: "1. Mất vé",
+        tabLostTicket: "Mất vé",
         tabLostTicketSub: "Tính phí phạt & kết thúc phiên đỗ",
-        tabOcrMismatch: "2. Sai biển số",
+        tabOcrMismatch: "Sai biển số",
         tabOcrMismatchSub: "Tìm theo biển số nhận diện sai & sửa lại",
-        tabUserReported: "3. Phản hồi của tài xế",
+        tabUserReported: "Phản hồi của tài xế",
         tabUserReportedSub: "Trả lời & giải quyết phản ánh",
         placeholderSearchReports: "Tìm kiếm báo cáo...",
         allStatuses: "Tất cả trạng thái",
@@ -99,11 +99,11 @@ const t = {
         hours: "giờ",
     },
     en: {
-        tabLostTicket: "1. Lost Ticket",
+        tabLostTicket: " Lost Ticket",
         tabLostTicketSub: "Calculate penalty & close session",
-        tabOcrMismatch: "2. Plate Mismatch",
+        tabOcrMismatch: "Plate Mismatch",
         tabOcrMismatchSub: "Find by misread plate & correct it",
-        tabUserReported: "3. User Issues",
+        tabUserReported: "User Issues",
         tabUserReportedSub: "Respond & resolve user reports",
         placeholderSearchReports: "Search reports...",
         allStatuses: "All Statuses",
@@ -219,9 +219,9 @@ export default function StaffIncidentHandling() {
     const [userSearchQuery, setUserSearchQuery] = useState("");
 
     const tabsConfig = [
-        { id: "LOST_TICKET", label: t[language].tabLostTicket, sub: t[language].tabLostTicketSub, icon: Ticket, searchBySlot: false },
-        { id: "OCR_MISMATCH", label: t[language].tabOcrMismatch, sub: t[language].tabOcrMismatchSub, icon: CarFrontIcon, searchBySlot: false },
-        { id: "USER_REPORTED", label: t[language].tabUserReported, sub: t[language].tabUserReportedSub, icon: MessageSquare, searchBySlot: false },
+        { id: "LOST_TICKET", label: t[language].tabLostTicket, sub: t[language].tabLostTicketSub, searchBySlot: false },
+        { id: "OCR_MISMATCH", label: t[language].tabOcrMismatch, sub: t[language].tabOcrMismatchSub, searchBySlot: false },
+        { id: "USER_REPORTED", label: t[language].tabUserReported, sub: t[language].tabUserReportedSub, searchBySlot: false },
     ];
 
     const currentTabConfig = tabsConfig.find(t => t.id === activeTab);
@@ -665,28 +665,21 @@ export default function StaffIncidentHandling() {
     return (
         <div className="w-full text-slate-700 dark:text-slate-200 h-full flex flex-col gap-4 overflow-hidden antialiased">
 
-            {/* SELECTION TABS GRID */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 shrink-0">
+            {/* SELECTION TABS SWITCHER */}
+            <div className="flex border-b border-slate-200 dark:border-slate-800 overflow-x-auto gap-2 md:gap-6 no-scrollbar pb-px w-full shrink-0">
                 {tabsConfig.map(tab => {
-                    const Icon = tab.icon;
                     const active = activeTab === tab.id;
                     return (
                         <button
                             key={tab.id}
                             type="button"
                             onClick={() => handleTabSwitch(tab.id)}
-                            className={`flex items-center gap-3 p-3 rounded-md border transition-all text-left ${active
-                                ? "bg-white dark:bg-slate-900 border-blue-600 dark:border-blue-400 shadow-sm ring-1 ring-slate-900/5"
-                                : "bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-800 hover:bg-white dark:hover:bg-slate-900"
+                            className={`py-3 px-1 border-b-2 font-bold text-xs sm:text-sm transition-all focus:outline-none whitespace-nowrap flex items-center gap-2 ${active
+                                ? "border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400"
+                                : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
                                 }`}
                         >
-                            <div className={`p-2 rounded-md ${active ? "bg-blue-600 text-white dark:bg-slate-800" : "bg-slate-200/60 text-slate-700 dark:bg-slate-700 dark:text-slate-300"}`}>
-                                <Icon size={16} />
-                            </div>
-                            <div>
-                                <div className="text-xs font-black uppercase tracking-wide text-slate-900 dark:text-white">{tab.label}</div>
-                                <div className="text-[10px] text-slate-400 font-medium leading-tight mt-0.5">{tab.sub}</div>
-                            </div>
+                            {tab.label}
                         </button>
                     );
                 })}

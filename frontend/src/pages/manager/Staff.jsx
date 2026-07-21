@@ -302,7 +302,7 @@ export default function ManagerStaff() {
     <>
       <div className="animate-slide-in flex flex-col space-y-6">
         {/* FILTER & SEARCH BAR */}
-        <div className="card mb-6 p-4">
+        <div className="card mb-1 p-4">
           <form onSubmit={handleSearchSubmit} className="flex flex-col md:flex-row gap-4 items-center justify-between">
             <div className="relative w-full md:max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />

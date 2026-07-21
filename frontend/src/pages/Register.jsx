@@ -121,15 +121,15 @@ function AlertBanner({ type, message }) {
 
   const styles = {
     success: {
-      wrapper: "bg-green-500/10 border border-green-500/30 text-green-400",
+      wrapper: "bg-green-500/10 border border-green-500/30 text-green-600",
       icon: <CheckCircle className="w-4 h-4 shrink-0 mt-0.5" />,
     },
     error: {
-      wrapper: "bg-red-500/10 border border-red-500/30 text-red-400",
+      wrapper: "bg-red-500/10 border border-red-500/30 text-red-600",
       icon: <XCircle className="w-4 h-4 shrink-0 mt-0.5" />,
     },
     warning: {
-      wrapper: "bg-yellow-500/10 border border-yellow-500/30 text-yellow-400",
+      wrapper: "bg-yellow-500/10 border border-yellow-500/30 text-yellow-600",
       icon: <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />,
     },
   };

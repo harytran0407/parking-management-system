@@ -379,9 +379,10 @@ namespace ParkingManagement.Repositories
 
             if (!string.IsNullOrWhiteSpace(licensePlate))
             {
-                var cleanedPlate = licensePlate.Trim();
-                query = query.Where(s => s.LicensePlateIn.Contains(cleanedPlate) ||
-                                     (s.LicensePlateOut != null && s.LicensePlateOut.Contains(cleanedPlate)));
+                var cleanedPlate = licensePlate.Trim().Replace("-", "").Replace(".", "").Replace(" ", "").ToUpper();
+                query = query.Where(s => 
+                    (s.LicensePlateIn != null && s.LicensePlateIn.Replace("-", "").Replace(".", "").Replace(" ", "").ToUpper().Contains(cleanedPlate)) ||
+                    (s.LicensePlateOut != null && s.LicensePlateOut.Replace("-", "").Replace(".", "").Replace(" ", "").ToUpper().Contains(cleanedPlate)));
             }
 
             if (fromDate.HasValue)

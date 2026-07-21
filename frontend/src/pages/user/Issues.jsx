@@ -17,7 +17,9 @@ import {
   ChevronDown,
   ChevronUp,
   PlusCircle,
-  History
+  History,
+  Eye,
+  ExternalLink
 } from "lucide-react";
 
 const getBackendRootUrl = () => {
@@ -60,11 +62,23 @@ export default function Issues() {
   const [status, setStatus] = useState("idle"); // 'idle' | 'submitting' | 'success'
   const [expandedTicketId, setExpandedTicketId] = useState(null);
 
+  const getImageUrl = (url) => {
+    if (!url) return "";
+    if (url.startsWith("http://") || url.startsWith("https://")) return url;
+    const root = getBackendRootUrl();
+    const cleanPath = url.startsWith("/") ? url : `/${url}`;
+    return `${root}${cleanPath}`;
+  };
+
   // File Upload states
   const [attachmentUrl, setAttachmentUrl] = useState("");
   const [uploadingFile, setUploadingFile] = useState(false);
   const [fileError, setFileError] = useState("");
   const [fileName, setFileName] = useState("");
+
+  // Preview & Lightbox Modals
+  const [lightboxImage, setLightboxImage] = useState(null);
+  const [previewAttachment, setPreviewAttachment] = useState(null);
 
   // Pre-fill user profile info if logged in
   useEffect(() => {
@@ -337,27 +351,71 @@ export default function Issues() {
                   </span>
                 </div>
               ) : attachmentUrl ? (
-                <div className="w-full flex items-center justify-between bg-white dark:bg-slate-800/85 p-3 rounded-xl border border-slate-100 dark:border-slate-700/50 relative z-10">
-                  <div className="flex items-center gap-2.5 truncate">
-                    <div className="p-2 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 rounded-lg">
-                      <FileText size={16} />
+                (() => {
+                  const isImg = /\.(png|jpe?g|webp|gif|svg)$/i.test(attachmentUrl || fileName);
+                  return isImg ? (
+                    <div className="w-full flex items-center gap-3 bg-white dark:bg-slate-800/90 p-3 rounded-2xl border border-slate-200 dark:border-slate-700/60 shadow-sm relative z-10">
+                      <div
+                        className="relative group cursor-pointer overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 shrink-0 w-16 h-16 bg-slate-100 dark:bg-slate-900 flex items-center justify-center"
+                        onClick={() => setLightboxImage(getImageUrl(attachmentUrl))}
+                        title={language === "en" ? "Click to view full image" : "Click để xem ảnh phóng to"}
+                      >
+                        <img
+                          src={getImageUrl(attachmentUrl)}
+                          alt="Attachment Preview"
+                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                        />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                          <Eye size={16} />
+                        </div>
+                      </div>
+
+                      <div className="flex-1 min-w-0 text-left">
+
+                        <p className="text-xs font-bold text-slate-800 dark:text-white truncate" title={fileName}>{fileName}</p>
+                        <button
+                          type="button"
+                          onClick={() => setLightboxImage(getImageUrl(attachmentUrl))}
+                          className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 mt-1 cursor-pointer"
+                        >
+                          <Eye size={12} />
+                          {language === "en" ? "Preview photo" : "Xem ảnh phóng to"}
+                        </button>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleRemoveFile}
+                        className="p-2 hover:bg-red-50 dark:hover:bg-red-950/30 text-slate-400 hover:text-red-500 rounded-xl transition-colors shrink-0 cursor-pointer"
+                        title={language === "en" ? "Remove photo" : "Xóa ảnh"}
+                      >
+                        <X size={18} />
+                      </button>
                     </div>
-                    <div className="text-left truncate">
-                      <p className="text-xs font-bold text-slate-800 dark:text-white truncate">{fileName}</p>
-                      <p className="text-[10px] text-slate-400 font-medium">
-                        {language === "en" ? "Ready to attach" : "Sẵn sàng đính kèm"}
-                      </p>
+                  ) : (
+                    <div className="w-full flex items-center justify-between bg-white dark:bg-slate-800/85 p-3 rounded-xl border border-slate-100 dark:border-slate-700/50 relative z-10">
+                      <div className="flex items-center gap-2.5 truncate">
+                        <div className="p-2 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 rounded-lg">
+                          <FileText size={16} />
+                        </div>
+                        <div className="text-left truncate">
+                          <p className="text-xs font-bold text-slate-800 dark:text-white truncate">{fileName}</p>
+                          <p className="text-[10px] text-slate-400 font-medium">
+                            {language === "en" ? "Ready to attach" : "Sẵn sàng đính kèm"}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleRemoveFile}
+                        className="p-1.5 hover:bg-red-50 dark:hover:bg-red-950/20 text-slate-400 hover:text-red-500 dark:hover:text-red-400 rounded-lg transition-colors cursor-pointer"
+                        title="Remove file"
+                      >
+                        <X size={16} />
+                      </button>
                     </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleRemoveFile}
-                    className="p-1.5 hover:bg-red-50 dark:hover:bg-red-950/20 text-slate-400 hover:text-red-500 dark:hover:text-red-400 rounded-lg transition-colors"
-                    title="Remove file"
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
+                  );
+                })()
               ) : (
                 <div className="py-2">
                   <Upload size={24} className="text-slate-400 mx-auto mb-2" />
@@ -422,8 +480,8 @@ export default function Issues() {
               </h3>
               <span
                 className={`text-xs font-bold px-2 py-0.5 rounded-md ${formData.rating > 0
-                    ? "bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400"
-                    : "text-slate-400"
+                  ? "bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400"
+                  : "text-slate-400"
                   }`}
               >
                 {ratingLabel}
@@ -442,8 +500,8 @@ export default function Issues() {
                   <Star
                     size={28}
                     className={`transition-colors duration-200 ${star <= (hoverRating || formData.rating)
-                        ? "fill-amber-400 text-amber-400"
-                        : "fill-transparent text-slate-300 dark:text-slate-600"
+                      ? "fill-amber-400 text-amber-400"
+                      : "fill-transparent text-slate-300 dark:text-slate-600"
                       }`}
                   />
                 </button>
@@ -511,9 +569,9 @@ export default function Issues() {
                 <div
                   key={ticket.feedback_id}
                   className={`bg-white dark:bg-slate-900 border transition-all duration-200 rounded-3xl p-5 shadow-xs relative overflow-hidden ${isExpanded
-                      ? "border-blue-500/50 dark:border-blue-500/30 ring-1 ring-blue-500/20"
-                      : "border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-sm"
-                     }`}
+                    ? "border-blue-500/50 dark:border-blue-500/30 ring-1 ring-blue-500/20"
+                    : "border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-sm"
+                    }`}
                 >
                   {/* Collapsed Header Click Box */}
                   <div
@@ -521,7 +579,7 @@ export default function Issues() {
                     className="flex justify-between items-center cursor-pointer select-none"
                   >
                     <div className="flex flex-wrap items-center gap-3">
-                      <span className="text-[10px] font-bold text-slate-400 font-mono tracking-wider bg-slate-50 dark:bg-slate-800 px-2 py-0.5 rounded">
+                      <span className="text-[10px] font-bold text-slate-400 font-sans tracking-wider bg-slate-50 dark:bg-slate-800 px-2 py-0.5 rounded">
                         #TCK-{ticket.feedback_id}
                       </span>
                       <span className="text-[10px] text-slate-400 font-medium">
@@ -531,8 +589,8 @@ export default function Issues() {
                     <div className="flex items-center gap-3">
                       <span
                         className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ${ticket.status === "RESOLVED" || ticket.status === "CLOSED"
-                            ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/20 dark:text-emerald-400"
-                            : "bg-blue-50 text-blue-600 dark:bg-blue-950/20 dark:text-blue-400"
+                          ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/20 dark:text-emerald-400"
+                          : "bg-blue-50 text-blue-600 dark:bg-blue-950/20 dark:text-blue-400"
                           }`}
                       >
                         {getTicketStatusLabel(ticket.status)}
@@ -604,15 +662,21 @@ export default function Issues() {
                       {/* Attachment display */}
                       {attachment && (
                         <div className="pt-1">
-                          <a
-                             href={`${backendRoot}${attachment}`}
-                             target="_blank"
-                             rel="noopener noreferrer"
-                             className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 hover:dark:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-blue-600 dark:text-blue-400 transition-colors shadow-xs"
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const fullUrl = getImageUrl(attachment);
+                              if (/\.(png|jpe?g|webp|gif|svg)$/i.test(attachment)) {
+                                setLightboxImage(fullUrl);
+                              } else {
+                                setPreviewAttachment(attachment);
+                              }
+                            }}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 hover:dark:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-blue-600 dark:text-blue-400 transition-colors shadow-xs cursor-pointer"
                           >
                             <Paperclip size={12} className="text-blue-500" />
                             {language === "en" ? "View Attachment" : "Xem tệp đính kèm"}
-                          </a>
+                          </button>
                         </div>
                       )}
 
@@ -622,7 +686,7 @@ export default function Issues() {
                           <div className="text-[10px] text-emerald-500 dark:text-emerald-400 font-bold flex flex-wrap gap-x-2 items-center">
                             <span>✓</span>
                             {ticket.resolved_by && (
-                              <span className="bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400 px-1.5 py-0.5 rounded font-mono text-[9px] uppercase">
+                              <span className="bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400 px-1.5 py-0.5 rounded font-sans text-[9px] uppercase">
                                 {language === "en" ? "Resolved by:" : "Người duyệt:"} {ticket.resolved_by}
                               </span>
                             )}
@@ -659,6 +723,87 @@ export default function Issues() {
           )}
         </div>
       </div>
+
+      {/* Lightbox Modal for Images */}
+      {lightboxImage && (
+        <div
+          className="fixed inset-0 bg-slate-950/80 dark:bg-slate-950/90 backdrop-blur-md z-[99999] flex flex-col items-center justify-center p-4 cursor-zoom-out animate-fade-in"
+          onClick={() => setLightboxImage(null)}
+        >
+          <button
+            onClick={() => setLightboxImage(null)}
+            className="absolute top-5 right-5 text-slate-300 hover:text-white bg-slate-900/70 p-2.5 rounded-full border border-slate-700 cursor-pointer transition-colors shadow-lg z-10"
+            title={language === "en" ? "Close preview (Esc)" : "Đóng xem thử (Esc)"}
+          >
+            <X size={22} />
+          </button>
+          <div
+            className="relative max-w-[95vw] md:max-w-5xl max-h-[90vh] rounded-2xl overflow-hidden border border-slate-800 bg-slate-900 shadow-2xl flex flex-col items-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={lightboxImage}
+              alt="Attachment Full View"
+              className="w-full h-auto max-h-[82vh] object-contain p-2"
+            />
+            <div className="w-full p-3 bg-slate-900/90 border-t border-slate-800 flex justify-between items-center px-6">
+
+
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Attachment Preview Modal for Non-Images */}
+      {previewAttachment && (
+        <div
+          className="fixed inset-0 bg-slate-950/80 dark:bg-slate-950/90 backdrop-blur-md z-[99999] flex flex-col items-center justify-center p-4 animate-fade-in"
+          onClick={() => setPreviewAttachment(null)}
+        >
+          <div
+            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 w-full max-w-md shadow-2xl text-center space-y-4 relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setPreviewAttachment(null)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+            >
+              <X size={18} />
+            </button>
+
+            <div className="w-14 h-14 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 rounded-2xl flex items-center justify-center mx-auto border border-blue-100 dark:border-blue-900/30">
+              <Paperclip size={28} />
+            </div>
+
+            <div>
+              <h4 className="font-bold text-slate-900 dark:text-white text-base">
+                {language === "en" ? "Attachment Document" : "Tài liệu đính kèm"}
+              </h4>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-mono truncate px-4">
+                {previewAttachment}
+              </p>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setPreviewAttachment(null)}
+                className="flex-1 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs rounded-xl transition cursor-pointer"
+              >
+                {language === "en" ? "Close" : "Đóng / Thoát"}
+              </button>
+              <a
+                href={getImageUrl(previewAttachment)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition shadow-sm inline-flex items-center justify-center gap-1.5"
+              >
+                <ExternalLink size={14} />
+                {language === "en" ? "Open File" : "Mở tệp mới"}
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

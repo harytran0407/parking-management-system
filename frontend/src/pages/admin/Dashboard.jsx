@@ -178,8 +178,8 @@ export default function AdminDashboard() {
             <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className={`p-3 rounded-xl ${systemHealth?.dbStatus === "ONLINE"
-                    ? "bg-blue-50 dark:bg-blue-955/30 text-blue-600 dark:text-blue-450"
-                    : "bg-red-50 dark:bg-red-955/20 text-red-650 dark:text-red-400"
+                  ? "bg-blue-50 dark:bg-blue-955/30 text-blue-600 dark:text-blue-450"
+                  : "bg-red-50 dark:bg-red-955/20 text-red-650 dark:text-red-400"
                   }`}>
                   <Database size={20} />
                 </div>
@@ -207,8 +207,8 @@ export default function AdminDashboard() {
             <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className={`p-3 rounded-xl ${systemHealth?.payosStatus === "ONLINE"
-                    ? "bg-purple-50 dark:bg-purple-955/30 text-purple-600 dark:text-purple-455"
-                    : "bg-amber-50 dark:bg-amber-955/20 text-amber-655 dark:text-amber-450"
+                  ? "bg-purple-50 dark:bg-purple-955/30 text-purple-600 dark:text-purple-455"
+                  : "bg-amber-50 dark:bg-amber-955/20 text-amber-655 dark:text-amber-450"
                   }`}>
                   <CreditCard size={20} />
                 </div>
@@ -236,10 +236,10 @@ export default function AdminDashboard() {
             <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className={`p-3 rounded-xl ${(systemHealth?.errorCount24H || 0) > 0
-                    ? "bg-red-50 dark:bg-red-955/30 text-red-650 dark:text-red-400"
-                    : (systemHealth?.warningCount24H || 0) > 0
-                      ? "bg-amber-50 dark:bg-amber-955/30 text-amber-600 dark:text-amber-400"
-                      : "bg-blue-50 dark:bg-blue-955/30 text-blue-600 dark:text-blue-400"
+                  ? "bg-red-50 dark:bg-red-955/30 text-red-650 dark:text-red-400"
+                  : (systemHealth?.warningCount24H || 0) > 0
+                    ? "bg-amber-50 dark:bg-amber-955/30 text-amber-600 dark:text-amber-400"
+                    : "bg-blue-50 dark:bg-blue-955/30 text-blue-600 dark:text-blue-400"
                   }`}>
                   <Activity size={20} />
                 </div>
@@ -295,7 +295,7 @@ export default function AdminDashboard() {
                   </span>
                 </div>
 
-                <div className="space-y-2.5 font-mono text-xs">
+                <div className="space-y-2.5 font-sans text-xs">
                   {latestLogs.length === 0 ? (
                     <div className="h-60 flex flex-col justify-center items-center text-slate-400">
                       <Terminal size={24} className="stroke-1 mb-2" />
@@ -312,7 +312,7 @@ export default function AdminDashboard() {
                       } else if (currentLogLevel === "WARNING") {
                         levelColor = "bg-amber-50 dark:bg-amber-955/20 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-900/40";
                       }
-                      
+
                       return (
                         <div
                           key={currentLogId}
@@ -337,7 +337,7 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center text-[10px] text-slate-400 dark:text-slate-505 font-mono">
+              <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center text-[10px] text-slate-400 dark:text-slate-505 font-sans">
                 <span>SYSTEM CONSOLE v1.0.0</span>
                 <span>UTC+7 REGION</span>
               </div>

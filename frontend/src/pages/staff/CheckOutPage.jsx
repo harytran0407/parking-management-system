@@ -787,7 +787,7 @@ export default function CheckOutPage() {
                                     {language === "vi" ? "Xử lý thành công!" : "Success!"}
                                 </p>
                                 {plateNumber && (
-                                    <p className="text-xs text-emerald-200 mt-1 font-mono font-bold tracking-widest bg-emerald-900/50 px-2 py-0.5 rounded">
+                                    <p className="text-xs text-emerald-200 mt-1 font-sans font-bold tracking-widest bg-emerald-900/50 px-2 py-0.5 rounded">
                                         {plateNumber}
                                     </p>
                                 )}

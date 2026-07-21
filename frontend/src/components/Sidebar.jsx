@@ -113,7 +113,7 @@ export default function Sidebar({ navigationItems = [], isCollapsed, setIsCollap
 
                 {item.badge && (
                   <div className={`items-center gap-2 z-10 ${isCollapsed ? "lg:hidden flex" : "flex"}`}>
-                    <span className="bg-blue-600 text-white text-[10px] font-black font-mono px-2 py-0.5 rounded-md shadow-sm">{item.badge}</span>
+                    <span className="bg-blue-600 text-white text-[10px] font-black font-sans px-2 py-0.5 rounded-md shadow-sm">{item.badge}</span>
                   </div>
                 )}
 
@@ -123,7 +123,7 @@ export default function Sidebar({ navigationItems = [], isCollapsed, setIsCollap
                     ${isCollapsed ? "hidden lg:block" : "hidden"}
                   `}>
                   {item.label}
-                  {item.badge && <span className="ml-2 bg-blue-600 text-white text-[9px] font-black font-mono px-1.5 py-0.5 rounded shadow-sm">{item.badge}</span>}
+                  {item.badge && <span className="ml-2 bg-blue-600 text-white text-[9px] font-black font-sans px-1.5 py-0.5 rounded shadow-sm">{item.badge}</span>}
                 </div>
 
                 {isActive && <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1.5 h-1/2 bg-blue-600 dark:bg-blue-500 rounded-l-full shadow-sm" />}

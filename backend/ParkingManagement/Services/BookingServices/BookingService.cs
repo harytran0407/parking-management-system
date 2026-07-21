@@ -806,8 +806,10 @@ public class BookingService : IBookingService
             PenaltyFee = penaltyFee,
             ActualCheckIn = actualCheckIn,
             ActualCheckOut = actualCheckOut,
-            PaymentMethod = b.Payments?.FirstOrDefault(p => p.Status == "SUCCESS")?.PaymentMethod 
-                ?? b.ParkingSessions?.SelectMany(ps => ps.Payments).FirstOrDefault(p => p.Status == "SUCCESS")?.PaymentMethod
+            PaymentMethod = (b.Payments?.FirstOrDefault(p => p.Status == "SUCCESS")
+                ?? b.ParkingSessions?.SelectMany(ps => ps.Payments).FirstOrDefault(p => p.Status == "SUCCESS"))?.PaymentMethod,
+            PaymentId = (b.Payments?.FirstOrDefault(p => p.Status == "SUCCESS")
+                ?? b.ParkingSessions?.SelectMany(ps => ps.Payments).FirstOrDefault(p => p.Status == "SUCCESS"))?.PaymentId
         };
     }
 
@@ -888,7 +890,9 @@ public class BookingService : IBookingService
                     : (DateTime?)null,
                 ActualCheckOut = session?.CheckOutTime.HasValue == true
                     ? DateTime.SpecifyKind(TimeZoneInfo.ConvertTimeToUtc(session.CheckOutTime.Value, _vnTz), DateTimeKind.Utc)
-                    : (DateTime?)null
+                    : (DateTime?)null,
+                ImageUrlIn = session?.ImageUrlIn,
+                ImageUrlOut = session?.ImageUrlOut
             });
         }
         return resultList;

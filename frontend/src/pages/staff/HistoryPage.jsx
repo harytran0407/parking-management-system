@@ -355,24 +355,22 @@ export default function HistoryPage() {
         <div className="w-full text-slate-900 dark:text-slate-100 h-full flex flex-col gap-5 overflow-hidden font-sans">
 
             {/* TABS SELECTOR */}
-            <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg w-fit shrink-0">
+            <div className="flex border-b border-slate-200 dark:border-slate-800  overflow-x-auto gap-2 md:gap-6 no-scrollbar pb-px w-full shrink-0">
                 <button
                     onClick={() => handleTabChange("all")}
-                    className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${
-                        activeTab === "all"
-                            ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm"
-                            : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
-                    }`}
+                    className={`py-3 px-1 border-b-2 font-bold text-xs sm:text-sm transition-all focus:outline-none whitespace-nowrap ${activeTab === "all"
+                        ? "border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400"
+                        : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                        }`}
                 >
                     {language === "vi" ? "Lịch sử đỗ xe" : "Parking History"}
                 </button>
                 <button
                     onClick={() => handleTabChange("over3days")}
-                    className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${
-                        activeTab === "over3days"
-                            ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm"
-                            : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
-                    }`}
+                    className={`py-3 px-1 border-b-2 font-bold text-xs sm:text-sm transition-all focus:outline-none whitespace-nowrap ${activeTab === "over3days"
+                        ? "border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400"
+                        : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                        }`}
                 >
                     {language === "vi" ? "Đỗ quá 3 ngày" : "Over 3 Days"}
                 </button>
@@ -474,8 +472,8 @@ export default function HistoryPage() {
                                 <th className="pb-3 font-semibold">{t[language].headerCheckIn}</th>
                                 <th className="pb-3 font-semibold">{t[language].headerCheckOut}</th>
                                 <th className="pb-3 font-semibold">{t[language].headerDuration}</th>
-                                <th className="pb-3 font-semibold text-right">{t[language].headerFee}</th>
-                                <th className="pb-3 font-semibold text-right pr-2 w-24"></th>
+                                <th className="pb-3 font-semibold">{t[language].headerStatus}</th>
+                                <th className="pb-3 font-semibold text-right pr-2">{t[language].headerFee}</th>
                             </tr>
                         </thead>
 
@@ -516,20 +514,27 @@ export default function HistoryPage() {
                                         <td className="py-3.5 text-slate-800 dark:text-slate-200 font-semibold text-xs">
                                             {formatDuration(getDurationMinutes(log.checkInTime || log.check_in_time, log.checkOutTime || log.check_out_time))}
                                         </td>
-                                        <td className="py-3.5 text-right font-sans font-extrabold text-xs text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-all">
+                                        <td className="py-3.5 text-slate-800 dark:text-slate-200 font-semibold text-xs">
+                                            <span className={`inline-flex items-center gap-1.5 text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider border ${log.status?.toUpperCase() === "COMPLETED"
+                                                ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-455 border-emerald-200 dark:border-emerald-900/30"
+                                                : log.status?.toUpperCase() === "ACTIVE"
+                                                    ? "bg-blue-50 text-blue-700 dark:bg-blue-950/20 dark:text-blue-450 border-blue-200 dark:border-blue-900/30"
+                                                    : log.status?.toUpperCase() === "LOST_TICKET" || log.status?.toUpperCase() === "LOST-TICKET"
+                                                        ? "bg-rose-50 text-rose-700 dark:bg-rose-950/20 dark:text-rose-455 border-rose-200 dark:border-rose-900/30"
+                                                        : "bg-slate-100 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700"
+                                                }`}>
+                                                {log.status?.toUpperCase() === "COMPLETED"
+                                                    ? t[language].statusCompleted
+                                                    : log.status?.toUpperCase() === "ACTIVE"
+                                                        ? t[language].statusActive
+                                                        : log.status?.toUpperCase() === "LOST_TICKET" || log.status?.toUpperCase() === "LOST-TICKET"
+                                                            ? t[language].statusLostTicket
+                                                            : log.status || t[language].statusUnknown}
+                                            </span>
+                                        </td>
+                                        <td className="py-3.5 text-right pr-2 font-sans font-extrabold text-xs text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-all">
                                             {log.totalFee !== undefined && log.totalFee !== null ? `${log.totalFee.toLocaleString()} VND` :
                                                 log.total_fee !== undefined && log.total_fee !== null ? `${log.total_fee.toLocaleString()} VND` : "0 VND"}
-                                        </td>
-                                        <td className="py-3.5 text-right pr-2">
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setSelectedSession(log);
-                                                }}
-                                                className="px-2.5 py-1 text-[11px] font-bold text-blue-600 hover:text-white border border-blue-200 hover:bg-blue-600 dark:border-blue-900/50 dark:hover:bg-blue-900 rounded transition-all shadow-xs"
-                                            >
-                                                {language === "vi" ? "Chi tiết" : "Details"}
-                                            </button>
                                         </td>
                                     </tr>
                                 ))
@@ -560,15 +565,9 @@ export default function HistoryPage() {
                                             : log.status?.toUpperCase() === "ACTIVE"
                                                 ? "bg-blue-50 text-blue-700 dark:bg-blue-950/20 dark:text-blue-450 border-blue-200 dark:border-blue-900/30"
                                                 : log.status?.toUpperCase() === "LOST_TICKET" || log.status?.toUpperCase() === "LOST-TICKET"
-                                                    ? "bg-rose-50 text-rose-700 dark:bg-rose-950/20 dark:text-rose-450 border-rose-200 dark:border-rose-900/30"
+                                                    ? "bg-rose-50 text-rose-700 dark:bg-rose-950/20 dark:text-rose-455 border-rose-200 dark:border-rose-900/30"
                                                     : "bg-slate-100 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700"
                                             }`}>
-                                            {log.status?.toUpperCase() === "ACTIVE" && (
-                                                <span className="w-1 h-1 rounded-full bg-blue-500 animate-pulse shrink-0" />
-                                            )}
-                                            {log.status?.toUpperCase() === "COMPLETED" && (
-                                                <span className="w-1 h-1 rounded-full bg-emerald-500 shrink-0" />
-                                            )}
                                             {log.status?.toUpperCase() === "COMPLETED"
                                                 ? t[language].statusCompleted
                                                 : log.status?.toUpperCase() === "ACTIVE"
@@ -615,15 +614,6 @@ export default function HistoryPage() {
                                                     log.total_fee !== undefined && log.total_fee !== null ? `${log.total_fee.toLocaleString()} VND` : "0 VND"}
                                             </span>
                                         </div>
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setSelectedSession(log);
-                                            }}
-                                            className="px-3.5 py-1.5 text-xs font-bold text-blue-600 hover:text-white border border-blue-200 hover:bg-blue-600 rounded-md transition-all dark:border-blue-900/50 dark:hover:bg-blue-900 shadow-xs"
-                                        >
-                                            {language === "vi" ? "Chi tiết" : "Details"}
-                                        </button>
                                     </div>
                                 </div>
                             ))
@@ -899,7 +889,7 @@ export default function HistoryPage() {
                     <div className="relative w-full max-w-[95vw] md:max-w-6xl max-h-[92vh] rounded-md overflow-hidden border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl" onClick={(e) => e.stopPropagation()}>
                         <img src={lightboxImage} alt="High Resolution Audit" className="w-full h-auto max-h-[85vh] md:max-h-[88vh] object-contain" />
                         <div className="absolute bottom-0 inset-x-0 bg-slate-900/90 dark:bg-slate-950/80 p-3 text-center border-t border-slate-200 dark:border-slate-800 backdrop-blur-sm">
-                            <p className="font-mono font-bold tracking-widest text-sm text-yellow-500 dark:text-yellow-400">
+                            <p className="font-sans font-bold tracking-widest text-sm text-yellow-500 dark:text-yellow-400">
                                 {selectedSession?.licensePlateIn || selectedSession?.licensePlate || selectedSession?.license_plate || "No Plate Info"}
                             </p>
                         </div>

@@ -123,6 +123,7 @@ export default function MyBookings() {
             isLocked: b.is_locked,
             bookingTime: b.booking_time,
             paymentMethod: b.payment_method || null,
+            paymentId: b.payment_id || null,
             notes: b.notes || "",
           };
         });
@@ -355,7 +356,8 @@ export default function MyBookings() {
       const response = await api.put(`/bookings/${selectedBooking.id}/unlock`);
       if (response.data && response.data.success) {
         await loadBookingDashboard();
-        closeModal();
+        setSelectedBooking(prev => prev ? { ...prev, isLocked: false } : null);
+        setActiveModal("details");
       }
     } catch (error) {
       console.error("Lỗi mở khóa xe:", error);
@@ -368,7 +370,8 @@ export default function MyBookings() {
       const response = await api.put(`/bookings/${selectedBooking.id}/lock`);
       if (response.data && response.data.success) {
         await loadBookingDashboard();
-        closeModal();
+        setSelectedBooking(prev => prev ? { ...prev, isLocked: true } : null);
+        setActiveModal("details");
       }
     } catch (error) {
       console.error("Lỗi khóa xe:", error);
@@ -824,7 +827,7 @@ export default function MyBookings() {
             {/* Modal: Confirm Smart Lock Unlock */}
             {activeModal === "unlockConfirm" && (
               <div className="p-6 md:p-8 text-center">
-                <div className="w-12 h-12 bg-amber-50 text-amber-500 dark:bg-amber-950/30 rounded-full flex items-center justify-center mx-auto mb-4 border border-amber-100 dark:border-amber-900/30">
+                <div className="w-12 h-12 bg-emerald-50 text-emerald-500 dark:bg-emerald-950/30 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-100 dark:border-emerald-900/30">
                   <Unlock size={24} />
                 </div>
                 <h3 className="font-bold text-slate-900 dark:text-white text-xl mb-2">
@@ -837,12 +840,12 @@ export default function MyBookings() {
                 </p>
 
                 <div className="flex gap-3">
-                  <button onClick={closeModal} className="flex-1 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold py-2.5 rounded-xl text-xs transition-colors">
+                  <button onClick={() => setActiveModal("details")} className="flex-1 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold py-2.5 rounded-xl text-xs transition-colors">
                     {language === "en" ? "Go Back" : "Quay lại"}
                   </button>
                   <button
                     onClick={handleConfirmUnlock}
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl text-xs transition-all shadow-sm"
+                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-xs transition-all shadow-sm"
                   >
                     {language === "en" ? "Confirm Unlock" : "Xác nhận mở khóa"}
                   </button>
@@ -853,7 +856,7 @@ export default function MyBookings() {
             {/* Modal: Confirm Smart Lock Lock */}
             {activeModal === "lockConfirm" && (
               <div className="p-6 md:p-8 text-center">
-                <div className="w-12 h-12 bg-emerald-50 text-emerald-500 dark:bg-emerald-950/30 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-100 dark:border-emerald-900/30">
+                <div className="w-12 h-12 bg-red-50 text-red-500 dark:bg-red-950/30 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-100 dark:border-red-900/30">
                   <Lock size={24} />
                 </div>
                 <h3 className="font-bold text-slate-900 dark:text-white text-xl mb-2">
@@ -866,12 +869,12 @@ export default function MyBookings() {
                 </p>
 
                 <div className="flex gap-3">
-                  <button onClick={closeModal} className="flex-1 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold py-2.5 rounded-xl text-xs transition-colors">
+                  <button onClick={() => setActiveModal("details")} className="flex-1 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold py-2.5 rounded-xl text-xs transition-colors">
                     {language === "en" ? "Go Back" : "Quay lại"}
                   </button>
                   <button
                     onClick={handleConfirmLock}
-                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-xs transition-all shadow-sm"
+                    className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 rounded-xl text-xs transition-all shadow-sm"
                   >
                     {language === "en" ? "Confirm Lock" : "Xác nhận khóa"}
                   </button>
@@ -1163,6 +1166,18 @@ export default function MyBookings() {
                               </span>
                             </div>
 
+                            {/* Payment Transaction ID */}
+                            {!isUnpaidCancelled && (
+                              <div className="flex justify-between items-center text-xs">
+                                <span className="text-slate-500">
+                                  {language === "en" ? "Payment ID:" : "Mã thanh toán:"}
+                                </span>
+                                <span className="font-sans font-bold text-[11px] text-slate-800 dark:text-slate-200">
+                                  {selectedBooking.paymentId || selectedBooking.payment_id || `PAY-${selectedBooking.id}`}
+                                </span>
+                              </div>
+                            )}
+
                             {/* Early Arrival Fee */}
                             {earlyFee > 0 && (
                               <div className="flex justify-between">
@@ -1225,8 +1240,9 @@ export default function MyBookings() {
                             ? (language === "en" ? "UNPAID & CANCELLED" : "CHƯA THANH TOÁN & ĐÃ HỦY")
                             : selectedBooking.status === "completed" ? "PARKING RECEIPT" : "BOOKING RECEIPT";
                           doc.text(headerTitle, 74, 14, { align: "center" });
+                          const currentPayId = selectedBooking.paymentId || selectedBooking.payment_id || (isUnpaidCancelled ? "UNPAID" : `PAY-${selectedBooking.id}`);
                           doc.setFont("helvetica", "normal"); doc.setFontSize(8);
-                          doc.text("BOOKING ID: " + selectedBooking.id, 74, 23, { align: "center" });
+                          doc.text(`BOOKING ID: ${selectedBooking.id}  |  PAYMENT ID: ${currentPayId}`, 74, 23, { align: "center" });
 
                           // Total Paid Amount display at the top of PDF
                           const isCompleted = selectedBooking.status === "completed";
@@ -1300,6 +1316,14 @@ export default function MyBookings() {
                           doc.text(reservationFee.toLocaleString() + " VND", 136, 135, { align: "right" });
 
                           let nextY = 141;
+                          if (!isUnpaidCancelled) {
+                            doc.text("Payment Transaction ID:", 12, nextY);
+                            doc.setFont("helvetica", "bold");
+                            doc.text(currentPayId, 136, nextY, { align: "right" });
+                            doc.setFont("helvetica", "normal");
+                            nextY += 6;
+                          }
+
                           if (earlyFee > 0) {
                             doc.text("Early arrival fee (Cash):", 12, nextY);
                             doc.text(earlyFee.toLocaleString() + " VND", 136, nextY, { align: "right" });
@@ -1414,7 +1438,7 @@ export default function MyBookings() {
                           </div>
                           <div className="flex justify-between gap-2">
                             <span className="text-slate-400">{language === "en" ? "Zone / Slot:" : "Khu vực / Vị trí:"}</span>
-                            <span className="font-bold text-blue-600 dark:text-blue-400 text-right">
+                            <span className="font-bold text-slate-800 dark:text-slate-200 text-right">
                               {selectedBooking.status === "active" || selectedBooking.status === "completed"
                                 ? `${selectedBooking.zoneName}${selectedBooking.floorNumber ? ` · Tầng ${selectedBooking.floorNumber}` : ""}`
                                 : (selectedBooking.slotName || (language === "en" ? "Assigned at Check-in" : "Chỉ định lúc Check-in"))}
@@ -1496,6 +1520,18 @@ export default function MyBookings() {
                                   </span>
                                   <span className="font-bold text-slate-700 dark:text-slate-300">{reservationFee.toLocaleString()}đ</span>
                                 </div>
+
+                                {/* Payment Transaction ID */}
+                                {!isUnpaidCancelled && (
+                                  <div className="flex justify-between items-center text-xs">
+                                    <span className="text-slate-400">
+                                      {language === "en" ? "Payment ID:" : "Mã thanh toán:"}
+                                    </span>
+                                    <span className="font-bold text-[11px] text-blue-600 dark:text-blue-400">
+                                      {selectedBooking.paymentId || selectedBooking.payment_id || `PAY-${selectedBooking.id}`}
+                                    </span>
+                                  </div>
+                                )}
 
                                 {/* Early Arrival Fee */}
                                 {earlyFee > 0 && (
@@ -1630,15 +1666,15 @@ export default function MyBookings() {
                     {selectedBooking.status === "active" && (
                       isCurrentlyLocked(selectedBooking) ? (
                         <button
-                          onClick={() => { closeModal(); setTimeout(() => openModal("unlockConfirm", selectedBooking), 100); }}
-                          className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-xl text-xs shadow-sm transition"
+                          onClick={() => setActiveModal("unlockConfirm")}
+                          className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-xl text-xs shadow-sm transition cursor-pointer"
                         >
                           <Unlock size={13} /> {language === "en" ? "Unlock Vehicle" : "Mở khóa xe"}
                         </button>
                       ) : (
                         <button
-                          onClick={() => { closeModal(); setTimeout(() => openModal("lockConfirm", selectedBooking), 100); }}
-                          className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-xl text-xs shadow-sm transition"
+                          onClick={() => setActiveModal("lockConfirm")}
+                          className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-xl text-xs shadow-sm transition cursor-pointer"
                         >
                           <Lock size={13} /> {language === "en" ? "Lock Vehicle" : "Khóa bảo vệ xe"}
                         </button>

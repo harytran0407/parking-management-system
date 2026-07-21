@@ -994,7 +994,7 @@ export default function BookSlot() {
                     setBookingError("");
                   }
                 }}
-                placeholder={language === "en" ? "e.g. 51F-12345" : "VD: 51F-12345"}
+                placeholder={language === "en" ? "e.g. 51F12345" : "VD: 51F12345"}
                 readOnly={isFormLocked}
                 className={`w-full rounded-lg px-4 py-3 text-sm font-bold tracking-widest focus:outline-none focus:ring-2 border ${isFormLocked
                   ? "bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed"
@@ -1005,6 +1005,12 @@ export default function BookSlot() {
                 maxLength={12}
                 required
               />
+              <p className="text-[11px] text-slate-500 dark:text-slate-300 mt-1.5 flex items-center gap-1 font-semibold leading-relaxed">
+                <Info size={12} className="text-blue-500 dark:text-blue-400 shrink-0" />
+                {language === "vi"
+                  ? "Nhập liền nhau, không cần nhập ký tự đặc biệt như (.) hoặc (-)."
+                  : "Enter without special characters like (.) or (-)."}
+              </p>
               {plateErrorMsg && (
                 <p className="text-[10px] text-red-500 font-bold mt-1">
                   {plateErrorMsg}
