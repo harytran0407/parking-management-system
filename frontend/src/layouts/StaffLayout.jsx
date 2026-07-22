@@ -13,75 +13,75 @@ import BookingReconciliationPage from '../pages/staff/BookingReconciliationPage'
 import { useLanguage } from '../hooks/useLanguage';
 
 export default function StaffLayout() {
-  const { language } = useLanguage();
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+    const { language } = useLanguage();
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
-  // 1. ĐÃ BỎ DASHBOARD KHỎI MENU ĐIỀU HƯỚNG
-  const navigationItems = [
-    {
-      path: "/staff/checkin",
-      label: language === 'en' ? "Check-In" : "Cho xe vào cổng",
-      icon: <LogIn size={20} />,
-    },
-    {
-      path: "/staff/checkout",
-      label: language === 'en' ? "Check-Out" : "Thanh toán xe ra",
-      icon: <LogOut size={20} />,
-    },
-    {
-      path: "/staff/history",
-      label: language === 'en' ? "Parking History" : "Lịch sử đỗ xe",
-      icon: <History size={20} />,
-    },
-    {
-      path: "/staff/incidents",
-      label: language === 'en' ? "Incident Handling" : "Xử lý sự cố",
-      icon: <AlertTriangle size={20} />,
-    },
-    {
-      path: "/staff/slots",
-      label: language === 'en' ? "Slot Management" : "Giám sát ô đỗ",
-      icon: <Map size={20} />,
-    },
-    {
-      path: "/staff/booking-reconciliation",
-      label: "Booking Record",
-      icon: <CalendarCheck size={20} />,
-    },
-  ];
+    // 1. ĐÃ BỎ DASHBOARD KHỎI MENU ĐIỀU HƯỚNG
+    const navigationItems = [
+        {
+            path: "/staff/checkin",
+            label: language === 'en' ? "Check-In" : "Cho xe vào cổng",
+            icon: <LogIn size={20} />,
+        },
+        {
+            path: "/staff/checkout",
+            label: language === 'en' ? "Check-Out" : "Thanh toán xe ra",
+            icon: <LogOut size={20} />,
+        },
+        {
+            path: "/staff/history",
+            label: language === 'en' ? "Parking History" : "Lịch sử đỗ xe",
+            icon: <History size={20} />,
+        },
+        {
+            path: "/staff/incidents",
+            label: language === 'en' ? "Incident Handling" : "Xử lý sự cố",
+            icon: <AlertTriangle size={20} />,
+        },
+        {
+            path: "/staff/slots",
+            label: language === 'en' ? "Slot Management" : "Giám sát ô đỗ",
+            icon: <Map size={20} />,
+        },
+        {
+            path: "/staff/booking-reconciliation",
+            label: "Booking Record",
+            icon: <CalendarCheck size={20} />,
+        },
+    ];
 
-  return (
-    <div className="main-container flex h-screen bg-gray-100">
-      <Sidebar
-        navigationItems={navigationItems}
-        isCollapsed={isSidebarCollapsed}
-        setIsCollapsed={setIsSidebarCollapsed}
-      />
+    return (
+        <div className="main-container flex h-screen bg-gray-100">
+            <Sidebar
+                navigationItems={navigationItems}
+                isCollapsed={isSidebarCollapsed}
+                setIsCollapsed={setIsSidebarCollapsed}
+            />
 
-      <div className="content-wrapper flex-1 flex flex-col overflow-hidden">
-        <Header
-          isSidebarCollapsed={isSidebarCollapsed}
-          setIsSidebarCollapsed={setIsSidebarCollapsed}
-        />
+            <div className="content-wrapper flex-1 flex flex-col overflow-hidden">
+                <Header
+                    isSidebarCollapsed={isSidebarCollapsed}
+                    setIsSidebarCollapsed={setIsSidebarCollapsed}
+                />
 
-        <main className="page-content flex-1 flex flex-col min-h-0 bg-gray-50 p-3 md:p-6 overflow-hidden">
-          <Routes>
-            {/* 2. ĐỔI ROUTE MẶC ĐỊNH: Tự động chuyển hướng sang trang Check-In khi vào /staff */}
-            <Route path="/" element={<Navigate to="/staff/checkin" replace />} />
+                <main className="page-content flex-1 flex flex-col min-h-0 bg-gray-50 p-3 md:p-6 overflow-hidden">
+                    <Routes>
+                        {/* 2. ĐỔI ROUTE MẶC ĐỊNH: Tự động chuyển hướng sang trang Check-In khi vào /staff */}
+                        <Route path="/" element={<Navigate to="/staff/checkin" replace />} />
 
-            <Route path="/checkin" element={<CheckInPage />} />
-            <Route path="/checkout" element={<CheckOutPage />} />
-            <Route path="/history" element={<HistoryPage />} />
-            <Route path="/incidents" element={<IncidentHandlingPage />} />
-            <Route path="/slots" element={<SlotGateManagementPage />} />
-            <Route path="/booking-reconciliation" element={<BookingReconciliationPage />} />
-            <Route path="profile" element={<Profile />} />
+                        <Route path="/checkin" element={<CheckInPage />} />
+                        <Route path="/checkout" element={<CheckOutPage />} />
+                        <Route path="/history" element={<HistoryPage />} />
+                        <Route path="/incidents" element={<IncidentHandlingPage />} />
+                        <Route path="/slots" element={<SlotGateManagementPage />} />
+                        <Route path="/booking-reconciliation" element={<BookingReconciliationPage />} />
+                        <Route path="profile" element={<Profile />} />
 
-            {/* NẾU ĐƯỜNG DẪN SAI: Tự động redirect về Check-In luôn thay vì Dashboard */}
-            <Route path="/*" element={<Navigate to="/staff/checkin" replace />} />
-          </Routes>
-        </main>
-      </div>
-    </div>
-  );
+                        {/* NẾU ĐƯỜNG DẪN SAI: Tự động redirect về Check-In luôn thay vì Dashboard */}
+                        <Route path="/*" element={<Navigate to="/staff/checkin" replace />} />
+                    </Routes>
+                </main>
+            </div>
+        </div>
+    );
 }

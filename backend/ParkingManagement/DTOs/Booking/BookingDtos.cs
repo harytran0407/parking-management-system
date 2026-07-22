@@ -187,6 +187,9 @@ public class BookingResponse
 
     [JsonPropertyName("payment_method")]
     public string? PaymentMethod { get; set; }
+
+    [JsonPropertyName("payment_id")]
+    public string? PaymentId { get; set; }
 }
 
 public class StaffBookingResponse
@@ -250,6 +253,12 @@ public class StaffBookingResponse
 
     [JsonPropertyName("actual_check_out")]
     public DateTime? ActualCheckOut { get; set; }
+
+    [JsonPropertyName("image_url_in")]
+    public string? ImageUrlIn { get; set; }
+
+    [JsonPropertyName("image_url_out")]
+    public string? ImageUrlOut { get; set; }
 }
 
 

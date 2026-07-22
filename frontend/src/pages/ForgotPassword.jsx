@@ -41,8 +41,8 @@ const t = {
     title: "eParking",
     subtitle: "Forgot Password Recovery",
     emailOrPhone: "Email or Phone Number",
-    emailOrPhonePlaceholder: "Enter registered email or phone",
-    enterEmailOrPhoneToast: "Please enter your email or phone number.",
+    emailOrPhonePlaceholder: "Enter registered email",
+    enterEmailOrPhoneToast: "Please enter your email.",
     sendRequestBtn: "Send OTP Code",
     processing: "Processing...",
     dispatchSuccessToast: "OTP code has been sent successfully!",
@@ -152,7 +152,7 @@ export default function ForgotPassword() {
       }
       setOtpArray(newOtpArray);
       setOtpCode(newOtpArray.join(""));
-      
+
       const targetIndex = Math.min(pastedData.length, 5);
       otpRefs.current[targetIndex]?.focus();
     }
@@ -295,7 +295,7 @@ export default function ForgotPassword() {
             <form onSubmit={handleVerifyOtp} className="space-y-4">
               <div className="text-center text-gray-600 text-sm mb-2 font-medium">
                 {t[language].enterOtpCode} <br />
-                <span className="text-blue-600 font-mono font-semibold">{inputValue}</span>
+                <span className="text-blue-600 font-sans font-semibold">{inputValue}</span>
               </div>
 
               <div className="flex justify-between gap-2 my-5" onPaste={handleOtpPaste}>
@@ -312,7 +312,7 @@ export default function ForgotPassword() {
                   />
                 ))}
               </div>
-              
+
               <button
                 type="submit"
                 className="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 px-4 rounded-lg transition duration-200 flex items-center justify-center">

@@ -14,7 +14,9 @@ import {
   CalendarCheck,
   ChevronLeft,
   ChevronRight,
-  ClipboardList
+  ClipboardList,
+  Camera,
+  Maximize2,
 } from "lucide-react";
 import { useLanguage } from "../../hooks/useLanguage";
 
@@ -162,6 +164,28 @@ const calculateDuration = (arrival, departure, language = "vi") => {
   }
 };
 
+const getBackendRootUrl = () => {
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+  return baseUrl.replace("/api/v1", "");
+};
+
+const getFullImageUrl = (url) => {
+  if (!url) return "";
+  let cleanUrl = url.replace(/\\/g, "/");
+  if (cleanUrl.startsWith("data:") || cleanUrl.startsWith("http:") || cleanUrl.startsWith("https:")) {
+    return cleanUrl;
+  }
+  const uploadsIndex = cleanUrl.indexOf("uploads/");
+  if (uploadsIndex !== -1) {
+    cleanUrl = "/" + cleanUrl.substring(uploadsIndex);
+  }
+  const backendUrl = getBackendRootUrl();
+  if (cleanUrl.startsWith("/")) {
+    return `${backendUrl}${cleanUrl}`;
+  }
+  return `${backendUrl}/${cleanUrl}`;
+};
+
 export default function BookingReconciliationPage() {
   const { language } = useLanguage();
   const [bookings, setBookings] = useState([]);
@@ -172,6 +196,7 @@ export default function BookingReconciliationPage() {
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("pending"); // "pending", "active", "completed"
+  const [lightboxImage, setLightboxImage] = useState(null);
 
   const PAGE_SIZE = 10;
 
@@ -284,108 +309,89 @@ export default function BookingReconciliationPage() {
   return (
     <div className="w-full text-slate-900 dark:text-slate-100 h-full flex flex-col gap-5 overflow-hidden font-sans">
 
-      {/* HEADER SECTION */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-4 rounded-md border border-slate-200 dark:border-slate-800 shadow-sm shrink-0">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <ClipboardList className="text-blue-500" size={24} />
-            {t[language].title}
-          </h1>
-
-        </div>
-        <button
-          onClick={fetchBookings}
-          disabled={isLoading}
-          className="flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg transition-all disabled:opacity-50 shrink-0"
-        >
-          <RefreshCw size={14} className={isLoading ? "animate-spin" : ""} />
-          {t[language].btnRefresh}
-        </button>
-      </div>
-
       {/* TABS SELECTOR & SEARCH BAR */}
       <div className="flex flex-col gap-3 bg-white dark:bg-slate-900 p-3 rounded-md border border-slate-200 dark:border-slate-800 shadow-sm shrink-0">
 
-        {/* Toggle Switcher with sliding active line effect */}
-        <div className="relative border-b border-slate-200 dark:border-slate-800">
-          <div className="flex">
-            <button
-              onClick={() => setActiveTab("pending")}
-              className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${activeTab === "pending"
-                ? "text-blue-655 dark:text-blue-400 font-extrabold"
-                : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-                }`}
-            >
-              {t[language].tabPending}
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${activeTab === "pending"
-                ? "bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400"
-                : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
-                }`}>
-                {pendingCount}
-              </span>
-            </button>
+        {/* Toggle Switcher */}
+        <div className="flex border-b border-slate-200 dark:border-slate-800 overflow-x-auto gap-2 md:gap-6 no-scrollbar pb-px w-full shrink-0">
+          <button
+            onClick={() => setActiveTab("pending")}
+            className={`py-3 px-1 border-b-2 font-bold text-xs sm:text-sm transition-all focus:outline-none whitespace-nowrap flex items-center gap-2 ${activeTab === "pending"
+              ? "border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400"
+              : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+              }`}
+          >
+            {t[language].tabPending}
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${activeTab === "pending"
+              ? "bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400"
+              : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
+              }`}>
+              {pendingCount}
+            </span>
+          </button>
 
-            <button
-              onClick={() => setActiveTab("active")}
-              className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${activeTab === "active"
-                ? "text-blue-655 dark:text-blue-400 font-extrabold"
-                : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-                }`}
-            >
-              {t[language].tabActive}
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${activeTab === "active"
-                ? "bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400"
-                : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
-                }`}>
-                {activeCount}
-              </span>
-            </button>
+          <button
+            onClick={() => setActiveTab("active")}
+            className={`py-3 px-1 border-b-2 font-bold text-xs sm:text-sm transition-all focus:outline-none whitespace-nowrap flex items-center gap-2 ${activeTab === "active"
+              ? "border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400"
+              : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+              }`}
+          >
+            {t[language].tabActive}
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${activeTab === "active"
+              ? "bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400"
+              : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
+              }`}>
+              {activeCount}
+            </span>
+          </button>
 
-            <button
-              onClick={() => setActiveTab("completed")}
-              className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${activeTab === "completed"
-                ? "text-blue-655 dark:text-blue-400 font-extrabold"
-                : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-                }`}
-            >
-              {t[language].tabCompleted}
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${activeTab === "completed"
-                ? "bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400"
-                : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
-                }`}>
-                {completedCount}
-              </span>
-            </button>
-          </div>
-
-          {/* Sliding Blue Underline Indicator */}
-          <div
-            className="absolute bottom-0 h-0.5 bg-blue-500 transition-all duration-300 ease-in-out"
-            style={{
-              width: "33.333%",
-              left: activeTab === "pending" ? "0%" : activeTab === "active" ? "33.333%" : "66.666%"
-            }}
-          />
+          <button
+            onClick={() => setActiveTab("completed")}
+            className={`py-3 px-1 border-b-2 font-bold text-xs sm:text-sm transition-all focus:outline-none whitespace-nowrap flex items-center gap-2 ${activeTab === "completed"
+              ? "border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400"
+              : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+              }`}
+          >
+            {t[language].tabCompleted}
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${activeTab === "completed"
+              ? "bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400"
+              : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-405"
+              }`}>
+              {completedCount}
+            </span>
+          </button>
         </div>
 
-        {/* Search Bar Input */}
-        <div className="relative flex items-center">
-          <Search size={16} className="absolute left-3 text-slate-400" />
-          <input
-            type="text"
-            placeholder={t[language].placeholderSearch}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white rounded-lg outline-none pl-10 pr-3 focus:bg-white dark:focus:bg-slate-900 transition-all placeholder:text-slate-450 dark:placeholder:text-slate-500"
-          />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery("")}
-              className="absolute right-3 text-slate-400 hover:text-slate-650 dark:hover:text-slate-200"
-            >
-              <X size={16} />
-            </button>
-          )}
+        {/* Search Bar & Refresh Button Input */}
+        <div className="flex gap-2 items-center w-full">
+          <div className="relative flex-1">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              placeholder={t[language].placeholderSearch}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white rounded-lg outline-none pl-10 pr-10 focus:bg-white dark:focus:bg-slate-900 transition-all placeholder:text-slate-450 dark:placeholder:text-slate-500"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-655 dark:hover:text-slate-200 animate-fadeIn"
+              >
+                <X size={16} />
+              </button>
+            )}
+          </div>
+
+          <button
+            onClick={fetchBookings}
+            disabled={isLoading}
+            className="flex items-center justify-center gap-1.5 px-4 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg transition-all disabled:opacity-50 shrink-0 shadow-sm"
+          >
+            <RefreshCw size={14} className={isLoading ? "animate-spin" : ""} />
+            {t[language].btnRefresh}
+          </button>
         </div>
       </div>
 
@@ -633,7 +639,7 @@ export default function BookingReconciliationPage() {
                     <div className="flex flex-col gap-2.5 font-semibold text-slate-800 dark:text-slate-200">
                       <div className="flex justify-between items-center gap-2">
                         <span className="text-slate-450 dark:text-slate-500 font-normal">{t[language].colPlate}:</span>
-                        <span className="font-bold text-slate-450 dark:text-slate-500 tracking-widest text-sm">
+                        <span className="font-bold text-slate-900 dark:text-white tracking-widest text-sm font-sans">
                           {selectedBooking.license_plate}
                         </span>
                       </div>
@@ -651,6 +657,60 @@ export default function BookingReconciliationPage() {
                       )}
                     </div>
                   </div>
+
+                  {/* Group: Entry & Exit Images */}
+                  {(selectedBooking.image_url_in || selectedBooking.image_url_out) && (
+                    <div className="border border-slate-100 dark:border-slate-800/80 rounded-lg p-4 bg-slate-50/50 dark:bg-slate-850/10">
+                      <h4 className="font-bold text-xs uppercase tracking-wider text-blue-500 mb-3 flex items-center gap-1.5 border-b border-slate-100 dark:border-slate-800/50 pb-2">
+                        <Camera size={14} />
+                        {language === "vi" ? "Hình ảnh xe vào/ra" : "Entry & Exit Images"}
+                      </h4>
+                      <div className="grid grid-cols-2 gap-3">
+                        {selectedBooking.image_url_in && (
+                          <div className="flex flex-col overflow-hidden relative group">
+                            <span className="text-[10px] text-slate-450 dark:text-slate-500 font-bold uppercase mb-1">
+                              {language === "vi" ? "Ảnh lúc vào" : "Check-in"}
+                            </span>
+                            <div
+                              className="w-full h-24 overflow-hidden rounded-md cursor-zoom-in relative bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800"
+                              onClick={() => setLightboxImage(getFullImageUrl(selectedBooking.image_url_in))}
+                            >
+                              <img
+                                src={getFullImageUrl(selectedBooking.image_url_in)}
+                                alt="Check-in"
+                                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                onError={(e) => { e.target.onerror = null; e.target.src = "https://placehold.co/600x400/0f172a/64748b?text=No+Checkin+Image"; }}
+                              />
+                              <div className="absolute bottom-1 right-1 bg-white/90 dark:bg-slate-900/90 rounded p-0.5 text-slate-700 dark:text-slate-250 opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-xs border border-slate-200 dark:border-slate-700">
+                                <Maximize2 size={8} />
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        {selectedBooking.image_url_out && (
+                          <div className="flex flex-col overflow-hidden relative group">
+                            <span className="text-[10px] text-slate-450 dark:text-slate-500 font-bold uppercase mb-1">
+                              {language === "vi" ? "Ảnh lúc ra" : "Check-out"}
+                            </span>
+                            <div
+                              className="w-full h-24 overflow-hidden rounded-md cursor-zoom-in relative bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800"
+                              onClick={() => setLightboxImage(getFullImageUrl(selectedBooking.image_url_out))}
+                            >
+                              <img
+                                src={getFullImageUrl(selectedBooking.image_url_out)}
+                                alt="Check-out"
+                                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                onError={(e) => { e.target.onerror = null; e.target.src = "https://placehold.co/600x400/0f172a/64748b?text=No+Checkout+Image"; }}
+                              />
+                              <div className="absolute bottom-1 right-1 bg-white/90 dark:bg-slate-900/90 rounded p-0.5 text-slate-700 dark:text-slate-250 opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-xs border border-slate-200 dark:border-slate-700">
+                                <Maximize2 size={8} />
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Column 2: Trip & Parking Details */}
@@ -681,7 +741,7 @@ export default function BookingReconciliationPage() {
                       </div>
                       <div className="flex justify-between items-center gap-2">
                         <span className="text-slate-450 dark:text-slate-500 font-normal">{t[language].colDuration}:</span>
-                        <span className="font-extrabold text-slate-900 dark:text-white">
+                        <span className="font-extrabold text-slate-900 dark:text-white font-sans">
                           {calculateDuration(selectedBooking.expected_arrival, selectedBooking.expired_at, language)}
                         </span>
                       </div>
@@ -752,6 +812,12 @@ export default function BookingReconciliationPage() {
                             </span>
                           </div>
                         )}
+                        <div className="flex justify-between items-center gap-2">
+                          <span className="text-slate-450 dark:text-slate-500 font-normal">{t[language].colDuration}:</span>
+                          <span className="font-extrabold text-slate-900 dark:text-white font-sans">
+                            {calculateDuration(selectedBooking.actual_check_in, selectedBooking.actual_check_out || new Date(), language)}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -770,6 +836,24 @@ export default function BookingReconciliationPage() {
               </button>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* Lightbox */}
+      {lightboxImage && (
+        <div
+          className="fixed inset-0 bg-slate-955/80 dark:bg-slate-955/90 backdrop-blur-md z-[100] flex flex-col items-center justify-center p-4 cursor-zoom-out animate-fadeIn"
+          onClick={() => setLightboxImage(null)}
+        >
+          <div className="absolute top-5 right-5 text-slate-500 hover:text-slate-200 dark:text-slate-400 dark:hover:text-white bg-white/10 dark:bg-slate-900/60 p-2 rounded-full border border-slate-300 dark:border-slate-800 transition-colors">
+            <X size={20} />
+          </div>
+          <div
+            className="relative w-full max-w-[95vw] md:max-w-6xl max-h-[92vh] rounded-md overflow-hidden border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl scale-up"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img src={lightboxImage} alt="Full evidence" className="w-full h-auto max-h-[85vh] md:max-h-[88vh] object-contain" />
           </div>
         </div>
       )}

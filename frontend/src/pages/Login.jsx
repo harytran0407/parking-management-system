@@ -243,7 +243,7 @@ export default function Login() {
               {RECAPTCHA_SITE_KEY ? (
                 <ReCAPTCHA ref={recaptchaRef} sitekey={RECAPTCHA_SITE_KEY} onChange={handleCaptchaSuccess} theme="light" />
               ) : (
-                <p className="text-xs text-red-500 font-mono p-2">[SYSTEM ERROR]: Missing VITE_RECAPTCHA_SITE_KEY in .env!</p>
+                <p className="text-xs text-red-500 font-sans p-2">[SYSTEM ERROR]: Missing VITE_RECAPTCHA_SITE_KEY in .env!</p>
               )}
             </div>
 

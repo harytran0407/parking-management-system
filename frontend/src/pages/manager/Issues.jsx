@@ -61,33 +61,35 @@ function FeedbacksSection({ language }) {
   return (
     <div className="flex flex-col h-full space-y-4">
       {/* Toolbar */}
-      <div className="card p-4">
-        <form onSubmit={(e) => { e.preventDefault(); fetchFeedbacks(1) }} className="flex flex-col md:flex-row gap-4 items-center justify-between">
-          <div className="relative w-full md:max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-            <input
-              type="text"
-              placeholder={language === 'en' ? 'Search by keyword, name...' : 'Tìm theo từ khóa, tên...'}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="input-field pl-10 text-xs w-full py-2 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 rounded-xl"
-            />
-          </div>
-          <div className="flex w-full md:w-auto gap-4 items-center">
-            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="input-field w-full md:w-48">
-              <option value="">{language === 'en' ? 'All Statuses' : 'Tất cả trạng thái'}</option>
-              <option value="OPEN">{language === 'en' ? 'Open' : 'Chờ xử lý'}</option>
-              <option value="RESOLVED">{language === 'en' ? 'Resolved' : 'Đã giải quyết'}</option>
-            </select>
-            <button
-              type="button"
-              onClick={() => fetchFeedbacks(1)}
-              className="p-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg transition-colors border border-slate-200 dark:border-slate-700"
-            >
-              <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
-            </button>
-          </div>
-        </form>
+      <div className="flex flex-col sm:flex-row gap-3 items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800/60 w-full shrink-0">
+        <div className="relative w-full sm:max-w-xs">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+          <input
+            type="text"
+            placeholder={language === 'en' ? 'Search by keyword, name...' : 'Tìm theo từ khóa, tên...'}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-8 pr-3 py-1.5 text-xs bg-white dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:bg-white dark:focus:bg-slate-900 transition-all font-semibold"
+          />
+        </div>
+        <div className="flex w-full sm:w-auto gap-2 items-center justify-end shrink-0">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-2.5 py-1.5 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-850 text-xs font-semibold text-slate-905 dark:text-white rounded-lg outline-none cursor-pointer"
+          >
+            <option value="">{language === 'en' ? 'All Statuses' : 'Tất cả trạng thái'}</option>
+            <option value="OPEN">{language === 'en' ? 'Open' : 'Chờ xử lý'}</option>
+            <option value="RESOLVED">{language === 'en' ? 'Resolved' : 'Đã giải quyết'}</option>
+          </select>
+          <button
+            type="button"
+            onClick={() => fetchFeedbacks(1)}
+            className="p-1.5 bg-slate-105 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg transition-colors border border-slate-200 dark:border-slate-700"
+          >
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+          </button>
+        </div>
       </div>
 
       {/* List */}
@@ -110,11 +112,11 @@ function FeedbacksSection({ language }) {
           filteredFeedbacks.map((fb) => (
             <div
               key={fb.feedback_id}
-              className={`card border-l-4 transition-all duration-200 hover:shadow-md ${fb.status === 'RESOLVED' || fb.status === 'CLOSED'
+              className={`bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800 p-4 shadow-xs border-l-4 transition-all duration-200 hover:shadow-sm ${fb.status === 'RESOLVED' || fb.status === 'CLOSED'
                 ? 'border-l-emerald-500 dark:border-l-emerald-600'
                 : 'border-l-amber-500 dark:border-l-amber-600'}`}
             >
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-3">
                 <div className="flex items-center gap-3">
                   <span className={`badge ${fb.status === 'RESOLVED' || fb.status === 'CLOSED' ? 'badge-success' : 'badge-warning'}`}>
                     {fb.status === 'RESOLVED' ? (language === 'en' ? 'RESOLVED' : 'ĐÃ GIẢI QUYẾT')
@@ -335,51 +337,46 @@ function ViolationsSection({ language }) {
     })
 
   const tabs = [
-    { id: 'LOST_TICKET', labelVi: 'Mất vé / thẻ', labelEn: 'Lost Tickets', icon: Ticket },
-    { id: 'WRONG_SLOT', labelVi: 'Sai lệch biển số', labelEn: 'Plate Mismatches', icon: ShieldAlert },
-    { id: 'OVERTIME', labelVi: 'Đỗ xe quá 24 giờ', labelEn: 'Overtime Parking', icon: Clock },
+    { id: 'LOST_TICKET', labelVi: 'Mất vé / thẻ', labelEn: 'Lost Tickets' },
+    { id: 'WRONG_SLOT', labelVi: 'Sai lệch biển số', labelEn: 'Plate Mismatches' },
+    { id: 'OVERTIME', labelVi: 'Đỗ xe quá 24 giờ', labelEn: 'Overtime Parking' },
   ]
 
   return (
     <div className="flex flex-col h-full space-y-4">
-      {/* Sub-tabs */}
-      <div className="flex flex-wrap gap-2 border-b border-slate-200 dark:border-slate-800 pb-1">
-        {tabs.map(tab => {
-          const Icon = tab.icon
-          const isActive = activeTab === tab.id
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wide transition-all duration-150 ${isActive
-                ? 'bg-slate-700 dark:bg-slate-600 text-white shadow-sm shadow-slate-500/10'
-                : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                }`}
-            >
-              <Icon size={12} />
-              {language === 'en' ? tab.labelEn : tab.labelVi}
-            </button>
-          )
-        })}
-      </div>
+      {/* Sub-tabs & Search Toolbar Row */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-2 w-full shrink-0">
+        <div className="flex overflow-x-auto gap-2 md:gap-6 no-scrollbar">
+          {tabs.map(tab => {
+            const isActive = activeTab === tab.id
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`py-2 px-1 border-b-2 font-bold text-xs transition-all focus:outline-none whitespace-nowrap flex items-center gap-2 ${isActive
+                  ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400'
+                  : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+                  }`}
+              >
+                {language === 'en' ? tab.labelEn : tab.labelVi}
+              </button>
+            )
+          })}
+        </div>
 
-      {/* Search */}
-      <div className="bg-white dark:bg-slate-900 p-4 border border-slate-200/85 dark:border-slate-800 rounded-2xl shadow-xs">
-        <form onSubmit={(e) => { e.preventDefault(); setPage(1); fetchIncidents() }} className="flex gap-3 max-w-md">
-          <div className="relative flex-1">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-            <input
-              type="text"
-              placeholder={activeTab === 'OVERTIME'
-                ? (language === 'en' ? 'Search license plate...' : 'Tìm biển số xe...')
-                : (language === 'en' ? 'Search keyword, reporter...' : 'Tìm từ khóa, người báo...')}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="input-field pl-10 text-xs w-full py-2 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 rounded-xl"
-            />
-          </div>
-
-        </form>
+        {/* Compact Search box */}
+        <div className="relative w-full sm:max-w-xs shrink-0">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+          <input
+            type="text"
+            placeholder={activeTab === 'OVERTIME'
+              ? (language === 'en' ? 'Search plate...' : 'Tìm biển số...')
+              : (language === 'en' ? 'Search keyword...' : 'Tìm từ khóa...')}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-8 pr-3 py-1.5 text-xs bg-white dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:bg-white dark:focus:bg-slate-900 transition-all font-semibold"
+          />
+        </div>
       </div>
 
       {/* Content */}
@@ -400,7 +397,7 @@ function ViolationsSection({ language }) {
           <div className="grid grid-cols-1 gap-4">
             {activeTab === 'OVERTIME' ? (
               // Table layout matching staff HistoryPage over3days tab
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-x-auto shadow-sm">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
                     <tr className="text-slate-500 dark:text-slate-400 uppercase font-bold text-[10px] tracking-wider border-b border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/40">
@@ -433,56 +430,55 @@ function ViolationsSection({ language }) {
                 </table>
               </div>
             ) : (
-              displayList.map(log => (
-                <div key={log.log_id} className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col gap-4 transition hover:shadow-md">
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-3 border-b border-slate-100 dark:border-slate-800/80">
-                    <div className="flex items-center gap-2">
-                      <span className="px-2.5 py-1 bg-emerald-50 text-emerald-600 dark:bg-emerald-950/20 dark:text-emerald-450 text-[10px] font-black uppercase tracking-wider rounded-lg border border-emerald-100 dark:border-emerald-900/40">
-                        {log.status}
-                      </span>
-                      <span className="text-xs font-bold text-slate-400 font-sans">Log #{log.log_id}</span>
-                    </div>
-                    <span className="text-xs text-slate-400 font-sans font-semibold">{new Date(log.report_time).toLocaleString()}</span>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="md:col-span-2 space-y-4">
-                      <div>
-                        <span className="block text-[10px] text-slate-400 uppercase font-black tracking-wider mb-1">{language === 'en' ? 'Issue description' : 'Mô tả sự cố'}</span>
-                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-250 leading-relaxed bg-slate-50 dark:bg-slate-850/40 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
-                          {log.description}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="space-y-3 bg-slate-50/50 dark:bg-slate-955/30 p-4 rounded-xl border border-slate-100 dark:border-slate-800 text-xs flex flex-col justify-between">
-                      <div className="space-y-3">
-                        <div>
-                          <span className="block text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-0.5">{language === 'en' ? 'Reported by' : 'Nhân viên báo cáo'}</span>
-                          <span className="font-black text-slate-700 dark:text-slate-300">{log.reporter_name}</span>
-                        </div>
-                        <div>
-                          <span className="block text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-0.5">{language === 'en' ? 'Session ID' : 'Mã phiên đỗ'}</span>
-                          <span className="font-sans text-slate-500 dark:text-slate-400">{log.session_id}</span>
-                        </div>
-                        {log.customer_phone && (
-                          <div>
-                            <span className="block text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-0.5">{language === 'en' ? 'Contact' : 'SĐT liên hệ'}</span>
-                            <span className="font-sans font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
-                              <Phone size={11} className="text-emerald-500" />{log.customer_phone}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                      <button
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-x-auto shadow-sm">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="text-slate-500 dark:text-slate-400 uppercase font-bold text-[10px] tracking-wider border-b border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/40">
+                      <th className="py-2.5 pl-4 font-semibold w-16">ID</th>
+                      <th className="py-2.5 font-semibold">{language === 'en' ? 'Session ID' : 'Mã phiên'}</th>
+                      <th className="py-2.5 font-semibold">{language === 'en' ? 'Reported By' : 'Nhân viên'}</th>
+                      <th className="py-2.5 font-semibold">{language === 'en' ? 'Report Time' : 'Thời gian báo'}</th>
+                      <th className="py-2.5 font-semibold">{language === 'en' ? 'Description' : 'Mô tả'}</th>
+                      <th className="py-2.5 font-semibold text-center w-24">Status</th>
+                      <th className="py-2.5 pr-4 text-right w-24">{language === 'en' ? 'Action' : 'Hành động'}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-semibold text-slate-700 dark:text-slate-300">
+                    {displayList.map(log => (
+                      <tr 
+                        key={log.log_id} 
+                        className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors cursor-pointer"
                         onClick={() => setSelectedLog(log)}
-                        className="w-full mt-4 flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition"
                       >
-                        <Eye size={14} />
-                        {language === 'en' ? 'View Details' : 'Xem chi tiết'}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))
+                        <td className="py-2.5 pl-4 text-slate-400 font-sans">#{log.log_id}</td>
+                        <td className="py-2.5 font-sans font-bold text-slate-800 dark:text-slate-205 max-w-[120px] truncate" title={log.session_id}>
+                          {log.session_id}
+                        </td>
+                        <td className="py-2.5 text-slate-800 dark:text-slate-300">{log.reporter_name}</td>
+                        <td className="py-2.5 text-slate-500 font-normal">{new Date(log.report_time).toLocaleString()}</td>
+                        <td className="py-2.5 text-slate-500 font-normal max-w-xs truncate" title={log.description}>{log.description}</td>
+                        <td className="py-2.5 text-center">
+                          <span className="inline-block px-2 py-0.5 bg-emerald-50 text-emerald-600 dark:bg-emerald-950/20 dark:text-emerald-455 text-[9px] font-black uppercase tracking-wider rounded border border-emerald-100 dark:border-emerald-900/40">
+                            {log.status}
+                          </span>
+                        </td>
+                        <td className="py-2.5 pr-4 text-right">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedLog(log);
+                            }}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 hover:bg-blue-100 dark:bg-blue-955/40 dark:hover:bg-blue-900 text-blue-600 dark:text-blue-400 text-[10px] font-bold rounded-lg border border-blue-100 dark:border-blue-900/30 transition-all cursor-pointer"
+                          >
+                            <Eye size={11} />
+                            <span>{language === 'en' ? 'Details' : 'Chi tiết'}</span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         )}
@@ -520,110 +516,114 @@ function ViolationsSection({ language }) {
             </div>
 
             <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
-              <div className="bg-slate-50 dark:bg-slate-950/40 border border-slate-100 dark:border-slate-800/60 p-4 rounded-2xl space-y-3">
-                <div className="flex justify-between text-xs">
-                  <span className="text-slate-400">{language === 'en' ? 'Issue Type' : 'Loại sự cố'}</span>
-                  <span className="font-bold text-slate-700 dark:text-slate-300">
-                    {selectedLog.issue_type === 'LOST_TICKET'
-                      ? (language === 'en' ? 'Lost Ticket' : 'Mất thẻ / vé')
-                      : (language === 'en' ? 'Plate Mismatch' : 'Sai lệch biển số')}
-                  </span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-slate-400">{language === 'en' ? 'Report Time' : 'Thời gian báo cáo'}</span>
-                  <span className="font-bold text-slate-700 dark:text-slate-300">{new Date(selectedLog.report_time).toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-slate-400">{language === 'en' ? 'Reported By' : 'Nhân viên báo cáo'}</span>
-                  <span className="font-bold text-slate-700 dark:text-slate-300">{selectedLog.reporter_name}</span>
-                </div>
-                <div className="border-t border-slate-200/60 dark:border-slate-800/60 pt-3">
-                  <span className="block text-[10px] text-slate-400 uppercase font-black tracking-wider mb-1">
-                    {language === 'en' ? 'Action / Description' : 'Hành động / Mô tả sự cố'}
-                  </span>
-                  <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 leading-relaxed bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
-                    {selectedLog.description}
-                  </p>
-                </div>
-              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {/* Left Column: Details Info */}
+                <div className="space-y-3">
+                  <div className="bg-slate-50/60 dark:bg-slate-950 p-4 rounded-xl border border-slate-100 dark:border-slate-800 text-xs font-semibold space-y-2.5">
+                    {/* Issue Type */}
+                    <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800/60 pb-1.5">
+                      <span className="text-slate-400">{language === 'en' ? 'Issue Type' : 'Loại sự cố'}</span>
+                      <span className="text-slate-900 dark:text-white font-black text-xs">
+                        {selectedLog.issue_type === 'LOST_TICKET'
+                          ? (language === 'en' ? 'Lost Ticket' : 'Mất thẻ / vé')
+                          : (language === 'en' ? 'Plate Mismatch' : 'Sai lệch biển số')}
+                      </span>
+                    </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* License Plate Comparison */}
-                <div className="bg-slate-50 dark:bg-slate-950/40 border border-slate-100 dark:border-slate-800/60 p-4 rounded-2xl space-y-3">
-                  <h4 className="text-xs font-black uppercase text-slate-400 tracking-wider">{language === 'en' ? 'License Plates' : 'Đối chiếu biển số'}</h4>
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-slate-500">
+                    {/* Report Time */}
+                    <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800/60 pb-1.5">
+                      <span className="text-slate-400">{language === 'en' ? 'Report Time' : 'Thời gian báo'}</span>
+                      <span className="text-slate-900 dark:text-white font-bold text-xs">
+                        {new Date(selectedLog.report_time).toLocaleString()}
+                      </span>
+                    </div>
+
+                    {/* Reported By */}
+                    <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800/60 pb-1.5">
+                      <span className="text-slate-400">{language === 'en' ? 'Reported By' : 'Nhân viên báo cáo'}</span>
+                      <span className="text-slate-900 dark:text-white font-bold text-xs">{selectedLog.reporter_name}</span>
+                    </div>
+
+                    {/* Session ID */}
+                    <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800/60 pb-1.5">
+                      <span className="text-slate-400">{language === 'en' ? 'Session ID' : 'Phiên đỗ'}</span>
+                      <span className="text-slate-500 font-mono text-[11px] truncate max-w-[120px]" title={selectedLog.session_id}>{selectedLog.session_id}</span>
+                    </div>
+
+                    {/* Status */}
+                    <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800/60 pb-1.5">
+                      <span className="text-slate-400">Status</span>
+                      <span className="text-[10px] px-2 py-0.5 bg-emerald-50 text-emerald-600 dark:bg-emerald-950/20 dark:text-emerald-450 font-black uppercase tracking-wider rounded border border-emerald-100 dark:border-emerald-900/40">
+                        {selectedLog.status}
+                      </span>
+                    </div>
+
+                    {/* Plates comparison */}
+                    <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800/60 pb-1.5">
+                      <span className="text-slate-400">
                         {selectedLog.issue_type === 'WRONG_SLOT'
                           ? (language === 'en' ? 'Correct Plate' : 'Biển số đúng')
-                          : (language === 'en' ? 'Check-in Plate' : 'Biển số lúc vào')}
+                          : (language === 'en' ? 'Plate In' : 'Biển lúc vào')}
                       </span>
-                      <span className="font-sans font-bold text-slate-800 dark:text-white px-2 py-0.5">{selectedLog.license_plate_in || ''}</span>
-                    </div>
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-slate-500">
-                        {selectedLog.issue_type === 'WRONG_SLOT'
-                          ? (language === 'en' ? 'Incorrect Plate' : 'Biển số sai')
-                          : (language === 'en' ? 'Check-out Plate' : 'Biển số lúc ra')}
-                      </span>
-                      <span className={`font-sans font-bold px-2 py-0.5 rounded ${selectedLog.issue_type === 'WRONG_SLOT' && selectedLog.license_plate_in !== selectedLog.license_plate_out
-                        ? 'text-slate-800 dark:text-white'
-                        : 'text-slate-800 dark:text-white '
-                        }`}>{selectedLog.license_plate_out || ''}</span>
+                      <span className="font-sans font-extrabold text-slate-800 dark:text-white text-xs">{selectedLog.license_plate_in || '—'}</span>
                     </div>
 
+                    <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800/60 pb-1.5">
+                      <span className="text-slate-400">
+                        {selectedLog.issue_type === 'WRONG_SLOT'
+                          ? (language === 'en' ? 'Incorrect Plate' : 'Biển số sai')
+                          : (language === 'en' ? 'Plate Out' : 'Biển lúc ra')}
+                      </span>
+                      <span className="font-sans font-extrabold text-slate-800 dark:text-white text-xs">{selectedLog.license_plate_out || '—'}</span>
+                    </div>
+                  </div>
+
+                  {/* Action/Description Box */}
+                  <div className="bg-slate-50/60 dark:bg-slate-950/20 p-3 rounded-xl border border-slate-100 dark:border-slate-850 text-xs">
+                    <span className="block text-[10px] text-slate-400 uppercase font-black tracking-wider mb-1">
+                      {language === 'en' ? 'Action / Description' : 'Hành động / Mô tả'}
+                    </span>
+                    <p className="font-semibold text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
+                      {selectedLog.description}
+                    </p>
                   </div>
                 </div>
 
-                {/* Fee — only shown for LOST_TICKET */}
-                {selectedLog.issue_type === 'LOST_TICKET' && (
-                  <div className="bg-slate-50 dark:bg-slate-950/40 border border-slate-100 dark:border-slate-800/60 p-4 rounded-2xl space-y-3">
-                    <h4 className="text-xs font-black uppercase text-slate-400 tracking-wider">{language === 'en' ? 'Violation Fee' : 'Phí xử lý vi phạm'}</h4>
-                    <div className="flex justify-between text-xs">
-                      <span>{language === 'en' ? 'Total Fee Paid' : 'Tổng phí đã thu'}</span>
-                      <span className="font-black text-rose-600 dark:text-rose-450 text-sm">
-                        {selectedLog.total_fee !== null ? formatVnd(selectedLog.total_fee) : ''}
-                      </span>
+                {/* Right Column: Evidence Images */}
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider block">{language === 'en' ? 'Check-in Image' : 'Ảnh check-in'}</span>
+                    <div
+                      className="bg-slate-100 dark:bg-slate-950 flex items-center justify-center border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-sm dark:shadow-md relative group cursor-zoom-in rounded-lg transition-colors duration-200 h-auto"
+                      onClick={() => selectedLog.image_url_in && setLightboxImage(getImageUrl(selectedLog.image_url_in))}
+                      title={language === 'en' ? 'Click to zoom check-in image' : 'Click để phóng to ảnh vào'}
+                    >
+                      <img
+                        src={selectedLog.image_url_in ? getImageUrl(selectedLog.image_url_in) : 'https://placehold.co/600x400/0f172a/64748b?text=No+Checkin+Image'}
+                        alt="Check-in"
+                        className="w-full h-auto max-h-[120px] object-contain transition-transform duration-300 group-hover:scale-105 opacity-90 dark:opacity-80"
+                      />
+                      <div className="absolute bottom-2 right-2 bg-white/95 dark:bg-slate-900/90 rounded p-1 text-slate-750 dark:text-slate-200 opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm border border-slate-200 dark:border-slate-700">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
+                      </div>
                     </div>
                   </div>
-                )}
-              </div>
 
-              <div className="space-y-3">
-                <h4 className="text-xs font-black uppercase text-slate-400 tracking-wider">
-                  {language === 'en' ? 'Evidence Images' : 'Hình ảnh minh chứng / đối chiếu'}
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div
-                    className="bg-slate-100 dark:bg-slate-950 flex items-center justify-center border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm dark:shadow-md relative group cursor-zoom-in rounded-md transition-colors duration-200 h-auto"
-                    onClick={() => selectedLog.image_url_in && setLightboxImage(getImageUrl(selectedLog.image_url_in))}
-                    title={language === 'en' ? 'Click to zoom check-in image' : 'Click để phóng to ảnh vào'}
-                  >
-                    <img
-                      src={selectedLog.image_url_in ? getImageUrl(selectedLog.image_url_in) : 'https://placehold.co/600x400/0f172a/64748b?text=No+Checkin+Image'}
-                      alt="Check-in"
-                      className="w-full h-auto max-h-[130px] object-contain transition-transform duration-300 group-hover:scale-105 opacity-90 dark:opacity-80"
-                      style={{ imageRendering: 'pixelated' }}
-                    />
-                    <div className="absolute top-1.5 left-1.5 bg-black/60 text-white text-[9px] px-1.5 py-0.5 rounded font-black uppercase tracking-wider">{language === 'en' ? 'Check-in Image' : 'Ảnh check-in'}</div>
-                    <div className="absolute bottom-1.5 right-1.5 bg-white/90 dark:bg-slate-900/90 rounded p-1 text-slate-700 dark:text-slate-200 opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm border border-slate-200 dark:border-slate-700">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
-                    </div>
-                  </div>
-                  <div
-                    className="bg-slate-100 dark:bg-slate-950 flex items-center justify-center border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm dark:shadow-md relative group cursor-zoom-in rounded-md transition-colors duration-200 h-auto"
-                    onClick={() => selectedLog.image_url_out && setLightboxImage(getImageUrl(selectedLog.image_url_out))}
-                    title={language === 'en' ? 'Click to zoom check-out image' : 'Click để phóng to ảnh ra'}
-                  >
-                    <img
-                      src={selectedLog.image_url_out ? getImageUrl(selectedLog.image_url_out) : 'https://placehold.co/600x400/0f172a/64748b?text=No+Checkout+Image'}
-                      alt="Check-out or proof"
-                      className="w-full h-auto max-h-[130px] object-contain transition-transform duration-300 group-hover:scale-105 opacity-90 dark:opacity-80"
-                      style={{ imageRendering: 'pixelated' }}
-                    />
-                    <div className="absolute top-1.5 left-1.5 bg-black/60 text-white text-[9px] px-1.5 py-0.5 rounded font-black uppercase tracking-wider">{language === 'en' ? 'Check-out / Proof' : 'Ảnh check-out / minh chứng'}</div>
-                    <div className="absolute bottom-1.5 right-1.5 bg-white/90 dark:bg-slate-900/90 rounded p-1 text-slate-700 dark:text-slate-200 opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm border border-slate-200 dark:border-slate-700">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider block">{language === 'en' ? 'Check-out or Proof Image' : 'Ảnh check-out / minh chứng'}</span>
+                    <div
+                      className="bg-slate-100 dark:bg-slate-950 flex items-center justify-center border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-sm dark:shadow-md relative group cursor-zoom-in rounded-lg transition-colors duration-200 h-auto"
+                      onClick={() => selectedLog.image_url_out && setLightboxImage(getImageUrl(selectedLog.image_url_out))}
+                      title={language === 'en' ? 'Click to zoom check-out image' : 'Click để phóng to ảnh ra'}
+                    >
+                      <img
+                        src={selectedLog.image_url_out ? getImageUrl(selectedLog.image_url_out) : 'https://placehold.co/600x400/0f172a/64748b?text=No+Checkout+Image'}
+                        alt="Check-out"
+                        className="w-full h-auto max-h-[120px] object-contain transition-transform duration-300 group-hover:scale-105 opacity-90 dark:opacity-80"
+                      />
+                      <div className="absolute bottom-2 right-2 bg-white/95 dark:bg-slate-900/90 rounded p-1 text-slate-750 dark:text-slate-200 opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm border border-slate-200 dark:border-slate-700">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -669,27 +669,25 @@ export default function ManagerIssues() {
   const [section, setSection] = useState('feedbacks') // feedbacks | incidents
 
   const sections = [
-    { id: 'feedbacks', labelEn: 'Feedbacks', labelVi: 'Phản hồi khách hàng', icon: MessageSquare },
-    { id: 'incidents', labelEn: 'Incidents', labelVi: 'Vi phạm & Sự cố', icon: AlertTriangle },
+    { id: 'feedbacks', labelEn: 'Feedbacks', labelVi: 'Phản hồi khách hàng' },
+    { id: 'incidents', labelEn: 'Incidents', labelVi: 'Vi phạm & Sự cố' },
   ]
 
   return (
     <div className="animate-slide-in flex flex-col h-full space-y-5">
       {/* Section switcher */}
-      <div className="flex gap-2">
+      <div className="flex border-b border-slate-200 dark:border-slate-800 overflow-x-auto gap-2 md:gap-6 no-scrollbar pb-px w-full shrink-0">
         {sections.map(s => {
-          const Icon = s.icon
           const isActive = section === s.id
           return (
             <button
               key={s.id}
               onClick={() => setSection(s.id)}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-150 ${isActive
-                ? 'bg-blue-700 dark:bg-white text-white dark:text-slate-900 shadow-md'
-                : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'
+              className={`py-2 px-1 border-b-2 font-bold text-xs transition-all focus:outline-none whitespace-nowrap flex items-center gap-2 ${isActive
+                ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400'
+                : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
                 }`}
             >
-              <Icon size={16} />
               {language === 'en' ? s.labelEn : s.labelVi}
             </button>
           )
