@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using ParkingManagement.Data;
 using ParkingManagement.DTOs;
 using ParkingManagement.Models;
@@ -19,11 +20,13 @@ namespace ParkingManagement.Controllers
     {
         private readonly AppDbContext _context;
         private readonly IEmailService _emailService;
+        private readonly IMemoryCache _memoryCache;
 
-        public StaffController(AppDbContext context, IEmailService emailService)
+        public StaffController(AppDbContext context, IEmailService emailService, IMemoryCache memoryCache)
         {
             _context = context;
             _emailService = emailService;
+            _memoryCache = memoryCache;
         }
 
         // GET: api/v1/manager/staff
@@ -203,11 +206,11 @@ namespace ParkingManagement.Controllers
             bool isEnglish = acceptLanguage.Contains("en");
 
             // Cấu hình Subject và Body động theo ngôn ngữ
-            string emailSubject = isEnglish 
-                ? "eParking - Your New Staff Account Credentials" 
+            string emailSubject = isEnglish
+                ? "eParking - Your New Staff Account Credentials"
                 : "eParking - Thông tin đăng nhập tài khoản nhân viên";
 
-            string emailBody = isEnglish 
+            string emailBody = isEnglish
                 ? $@"
                 <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px;'>
                     <h2 style='color: #1e3a8a; text-align: center;'>Welcome to eParking!</h2>
@@ -372,13 +375,43 @@ namespace ParkingManagement.Controllers
             }
 
             var validStatuses = new[] { "ACTIVE", "INACTIVE", "BANNED" };
-            if (!validStatuses.Contains(request.Status.ToUpper()))
+            var newStatus = request.Status.ToUpper();
+            if (!validStatuses.Contains(newStatus))
             {
                 return BadRequest(new { success = false, message = "Invalid status value. Must be ACTIVE, INACTIVE, or BANNED" });
             }
 
-            staff.Status = request.Status.ToUpper();
+            if (newStatus == "BANNED" && staff.Status != "BANNED")
+            {
+                // Guard: cannot ban a staff member mid-shift while they have a vehicle
+                // checked in that hasn't been checked out yet.
+                bool hasOpenSession = await _context.ParkingSessions.AnyAsync(s =>
+                    s.Status == "ACTIVE" && (s.StaffInId == userId || s.StaffOutId == userId));
+
+                if (hasOpenSession)
+                {
+                    return BadRequest(new
+                    {
+                        success = false,
+                        message = "Cannot ban this staff member because they have an active parking session in progress. Please wait until it is completed first."
+                    });
+                }
+            }
+
+            staff.Status = newStatus;
             await _context.SaveChangesAsync();
+
+            // Real-time kick-out: flag/unflag the staff member in the shared ban cache
+            // so UserBanCheckMiddleware rejects their next request immediately, instead
+            // of waiting for their JWT to expire.
+            if (newStatus == "BANNED")
+            {
+                _memoryCache.Set(BanCacheKeys.For(userId), true);
+            }
+            else
+            {
+                _memoryCache.Remove(BanCacheKeys.For(userId));
+            }
 
             return Ok(new
             {

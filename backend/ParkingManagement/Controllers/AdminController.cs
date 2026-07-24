@@ -1,9 +1,11 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using ParkingManagement.Data;
 using ParkingManagement.DTOs.Admin;
 using ParkingManagement.Models;
+using ParkingManagement.Utils;
 using System.Security.Claims;
 using System.IdentityModel.Tokens.Jwt;
 using ParkingManagement.Services;
@@ -17,11 +19,13 @@ namespace ParkingManagement.Controllers
     {
         private readonly AppDbContext _context;
         private readonly ISystemConfigService _configService;
+        private readonly IMemoryCache _memoryCache;
 
-        public AdminController(AppDbContext context, ISystemConfigService configService)
+        public AdminController(AppDbContext context, ISystemConfigService configService, IMemoryCache memoryCache)
         {
             _context = context;
             _configService = configService;
+            _memoryCache = memoryCache;
         }
 
         // ==========================================
@@ -184,7 +188,7 @@ namespace ParkingManagement.Controllers
             }
 
             var currAdminId = User.FindFirstValue(ClaimTypes.NameIdentifier)
-                              ?? User.FindFirst("sub")?.Value 
+                              ?? User.FindFirst("sub")?.Value
                               ?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
             if (userInDb.UserId == currAdminId && request.Status != "ACTIVE")
             {
@@ -202,6 +206,17 @@ namespace ParkingManagement.Controllers
                 {
                     success = false,
                     message = "Invalid Role."
+                });
+            }
+
+            // This endpoint only toggles ACTIVE/INACTIVE. Banning must go through
+            // PUT users/{userId}/status, which enforces the pending-transaction guard.
+            if (request.Status?.ToUpper() == "BANNED")
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message = "Use the ban action to ban a user, not the general update endpoint."
                 });
             }
 
@@ -239,8 +254,8 @@ namespace ParkingManagement.Controllers
                 return BadRequest(new { success = false, message = "Invalid Role ID" });
 
             // 1. Get currently logged-in Admin's ID from claims
-            var adminId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
-                          ?? User.FindFirst("sub")?.Value 
+            var adminId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                          ?? User.FindFirst("sub")?.Value
                           ?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
 
             if (string.IsNullOrEmpty(adminId))
@@ -299,10 +314,10 @@ namespace ParkingManagement.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new 
-                { 
-                    success = false, 
-                    message = "Could not update user role and write audit log. Reason: " + (ex.InnerException?.Message ?? ex.Message) 
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Could not update user role and write audit log. Reason: " + (ex.InnerException?.Message ?? ex.Message)
                 });
             }
 
@@ -329,15 +344,36 @@ namespace ParkingManagement.Controllers
 
             if (newStatus == "BANNED" && user.Status != "BANNED")
             {
-                var adminId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
-                              ?? User.FindFirst("sub")?.Value 
+                // Guard: cannot ban a user who still has an unfinished transaction
+                // (pending/confirmed booking, an active parking session, or a pending payment).
+                // Same intent as the "no pending transaction" guard on Delete/AssignRole.
+                bool hasPendingBooking = await _context.Bookings.AnyAsync(b =>
+                    b.VehicleUserId == userId && (b.Status == "PENDING" || b.Status == "CONFIRMED"));
+
+                bool hasActiveParkingSession = await _context.ParkingSessions.AnyAsync(s =>
+                    s.Status == "ACTIVE" && s.Booking != null && s.Booking.VehicleUserId == userId);
+
+                bool hasPendingPayment = await _context.Payments.AnyAsync(p =>
+                    p.UserId == userId && p.Status == "PENDING");
+
+                if (hasPendingBooking || hasActiveParkingSession || hasPendingPayment)
+                {
+                    return BadRequest(new
+                    {
+                        success = false,
+                        message = "Cannot ban this user because they have a pending/confirmed booking, an active parking session, or a pending payment. Please wait until it is completed or cancelled first."
+                    });
+                }
+
+                var adminId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                              ?? User.FindFirst("sub")?.Value
                               ?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
 
                 if (string.IsNullOrEmpty(adminId))
                 {
                     // Fallback to a system admin if possible
                     var systemAdmin = await _context.Users.Where(u => u.RoleId == 1).Select(u => u.UserId).FirstOrDefaultAsync();
-                    adminId = systemAdmin ?? "usr_260601085134364"; 
+                    adminId = systemAdmin ?? "usr_260601085134364";
                 }
 
                 var banLog = new UserBanLog
@@ -355,6 +391,18 @@ namespace ParkingManagement.Controllers
             user.Status = newStatus;
             await _context.SaveChangesAsync();
 
+            // Real-time kick-out: flag/unflag the user in the shared ban cache so
+            // UserBanCheckMiddleware rejects their next request immediately,
+            // instead of waiting for their JWT to expire.
+            if (newStatus == "BANNED")
+            {
+                _memoryCache.Set(BanCacheKeys.For(userId), true);
+            }
+            else
+            {
+                _memoryCache.Remove(BanCacheKeys.For(userId));
+            }
+
             return Ok(new { success = true, message = "User status updated successfully" });
         }
 
@@ -368,8 +416,8 @@ namespace ParkingManagement.Controllers
             if (user == null)
                 return NotFound(new { success = false, message = "User not found" });
 
-            var adminId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
-                          ?? User.FindFirst("sub")?.Value 
+            var adminId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                          ?? User.FindFirst("sub")?.Value
                           ?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
             if (user.UserId == adminId)
                 return BadRequest(new { success = false, message = "You cannot delete your own admin account" });
@@ -385,10 +433,10 @@ namespace ParkingManagement.Controllers
             }
             catch (Exception)
             {
-                return BadRequest(new 
-                { 
-                    success = false, 
-                    message = "Cannot delete this user because they have existing transactions, bookings, vehicles, or system logs. Please suspend them instead." 
+                return BadRequest(new
+                {
+                    success = false,
+                    message = "Cannot delete this user because they have existing transactions, bookings, vehicles, or system logs. Please suspend them instead."
                 });
             }
         }
@@ -610,8 +658,8 @@ namespace ParkingManagement.Controllers
             var payOsClientId = Environment.GetEnvironmentVariable("PAYOS_CLIENT_ID");
             var payOsApiKey = Environment.GetEnvironmentVariable("PAYOS_API_KEY");
             var payOsChecksumKey = Environment.GetEnvironmentVariable("PAYOS_CHECKSUM_KEY");
-            bool payosConfigured = !string.IsNullOrEmpty(payOsClientId) && 
-                                   !string.IsNullOrEmpty(payOsApiKey) && 
+            bool payosConfigured = !string.IsNullOrEmpty(payOsClientId) &&
+                                   !string.IsNullOrEmpty(payOsApiKey) &&
                                    !string.IsNullOrEmpty(payOsChecksumKey);
             string payosStatus = payosConfigured ? "ONLINE" : "CONFIG_REQUIRED";
 
