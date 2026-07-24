@@ -205,6 +205,7 @@ app.UseMiddleware<ParkingManagement.Middlewares.IpFilterMiddleware>(); //block/a
 // Security
 app.UseMiddleware<ParkingManagement.Middlewares.TokenBlacklistMiddleware>(); // Check blacklist
 app.UseAuthentication(); // Read JWT token
+app.UseMiddleware<ParkingManagement.Middlewares.UserBanCheckMiddleware>(); // Kick out users banned mid-session
 app.UseAuthorization(); // Check role/permission
 
 app.UseMiddleware<ParkingManagement.Middlewares.RateLimitingMiddleware>(); //per-IP rate limiting
